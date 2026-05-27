@@ -14,6 +14,12 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
                      save_every::Float64 = 0.1,
                      dt_init::Float64    = cfg.dt_max)
 
+    is_ob = ob.De1 > 0.0 && ob.beta_s < 1.0
+    pack_fn      = is_ob ? pack_X_ob     : (s, M) -> pack_X(s, M)
+    unpack_fn!   = is_ob ? unpack_X_ob!  : (s, X, M) -> unpack_X!(s, X, M)
+    residual_fn! = is_ob ? build_residual_ob! : build_residual!
+    jacobian_fn  = is_ob ? build_jacobian_ob  : build_jacobian
+
     history    = DropState[deepcopy(init)]
     dt         = dt_init
     t          = init.t
@@ -34,30 +40,30 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
             # Build history slice for BDF
             hist_slice = order == 2 ? history[end-1:end] : history[end:end]
 
-            X0 = pack_X(history[end], cfg.M)
+            X0 = pack_fn(history[end], cfg.M)
 
             R! = (buf, Xv) -> begin
                 s = deepcopy(history[end])
-                unpack_X!(s, Xv, cfg.M)
+                unpack_fn!(s, Xv, cfg.M)
                 s.cp = cp
                 fill!(buf, 0.0)
-                build_residual!(buf, s, hist_slice, dt, cp, cfg, ob)
+                residual_fn!(buf, s, hist_slice, dt, cp, cfg, ob)
             end
 
             J_fn = Xv -> begin
                 s = deepcopy(history[end])
-                unpack_X!(s, Xv, cfg.M)
+                unpack_fn!(s, Xv, cfg.M)
                 s.cp = cp
-                build_jacobian(s, hist_slice, dt, cp, cfg, ob)
+                jacobian_fn(s, hist_slice, dt, cp, cfg, ob)
             end
 
             X   = copy(X0)
-            key = (cp, round(dt; sigdigits=6), order)
+            key = (cp, round(dt; sigdigits=6), order, is_ob)
             converged = newton_solve!(X, R!, J_fn; cache_key=key)
 
             if converged
                 candidate     = deepcopy(history[end])
-                unpack_X!(candidate, X, cfg.M)
+                unpack_fn!(candidate, X, cfg.M)
                 candidate.t   = t + dt
                 candidate.dt  = dt
                 candidate.cp  = cp

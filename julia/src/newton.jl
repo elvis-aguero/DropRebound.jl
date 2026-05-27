@@ -1,5 +1,5 @@
-"""Cache mapping (cp, dt, order) → precomputed J⁻¹."""
-const _jac_cache = Dict{Tuple{Int,Float64,Int}, Matrix{Float64}}()
+"""Cache mapping (cp, dt, order[, is_ob]) → precomputed J⁻¹."""
+const _jac_cache = Dict{Any, Matrix{Float64}}()
 
 """
     newton_solve!(X, R!, J_fn; cache_key, tol, maxiter) → Bool
