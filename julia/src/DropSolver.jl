@@ -11,6 +11,9 @@ export SimConstants, OBParams, DropState
 # Export residual and Jacobian functions
 export pack_X, unpack_X!, build_residual!, build_jacobian
 
+# Export OB extension functions
+export pack_X_ob, unpack_X_ob!, build_residual_ob!, build_jacobian_ob
+
 # Export Newton solver
 export newton_solve!, clear_jac_cache!
 
