@@ -31,7 +31,7 @@ using DropSolver: bdf_coefficients
         for N in [20, 40, 80]
             dt = 1.0 / N
             y = [1.0, exp(-dt)]            # exact first two steps
-            for k in 2:N-1
+            for k in 2:N
                 c = bdf_coefficients(2, dt, dt)
                 # BDF2: c[1]*y[k-1] + c[2]*y[k] + c[3]*y_{k+1} = dt*(-y_{k+1})
                 # (c[3] + dt)*y_{k+1} = -(c[1]*y[k-1] + c[2]*y[k])
@@ -41,7 +41,7 @@ using DropSolver: bdf_coefficients
             push!(errors, abs(y[end] - exp(-1.0)))
         end
         # error should roughly halve each time N doubles (at least first-order)
-        @test errors[2]/errors[1] < 0.6
-        @test errors[3]/errors[2] < 0.6
+        @test errors[2]/errors[1] < 0.35
+        @test errors[3]/errors[2] < 0.35
     end
 end
