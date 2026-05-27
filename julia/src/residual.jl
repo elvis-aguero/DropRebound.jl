@@ -98,7 +98,7 @@ function build_residual!(R::AbstractVector, state::DropState,
     if cp > 0
         cos_c = cos.(θv[1:cp])
         Pc    = collect_Pl(M, cos_c)    # (cp × M+1), column k = P_{k-1}
-        PcA   = Pc[:, 2:end]            # (cp × M), P₁…P_M evaluated at contact points
+        PcA   = Pc[:, 3:end]            # (cp × Nm), P₂…P_M evaluated at contact points
         R3    = cos_c .* (1.0 .+ PcA * A) .+ z
         R[row_p : row_p + cp - 1] .= R3
     end

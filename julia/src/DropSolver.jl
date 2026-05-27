@@ -8,8 +8,8 @@ include("types.jl")
 # Export types
 export SimConstants, OBParams, DropState
 
-# Export residual functions
-export pack_X, unpack_X!, build_residual!
+# Export residual and Jacobian functions
+export pack_X, unpack_X!, build_residual!, build_jacobian
 
 # Export utilities used in tests
 export precompute_integrals

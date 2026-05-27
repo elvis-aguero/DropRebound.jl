@@ -46,3 +46,27 @@ end
         @test s2.v           ≈ s.v
     end
 end
+
+@testset "Jacobian matches finite differences (cp=0)" begin
+    M = 4; Oh = 0.1; Fr = 1e12
+    θv = collect(range(π, π/2 + 0.01; length = M+1))
+    precomp = precompute_integrals(NaN, M)[1]
+    cfg = SimConstants(M, M+1, Oh, Fr, θv, precomp, 0.01)
+    ob  = OBParams()
+
+    s0 = DropState(M); s0.dt = 0.01; s0.z = 1.0
+    s1 = DropState(M); s1.dt = 0.01; s1.z = 1.0; s1.A[2] = 0.05
+
+    J   = build_jacobian(s1, [s0], 0.01, 0, cfg, ob)
+    eps = 1e-6
+    X0  = pack_X(s1, M)
+    R0  = zeros(3M+1); build_residual!(R0, s1, [s0], 0.01, 0, cfg, ob)
+    J_fd = zeros(3M+1, 3M+1)
+    for j in 1:3M+1
+        Xp = copy(X0); Xp[j] += eps
+        sp = DropState(M); unpack_X!(sp, Xp, M); sp.cp = 0
+        Rp = zeros(3M+1); build_residual!(Rp, sp, [s0], 0.01, 0, cfg, ob)
+        J_fd[:, j] = (Rp .- R0) ./ eps
+    end
+    @test norm(J .- J_fd) / norm(J_fd) < 1e-4
+end
