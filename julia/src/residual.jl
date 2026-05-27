@@ -113,20 +113,10 @@ function build_residual!(R::AbstractVector, state::DropState,
     end
 
     # ── Block R6: BDF(dz/dτ = v) ────────────────────────────────────────────
-    # Only active when drop is in contact (cp > 0); otherwise COM motion is free
-    if cp > 0
-        R[3M] = c[end] * z + sum(c[j] * prev_z[j] for j in 1:order) - dt * v
-    else
-        R[3M] = 0.0
-    end
+    R[3M] = c[end] * z + sum(c[j] * prev_z[j] for j in 1:order) - dt * v
 
-    # ── Block R7: BDF(dv/dτ = -1/Fr - cp*B₁) ───────────────────────────────
-    # B₁ = B[2] in 1-indexed Julia. Only active when in contact (cp > 0).
-    if cp > 0
-        B1_force = B[2]
-        R[3M+1] = c[end] * v + sum(c[j] * prev_v[j] for j in 1:order) -
-                  dt * (-1.0/Fr - B1_force)
-    else
-        R[3M+1] = 0.0
-    end
+    # ── Block R7: BDF(dv/dτ = -1/Fr - cp*B₁) ────────────────────────────────
+    B1_force = cp > 0 ? B[2] : 0.0
+    R[3M+1] = c[end] * v + sum(c[j] * prev_v[j] for j in 1:order) -
+              dt * (-1.0/Fr - B1_force)
 end

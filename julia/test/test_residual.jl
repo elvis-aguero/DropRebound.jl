@@ -10,7 +10,7 @@ function make_eq_state(M)
 end
 
 @testset "Residual (Newtonian, no contact)" begin
-    M = 4; Oh = 0.1; Fr = 100.0
+    M = 4; Oh = 0.1; Fr = 1e12
     θv = collect(range(π, π/2 + 0.01; length = M+1))
     precomp = precompute_integrals(NaN, M)[1]
     cfg = SimConstants(M, M+1, Oh, Fr, θv, precomp, 0.01)
