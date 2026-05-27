@@ -7,6 +7,12 @@ include("types.jl")
 
 # Export types
 export SimConstants, OBParams, DropState
+
+# Export residual functions
+export pack_X, unpack_X!, build_residual!
+
+# Export utilities used in tests
+export precompute_integrals
 include("legendre.jl")
 include("integrals.jl")
 include("bdf.jl")
