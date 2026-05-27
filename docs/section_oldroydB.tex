@@ -1,0 +1,821 @@
+%% ════════════════════════════════════════════════════════════════════════════
+\section{Extension to Viscoelastic Drops: the Oldroyd-B Model}
+\label{sec:oldroydB}
+%% ════════════════════════════════════════════════════════════════════════════
+
+Every result in Sections 1--9 rests on a single constitutive assumption:
+the viscous stress is instantaneously proportional to the rate of strain,
+$\boldsymbol{\tau} = 2\mu\,\mathbf{e}$. Real polymer solutions violate this.
+A drop of polyethylene oxide (PEO) in water, a silicone oil of moderate
+molecular weight, or a biological fluid such as mucus all retain a
+\emph{memory} of past deformations. Stress does not vanish the instant
+deformation stops; it relaxes on a characteristic timescale set by the
+polymer microstructure.
+
+The \textbf{Oldroyd-B model} is the simplest constitutive law that captures
+this memory faithfully while remaining analytically tractable. It is the
+canonical model for dilute polymer solutions: a Newtonian solvent (viscosity
+$\mu_s$) in which elastic polymer dumbbells are suspended (contributing
+additional viscosity $\mu_p$, with $\mu = \mu_s + \mu_p$ the total). The
+model has two timescales: a \emph{relaxation time} $\lambda_1$ (how long
+polymer stress persists after deformation stops) and a \emph{retardation
+time} $\lambda_2 < \lambda_1$ (how long the combined fluid takes to respond
+to a new deformation). Setting $\lambda_2 = 0$ reduces Oldroyd-B to the
+Maxwell model; setting $\lambda_1 = \lambda_2$ recovers a Newtonian fluid.
+
+The central result of this section is that Reid's characteristic equation
+\eqref{eq:char_eq} survives the generalisation to Oldroyd-B: the left-hand
+side $\alpha^4/q^4 + 1$ is unchanged, and the right-hand side is Reid's
+right-hand side with $q$ replaced by a modified wavenumber $q_*$ that is a
+rational function of $q^2$. This rational structure introduces a new type
+of pole --- the \emph{retardation pole} --- which captures additional
+eigenvalues beyond Reid's fundamental pair and which is the mechanism by
+which the two-number $\{A_l, D_l\}$ picture eventually breaks down.
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{The Oldroyd-B constitutive law}
+%% ────────────────────────────────────────────────────────────────────────────
+
+\subsubsection{Physical motivation: the mechanical analog}
+
+\begin{notebox}[Spring-dashpot picture of Oldroyd-B]
+Imagine the fluid as two \emph{parallel} stress-carrying branches:
+\begin{itemize}
+  \item \textbf{Solvent branch:} a pure dashpot of viscosity $\mu_s$.
+        Stress responds instantaneously to strain rate: $\boldsymbol{\tau}_s
+        = 2\mu_s\,\mathbf{e}$. No memory.
+  \item \textbf{Polymer branch:} a Hookean spring (elastic modulus
+        $G = \mu_p/\lambda_1$) in \emph{series} with a dashpot of
+        viscosity $\mu_p$. The spring stores elastic energy when the
+        dumbbell is stretched; the dashpot relaxes that energy on timescale
+        $\lambda_1 = \mu_p/G$.
+\end{itemize}
+The total stress is $\boldsymbol{\tau} = \boldsymbol{\tau}_s +
+\boldsymbol{\tau}_p$. The retardation time
+\begin{equation}
+  \lambda_2 = \lambda_1\,\frac{\mu_s}{\mu_s + \mu_p} = \beta_s\,\lambda_1
+\end{equation}
+is the timescale on which the \emph{combined} system (solvent + polymer)
+first responds to a new deformation: the solvent wants to respond
+immediately, but the spring in the polymer arm initially resists,
+delaying the total response.
+\end{notebox}
+
+\subsubsection{The constitutive equation: two equivalent forms}
+
+In terms of the two raw timescales $(\lambda_1, \lambda_2)$:
+\begin{equation}
+  \boldsymbol{\tau} + \lambda_1\,\overset{\nabla}{\boldsymbol{\tau}}
+  = 2\mu\!\left(\mathbf{e} + \lambda_2\,\overset{\nabla}{\mathbf{e}}\right),
+  \qquad 0 \leq \lambda_2 < \lambda_1,
+  \label{eq:OB_raw}
+\end{equation}
+where $\overset{\nabla}{(\cdot)}$ is the upper-convected time derivative:
+\begin{equation}
+  \overset{\nabla}{\mathbf{A}}
+  = \frac{\partial\mathbf{A}}{\partial t}
+  + (\bu\cdot\nabla)\mathbf{A}
+  - (\nabla\bu)\cdot\mathbf{A}
+  - \mathbf{A}\cdot(\nabla\bu)^\top.
+  \label{eq:ucd}
+\end{equation}
+In terms of the retardation ratio $\beta_s \equiv \lambda_2/\lambda_1$:
+\begin{equation}
+  \boldsymbol{\tau} + \lambda_1\,\overset{\nabla}{\boldsymbol{\tau}}
+  = 2\mu\!\left(\mathbf{e} + \beta_s\lambda_1\,\overset{\nabla}{\mathbf{e}}\right),
+  \qquad \beta_s \in [0,1),
+  \label{eq:OB_beta}
+\end{equation}
+with $\beta_s = \mu_s/(\mu_s+\mu_p)$ the solvent viscosity fraction.
+The two forms \eqref{eq:OB_raw} and \eqref{eq:OB_beta} are identical;
+we carry both throughout because each makes different limits transparent.
+
+\begin{notebox}[Upper-convected derivative at linearised order]
+All fields are $O(\epsilon)$. In the upper-convected derivative
+\eqref{eq:ucd}, the terms $(\bu\cdot\nabla)\mathbf{A}$,
+$(\nabla\bu)\cdot\mathbf{A}$, and $\mathbf{A}\cdot(\nabla\bu)^\top$ are
+each products of two $O(\epsilon)$ quantities, hence $O(\epsilon^2)$.
+At linear order:
+\[
+  \overset{\nabla}{\boldsymbol{\tau}} \;\longrightarrow\;
+  \frac{\partial\boldsymbol{\tau}}{\partial t} + O(\epsilon^2), \qquad
+  \overset{\nabla}{\mathbf{e}} \;\longrightarrow\;
+  \frac{\partial\mathbf{e}}{\partial t} + O(\epsilon^2).
+\]
+We record the full upper-convected form for completeness and frame-
+indifference, but drop the $O(\epsilon^2)$ terms immediately.
+\end{notebox}
+
+\subsubsection{Parameter limits}
+
+\begin{center}
+\begin{tabular}{lllll}
+  \toprule
+  Limit & Condition & Model & $\beta_s$ & \\
+  \midrule
+  Maxwell    & $\lambda_2 = 0$        & Single-relaxation memory & $0$     & \\
+  Newtonian  & $\lambda_1 = \lambda_2$& Viscous, viscosity $\mu$ & $1$     & \\
+  Solvent    & $\lambda_1\to 0$ at fixed $G=\mu_p/\lambda_1$, $\mu_s$
+                                      & Newtonian, viscosity $\mu_s$ & $\to 1$ & \\
+  Elastic solid & $\lambda_1\to\infty$, $\beta_s=0$, $G=\mu_p/\lambda_1$ fixed ($\mu_p\to\infty$)
+                                      & Hookean solid, modulus $G$ & $0$ & \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{Linearisation and effective viscosity}
+%% ────────────────────────────────────────────────────────────────────────────
+
+The linearisation strategy in this section follows Zrni\'{c} \& Brenn
+\cite{zirnic2024}, whose Eq.\,(3.3) establishes the same effective-viscosity
+replacement $\mu \to \mu_{\mathrm{eff}}(\sigma)$ for the free-surface Oldroyd-B
+problem.
+
+\begin{derivbox}[Linearised Oldroyd-B in the frequency domain]
+With time dependence $e^{-\sigma t}$ (our convention: $\mathrm{Re}(\sigma)>0$
+for decay), $\partial_t \to -\sigma$. Dropping $O(\epsilon^2)$ upper-convected
+terms:
+\[
+  (1 - \lambda_1\sigma)\,\boldsymbol{\tau}
+  = 2\mu\,(1 - \lambda_2\sigma)\,\mathbf{e}.
+\]
+Dividing through by $(1 - \lambda_1\sigma)$ (valid generically, since
+$\sigma = 1/\lambda_1$ is a special value examined separately):
+\begin{equation}
+  \boldsymbol{\tau} = 2\mu_{\mathrm{eff}}(\sigma)\,\mathbf{e},
+  \qquad
+  \mu_{\mathrm{eff}}(\sigma) = \mu\,\frac{1-\lambda_2\sigma}{1-\lambda_1\sigma}.
+  \label{eq:mueff_OB}
+\end{equation}
+In both parameterisations simultaneously:
+\begin{equation}
+  \mu_{\mathrm{eff}}(\sigma)
+  = \mu\,\frac{1-\lambda_2\sigma}{1-\lambda_1\sigma}
+  = \mu\,\frac{1-\beta_s\lambda_1\sigma}{1-\lambda_1\sigma}.
+  \label{eq:mueff_both}
+\end{equation}
+The effective kinematic viscosity is $\nu_{\mathrm{eff}} =
+\mu_{\mathrm{eff}}/\rho$.
+\end{derivbox}
+
+\begin{notebox}[Analytic structure of $\mu_{\mathrm{eff}}(\sigma)$]
+As a function of $\sigma$, $\mu_{\mathrm{eff}}$ is a ratio of two linear
+factors:
+\begin{itemize}
+  \item \textbf{Zero} at $\sigma = 1/\lambda_2$: solvent and polymer stresses
+        cancel in the tangential direction. ($\lambda_2 = 0$ pushes this
+        zero to infinity --- the Maxwell model has no zero.)
+  \item \textbf{Pole} at $\sigma = 1/\lambda_1$: polymer stress cannot relax;
+        effective viscosity diverges (solid-like response).
+\end{itemize}
+Setting $\lambda_2 = 0$: $\mu_{\mathrm{eff}} = \mu/(1-\lambda_1\sigma)$,
+recovering the Maxwell effective viscosity. Setting $\lambda_1 = \lambda_2$:
+$\mu_{\mathrm{eff}} = \mu$, recovering Newtonian. The Oldroyd-B model
+interpolates between these two limits.
+\end{notebox}
+
+\subsubsection{The two Deborah numbers}
+
+Referenced to the inviscid oscillation frequency $\sigma_{l;0}$:
+\begin{equation}
+  De_1 \equiv \lambda_1\,\sigma_{l;0},
+  \qquad
+  De_2 \equiv \lambda_2\,\sigma_{l;0} = \beta_s\,De_1.
+  \label{eq:De_defs}
+\end{equation}
+$De_j$ is the ratio of the fluid's $j$th memory timescale to the drop's
+natural oscillation period.
+
+\begin{notebox}[Convention note]
+Zrni\'{c} \& Brenn \cite{zirnic2024} define their Deborah numbers referenced
+to the capillary timescale $(T_1/(\rho R^3))^{1/2}$, whereas here they are
+referenced to $\sigma_{l;0} = [l(l-1)(l+2)]^{1/2}(T_1/(\rho R^3))^{1/2}$.
+Consequently $De_j^{\text{here}} = \sqrt{l(l-1)(l+2)}\,De_j^{\text{Z\&B}}$;
+numerical values are mode-dependent and should not be compared directly.
+\end{notebox} When $De_1 \ll 1$: polymer relaxes many times
+per cycle, the drop behaves as Newtonian. When $De_1 \sim 1$: elasticity
+and surface tension compete on equal footing.
+
+\begin{derivbox}[Expressing $\lambda_j\sigma$ in terms of $q^2$ and $\alpha^2$]
+Recall $\sigma = q^2\nu/R^2$ and $\sigma_{l;0} = \alpha^2\nu/R^2$.
+Therefore:
+\begin{equation}
+  \lambda_j\sigma
+  = \lambda_j\cdot\frac{q^2\nu}{R^2}
+  = \frac{\lambda_j\sigma_{l;0}}{\alpha^2\nu/R^2}\cdot\frac{q^2\nu}{R^2}
+  = \frac{De_j\cdot q^2}{\alpha^2}.
+  \label{eq:lamsig}
+\end{equation}
+Substituting into \eqref{eq:mueff_OB}:
+\begin{equation}
+  \mu_{\mathrm{eff}} = \mu\,\frac{\alpha^2 - De_2\,q^2}{\alpha^2 - De_1\,q^2},
+  \qquad
+  \nu_{\mathrm{eff}} = \nu\,\frac{\alpha^2 - De_2\,q^2}{\alpha^2 - De_1\,q^2}.
+  \label{eq:nueff_dimless}
+\end{equation}
+All dimensional quantities have cancelled. The effective viscosity is a
+function of $q^2/\alpha^2$ only.
+\end{derivbox}
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{Boundary condition audit}
+%% ────────────────────────────────────────────────────────────────────────────
+
+We have a free-surface drop in air. We examine each of the three boundary
+conditions.
+
+\subsubsection{BC1 (kinematic) --- unchanged}
+
+The kinematic condition equates the fluid radial velocity at $x=1$ to the
+rate of change of the surface position. It is a purely geometric statement
+involving only the \emph{velocity field}, not the stress. The Oldroyd-B
+constitutive law does not alter the velocity field structure. Therefore:
+\begin{equation}
+  U(1) = -1. \tag{BC1, unchanged}
+\end{equation}
+
+\subsubsection{BC2 (tangential stress) --- unchanged in form}
+
+The free-surface condition $\tau_{r\theta}|_{x=1} = 0$ becomes:
+\[
+  \mu_{\mathrm{eff}}(\sigma)\!\left[\,r\,\frac{\partial}{\partial r}
+  \!\left(\frac{u_\theta}{r}\right)
+  + \frac{1}{r}\frac{\partial u_r}{\partial\theta}\,\right]_{r=R} = 0.
+\]
+Since $\mu_{\mathrm{eff}} \neq 0$ generically, we divide through. The
+condition reduces to exactly the same operator equation on $U$:
+\begin{equation}
+  \left[\,\frac{\dd^2}{\dd x^2}
+  - \frac{2}{x}\frac{\dd}{\dd x}
+  + \frac{l(l+1)}{x^2}\,\right]U\,\bigg|_{x=1} = 0. \tag{BC2, unchanged}
+\end{equation}
+
+\begin{notebox}[The zero of $\mu_{\mathrm{eff}}$ at $\sigma = 1/\lambda_2$]
+At $\sigma = 1/\lambda_2$, the effective viscosity $\mu_{\mathrm{eff}} \to 0$
+and BC2 becomes $0 = 0$ for any $U$: it imposes no constraint.
+The frequency $\sigma = 1/\lambda_2$ is the \emph{retardation pole} of
+$q_*^2$: as $w \to w_{\mathrm{ret}} = \alpha^2/De_2$, $q_*^2 \to \infty$.
+It is not itself a root of the characteristic equation $F(w) = 0$; rather,
+the actual retardation roots of the characteristic equation lie in a
+neighbourhood of $w_{\mathrm{ret}}$ (see Section~\ref{sec:OB_roots}).
+At those roots BC2 must be handled by a limiting argument. In practice these
+roots decay at rate $1/\lambda_2$, which is faster than the capillary
+timescale when $De_2 < 1$, and they are discarded as overtones. For
+$De_2 > 1$ a more careful treatment is required.
+\end{notebox}
+
+\subsubsection{BC3 (normal stress) --- viscoelastic correction check}
+
+\begin{derivbox}[First normal stress difference at $O(\epsilon)$ for Oldroyd-B]
+For the Oldroyd-B family, the first normal stress difference is:
+\[
+  N_1 = \tau_{rr} - \tau_{\theta\theta}.
+\]
+At the linearised level, $\boldsymbol{\tau} = 2\mu_{\mathrm{eff}}\,\mathbf{e}$
+with $\mathbf{e} = O(\epsilon)$, so $N_1 = O(\epsilon)$. Does this $O(\epsilon)$
+quantity add a new term to BC3?
+
+The normal stress balance at a free surface equates the jump in
+\emph{radial} normal stress to the Laplace pressure:
+\[
+  -p_{rr}\big|_{\text{inside}} = T_1\!\left(\frac{1}{R_1}+\frac{1}{R_2}\right).
+\]
+The radial normal stress inside is $-p_{rr} = p + \delta p - \tau_{rr}$,
+with $\tau_{rr} = 2\mu_{\mathrm{eff}}\,\partial u_r/\partial r$. This is
+precisely the viscous term already present in BC3 \eqref{eq:BC3}, now with
+$\mu \to \mu_{\mathrm{eff}}$. The remaining part $N_1 = \tau_{rr} -
+\tau_{\theta\theta}$ measures the \emph{anisotropy} of the stress tensor,
+but it does not enter BC3 at $O(\epsilon)$.
+The reason is that the base state is a quiescent sphere with
+$\boldsymbol{\tau}_0 = 0$, so the $O(\epsilon)$ tilt of the outward normal
+from $\hat{\mathbf{r}}$ introduces only an $O(\epsilon)$ correction to the
+normal direction times an $O(\epsilon^0) = 0$ base tangential traction,
+contributing nothing at $O(\epsilon)$.
+Therefore $N_1$ contributes nothing extra to BC3 at $O(\epsilon)$.
+
+At $O(\epsilon^2)$, the surface is deformed and the mismatch between normal
+and tangential directions at the perturbed surface generates an
+$O(\epsilon^2)$ correction from $N_1$ to the effective surface tension.
+This is an open problem noted in Section~\ref{sec:OB_open}.
+\end{derivbox}
+
+The normal stress boundary condition is:
+\begin{equation}
+  (l-1)(l+2)\frac{T_1}{\rho R}
+  = P_0 - 2\nu_{\mathrm{eff}}(\sigma)\,\sigma\!\left[\,U'(1) - 2U(1)\,\right].
+  \tag{BC3$'$}
+  \label{eq:BC3_OB}
+\end{equation}
+This is identical to the Newtonian BC3 \eqref{eq:BC3} with
+$\nu \to \nu_{\mathrm{eff}}$ from \eqref{eq:nueff_dimless}.
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{Modified governing ODE}
+%% ────────────────────────────────────────────────────────────────────────────
+
+\subsubsection{The modified wavenumber $q_*$}
+
+\begin{derivbox}[Definition and derivation of $q_*^2$]
+In Reid's Newtonian derivation, the parameter $q^2 = \sigma R^2/\nu$ emerged
+when the $r$-momentum equation was multiplied through by $R/(\nu\sigma)$.
+For Oldroyd-B, the same step with $\nu \to \nu_{\mathrm{eff}}$ gives:
+\begin{equation}
+  q_*^2 \;\equiv\; \frac{\sigma R^2}{\nu_{\mathrm{eff}}(\sigma)}
+  = q^2\,\frac{1-\lambda_1\sigma}{1-\lambda_2\sigma}.
+  \label{eq:qstar_raw}
+\end{equation}
+Using \eqref{eq:lamsig} to express $\lambda_j\sigma$ in terms of $q^2$
+and $\alpha^2$:
+\begin{equation}
+  \boxed{
+    q_*^2 = q^2\cdot\frac{\alpha^2 - De_1\,q^2}{\alpha^2 - De_2\,q^2}.
+  }
+  \label{eq:qstar_OB}
+\end{equation}
+In both parameterisations:
+\begin{equation}
+  q_*^2 = q^2\cdot\frac{\alpha^2 - De_1\,q^2}{\alpha^2 - \beta_s De_1\,q^2}.
+  \label{eq:qstar_both}
+\end{equation}
+\end{derivbox}
+
+\begin{notebox}[Structural difference from the Maxwell model]
+For the Maxwell fluid, $q_*^2 = q^2(1 - De_1 q^2/\alpha^2) =
+q^2(\alpha^2 - De_1 q^2)/\alpha^2$: the denominator is the constant
+$\alpha^2$. For Oldroyd-B, the denominator is $\alpha^2 - De_2 q^2$,
+which \emph{vanishes} at $q^2 = \alpha^2/De_2$, i.e.\ at
+$\sigma = \sigma_{l;0}/De_2 = 1/\lambda_2$. As $q^2 \to \alpha^2/De_2$:
+$q_*^2 \to \infty$. This is the \textbf{retardation pole}: a singularity
+in the effective wavenumber that has no analogue in the Maxwell or
+Newtonian problems. All qualitative differences between Oldroyd-B and
+Maxwell trace back to this pole.
+\end{notebox}
+
+\begin{notebox}[Limits of $q_*^2$]
+\begin{itemize}
+  \item $De_2 = 0$ (Maxwell): $q_*^2 = q^2(\alpha^2 - De_1 q^2)/\alpha^2$.
+        Retardation pole disappears.
+  \item $De_1 = De_2$ (Newtonian): numerator equals denominator,
+        $q_*^2 = q^2$.
+  \item $q^2 = \alpha^2/De_1$ (relaxation zero): numerator $= 0$,
+        $q_*^2 = 0$. At $\sigma = 1/\lambda_1$ the polymer is fully
+        relaxed; it contributes zero stress, as if absent.
+  \item $q^2 = \alpha^2/De_2$ (retardation pole): denominator $= 0$,
+        $q_*^2\to\infty$. At $\sigma = 1/\lambda_2$ the effective
+        viscosity vanishes and the Bessel argument diverges.
+\end{itemize}
+Since $De_2 < De_1$, the retardation pole $\alpha^2/De_2 > \alpha^2/De_1$
+is always to the right of the relaxation zero on the positive real $q^2$-axis.
+\end{notebox}
+
+\subsubsection{The ODE for $U(x)$ under Oldroyd-B}
+
+\begin{derivbox}[The pressure field is unchanged]
+The pressure perturbation satisfies $\nabla^2(\delta p/\rho) = 0$ regardless
+of $\nu_{\mathrm{eff}}$. To see this: take the divergence of the linearised
+momentum equation
+$-\sigma\bu = -\nabla(\delta p/\rho) + \nu_{\mathrm{eff}}\nabla^2\bu$
+and use incompressibility $\nabla\cdot\bu = 0$. Since $\nu_{\mathrm{eff}}$
+is a scalar constant (it depends on $\sigma$ but not on $\mathbf{x}$), we get
+$\nabla^2(\delta p/\rho) = \nu_{\mathrm{eff}}\nabla^2(\nabla\cdot\bu) = 0$.
+The solution $\delta p/\rho = \epsilon P_0 x^l Y_l^m$ is unchanged.
+\end{derivbox}
+
+Following the derivation of Section~5 verbatim, with $\nu \to \nu_{\mathrm{eff}}$
+and hence $q^2 \to q_*^2$ throughout:
+
+\begin{keybox}[ODE for $U(x)$ under Oldroyd-B]
+\begin{equation}
+  \left[\,\frac{\dd^2}{\dd x^2} - \frac{l(l+1)}{x^2} + q_*^2\,\right]U(x)
+  = q_*^2\,\Pi_0\,x^{l+1},
+  \label{eq:ODE_OB}
+\end{equation}
+with $q_*^2$ given by \eqref{eq:qstar_OB}. The general solution is:
+\begin{equation}
+  U(x) = C\,x\,j_l(q_* x) + \Pi_0\,x^{l+1}.
+  \label{eq:U_OB}
+\end{equation}
+This is Reid's ODE and general solution \eqref{eq:ODE_U}--\eqref{eq:U_general}
+with the single replacement $q \to q_*$.
+\end{keybox}
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{The Oldroyd-B characteristic equation}
+%% ────────────────────────────────────────────────────────────────────────────
+
+\subsubsection{The ratio cancellation}
+
+Before deriving the characteristic equation, we establish a key algebraic
+fact that determines its structure.
+
+\begin{derivbox}[The ratio $\alpha_*^2/q_*^2$ is Newtonian]
+Define, in analogy with \eqref{eq:alpha_def}:
+\begin{equation}
+  \alpha_*^2 \;\equiv\; \frac{\sigma_{l;0}R^2}{\nu_{\mathrm{eff}}}
+  = \alpha^2\,\frac{1-\lambda_1\sigma}{1-\lambda_2\sigma}
+  = \alpha^2\cdot\frac{\alpha^2-De_1\,q^2}{\alpha^2-De_2\,q^2}.
+  \label{eq:alphastar_OB}
+\end{equation}
+Computing the ratio $\alpha_*^2/q_*^2$:
+\[
+  \frac{\alpha_*^2}{q_*^2}
+  = \frac{\displaystyle\alpha^2\cdot\frac{\alpha^2-De_1 q^2}{\alpha^2-De_2 q^2}}
+         {\displaystyle q^2\cdot\frac{\alpha^2-De_1 q^2}{\alpha^2-De_2 q^2}}
+  = \frac{\alpha^2}{q^2}.
+\]
+The Oldroyd-B factors cancel exactly in the ratio. Therefore:
+\begin{equation}
+  \frac{\alpha_*^4}{q_*^4} = \frac{\alpha^4}{q^4}.
+  \label{eq:ratio_cancel}
+\end{equation}
+\end{derivbox}
+
+\begin{notebox}[Why the cancellation occurs]
+The ratio $\alpha^4/q^4 = \sigma_{l;0}^2/\sigma^2$ is a pure ratio of
+frequencies. It is independent of viscosity by construction, since both
+$\alpha^2 \propto 1/\nu$ and $q^2 \propto 1/\nu$ rescale identically when
+$\nu \to \nu_{\mathrm{eff}}$. The cancellation \eqref{eq:ratio_cancel} holds
+for \emph{any} constitutive model that linearises to $\boldsymbol{\tau} =
+2\mu_{\mathrm{eff}}(\sigma)\,\mathbf{e}$ with a scalar $\mu_{\mathrm{eff}}$.
+It is a universal feature of the linearised problem, not specific to
+Oldroyd-B.
+\end{notebox}
+
+\subsubsection{Eliminating $T_1$}
+
+\begin{derivbox}[Modified rescaling]
+Multiplying BC3$'$ \eqref{eq:BC3_OB} through by $lR^2/\nu_{\mathrm{eff}}^2$
+and using $(l-1)(l+2)T_1/(\rho R) = \sigma_{l;0}^2 R^2/l$:
+\[
+  \underbrace{\frac{\sigma_{l;0}^2 R^4}{\nu_{\mathrm{eff}}^2}}_{\alpha_*^4}
+  = \underbrace{\frac{\sigma^2 R^4}{\nu_{\mathrm{eff}}^2}}_{q_*^4}\Pi_0
+  - 2l\underbrace{\frac{\sigma R^2}{\nu_{\mathrm{eff}}}}_{q_*^2}\!\left[U'(1)-2U(1)\right].
+\]
+Hence:
+\begin{equation}
+  \alpha_*^4 = q_*^2\!\left\{\,q_*^2\Pi_0
+  - 2l\!\left[U'(1) - 2U(1)\right]\right\}.
+  \label{eq:alpha4star_OB}
+\end{equation}
+$T_1$ and $\rho$ have cancelled completely. By \eqref{eq:ratio_cancel},
+$\alpha_*^4 = q_*^4\cdot\alpha^4/q^4$, so the left-hand side of the
+characteristic equation will be $\alpha^4/q^4$, identical to the Newtonian
+case.
+\end{derivbox}
+
+\subsubsection{Applying BC1 and BC2 and assembling the characteristic equation}
+
+The algebra of Section~7.2 carries through verbatim with $q \to q_*$:
+
+\paragraph{BC1:} $U(1) = C\,j_l(q_*) + \Pi_0 = -1.$
+
+\paragraph{BC2:} Evaluating \eqref{eq:BC2} on \eqref{eq:U_OB}:
+\[
+  C\!\left[(2l-q_*^2)\,j_l(q_*) - 2q_*\,j_l'(q_*) + 2(l^2-1)\,j_l(q_*)\right]
+  + 2(l^2-1)\Pi_0 = 0.
+\]
+
+\paragraph{Solving for $C$ and $\Pi_0$:}
+Substituting $\Pi_0 = -1 - C j_l(q_*)$:
+\begin{equation}
+  C = \frac{2(l-1)(l+1)}{(2l-q_*^2)\,j_l(q_*) - 2q_*\,j_l'(q_*)}.
+  \label{eq:C_OB}
+\end{equation}
+Using the Bessel derivative identity $q_* j_l'(q_*)/j_l(q_*) =
+l - q_* Q_{l+1/2}(q_*)$ and the Bessel recurrence to simplify, then
+substituting $C$, $\Pi_0$, $U'(1)$, and $U(1)$ into \eqref{eq:alpha4star_OB}:
+
+\begin{keybox}[Oldroyd-B Characteristic Equation]
+\begin{equation}
+  \frac{\alpha^4}{q^4} + 1
+  = \frac{2(l-1)}{q_*^2}
+    \left[\,l + (l+1)\,\frac{q_* - 2l\,Q_{l+1/2}(q_*)}{q_* - 2\,Q_{l+1/2}(q_*)}\,\right],
+  \label{eq:char_OB}
+\end{equation}
+where
+\begin{equation}
+  q_*^2 = q^2\cdot\frac{\alpha^2-De_1\,q^2}{\alpha^2-De_2\,q^2}
+  = q^2\cdot\frac{\alpha^2-De_1\,q^2}{\alpha^2-\beta_s De_1\,q^2},
+  \label{eq:qstar_OB_final}
+\end{equation}
+$Q_{l+1/2}(q_*) = J_{l+3/2}(q_*)/J_{l+1/2}(q_*)$, and the parameters
+$\alpha^2 = \sigma_{l;0}R^2/\nu$, $De_1 = \lambda_1\sigma_{l;0}$,
+$De_2 = \lambda_2\sigma_{l;0} = \beta_s De_1$ are real constants.
+
+\smallskip\noindent Limits:
+$De_1 = 0$ (or $\beta_s = 1$): $q_* = q$, recovers Reid \eqref{eq:char_eq}.\\
+$De_2 = 0$: recovers the Maxwell characteristic equation.\\
+$De_1 = De_2 \neq 0$: $q_* = q$, again recovers Reid \eqref{eq:char_eq}.\\[2pt]
+This equation coincides with Zrni\'{c} \& Brenn \cite{zirnic2024} Eqs.\,(3.11)--(3.12).
+\end{keybox}
+
+\begin{notebox}[What changed from Reid's equation]
+\begin{enumerate}
+  \item The left-hand side $\alpha^4/q^4 + 1$ is \emph{identical} to Reid's.
+        (Consequence of the ratio cancellation \eqref{eq:ratio_cancel}.)
+  \item The right-hand side is Reid's right-hand side with $q \to q_*$,
+        where $q_*$ is the rational function \eqref{eq:qstar_OB_final}.
+  \item The entire Oldroyd-B physics is encoded in $De_1$ and $\beta_s$
+        (two extra real parameters beyond Reid's $\alpha^2$).
+  \item The rational structure of $q_*^2$ introduces a new pole
+        at $q^2 = \alpha^2/De_2$ with no Newtonian or Maxwell analogue.
+\end{enumerate}
+\end{notebox}
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{Structure of solutions}
+\label{sec:OB_roots}
+%% ────────────────────────────────────────────────────────────────────────────
+
+\subsubsection{The characteristic equation as a condition in $q^2$}
+
+Let $w = q^2$. Define the rational map:
+\begin{equation}
+  R(w) \;\equiv\; q_*^2
+  = w\cdot\frac{\alpha^2 - De_1 w}{\alpha^2 - De_2 w}.
+  \label{eq:R_map}
+\end{equation}
+Then \eqref{eq:char_OB} is a transcendental equation $F(w) = 0$ in the single
+complex variable $w$, with $\alpha^2$, $De_1$, $De_2$ as real parameters.
+Its roots $w_j$ give eigenvalues $\sigma_j = w_j\nu/R^2$.
+
+\subsubsection{Two types of poles in $F(w)$}
+\label{sec:two_pole_types}
+
+The function $F(w)$ has poles wherever the right-hand side of
+\eqref{eq:char_OB} diverges. There are two distinct sources:
+
+\paragraph{Type 1: Bessel poles.}
+The right-hand side of \eqref{eq:char_OB} has poles wherever
+$J_{l+1/2}(q_*) = 0$, i.e.\ at the zeros $z_1^* < z_2^* < \cdots$ of the
+Bessel function in the $q_*$-plane. These satisfy $q_* = z_n^*$, i.e.\
+$R(w) = (z_n^*)^2$: for each $n$, this is a quadratic (in $w$) algebraic
+equation with up to two solutions in the $w$-plane. For small $De_1$ the rational map $R(w)$ is a small perturbation of the
+Newtonian case, and a heuristic application of the argument principle suggests
+that $F(w) = 0$ retains exactly two roots per strip, as in the Newtonian
+problem; a rigorous contour argument for general $De_1$ is open (see
+\S\ref{sec:OB_open}). The first strip ($n=1$) captures the
+\textbf{dominant pair}, governing the fundamental capillary oscillation.
+
+\paragraph{Type 2: Retardation pole.}
+The factor $\alpha^2 - De_2 w$ in the denominator of $R(w)$ vanishes at:
+\begin{equation}
+  w_{\mathrm{ret}} = \frac{\alpha^2}{De_2},
+  \qquad
+  \sigma_{\mathrm{ret}} = \frac{\sigma_{l;0}}{De_2} = \frac{1}{\lambda_2}.
+  \label{eq:ret_pole}
+\end{equation}
+As $w \to w_{\mathrm{ret}}$, $q_* \to \infty$ and $Q_{l+1/2}(q_*)$ oscillates
+rapidly. Near this singularity the characteristic equation
+\eqref{eq:char_OB} can be satisfied, capturing one or two
+\textbf{retardation roots}. These correspond to modes decaying at rate
+$\sim 1/\lambda_2$. Since $\lambda_2 < \lambda_1$, the retardation mode
+always decays faster than the Maxwell-type relaxation mode; whether it is
+faster or slower than the fundamental capillary pair depends on $De_2$.
+
+\begin{notebox}[Physical meaning of the retardation roots]
+At $\sigma = 1/\lambda_2$, the solvent and polymer contributions to the
+tangential stress cancel: $\mu_{\mathrm{eff}}(1/\lambda_2) = 0$. The
+retardation roots describe a mode in which the polymer network, instead of
+resisting the flow, briefly \emph{drives} it, before the solvent dissipates
+the energy. This has no Newtonian analogue --- it is intrinsically a
+two-component phenomenon. Physically, it corresponds to the elastic recoil
+of the polymer network overshooting the equilibrium and being damped by the
+solvent on the retardation timescale $\lambda_2$.
+\end{notebox}
+
+\subsubsection{Dominance condition for the fundamental pair}
+
+The fundamental pair of roots governs observable drop oscillation provided
+the retardation roots are faster-decaying (subdominant):
+\begin{equation}
+  \mathrm{Re}(\sigma_{1,2}) < \frac{1}{\lambda_2}
+  \quad\Longleftrightarrow\quad
+  De_2\cdot\mathrm{Re}(\beta_{1,2}) < 1,
+  \label{eq:dominance}
+\end{equation}
+where $\beta_{j} = q_j^2/\alpha^2 = \sigma_j/\sigma_{l;0}$.
+
+When \eqref{eq:dominance} holds, the retardation roots are higher overtones:
+they decay faster than the capillary oscillation period and are irrelevant to
+the Mola\v{c}ek \& Bush quasi-static model. When \eqref{eq:dominance} fails,
+the retardation roots must be retained.
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{$A_l$ and $D_l$ for the Oldroyd-B fluid}
+%% ────────────────────────────────────────────────────────────────────────────
+
+\subsubsection{Vieta extraction: the two-number picture survives}
+
+Provided \eqref{eq:dominance} holds, the dynamics of mode $l$ is governed by
+the two roots $\beta_{1,2}$ of the characteristic equation \eqref{eq:char_OB}
+in the first Bessel strip. The Vieta extraction of Section~9 applies without
+modification:
+\begin{equation}
+  A_l^{\mathrm{OB}} = \frac{1}{\beta_1\beta_2},
+  \qquad
+  D_l^{\mathrm{OB}} = \frac{\beta_1 + \beta_2}{2a\,\beta_1\beta_2},
+  \qquad
+  a = \mathrm{Oh}\sqrt{l(l-1)(l+2)}.
+  \label{eq:AD_OB}
+\end{equation}
+The difference from the Newtonian case is that $\beta_{1,2}$ are now roots
+of \eqref{eq:char_OB} rather than \eqref{eq:char_eq}: they depend on
+$(De_1, \beta_s)$ in addition to $(l, \mathrm{Oh})$.
+
+\begin{keybox}[Parameter dependence of $A_l^{\mathrm{OB}}$ and $D_l^{\mathrm{OB}}$]
+\begin{equation}
+  A_l^{\mathrm{OB}} = A_l^{\mathrm{OB}}(l,\,\mathrm{Oh},\,De_1,\,\beta_s),
+  \qquad
+  D_l^{\mathrm{OB}} = D_l^{\mathrm{OB}}(l,\,\mathrm{Oh},\,De_1,\,\beta_s).
+\end{equation}
+Limits:
+\begin{itemize}
+  \item $De_1 \to 0$ (or $\beta_s \to 1$): recover Mola\v{c}ek \& Bush
+        Newtonian values.
+  \item $\beta_s \to 0$ at fixed $De_1$: recover Maxwell values (a special
+        case of the Oldroyd-B framework).
+  \item $De_1 \to \infty$ at fixed $\beta_s$: strongly elastic limit; both
+        coefficients must be determined numerically.
+\end{itemize}
+\end{keybox}
+
+\begin{notebox}[Monotone inequalities between models (conjectured)]
+For the same total viscosity $\mu = \mu_s + \mu_p$ and the same Oh,
+numerical evidence suggests:
+\[
+  A_l^{\mathrm{N}} \;\leq\; A_l^{\mathrm{OB}} \;\leq\; A_l^{\mathrm{M}},
+  \qquad
+  D_l^{\mathrm{M}} \;\leq\; D_l^{\mathrm{OB}} \;\leq\; D_l^{\mathrm{N}}.
+\]
+Elasticity enhances effective inertia (increases $A_l$) and reduces
+instantaneous dissipation (decreases $D_l$). The solvent, present in
+Oldroyd-B but absent in Maxwell, partially restores both toward their
+Newtonian values. The interpolation appears monotone in $\beta_s$: as
+$\beta_s$ increases from 0 (Maxwell) to 1 (Newtonian), $A_l$ decreases
+and $D_l$ increases. These inequalities are consistent with physical
+intuition but have not been established analytically from the
+transcendental characteristic equation; a formal proof is open.
+\end{notebox}
+
+\subsubsection{When the two-number picture breaks}
+
+When condition \eqref{eq:dominance} fails, the retardation roots have decay
+rates comparable to the fundamental pair. There are then three (or more) roots
+of comparable magnitude, and the Mola\v{c}ek \& Bush quadratic ODE for $b_l$
+is no longer adequate. In capillary time $\tau = \sigma_{l;0}\,t$ (all quantities
+dimensionless), the full description is an integro-differential equation,
+\begin{equation}
+  A_l^{\mathrm{OB}}\,\ddot{b}_l
+  + 2a
+    \int_0^\tau K^{(\mathrm{cap})}(\tau-\tau')\,\dot{b}_l(\tau')\,\dd\tau'
+  + b_l = 0, \qquad a \equiv \mathrm{Oh}\sqrt{l(l-1)(l+2)},
+  \label{eq:integrodiff_OB}
+\end{equation}
+where dots denote $\dd/\dd\tau$ and the dimensionless OB memory kernel in
+capillary time is
+\begin{equation}
+  K^{(\mathrm{cap})}(\tau) = \beta_s\,\delta(\tau)
+  + \frac{1-\beta_s}{De_1}\,e^{-\tau/De_1}.
+  \label{eq:OB_kernel_cap}
+\end{equation}
+Its positive-exponent Laplace transform is
+$\tilde{K}^{(\mathrm{cap})}(\beta)
+  = \int_0^\infty K^{(\mathrm{cap})}(\tau)\,e^{\beta\tau}\,\dd\tau
+  = \nu_{\mathrm{eff}}(\beta\,\sigma_{l;0})/\nu
+  = (1 - De_2\,\beta)/(1 - De_1\,\beta)$,
+and its zeroth moment is $\int_0^\infty K^{(\mathrm{cap})}\,\dd\tau = \beta_s + (1-\beta_s) = 1$.
+In the Newtonian limit ($De_1\to 0$, or equivalently $\beta_s\to 1$):
+$K^{(\mathrm{cap})}\to\delta(\tau)$, and the equation reduces to
+$A_l^{\mathrm{OB}}\ddot{b}+2a\dot{b}+b=0$.
+This is a \emph{structured approximation}: the convolution kernel replaces the
+full Newtonian damping function $D_l(\mathrm{Oh})$ by the zeroth moment
+$\tilde{K}^{(\mathrm{cap})}(0)=1$, capturing the frequency-dependent viscosity
+$\nu_{\mathrm{eff}}(\beta\sigma_{l;0})/\nu$ but not the Oh-dependence encoded in
+Reid's Bessel-function structure; the exact $D_l(\mathrm{Oh})$ is obtained via
+Vieta extraction from \eqref{eq:char_OB} at $De_1=0$.
+The dimensional kernel $K_{\mathrm{OB}}(s)$ satisfies
+$\tilde{K}_{\mathrm{OB}}(\sigma)
+  = \int_0^\infty K_{\mathrm{OB}}(s)\,e^{\sigma s}\,\dd s
+  = \nu_{\mathrm{eff}}(\sigma)/\nu$:
+\begin{equation}
+  K_{\mathrm{OB}}(s) = \beta_s\,\delta(s)
+  + \frac{1-\beta_s}{\lambda_1}\,e^{-s/\lambda_1},
+  \label{eq:OB_kernel}
+\end{equation}
+related to the capillary kernel by
+$K^{(\mathrm{cap})}(\tau) = \sigma_{l;0}^{-1}\,K_{\mathrm{OB}}(\tau/\sigma_{l;0})$.
+The $\delta$ term encodes the instantaneous \textbf{solvent} response with
+weight $\beta_s = \mu_s/\mu$; the exponential term encodes the polymer memory
+with weight $(1-\beta_s) = \mu_p/\mu$ and relaxation time $\lambda_1$.
+The two-number approximation corresponds to replacing $K^{(\mathrm{cap})}$ by
+its zeroth moment $= 1$ (treating memory as instantaneous), valid when
+$De_2 \cdot \mathrm{Re}(\beta_{1,2}) \ll 1$.
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{Four clean limits}
+%% ────────────────────────────────────────────────────────────────────────────
+
+\begin{center}
+\begin{tabular}{lllll}
+  \toprule
+  Limit & Condition & $q_*^2$ & Char.\ eq.\ & $A_l,D_l$ \\
+  \midrule
+  Newtonian
+    & $De_1 = 0$
+    & $q^2$
+    & Reid \eqref{eq:char_eq}
+    & Mola\v{c}ek \& Bush \\[4pt]
+  Maxwell
+    & $\beta_s = 0$
+    & $q^2\!\left(1 - \tfrac{De_1\,q^2}{\alpha^2}\right)$
+    & Khismatullin \& Nadim
+    & \eqref{eq:AD_OB}, $\beta_s=0$ \\[4pt]
+  Weak elasticity
+    & $De_1\ll 1$
+    & $q^2[1-(De_1\!-\!De_2)q^2/\alpha^2]$
+    & Perturbation of \eqref{eq:char_eq}
+    & Analytic correction \\[4pt]
+  No retardation
+    & $De_2\ll De_1$
+    & $\approx q^2(1-De_1 q^2/\alpha^2)$
+    & $\approx$ Maxwell
+    & $\approx$ Maxwell values \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{Open problems and references}
+\label{sec:OB_open}
+%% ────────────────────────────────────────────────────────────────────────────
+
+\paragraph{What is established.}
+\begin{enumerate}
+  \item The characteristic equation \eqref{eq:char_OB}--\eqref{eq:qstar_OB_final}
+        is exact at $O(\epsilon)$ for a free-surface Oldroyd-B drop in air.
+  \item The ratio cancellation \eqref{eq:ratio_cancel} holds for any
+        linearisable constitutive model, making the left-hand side of the
+        characteristic equation universal.
+  \item The dominance condition \eqref{eq:dominance} gives an explicit
+        criterion for when the two-number $\{A_l,D_l\}$ extraction is valid.
+  \item The integro-differential ODE \eqref{eq:integrodiff_OB}--\eqref{eq:OB_kernel}
+        is the natural viscoelastic extension of the Mola\v{c}ek \& Bush quadratic,
+        capturing the frequency-dependent damping $\nu_{\mathrm{eff}}/\nu$ when
+        the two-number picture breaks down.
+\end{enumerate}
+
+\paragraph{What is open.}
+\begin{enumerate}
+  \item \textbf{Numerical tabulation.} A complete table of
+        $A_l^{\mathrm{OB}}(l,\mathrm{Oh},De_1,\beta_s)$ and
+        $D_l^{\mathrm{OB}}(l,\mathrm{Oh},De_1,\beta_s)$ analogous to
+        Mola\v{c}ek \& Bush Table~1 does not exist in the literature.
+        The Newton's method strategy of Section~8 applies directly: for each
+        $(De_1,\beta_s)$, initialise from the Newtonian roots and track them
+        as $(De_1,\beta_s)$ are increased.
+  \item \textbf{Large $De_1$ root structure.} For $De_1 \gg 1$, the numerator
+        $\alpha^2 - De_1 q^2$ changes sign for real $q^2 > \alpha^2/De_1$,
+        making $q_*^2$ negative there. The physical consequence is that
+        Bessel functions $j_l(q_* x)$ become modified spherical Bessel
+        functions $i_l(|q_*|x)$, changing the radial profile from
+        oscillatory to monotone. A complete argument-principle analysis for
+        large $De_1$ does not exist.
+  \item \textbf{Second-order normal stress correction.} The $O(\epsilon^2)$
+        contribution from $N_1 = \tau_{rr} - \tau_{\theta\theta}$ modifies
+        the effective surface tension as
+        $T_1 \to T_1^{\mathrm{eff}} = T_1\!\left[1 + \tilde{c}\,\epsilon\,\mathrm{Re}(N_1^{(2)}R/T_1)\right]$
+        with $\tilde{c}$ a dimensionless $O(1)$ coefficient (the precise value
+        requires the second-order calculation).
+        For $\epsilon = O(0.1\text{--}0.3)$ (typical bouncing-drop
+        experiments), this correction could reach several percent in $\sigma_{l;0}$.
+  \item \textbf{Experimental validation.} To the authors' knowledge, no
+        experiment has directly measured $A_l$ and $D_l$ for a viscoelastic
+        drop and compared to the characteristic equation \eqref{eq:char_OB}.
+        PEO-water drops in the range $De_1 \in [0.1, 2]$ and $\beta_s \in
+        [0.5, 0.9]$ would be the natural first target.
+\end{enumerate}
+
+\paragraph{Key references.}
+\begin{itemize}
+  \item \textbf{Oldroyd (1950)} \cite{oldroyd1950}: original derivation of
+        \eqref{eq:OB_raw}; clearest source for the physical meaning of
+        $\lambda_1$, $\lambda_2$, and $\beta_s$.
+  \item \textbf{Bird, Armstrong \& Hassager (1987)} \cite{bird1987}:
+        dumbbell-model derivation of Oldroyd-B; physical meaning of
+        $\beta_s = \mu_s/(\mu_s+\mu_p)$.
+  \item \textbf{Khismatullin \& Nadim (2001)} \cite{khismatullin2001}:
+        shape oscillations of a viscoelastic drop including the full
+        Oldroyd/Jeffreys (relaxation + retardation) constitutive law;
+        their characteristic equation already covers the Oldroyd-B case.
+  \item \textbf{Zrni\'{c} \& Brenn (2024)} \cite{zirnic2024}:
+        free-surface Oldroyd-B drop oscillations; their Eqs.\,(3.11)--(3.12)
+        are the same characteristic equation and $q_*^2$ derived in \S\ref{sec:oldroydB}.
+        The present notes expand the derivation and connect it to the
+        Mola\v{c}ek \& Bush two-number framework.
+  \item \textbf{Mukherjee \& Sarkar (2010)} \cite{mukherjee2009}:
+        Oldroyd-B drop in a Newtonian bath; numerical results for
+        oscillation frequency and damping as functions of $De_1$ and
+        $\beta_s$, usable as benchmark for the free-surface limit.
+\end{itemize}

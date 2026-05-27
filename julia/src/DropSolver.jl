@@ -4,6 +4,9 @@ module DropSolver
 
 # Included in order of dependency
 include("types.jl")
+
+# Export types
+export SimConstants, OBParams, DropState
 include("legendre.jl")
 include("integrals.jl")
 include("bdf.jl")

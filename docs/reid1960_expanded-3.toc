@@ -1,0 +1,80 @@
+\contentsline {section}{\numberline {1}Introduction and Physical Motivation}{3}{section.1}%
+\contentsline {subsection}{\numberline {1.1}What problem are we solving?}{3}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Historical context and relation to Mola\v {c}ek \& Bush (2012)}{3}{subsection.1.2}%
+\contentsline {section}{\numberline {2}Mathematical Preliminaries}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Spherical harmonics}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Spherical Bessel functions}{4}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}The poloidal decomposition}{5}{subsection.2.3}%
+\contentsline {section}{\numberline {3}Problem Setup}{5}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Equilibrium state}{5}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Perturbed surface}{6}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Inviscid frequencies}{6}{subsection.3.3}%
+\contentsline {section}{\numberline {4}Linearized Governing Equations}{6}{section.4}%
+\contentsline {section}{\numberline {5}The Pressure Field}{7}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Pressure satisfies Laplace's equation}{7}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Scalar potential for the pressure gradient}{8}{subsection.5.2}%
+\contentsline {section}{\numberline {6}The Velocity Field and its Governing ODE}{8}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Poloidal representation}{8}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Derivation of the ODE for $U(x)$}{8}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Solving the ODE}{10}{subsection.6.3}%
+\contentsline {paragraph}{Particular solution.}{10}{section*.2}%
+\contentsline {paragraph}{Homogeneous solution.}{10}{section*.3}%
+\contentsline {paragraph}{General solution.}{10}{section*.4}%
+\contentsline {section}{\numberline {7}Boundary Conditions}{10}{section.7}%
+\contentsline {subsection}{\numberline {7.1}BC1: Kinematic condition}{10}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}BC2: Tangential stress condition}{11}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}BC3: Normal stress condition}{11}{subsection.7.3}%
+\contentsline {subsubsection}{\numberline {7.3.1}Mean curvature of the deformed surface}{12}{subsubsection.7.3.1}%
+\contentsline {subsubsection}{\numberline {7.3.2}Normal stress balance}{12}{subsubsection.7.3.2}%
+\contentsline {section}{\numberline {8}The Characteristic Equation}{13}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Eliminating $T_1$ via rescaling}{13}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}Applying BCs to the general solution}{13}{subsection.8.2}%
+\contentsline {paragraph}{Applying BC1.}{13}{section*.5}%
+\contentsline {paragraph}{Applying BC2.}{14}{section*.6}%
+\contentsline {paragraph}{Solving for $C$ and $\Pi _0$.}{14}{section*.7}%
+\contentsline {paragraph}{Substituting into \eqref {eq:alpha4}.}{14}{section*.8}%
+\contentsline {section}{\numberline {9}Structure of the Solutions}{15}{section.9}%
+\contentsline {subsection}{\numberline {9.1}Roots of the characteristic equation}{15}{subsection.9.1}%
+\contentsline {paragraph}{Physical picture.}{15}{section*.9}%
+\contentsline {paragraph}{Ordering by decay rate.}{15}{section*.10}%
+\contentsline {subsection}{\numberline {9.2}Two regimes: oscillatory vs.\ aperiodic}{15}{subsection.9.2}%
+\contentsline {subsection}{\numberline {9.3}The small-viscosity limit}{16}{subsection.9.3}%
+\contentsline {section}{\numberline {10}Connection to Mola\v {c}ek \& Bush (2012)}{16}{section.10}%
+\contentsline {paragraph}{Workflow.}{16}{section*.11}%
+\contentsline {paragraph}{Justification for discarding higher roots.}{17}{section*.12}%
+\contentsline {section}{\numberline {11}Summary of Key Equations}{17}{section.11}%
+\contentsline {section}{\numberline {12}Extension to Viscoelastic Drops: the Oldroyd-B Model}{17}{section.12}%
+\contentsline {subsection}{\numberline {12.1}The Oldroyd-B constitutive law}{18}{subsection.12.1}%
+\contentsline {subsubsection}{\numberline {12.1.1}Physical motivation: the mechanical analog}{18}{subsubsection.12.1.1}%
+\contentsline {subsubsection}{\numberline {12.1.2}The constitutive equation: two equivalent forms}{18}{subsubsection.12.1.2}%
+\contentsline {subsubsection}{\numberline {12.1.3}Parameter limits}{19}{subsubsection.12.1.3}%
+\contentsline {subsection}{\numberline {12.2}Linearisation and effective viscosity}{19}{subsection.12.2}%
+\contentsline {subsubsection}{\numberline {12.2.1}The two Deborah numbers}{20}{subsubsection.12.2.1}%
+\contentsline {subsection}{\numberline {12.3}Boundary condition audit}{21}{subsection.12.3}%
+\contentsline {subsubsection}{\numberline {12.3.1}BC1 (kinematic) --- unchanged}{21}{subsubsection.12.3.1}%
+\contentsline {subsubsection}{\numberline {12.3.2}BC2 (tangential stress) --- unchanged in form}{21}{subsubsection.12.3.2}%
+\contentsline {subsubsection}{\numberline {12.3.3}BC3 (normal stress) --- viscoelastic correction check}{21}{subsubsection.12.3.3}%
+\contentsline {subsection}{\numberline {12.4}Modified governing ODE}{22}{subsection.12.4}%
+\contentsline {subsubsection}{\numberline {12.4.1}The modified wavenumber $q_*$}{22}{subsubsection.12.4.1}%
+\contentsline {subsubsection}{\numberline {12.4.2}The ODE for $U(x)$ under Oldroyd-B}{24}{subsubsection.12.4.2}%
+\contentsline {subsection}{\numberline {12.5}The Oldroyd-B characteristic equation}{24}{subsection.12.5}%
+\contentsline {subsubsection}{\numberline {12.5.1}The ratio cancellation}{24}{subsubsection.12.5.1}%
+\contentsline {subsubsection}{\numberline {12.5.2}Eliminating $T_1$}{25}{subsubsection.12.5.2}%
+\contentsline {subsubsection}{\numberline {12.5.3}Applying BC1 and BC2 and assembling the characteristic equation}{25}{subsubsection.12.5.3}%
+\contentsline {paragraph}{BC1:}{25}{section*.16}%
+\contentsline {paragraph}{BC2:}{25}{section*.17}%
+\contentsline {paragraph}{Solving for $C$ and $\Pi _0$:}{25}{section*.18}%
+\contentsline {subsection}{\numberline {12.6}Structure of solutions}{26}{subsection.12.6}%
+\contentsline {subsubsection}{\numberline {12.6.1}The characteristic equation as a condition in $q^2$}{26}{subsubsection.12.6.1}%
+\contentsline {subsubsection}{\numberline {12.6.2}Two types of poles in $F(w)$}{27}{subsubsection.12.6.2}%
+\contentsline {paragraph}{Type 1: Bessel poles.}{27}{section*.19}%
+\contentsline {paragraph}{Type 2: Retardation pole.}{27}{section*.20}%
+\contentsline {subsubsection}{\numberline {12.6.3}Dominance condition for the fundamental pair}{27}{subsubsection.12.6.3}%
+\contentsline {subsection}{\numberline {12.7}$A_l$ and $D_l$ for the Oldroyd-B fluid}{28}{subsection.12.7}%
+\contentsline {subsubsection}{\numberline {12.7.1}Vieta extraction: the two-number picture survives}{28}{subsubsection.12.7.1}%
+\contentsline {subsubsection}{\numberline {12.7.2}When the two-number picture breaks}{28}{subsubsection.12.7.2}%
+\contentsline {subsection}{\numberline {12.8}Four clean limits}{29}{subsection.12.8}%
+\contentsline {subsection}{\numberline {12.9}Open problems and references}{29}{subsection.12.9}%
+\contentsline {paragraph}{What is established.}{29}{section*.21}%
+\contentsline {paragraph}{What is open.}{30}{section*.22}%
+\contentsline {paragraph}{Key references.}{30}{section*.23}%

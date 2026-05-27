@@ -1,0 +1,948 @@
+\documentclass[12pt]{article}
+
+%% ── Packages ────────────────────────────────────────────────────────────────
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{bm}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{booktabs}
+
+\geometry{margin=1.1in}
+\hypersetup{colorlinks=true, linkcolor=blue, citecolor=blue}
+
+%% ── Custom environments ─────────────────────────────────────────────────────
+\tcbuselibrary{breakable, skins}
+
+\newtcolorbox{derivbox}[1][]{
+  breakable, enhanced,
+  colback=blue!4, colframe=blue!40!black,
+  fonttitle=\bfseries,
+  title={#1}
+}
+
+\newtcolorbox{notebox}[1][Note]{
+  breakable, enhanced,
+  colback=orange!6, colframe=orange!60!black,
+  fonttitle=\bfseries,
+  title={#1}
+}
+
+\newtcolorbox{keybox}[1][Key Result]{
+  breakable, enhanced,
+  colback=green!5, colframe=green!50!black,
+  fonttitle=\bfseries,
+  title={#1}
+}
+
+%% ── Macros ──────────────────────────────────────────────────────────────────
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\ii}{\mathrm{i}}
+\newcommand{\half}{\tfrac{1}{2}}
+\newcommand{\bu}{\bm{u}}
+\newcommand{\br}{\bm{r}}
+\renewcommand{\vec}[1]{\bm{#1}}
+
+%% ── Theorem styles ──────────────────────────────────────────────────────────
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{result}{Result}[section]
+
+%% ────────────────────────────────────────────────────────────────────────────
+\title{\textbf{Oscillations of a Viscous Liquid Drop}\\[6pt]
+       \large A Self-Contained Pedagogical Expansion of Reid (1960)}
+\author{Expanded from W.\,H.\ Reid, \emph{Quart.\ Appl.\ Math.}\ \textbf{18}(1), 86--89 (1960)}
+\date{}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\bigskip
+
+%% ════════════════════════════════════════════════════════════════════════════
+\section{Introduction and Physical Motivation}
+%% ════════════════════════════════════════════════════════════════════════════
+
+\subsection{What problem are we solving?}
+
+Consider a small liquid droplet — say, a water drop suspended in air — that has been
+slightly deformed from its equilibrium spherical shape. Surface tension acts as a
+restoring force, and the drop will oscillate. Viscosity damps those oscillations. The
+question is: \emph{at what frequency does it oscillate, and how fast does it decay?}
+
+This sounds deceptively simple, but it couples three distinct pieces of physics:
+\begin{enumerate}
+  \item The inviscid capillary (surface-tension-driven) oscillation modes, characterized
+        by the frequency $\sigma_{l;0}$ for a deformation of spherical-harmonic order $l$.
+  \item Viscous dissipation inside the bulk of the drop.
+  \item The coupling between surface deformation, internal flow, and the pressure
+        field, all of which must be consistent at the boundary.
+\end{enumerate}
+
+Reid's paper resolves all three simultaneously for \emph{arbitrary} viscosity, by reducing
+the problem to a single transcendental characteristic equation. Its central insight is
+an elegant rescaling that shows the problem is \emph{universal}: the physics of surface
+tension enters only through the inviscid frequency $\sigma_{l;0}$, and after a suitable
+non-dimensionalization, the characteristic equation is \emph{identical} to the one derived
+by Chandrasekhar for a self-gravitating viscous liquid globe — a seemingly unrelated
+problem.
+
+\subsection{Historical context and relation to Mola\v{c}ek \& Bush (2012)}
+
+Three analytical milestones precede Reid's result:
+\begin{itemize}
+  \item \textbf{Rayleigh (1879)} / \textbf{Lamb (1932)}: inviscid frequencies, Eq.~\eqref{eq:inviscid_freq}.
+  \item \textbf{Lamb (1881)}: small-viscosity correction,
+        $\sigma_{l;\nu} = (l-1)(2l+1)\nu/R^2 \pm \ii\,\sigma_{l;0}$.
+  \item \textbf{Chandrasekhar (1959)}: full arbitrary-viscosity solution for a
+        \emph{self-gravitating} globe.
+\end{itemize}
+Reid (1960) shows the surface-tension problem is identical to Chandrasekhar's,
+thereby completing the picture for surface-tension-driven drops.
+
+The result is directly used in Mola\v{c}ek \& Bush (2012), where the coefficients
+$A_m$ and $D_m$ governing kinetic energy and viscous dissipation for each surface mode
+are extracted from Reid's characteristic equation (Eq.~\eqref{eq:char_eq} below).
+
+%% ════════════════════════════════════════════════════════════════════════════
+\section{Mathematical Preliminaries}
+%% ════════════════════════════════════════════════════════════════════════════
+
+\subsection{Spherical harmonics}
+
+A \emph{spherical harmonic} of degree $l$ and order $m$ is the function
+\begin{equation}
+  Y_l^m(\theta,\varphi) = P_l^m(\cos\theta)\,e^{-\ii m\varphi},
+  \label{eq:sph_harm}
+\end{equation}
+where $P_l^m$ is the associated Legendre polynomial, $\theta$ is the polar angle from
+the $z$-axis, and $\varphi$ is the azimuthal angle. (We use the unnormalized convention;
+the characteristic equation is independent of the normalization choice.)
+
+The key property we use is that spherical harmonics are \emph{eigenfunctions of the
+Laplace--Beltrami operator} (the angular part of the Laplacian):
+\begin{equation}
+  \nabla^2_{\text{angular}}\,Y_l^m
+  = -\frac{l(l+1)}{r^2}\,Y_l^m.
+  \label{eq:sph_harm_eigen}
+\end{equation}
+This means that for any function of the form $f(r)\,Y_l^m(\theta,\varphi)$, the full
+scalar Laplacian is
+\begin{equation}
+  \nabla^2\!\left[f(r)\,Y_l^m\right]
+  = \left[\,f'' + \frac{2}{r}f' - \frac{l(l+1)}{r^2}\,f\,\right] Y_l^m,
+  \label{eq:scalar_lap}
+\end{equation}
+where primes denote $\dd/\dd r$.
+
+For axisymmetric problems we take $m=0$, so $Y_l^0 \propto P_l(\cos\theta)$ is just the
+Legendre polynomial. Reid's analysis holds for all $m$; the characteristic equation
+turns out to be independent of $m$.
+
+\subsection{Spherical Bessel functions}
+\label{sec:bessel}
+
+The ordinary Bessel equation of order $\nu$ is
+\begin{equation}
+  w'' + \frac{1}{z}w' + \left(1 - \frac{\nu^2}{z^2}\right)w = 0,
+\end{equation}
+with solutions $J_\nu(z)$ (Bessel functions of the first kind) and $Y_\nu(z)$
+(second kind, singular at $z=0$).
+
+The \emph{spherical Bessel equation} of order $l$ is
+\begin{equation}
+  v'' + \frac{2}{z}v' + \left(1 - \frac{l(l+1)}{z^2}\right)v = 0,
+  \label{eq:sph_bessel}
+\end{equation}
+and arises when separating the Helmholtz equation $(\nabla^2 + k^2)F = 0$ in spherical
+coordinates. Its regular solution is the \emph{spherical Bessel function of the first kind},
+\begin{equation}
+  j_l(z) = \sqrt{\frac{\pi}{2z}}\,J_{l+1/2}(z).
+\end{equation}
+
+\begin{notebox}
+A crucial connection: any function of the form $U(x) = x\,j_l(qx)$ satisfies the ODE
+\begin{equation}
+  U'' - \frac{l(l+1)}{x^2}\,U + q^2 U = 0
+  \label{eq:helm_U}
+\end{equation}
+(the prime here is $\dd/\dd x$). This follows immediately by the substitution $U = xv$
+with $x = qr/R$, which reduces \eqref{eq:helm_U} to the spherical Bessel equation
+\eqref{eq:sph_bessel} for $v$.
+
+\begin{proof}
+Let $U = xv(x)$. Then $U' = v + xv'$ and $U'' = 2v' + xv''$. Substituting:
+\begin{align*}
+  2v' + xv'' - \frac{l(l+1)}{x}\,v + q^2 xv
+  &= x\!\left[v'' + \frac{2}{x}v' + q^2 v - \frac{l(l+1)}{x^2}v\right] = 0,
+\end{align*}
+which is precisely \eqref{eq:sph_bessel} with $z = qx$.
+\end{proof}
+\end{notebox}
+
+We will also need the derivative identity. Using the standard recurrence
+$j_l'(z) = \frac{l}{z}j_l(z) - j_{l+1}(z)$, we obtain
+\begin{equation}
+  \frac{q\,j_l'(q)}{j_l(q)} = l - q\,\frac{j_{l+1}(q)}{j_l(q)}.
+  \label{eq:bessel_ratio}
+\end{equation}
+Reid defines the ratio
+\begin{equation}
+  Q_{l+1/2}(q) \equiv \frac{J_{l+3/2}(q)}{J_{l+1/2}(q)} = \frac{j_{l+1}(q)}{j_l(q)},
+  \label{eq:Q_def}
+\end{equation}
+so \eqref{eq:bessel_ratio} becomes $q j_l'(q)/j_l(q) = l - q Q_{l+1/2}(q)$.
+
+\subsection{The poloidal decomposition}
+\label{sec:poloidal}
+
+Any divergence-free vector field $\bu$ can be uniquely decomposed into a
+\emph{toroidal} part (involving only $\nabla\times(\Psi\hat{r})$, with no radial
+component) and a \emph{poloidal} part (involving $\nabla\times\nabla\times(\Phi\hat{r})$,
+with non-zero radial component). For axisymmetric flow with no swirl, the toroidal
+part vanishes, and $\bu$ is purely poloidal.
+
+For a poloidal field with angular dependence $Y_l^m$, the entire velocity field is
+determined by its radial component $u_r$. Incompressibility then gives $u_\theta$,
+and there are no other free components. This is why it suffices to write down a
+single scalar ODE for $U(x)$, where $u_r \propto U(x)/x^2$.
+
+
+%% ════════════════════════════════════════════════════════════════════════════
+\section{Problem Setup}
+%% ════════════════════════════════════════════════════════════════════════════
+
+\subsection{Equilibrium state}
+
+A liquid drop of density $\rho$, viscosity $\mu = \rho\nu$, and surface tension $T_1$
+is in equilibrium as a sphere of radius $R$. With the external pressure set to zero,
+the \emph{Young--Laplace equation} gives the internal equilibrium pressure:
+\begin{equation}
+  p_0 = \frac{2T_1}{R}.
+  \label{eq:YL_equilibrium}
+\end{equation}
+
+\begin{notebox}[Young--Laplace Equation]
+For an interface with principal radii of curvature $R_1$ and $R_2$, the pressure
+jump across the interface is $\Delta p = T_1(1/R_1 + 1/R_2)$. For a sphere,
+$R_1 = R_2 = R$, giving $\Delta p = 2T_1/R$.
+\end{notebox}
+
+\subsection{Perturbed surface}
+
+We consider a small deformation of the spherical surface of the form
+\begin{equation}
+  r = R\!\left[1 + \epsilon\,Y_l^m(\theta,\varphi)\right],
+  \qquad \epsilon \ll 1.
+  \label{eq:surface_deform}
+\end{equation}
+We look for solutions with time dependence
+\begin{equation}
+  \epsilon(t) = \epsilon_0\,e^{-\sigma t},
+  \label{eq:time_dep}
+\end{equation}
+where $\sigma$ is a complex number to be determined. The convention is chosen so that
+$\mathrm{Re}(\sigma) > 0$ corresponds to decay.
+
+\begin{notebox}
+Why $e^{-\sigma t}$ rather than $e^{+\ii\omega t}$? Reid follows the convention of
+Chandrasekhar, where $\sigma$ is complex and damped oscillations correspond to
+$\sigma = \gamma + \ii\omega_d$ with $\gamma > 0$ (decay) and $\omega_d > 0$
+(oscillation frequency). In the inviscid limit, $\gamma\to 0$ and $\sigma\to \pm\ii\omega_d$.
+\end{notebox}
+
+\subsection{Inviscid frequencies}
+
+For completeness, we record Lamb's result for the oscillation frequencies in the
+\emph{absence} of viscosity. The frequency of a spherical harmonic mode of order $l$ is
+\begin{equation}
+  \sigma_{l;0}^2 = l(l-1)(l+2)\,\frac{T_1}{\rho R^3}.
+  \label{eq:inviscid_freq}
+\end{equation}
+These are real (undamped oscillations) and independent of the azimuthal order $m$.
+The $l=2$ mode, for example, corresponds to the oblate--prolate oscillation familiar
+from a wobbling drop of water.
+
+\begin{notebox}[Physical check]
+Equation~\eqref{eq:inviscid_freq} is dimensionally consistent:
+$[T_1/(\rho R^3)] = [\text{N/m}]/[\text{kg/m}^3 \cdot \text{m}^3]
+ = [\text{kg/s}^2]/[\text{kg}] = [\text{s}^{-2}]$. The $l=1$ mode gives
+$\sigma_{1;0}^2 = 0$, corresponding to a rigid translation (no restoring force).
+\end{notebox}
+
+%% ════════════════════════════════════════════════════════════════════════════
+\section{Linearized Governing Equations}
+%% ════════════════════════════════════════════════════════════════════════════
+
+The departures from equilibrium are governed by the linearized incompressible
+Navier--Stokes equations,
+\begin{equation}
+  \frac{\partial\bu}{\partial t} = -\nabla\frac{\delta p}{\rho}
+                                    - \nu\,\nabla\times\nabla\times\bu,
+  \qquad
+  \nabla\cdot\bu = 0.
+  \label{eq:NS_lin}
+\end{equation}
+
+\begin{notebox}[Vector identity]
+For incompressible flow, $\nabla\cdot\bu = 0$ implies
+$\nabla^2\bu = -\nabla\times\nabla\times\bu$, so
+\eqref{eq:NS_lin} is equivalent to
+$\partial_t\bu = -\nabla(\delta p/\rho) + \nu\nabla^2\bu$.
+Both forms appear in the literature.
+\end{notebox}
+
+With the time dependence \eqref{eq:time_dep}, all fields vary as $e^{-\sigma t}$,
+so $\partial_t \to -\sigma$. The momentum equation becomes
+\begin{equation}
+  -\sigma\bu = -\nabla\frac{\delta p}{\rho} + \nu\nabla^2\bu.
+  \label{eq:NS_sigma}
+\end{equation}
+
+%% ════════════════════════════════════════════════════════════════════════════
+\section{The Pressure Field}
+%% ════════════════════════════════════════════════════════════════════════════
+
+\subsection{Pressure satisfies Laplace's equation}
+
+\begin{derivbox}[Derivation: $\nabla^2(\delta p/\rho) = 0$]
+Take the divergence of \eqref{eq:NS_sigma}:
+\[
+  -\sigma\underbrace{(\nabla\cdot\bu)}_{=\,0} 
+  = -\nabla^2\!\left(\frac{\delta p}{\rho}\right) 
+  + \nu\underbrace{\nabla\cdot(\nabla^2\bu)}_{\nabla^2(\nabla\cdot\bu)\,=\,0},
+\]
+where we used $\nabla\cdot\nabla^2\bu = \nabla^2(\nabla\cdot\bu) = 0$.
+Therefore:
+\begin{equation}
+  \nabla^2\!\left(\frac{\delta p}{\rho}\right) = 0.
+  \label{eq:pressure_Laplace}
+\end{equation}
+\end{derivbox}
+
+The pressure perturbation satisfies Laplace's equation. We need the solution that:
+(a) has angular dependence $Y_l^m$, and (b) is \emph{regular at the origin} $r=0$.
+
+From \eqref{eq:scalar_lap}, the radial ODE for $f(r)$ in $\nabla^2(f\,Y_l^m) = 0$~is
+\begin{equation}
+  f'' + \frac{2}{r}f' - \frac{l(l+1)}{r^2}f = 0.
+\end{equation}
+The general solution is $f(r) = A r^l + B r^{-(l+1)}$. Regularity at $r=0$ requires
+$B = 0$. Writing $x = r/R$, we therefore have
+\begin{equation}
+  \frac{\delta p}{\rho} = \epsilon\,P_0\,x^l\,Y_l^m,
+  \label{eq:pressure_soln}
+\end{equation}
+where $P_0$ is a constant of integration (with dimensions of velocity squared)
+to be determined from the boundary conditions.
+
+\subsection{Scalar potential for the pressure gradient}
+
+Since $\nabla(\delta p/\rho)$ is a purely poloidal, divergence-free vector field
+with angular structure $Y_l^m$, it can be represented through a single scalar function
+$\Pi(x)$ via its radial component:
+\begin{equation}
+  \left(\nabla\frac{\delta p}{\rho}\right)_r
+  = \epsilon_0\,\sigma^2 R\,\frac{\Pi(x)}{x^2}\,Y_l^m\,e^{-\sigma t}.
+  \label{eq:Pi_def}
+\end{equation}
+Computing the radial component of $\nabla(\epsilon P_0 x^l Y_l^m)$:
+\[
+  \left(\nabla\frac{\delta p}{\rho}\right)_r
+  = \frac{\partial}{\partial r}\!\left(\epsilon P_0 x^l Y_l^m\right)
+  = \epsilon P_0\,\frac{l\,x^{l-1}}{R}\,Y_l^m
+  = \epsilon_0 e^{-\sigma t} P_0\,\frac{l}{R}\,x^{l-1}\,Y_l^m.
+\]
+Comparing with \eqref{eq:Pi_def}, we need
+$\epsilon_0\sigma^2 R\,\Pi(x)/x^2 = \epsilon_0 P_0 l x^{l-1}/R$,
+which gives $\Pi(x) = \Pi_0\,x^{l+1}$ with
+\begin{equation}
+  \Pi(x) = \Pi_0\,x^{l+1}, \qquad
+  \Pi_0 = \frac{l}{\sigma^2 R^2}\,P_0.
+  \label{eq:Pi_form}
+\end{equation}
+
+%% ════════════════════════════════════════════════════════════════════════════
+\section{The Velocity Field and its Governing ODE}
+%% ════════════════════════════════════════════════════════════════════════════
+
+\subsection{Poloidal representation}
+
+Since the pressure gradient is purely poloidal, the momentum equation
+\eqref{eq:NS_sigma} forces $\bu$ to also be purely poloidal (the toroidal part would
+have no driver). For a poloidal field with angular dependence $Y_l^m$, we write the
+radial component as
+\begin{equation}
+  u_r = \epsilon_0\,\sigma R\,\frac{U(x)}{x^2}\,Y_l^m\,e^{-\sigma t},
+  \label{eq:ur_def}
+\end{equation}
+where $U(x)$ is a dimensionless scalar function.
+
+\begin{notebox}[Why $U(x)/x^2$?]
+The scaling $1/x^2$ is conventional and simplifies the algebra significantly.
+It arises from the stream-function representation of poloidal flow, and ensures
+the ODE for $U$ takes the clean form \eqref{eq:ODE_U} below.
+\end{notebox}
+
+\subsection{Derivation of the ODE for $U(x)$}
+
+\begin{derivbox}[Full derivation]
+We substitute the ansatz $u_r = \sigma R\,G(x)\,Y_l^m$ (where $G = U/x^2$, absorbing
+the $\epsilon_0 e^{-\sigma t}$ factors throughout) into the $r$-component of
+\eqref{eq:NS_sigma}. The $r$-component of the vector Laplacian for an axisymmetric
+poloidal field is:
+\begin{equation}
+  \left[\nabla^2\bu\right]_r = \nabla^2 u_r + \frac{2}{r^2}u_r + \frac{2}{r}\frac{\partial u_r}{\partial r}.
+  \label{eq:vec_lap_r}
+\end{equation}
+
+\textit{Derivation of \eqref{eq:vec_lap_r}.}
+The vector Laplacian r-component in spherical coordinates is:
+\[
+  \left[\nabla^2\bu\right]_r = \nabla^2 u_r - \frac{2u_r}{r^2}
+    - \frac{2}{r^2\sin\theta}\frac{\partial(\sin\theta\,u_\theta)}{\partial\theta}.
+\]
+From incompressibility, $(1/r\sin\theta)\,\partial(\sin\theta\,u_\theta)/\partial\theta
+= -(1/r^2)\,\partial(r^2 u_r)/\partial r$, so:
+\[
+  \frac{1}{\sin\theta}\frac{\partial(\sin\theta\,u_\theta)}{\partial\theta}
+  = -\frac{r}{r^2}\,\partial_r(r^2 u_r)
+  = -(2u_r + r u_r').
+\]
+Substituting:
+\[
+  \left[\nabla^2\bu\right]_r 
+  = \nabla^2 u_r - \frac{2u_r}{r^2} 
+    + \frac{2}{r^2}(2u_r + r u_r')
+  = \nabla^2 u_r + \frac{2u_r}{r^2} + \frac{2}{r}u_r'.
+\]
+
+Now, for $u_r = \sigma R\,G(x)\,Y_l^m$ with $G = G(x)$ and $x=r/R$:
+\[
+  \nabla^2 u_r = \sigma R\,Y_l^m\left[G'' + \frac{2}{x}G' - \frac{l(l+1)}{x^2}G\right]\frac{1}{R^2}
+\quad\text{(from \eqref{eq:scalar_lap})},
+\]
+\[
+  \frac{2}{r}u_r' = \frac{2}{Rx}\cdot \sigma\,G'\,Y_l^m
+  = \frac{2\sigma}{R x}\,G'\,Y_l^m,
+\]
+\[
+  \frac{2u_r}{r^2} = \frac{2\sigma R G}{R^2 x^2}\,Y_l^m = \frac{2\sigma G}{R x^2}\,Y_l^m.
+\]
+Combining, the $r$-component of the momentum equation $-\sigma\bu = -\nabla(\delta p/\rho) + \nu\nabla^2\bu$ becomes (after canceling $Y_l^m e^{-\sigma t}$ throughout and using $x = r/R$):
+\begin{equation}
+  -\sigma^2 R\,G = -\frac{P_0 l\,x^{l-1}}{R} + \frac{\nu\sigma}{R}\left[\,G'' + \frac{4}{x}G' + \frac{2 - l(l+1)}{x^2}G\,\right].
+  \label{eq:r_comp_mom}
+\end{equation}
+
+Multiplying through by $R/(\nu\sigma)$ and using $q^2 = \sigma R^2/\nu$:
+\[
+  -q^2 G = -\frac{P_0 l x^{l-1}}{\sigma\nu} + G'' + \frac{4}{x}G' + \frac{2-l(l+1)}{x^2}G.
+\]
+
+Now substitute $G = U/x^2$. One computes:
+\[
+  G'' + \frac{4}{x}G' + \frac{2-l(l+1)}{x^2}G 
+  = \frac{U'' - l(l+1)U/x^2}{x^2}.
+\]
+(This identity is most easily verified by direct substitution, expanding each term.)
+
+Multiplying through by $x^2$:
+\[
+  U'' - \frac{l(l+1)}{x^2}U + q^2 U = \frac{P_0 l x^{l+1}}{\sigma\nu}.
+\]
+Using \eqref{eq:Pi_form}, $P_0 = \sigma^2 R^2 \Pi_0/l$, so
+$P_0 l/(\sigma\nu) = \sigma R^2 \Pi_0/\nu = q^2\Pi_0$. Therefore:
+\begin{equation}
+  \boxed{
+    \left[\frac{\dd^2}{\dd x^2} - \frac{l(l+1)}{x^2} + q^2\right]U(x) = q^2\Pi_0\,x^{l+1},
+  }
+  \label{eq:ODE_U}
+\end{equation}
+where
+\begin{equation}
+  q^2 = \frac{\sigma R^2}{\nu}.
+  \label{eq:q_def}
+\end{equation}
+This is Reid's Eq.~(9). \hfill$\square$
+\end{derivbox}
+
+\subsection{Solving the ODE}
+
+Equation~\eqref{eq:ODE_U} is a second-order linear inhomogeneous ODE. We find
+the general solution by superposing a particular solution and the general
+homogeneous solution.
+
+\paragraph{Particular solution.}
+Try $U_p = \Pi_0\,x^{l+1}$:
+\[
+  U_p'' = l(l+1)\Pi_0\,x^{l-1}, 
+  \quad
+  \frac{l(l+1)}{x^2}U_p = l(l+1)\Pi_0\,x^{l-1},
+  \quad
+  q^2 U_p = q^2\Pi_0\,x^{l+1}.
+\]
+The first two terms cancel exactly, leaving $q^2\Pi_0\,x^{l+1}$ on the left, matching
+the right-hand side. So
+\begin{equation}
+  U_p(x) = \Pi_0\,x^{l+1}.
+\end{equation}
+
+\paragraph{Homogeneous solution.}
+The homogeneous equation $U'' - l(l+1)U/x^2 + q^2 U = 0$ has solutions $x\,j_l(qx)$
+and $x\,n_l(qx)$, where $j_l$ and $n_l$ are spherical Bessel functions of the first
+and second kind (see Section~\ref{sec:bessel}). Since $n_l(z) \sim -(2l-1)!!\,z^{-(l+1)}$ as
+$z\to 0$ (diverges at the origin), regularity requires we discard $n_l$. The regular homogeneous
+solution is thus $C\,x\,j_l(qx)$.
+
+\paragraph{General solution.}
+\begin{equation}
+  U(x) = C\,x\,j_l(qx) + \Pi_0\,x^{l+1},
+  \label{eq:U_general}
+\end{equation}
+where $C$ and $\Pi_0$ are determined by the boundary conditions.
+
+%% ════════════════════════════════════════════════════════════════════════════
+\section{Boundary Conditions}
+%% ════════════════════════════════════════════════════════════════════════════
+
+Three boundary conditions must be imposed at the drop surface $x = 1$.
+
+\subsection{BC1: Kinematic condition}
+\label{sec:bc1}
+
+The radial velocity of the fluid at the surface must equal the velocity at which
+the surface itself moves.
+
+\begin{derivbox}[Derivation of BC1]
+The surface is at $r = R[1 + \epsilon\,Y_l^m]$ with $\epsilon = \epsilon_0 e^{-\sigma t}$.
+The radial velocity of a surface element is:
+\[
+  \left.\frac{\partial r}{\partial t}\right|_{\text{surface}}
+  = -\sigma R\,\epsilon_0 e^{-\sigma t}\,Y_l^m.
+\]
+The fluid radial velocity at $x = 1$ (from \eqref{eq:ur_def}) is:
+\[
+  u_r\big|_{x=1} = \epsilon_0\,\sigma R\,U(1)\,Y_l^m\,e^{-\sigma t}.
+\]
+Setting these equal:
+\[
+  \epsilon_0\,\sigma R\,U(1) = -\sigma R\,\epsilon_0.
+\]
+Canceling $\epsilon_0\sigma R$:
+\begin{equation}
+  U(1) = -1.
+  \label{eq:BC1}
+\end{equation}
+The kinematic condition is imposed at $x=1$ (the unperturbed surface) because
+evaluating at the actual surface $r=R[1+\epsilon Y_l^m]$ introduces only
+$O(\epsilon^2)$ corrections.
+\end{derivbox}
+
+\begin{notebox}
+The sign convention $U(1)=-1$ follows from the positive-$\sigma$ prefactor in
+\eqref{eq:ur_def} with $\epsilon_0>0$ encoding the outward displacement.
+This matches Reid (1960): his Eq.\,(8) uses the same positive-$\sigma R$ prefactor
+and his Eq.\,(11) states $U(1)=-1$.
+\end{notebox}
+
+\subsection{BC2: Tangential stress condition}
+
+At a free surface with no viscous exterior fluid, the tangential viscous stress must
+vanish.
+
+The $r\theta$-component of the viscous stress tensor in spherical coordinates is:
+\[
+  \tau_{r\theta} = \mu\left[\,r\frac{\partial}{\partial r}\!\left(\frac{u_\theta}{r}\right) + \frac{1}{r}\frac{\partial u_r}{\partial\theta}\,\right].
+\]
+For a poloidal velocity field with harmonic structure $Y_l^m$, using the stream-function
+representation and the incompressibility constraint to express $u_\theta$ in terms of $u_r$,
+one can show (after substantial but straightforward algebra) that $\tau_{r\theta} = 0$ at
+$x=1$ reduces to:
+\begin{equation}
+  \left[\,\frac{\dd^2}{\dd x^2} - \frac{2}{x}\frac{\dd}{\dd x} + \frac{l(l+1)}{x^2}\,\right]U = 0
+  \qquad \text{at } x = 1.
+  \label{eq:BC2}
+\end{equation}
+
+\begin{notebox}[Evaluating BC2 on the general solution]
+For the particular solution $U_p = \Pi_0 x^{l+1}$:
+\[
+  \mathcal{L}_2[x^{l+1}] = l(l+1)x^{l-1} - 2(l+1)x^{l-1} + l(l+1)x^{l-1}
+  = 2(l-1)(l+1)x^{l-1}.
+\]
+At $x=1$: $\mathcal{L}_2[U_p]|_{x=1} = 2(l-1)(l+1)\Pi_0$.
+
+For the homogeneous part $U_h = Cxj_l(qx)$, using $U_h'' = -q^2 xj_l + l(l+1)j_l/x$
+(from the Bessel equation) and $U_h' = j_l + qxj_l'$:
+\[
+  \mathcal{L}_2[U_h]\big|_{x=1}
+  = C\!\left[-q^2 j_l(q) + 2\bigl(l(l+1)-1\bigr)j_l(q) - 2q j_l'(q)\right].
+\]
+Setting the sum to zero gives one equation relating $C$ and $\Pi_0$.
+\end{notebox}
+
+\subsection{BC3: Normal stress condition}
+
+This is the most physically rich boundary condition, as it involves surface tension
+and couples the pressure, viscous stress, and surface curvature.
+
+\subsubsection{Mean curvature of the deformed surface}
+
+\begin{derivbox}[Curvature of the perturbed sphere]
+For the surface \eqref{eq:surface_deform}, the principal curvatures can be computed
+by standard differential geometry. To first order in $\epsilon$:
+\begin{equation}
+  \frac{1}{R_1} + \frac{1}{R_2}
+  = \frac{1}{R}\!\left[\,2 + (l-1)(l+2)\,\epsilon\,Y_l^m\,\right].
+  \label{eq:curvature}
+\end{equation}
+
+\textit{Physical interpretation:} The $2/R$ term is the equilibrium curvature.
+The perturbation contributes $(l-1)(l+2)\epsilon Y_l^m/R$. The factor $(l-1)(l+2)$
+is the same one that appears in the inviscid frequency \eqref{eq:inviscid_freq} —
+this is not a coincidence: both arise from the curvature response to a harmonic
+deformation.
+\end{derivbox}
+
+\subsubsection{Normal stress balance}
+
+The radial normal stress inside the drop is:
+\begin{equation}
+  -p_{rr} = p + \delta p - 2\mu\frac{\partial u_r}{\partial r}.
+  \label{eq:normal_stress}
+\end{equation}
+The condition at the free surface is:
+\begin{equation}
+  -p_{rr} = T_1\!\left(\frac{1}{R_1} + \frac{1}{R_2}\right).
+  \label{eq:normal_BC}
+\end{equation}
+
+\begin{derivbox}[Derivation of BC3]
+At $O(\epsilon^0)$: the equilibrium Young--Laplace condition $p_0 = 2T_1/R$
+is automatically satisfied (the drop is in equilibrium). At $O(\epsilon^1)$:
+\[
+  \delta p - 2\mu\frac{\partial u_r}{\partial r}\bigg|_{r=R}
+  = T_1\,\frac{(l-1)(l+2)}{R}\,\epsilon\,Y_l^m.
+\]
+Using \eqref{eq:pressure_soln} with $x = 1$: $\delta p|_{x=1} = \rho\epsilon P_0 Y_l^m$
+(since $\delta p/\rho = \epsilon P_0 x^l Y_l^m$ at $x=1$).
+
+For the viscous term, with $u_r = \epsilon_0\sigma R\,G(x)Y_l^m e^{-\sigma t}$
+and $G = U/x^2$:
+\[
+  2\mu\frac{\partial u_r}{\partial r}\bigg|_{x=1}
+  = 2\rho\nu\cdot\sigma\cdot\epsilon_0 e^{-\sigma t}\,Y_l^m\,
+    \left.\frac{\dd}{\dd x}\!\left(\frac{U}{x^2}\right)\right|_{x=1}
+  = 2\rho\nu\sigma\,\epsilon\,Y_l^m\left[\,U'(1) - 2U(1)\,\right].
+\]
+Dividing through by $\rho\epsilon\,Y_l^m$ and using $\mu = \rho\nu$:
+\begin{equation}
+  (l-1)(l+2)\frac{T_1}{\rho R} = P_0 - 2\nu\sigma\!\left[\,U'(1) - 2U(1)\,\right].
+  \label{eq:BC3}
+\end{equation}
+\end{derivbox}
+
+\begin{notebox}
+BC3 is the only equation containing $T_1$ explicitly. Reid's key move (next section)
+is to rescale parameters so that $T_1$ drops out entirely.
+\end{notebox}
+
+%% ════════════════════════════════════════════════════════════════════════════
+\section{The Characteristic Equation}
+%% ════════════════════════════════════════════════════════════════════════════
+
+\subsection{Eliminating $T_1$ via rescaling}
+
+Define the dimensionless ratio
+\begin{equation}
+  \alpha^2 \equiv \frac{\sigma_{l;0}\,R^2}{\nu},
+  \label{eq:alpha_def}
+\end{equation}
+which measures the inviscid frequency in units of the viscous diffusion rate $\nu/R^2$.
+Equivalently, $\alpha = \mathrm{Oh}^{-1/2}\cdot[l(l-1)(l+2)]^{1/4}$ in terms of the
+Ohnesorge number.
+
+\begin{derivbox}[Eliminating $T_1$]
+From \eqref{eq:inviscid_freq}: $\sigma_{l;0}^2 = l(l-1)(l+2)T_1/(\rho R^3)$,
+so $(l-1)(l+2)T_1/(\rho R) = \sigma_{l;0}^2 R^2/l$. Using \eqref{eq:Pi_form},
+$P_0 = \sigma^2 R^2\Pi_0/l$. Substituting into BC3 \eqref{eq:BC3}:
+\[
+  \frac{\sigma_{l;0}^2 R^2}{l}
+  = \frac{\sigma^2 R^2\Pi_0}{l} - 2\nu\sigma\!\left[U'(1)-2U(1)\right].
+\]
+Multiply through by $lR^2/\nu^2$:
+\begin{align*}
+  \frac{\sigma_{l;0}^2 R^4}{\nu^2}
+  &= \frac{\sigma^2 R^4\Pi_0}{\nu^2} - \frac{2l\sigma R^2}{\nu}\!\left[U'(1)-2U(1)\right] \\
+  \alpha^4 &= q^4\Pi_0 - 2l\,q^2\!\left[U'(1)-2U(1)\right].
+\end{align*}
+This can be written compactly as
+\begin{equation}
+  \alpha^4 = q^2\!\left\{\,q^2\Pi_0 - 2l\!\left[\,U'(1) - 2U(1)\,\right]\right\}.
+  \label{eq:alpha4}
+\end{equation}
+Crucially, $T_1$ and $\rho$ have \emph{completely cancelled}. The problem in terms
+of $(\alpha, q)$ is universal.
+\end{derivbox}
+
+\subsection{Applying BCs to the general solution}
+
+We now apply BC1 \eqref{eq:BC1} and BC2 \eqref{eq:BC2} to the general solution
+\eqref{eq:U_general} to express $C$ and $\Pi_0$ in terms of Bessel functions, then
+substitute into \eqref{eq:alpha4} to obtain the characteristic equation.
+
+\paragraph{Applying BC1.}
+\begin{equation}
+  U(1) = C\,j_l(q) + \Pi_0 = -1.
+  \label{eq:bc1_applied}
+\end{equation}
+
+\paragraph{Applying BC2.}
+Using the results from the note in Section~6.2:
+\begin{equation}
+  C\!\left[-q^2 j_l + 2(l^2+l-1)j_l - 2q j_l'\right] + 2(l^2-1)\Pi_0 = 0.
+  \label{eq:bc2_applied}
+\end{equation}
+
+\paragraph{Solving for $C$ and $\Pi_0$.}
+From \eqref{eq:bc1_applied}: $\Pi_0 = -1 - Cj_l(q)$. Substituting into
+\eqref{eq:bc2_applied} and simplifying:
+\[
+  C\!\left[(2l - q^2)j_l - 2q j_l'\right] = 2(l^2-1).
+\]
+Using $q j_l'/j_l = l - qQ_{l+1/2}$ from \eqref{eq:bessel_ratio} and the definition
+\eqref{eq:Q_def}:
+\begin{equation}
+  C = \frac{2(l-1)(l+1)}{(2l-q^2)j_l(q) - 2q\,j_l'(q)}.
+  \label{eq:C_soln}
+\end{equation}
+The expression for $\Pi_0$ follows from \eqref{eq:bc1_applied}.
+
+\paragraph{Substituting into \eqref{eq:alpha4}.}
+After substituting the expressions for $C$, $\Pi_0$, $U'(1)$, and $U(1)$ into
+\eqref{eq:alpha4}, and expressing all Bessel function ratios in terms of
+$Q_{l+1/2}(q) = j_{l+1}(q)/j_l(q)$ via the recurrence \eqref{eq:bessel_ratio},
+one obtains the characteristic equation:
+
+\begin{keybox}[The Characteristic Equation (Reid 1960, Eq.~19)]
+\begin{equation}
+  \frac{\alpha^4}{q^4} + 1
+  = \frac{2(l-1)}{q^2}
+    \left[\,l + (l+1)\,\frac{q - 2l\,Q_{l+1/2}(q)}{q - 2Q_{l+1/2}(q)}\,\right],
+  \label{eq:char_eq}
+\end{equation}
+where $q^2 = \sigma R^2/\nu$, $\alpha^2 = \sigma_{l;0}R^2/\nu$, and
+$Q_{l+1/2}(q) = J_{l+3/2}(q)/J_{l+1/2}(q) = j_{l+1}(q)/j_l(q)$.
+\end{keybox}
+
+\begin{notebox}[Universality]
+This is identical to Chandrasekhar's characteristic equation for a viscous
+\emph{self-gravitating} liquid globe, with the identification that the self-gravitational
+parameter maps to $\alpha^2$. The physical restoring force (surface tension vs.\
+self-gravity) enters only through $\sigma_{l;0}$, which defines $\alpha$.
+Thus \eqref{eq:char_eq} is universal for any spherically symmetric restoring force.
+\end{notebox}
+
+\begin{notebox}[Algebraic derivation remark]
+The algebraic steps from \eqref{eq:C_soln} to \eqref{eq:char_eq} involve expressing
+$q^2\Pi_0 - 2l[U'(1)-2U(1)]$ entirely in terms of Bessel ratios. Key simplifications
+use the identity
+\[
+  j_{l+1}(q) = (2l+1)j_l(q)/q - j_{l-1}(q)
+\]
+(spherical Bessel recurrence) and the relation \eqref{eq:bessel_ratio}.
+The algebra is lengthy but elementary; each step uses only linear algebra and
+these Bessel identities.
+\end{notebox}
+
+%% ════════════════════════════════════════════════════════════════════════════
+\section{Structure of the Solutions}
+%% ════════════════════════════════════════════════════════════════════════════
+
+\subsection{Roots of the characteristic equation}
+
+Equation~\eqref{eq:char_eq} is a transcendental equation for $q^2 = \sigma R^2/\nu$
+(or equivalently for $\sigma$), given the physical parameters encoded in $\alpha$.
+It has infinitely many solutions.
+
+\paragraph{Physical picture.} The Bessel function $J_{l+1/2}(q)$ in the denominator of
+$Q_{l+1/2}$ has infinitely many real zeros $q_1 < q_2 < \cdots$ on the positive real axis.
+Near each zero the characteristic equation \eqref{eq:char_eq} has a pole, and each pole
+``captures'' one pair of roots. These correspond to increasingly high radial overtones of
+the oscillation, i.e., modes with more and more nodal surfaces in the radial direction
+inside the drop.
+
+\paragraph{Ordering by decay rate.} Roots with \emph{smaller} real part of $\sigma$ (i.e.,
+slower decay) are the physically dominant ones — they are the last to die out and govern
+the observable oscillation of the drop. The two roots with the smallest $\mathrm{Re}(\sigma)$
+correspond to the fundamental surface oscillation at harmonic order $l$; all higher roots
+decay exponentially faster.
+
+\begin{notebox}[Sign convention caution]
+In Reid's convention, $\epsilon\sim e^{-\sigma t}$ with $\mathrm{Re}(\sigma)>0$
+meaning decay. So the \emph{smallest positive} real part corresponds to the
+\emph{slowest} decay, i.e., the dominant mode. This is the opposite of the
+situation in stability analysis where one looks for the most-positive growth rate.
+\end{notebox}
+
+\subsection{Two regimes: oscillatory vs.\ aperiodic}
+
+For fixed $l$, the character of the two dominant roots depends on $\alpha^2$:
+
+\begin{itemize}
+  \item \textbf{Large $\alpha^2$ (low viscosity, large drop):} the two dominant roots
+        are complex conjugates, $\sigma = \gamma \pm \ii\omega_d$, corresponding to
+        \emph{damped oscillations}.
+  \item \textbf{Small $\alpha^2$ (high viscosity, small drop):} the two dominant roots
+        are both real and positive, corresponding to two \emph{aperiodic decaying modes}
+        (overdamped).
+\end{itemize}
+
+The transition occurs at a critical value of $\alpha^2$. For $l=2$, this critical point
+was determined numerically by Chandrasekhar:
+\begin{equation}
+  \sigma_{2;0}R^2/\nu = 3.69, \qquad \sigma_{2;\nu}/\sigma_{2;0} = 0.968.
+  \label{eq:critical}
+\end{equation}
+For water in air ($T_1 = 74\;\mathrm{dyn/cm}$, $\nu = 0.01\;\mathrm{cm^2/s}$), this
+gives a critical radius $R_c \approx 0.23\;\mathrm{mm}$.
+
+\begin{itemize}
+  \item Drops with $R > R_c$: oscillate with damping.
+  \item Drops with $R < R_c$: aperiodically damped (no oscillations).
+\end{itemize}
+
+\subsection{The small-viscosity limit}
+
+As $\nu \to 0$ (or $q \to \infty$), the spherical Bessel functions have the large-argument
+asymptotics $J_\nu(q) \sim \sqrt{2/(\pi q)}\cos(q - \nu\pi/2 - \pi/4)$, which for
+$\nu = l+\tfrac{1}{2}$ reduces to $J_{l+1/2}(q) \sim \sqrt{2/(\pi q)}\sin(q - l\pi/2)$.
+The ratio $Q_{l+1/2}(q) = j_{l+1}(q)/j_l(q)$ therefore oscillates as $q\to\infty$
+(with poles at every zero of $j_l$), but $Q_{l+1/2}(q)/q \to 0$ between poles,
+since the amplitude of $J_{l+3/2}/J_{l+1/2}$ remains $O(1)$ away from zeros.
+The bracket on the right-hand side of \eqref{eq:char_eq},
+$l + (l+1)(q - 2l\,Q_{l+1/2})/(q - 2Q_{l+1/2})$, approaches $l + (l+1)\cdot 1 = 2l+1$
+as $q\to\infty$. The characteristic equation \eqref{eq:char_eq} then simplifies to:
+\[
+  \frac{\alpha^4}{q^4} + 1 = \frac{2(l-1)(2l+1)}{q^2},
+\]
+which is a quadratic in $q^2/\alpha^2$, yielding
+\begin{equation}
+  \sigma_{l;\nu} = (l-1)(2l+1)\,\frac{\nu}{R^2} \pm \ii\,\sigma_{l;0},
+  \label{eq:lamb}
+\end{equation}
+recovering \emph{Lamb's classical result}: viscosity simply adds a real damping rate
+$(l-1)(2l+1)\nu/R^2$ to the inviscid oscillation frequency $\pm\ii\sigma_{l;0}$.
+
+%% ════════════════════════════════════════════════════════════════════════════
+\section{Connection to Mola\v{c}ek \& Bush (2012)}
+%% ════════════════════════════════════════════════════════════════════════════
+
+In their quasi-static model of drop impact, Mola\v{c}ek \& Bush parameterize the
+kinetic energy and viscous dissipation associated with each surface harmonic mode $m$
+(their notation) via two coefficients $A_m(\mathrm{Oh}_m)$ and $D_m(\mathrm{Oh}_m)$,
+which appear in (their Eq.~31):
+\[
+  \mathrm{K.E.} = \pi\rho R_0^5 \dot{B}^2 \sum_m A_m \frac{2b_m^2}{m(2m+1)},
+  \qquad
+  D = 8\pi\mu R_0^3 \dot{B}^2 \sum_m D_m \frac{m}{2m+1}b_m^2.
+\]
+
+These coefficients are defined so that the two roots of the quadratic
+\begin{equation}
+  A_m b^2 - 2a D_m b + 1 = 0, \qquad a \equiv \mathrm{Oh}\sqrt{m(m-1)(m+2)},
+\end{equation}
+reproduce the two dominant roots of Reid's characteristic equation \eqref{eq:char_eq}
+for harmonic order $l=m$. The variable identification connecting MB's quadratic to Reid's
+transcendental equation is $q^2 = (b/a)\cdot\alpha^2$ (i.e.\ $b = a\cdot q^2/\alpha^2$),
+under which MB's $W(b/a) = Q_{l+1/2}(q)/q$. In other words, $A_m$ and $D_m$ encode the
+\emph{result} of solving Reid's problem at each order $m$, compressed into two numbers
+per mode via a quadratic fit to the dominant eigenvalue pair.
+
+\paragraph{Workflow.}
+\begin{enumerate}
+  \item For each mode $m$ and Ohnesorge number $\mathrm{Oh}$, evaluate
+        $\alpha^2 = \mathrm{Oh}^{-1}\sqrt{m(m-1)(m+2)}$ and $q^2 = \sigma R^2/\nu$.
+  \item Numerically solve \eqref{eq:char_eq} for the two roots $b_{1,2}$ with the
+        smallest $\mathrm{Re}(\sigma)$.
+  \item Read off $A_m$ and $D_m$ by matching the quadratic:
+        sum of roots $= 2aD_m/A_m$; product of roots $= 1/A_m$.
+  \item Tabulate or fit $A_m(\mathrm{Oh}_m)$ and $D_m(\mathrm{Oh}_m)$ for use in
+        the Lagrangian equation of motion.
+\end{enumerate}
+
+\paragraph{Justification for discarding higher roots.} The quasi-static assumption
+restricts the drop shape to evolve through a one-parameter family of equilibrium shapes.
+Within that family, only the fundamental surface mode at each harmonic order $l$ is
+representable. Higher radial overtones involve internal nodal surfaces that have no
+counterpart in the quasi-static shape family and decay on timescales $\ll (R^2/\nu)$,
+well separated from the impact timescale.
+
+%% ════════════════════════════════════════════════════════════════════════════
+\section{Summary of Key Equations}
+%% ════════════════════════════════════════════════════════════════════════════
+
+\begin{center}
+\begin{tabular}{ll}
+  \toprule
+  \textbf{Equation} & \textbf{Physical content} \\
+  \midrule
+  $\sigma_{l;0}^2 = l(l-1)(l+2)\,T_1/(\rho R^3)$ & Inviscid capillary frequency \\
+  $q^2 = \sigma R^2/\nu$ & Complex decay rate, scaled \\
+  $\alpha^2 = \sigma_{l;0}R^2/\nu$ & Inviscid frequency, scaled \\
+  $Q_{l+1/2}(q) = J_{l+3/2}(q)/J_{l+1/2}(q)$ & Bessel function ratio \\
+  $\alpha^4/q^4 + 1 = (2(l-1)/q^2)[\cdots]$ & Reid's characteristic equation \\
+  $\sigma = (l-1)(2l+1)\nu/R^2 \pm \ii\,\sigma_{l;0}$ & Small-$\nu$ (Lamb) limit \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\bigskip
+
+\input{section_oldroydB}
+
+\begin{thebibliography}{9}
+\bibitem{reid1960}
+  W.~H.~Reid,
+  ``The Oscillations of a Viscous Liquid Drop,''
+  \emph{Quart.\ Appl.\ Math.} \textbf{18}(1), 86--89 (1960).
+\bibitem{molacek2012}
+  J.~Mola\v{c}ek and J.~W.~M.~Bush,
+  ``A quasi-static model of drop impact,''
+  \emph{Phys.\ Fluids} \textbf{24}, 127103 (2012).
+\bibitem{chandrasekhar1959}
+  S.~Chandrasekhar,
+  ``The oscillations of a viscous liquid globe,''
+  \emph{Proc.\ London Math.\ Soc.} \textbf{9}(3), 141--149 (1959).
+\bibitem{lamb1932}
+  H.~Lamb,
+  \emph{Hydrodynamics}, 6th~ed., Cambridge University Press (1932).
+\bibitem{miller1968}
+  C.~A.~Miller and L.~E.~Scriven,
+  ``The oscillations of a fluid droplet immersed in another fluid,''
+  \emph{J.\ Fluid Mech.} \textbf{32}, 417--435 (1968).
+\bibitem{oldroyd1950}
+  J.~G.~Oldroyd,
+  ``On the formulation of rheological equations of state,''
+  \emph{Proc.\ R.\ Soc.\ Lond.\ A} \textbf{200}, 523--541 (1950).
+\bibitem{khismatullin2001}
+  D.~B.~Khismatullin and A.~Nadim,
+  ``Shape oscillations of a viscoelastic drop,''
+  \emph{Phys.\ Rev.\ E} \textbf{63}, 061508 (2001).
+\bibitem{mukherjee2009}
+  S.~Mukherjee and K.~Sarkar,
+  ``Effects of viscoelasticity on the retraction of a viscous drop,''
+  \emph{J.\ Non-Newt.\ Fluid Mech.} \textbf{165}, 340--349 (2010).
+\bibitem{bird1987}
+  R.~B.~Bird, R.~C.~Armstrong, and O.~Hassager,
+  \emph{Dynamics of Polymeric Liquids, Vol.\,1: Fluid Mechanics},
+  2nd~ed., Wiley (1987).
+\bibitem{zirnic2024}
+  N.~Zrni\'{c} and G.~Brenn,
+  ``Oscillations of a viscoelastic drop in the Oldroyd-B model,''
+  \emph{Proc.\ R.\ Soc.\ A} \textbf{480}, 20230887 (2024).
+\end{thebibliography}
+
+\end{document}

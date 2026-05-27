@@ -1,0 +1,10 @@
+# This file is machine-generated - editing it directly is not advised
+
+julia_version = "1.12.6"
+manifest_format = "2.0"
+project_hash = "0732453caf2ec3181b3e9aa8713eac3f65dbc2db"
+
+[[deps.DropSolver]]
+path = "."
+uuid = "c7e3b8a1-f2d4-4e9a-8b5c-1d6f3a2e7c04"
+version = "0.1.0"
