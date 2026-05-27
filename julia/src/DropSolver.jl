@@ -1,6 +1,6 @@
 module DropSolver
 
-# using LinearAlgebra  # will be used in actual implementations
+using LinearAlgebra
 
 # Included in order of dependency
 include("types.jl")
