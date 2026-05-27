@@ -70,3 +70,32 @@ end
     end
     @test norm(J .- J_fd) / norm(J_fd) < 1e-4
 end
+
+@testset "Newton converges on near-equilibrium state" begin
+    using LinearAlgebra
+    M = 4; Oh = 0.1; Fr = 1e12
+    θv = collect(range(π, π/2 + 0.01; length = M+1))
+    precomp = precompute_integrals(NaN, M)[1]
+    cfg = SimConstants(M, M+1, Oh, Fr, θv, precomp, 0.01)
+    ob  = OBParams()
+    dt  = 0.01
+
+    s0 = DropState(M); s0.z = 1.0; s0.dt = dt
+    # Perturb slightly from equilibrium
+    s1 = DropState(M); s1.A[2] = 0.001; s1.z = 1.0; s1.dt = dt
+    X = pack_X(s1, M)
+
+    R! = (buf, Xv) -> begin
+        s = DropState(M); unpack_X!(s, Xv, M); s.cp = 0
+        build_residual!(buf, s, [s0], dt, 0, cfg, ob)
+    end
+    J_fn = Xv -> begin
+        s = DropState(M); unpack_X!(s, Xv, M); s.cp = 0
+        build_jacobian(s, [s0], dt, 0, cfg, ob)
+    end
+
+    converged = newton_solve!(X, R!, J_fn; tol=1e-10)
+    buf = zeros(3M+1); R!(buf, X)
+    @test converged
+    @test norm(buf) < 1e-10
+end

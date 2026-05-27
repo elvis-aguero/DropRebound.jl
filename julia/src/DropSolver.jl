@@ -11,6 +11,9 @@ export SimConstants, OBParams, DropState
 # Export residual and Jacobian functions
 export pack_X, unpack_X!, build_residual!, build_jacobian
 
+# Export Newton solver
+export newton_solve!, clear_jac_cache!
+
 # Export utilities used in tests
 export precompute_integrals
 include("legendre.jl")
