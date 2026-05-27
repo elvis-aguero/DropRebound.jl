@@ -19,6 +19,9 @@ export precompute_integrals
 
 # Export contact detection functions
 export drop_height, contact_error
+
+# Export time-stepper
+export solve_drop!
 include("legendre.jl")
 include("integrals.jl")
 include("bdf.jl")
