@@ -1,137 +1,116 @@
-# DropSolver
+# DropRebound.jl
 
-A Julia implementation of the linearized spectral solver for viscous and viscoelastic drop impact on a flat substrate. Implements the v3 linearized BDF time-stepper from Agüero-Vera et al., with Newtonian and Oldroyd-B (OB) rheology.
+Julia solver for the impact and rebound of a liquid drop on a flat substrate, with support for Newtonian and viscoelastic (Oldroyd-B) rheology.
 
-## Physics
+## What it does
 
-A liquid drop of radius $R$ falls under gravity and impacts a flat substrate at $z = 0$. The drop shape is expanded in Legendre modes $A_n(t)$ ($n = 2, \ldots, M$) on top of a spherical base state; the substrate contact is tracked by a discrete contact-point count $c_p \in \{0, 1, \ldots, M\}$.
+A spherical drop falls under gravity, deforms on contact with a solid surface, spreads, then rebounds. This package solves the linearized spectral equations governing that process: the drop shape is expanded in Legendre modes, contact is tracked through a discrete set of collocation points on the drop surface, and the equations are integrated with an adaptive BDF time-stepper.
 
-The governing equations (in dimensionless units scaled by $R$, $\sqrt{\rho R^3 / \sigma}$) are:
+## Dimensionless parameters
 
-- **R1/R2** – BDF-discretized shape equations for $A_n$ and $\dot{A}_n$
-- **R3** – contact condition $h(\theta_i) = 0$ at each contact angle
-- **R4** – pressure-free condition $\sum_n B_n P_n(\cos\theta_i) = 0$ at free angles
-- **R6/R7** – COM kinematics: $\dot{z} = v$ and $\dot{v} = -1/\mathrm{Fr} - B_1$ (v3 linearization)
+Two numbers control the Newtonian problem:
 
-For Oldroyd-B fluids the viscous damping term is replaced by an effective constitutive law parameterized by the Deborah number $\mathrm{De}_1 = \lambda_1 \sigma_{2;0}$ and solvent fraction $\beta_s = \mu_s / \mu$.
+| Parameter | Definition | Physical meaning |
+|-----------|-----------|-----------------|
+| Oh (Ohnesorge) | $\nu\sqrt{\rho/(\sigma R)}$ | Ratio of viscous dissipation to surface-tension restoring force. Oh ≪ 1: nearly inviscid, bounces with little energy loss. Oh ~ 1: heavily damped, may not rebound. |
+| Fr (Froude) | $\sigma/(\rho g R^2)$ | Ratio of surface tension to gravitational body force. Large Fr: surface tension dominates, drop stays nearly spherical at rest. Small Fr: gravity flattens it. |
 
-Two dimensionless groups control the Newtonian problem:
+As a reference point: a water–glycerol drop of radius 0.2 mm falling at 9 cm/s gives Oh ≈ 0.30, Fr ≈ 54.
 
-| Symbol | Definition | Physical meaning |
-|--------|-----------|-----------------|
-| $\mathrm{Oh} = \nu\sqrt{\rho/(\sigma R)}$ | Ohnesorge | viscosity / surface tension |
-| $\mathrm{Fr} = \sigma / (\rho g R^2)$ | Froude | surface tension / gravity |
+### Viscoelastic drops — the Oldroyd-B model
 
-## Key design choices
+The Oldroyd-B model describes dilute polymer solutions: a Newtonian solvent mixed with long elastic polymer chains. The chains stretch during impact and store energy, which is released during rebound — polymer drops can bounce higher and ring longer than equivalent Newtonian drops. Two additional parameters:
 
-**Gauss-Legendre collocation** (`make_theta_vec(M)`): the $M+1$ angular collocation points are the $M$ Gauss-Legendre nodes of $P_M(\cos\theta)$ plus the south pole $\theta = \pi$. This gives a well-conditioned Legendre-Vandermonde matrix (condition number $\approx 16$ for $M = 20$, vs $10^{16}$ for uniform spacing).
+| Parameter | Definition | Physical meaning |
+|-----------|-----------|-----------------|
+| De₁ | $\lambda_1 \cdot \omega_{\rm cap}$ | Deborah number: polymer relaxation time $\lambda_1$ scaled by the capillary oscillation frequency. De₁ ≫ 1 means the polymer barely relaxes during one oscillation — elastic behavior dominates. |
+| β_s | $\mu_s/\mu$ | Solvent fraction. β_s = 1: purely Newtonian. β_s → 0: purely polymeric. Typical polymer solutions: β_s ∈ [0.3, 0.9]. |
 
-**CFL-based time step** (`make_dt_max(M)`): the maximum stable time step follows the MATLAB reference formula $\Delta t_\max = 2\pi / (\sqrt{M(M+2)(M-1)} \cdot 8)$, which scales as $M^{-3/2}$.
-
-**Jacobian caching**: the system is linear, so $J^{-1}$ is exact and constant for fixed $(M, c_p, \Delta t, \text{order})$. It is cached on first use and reused for all subsequent steps with the same key.
-
-## Requirements
-
-- Julia 1.12+
-- No external packages (only `LinearAlgebra` and `Logging` from the standard library)
+Setting De₁ = 0 or β_s = 1 recovers Newtonian behavior.
 
 ## Installation
 
 ```julia
-# from the julia/ directory
+# activate the environment from the repo root
 julia --project=julia
 ```
 
-Or activate in any Julia session:
+Or from any Julia session:
 
 ```julia
-using Pkg; Pkg.activate("/path/to/km-viscous-drop/julia")
+using Pkg
+Pkg.activate("/path/to/km-viscous-drop/julia")
 using DropSolver
 ```
 
-## Running the tests
+Requires Julia 1.12+. No external packages — only `LinearAlgebra` and `Logging` from the standard library.
 
-```bash
-julia --project=julia -e 'using Pkg; Pkg.test()'
-```
-
-All 125 tests pass, including:
-- Legendre polynomial recursion
-- BDF coefficient correctness
-- Newtonian Lamb oscillation decay rate and frequency (< 5% error vs analytical)
-- OB eigenvalue validation (< 5% error vs characteristic equation root)
-- MATLAB parity: contact time, max spreading radius, and CoR at M=20 (all < 5% vs MATLAB N=90 reference)
-
-## Showcase scripts
-
-All scripts are run from the repo root.
-
-### Newtonian free oscillation — Lamb limit
-
-```bash
-julia --project=julia julia/scripts/run_newtonian.jl
-```
-
-Prints a table comparing the solver's decay rate $\gamma$ and frequency $\omega$ against the Lamb (1932) analytical result for $l = 2$ oscillations at several Ohnesorge numbers. Expected output:
-
-```
-Oh      γ_lamb   γ_fit    err%     ω_lamb   ω_fit    err%
-Oh=0.010  ...     ...      < 5%     ...      ...      < 2%
-Oh=0.050  ...     ...      < 5%     ...      ...      < 2%
-Oh=0.100  ...     ...      < 5%     ...      ...      < 2%
-```
-
-### Oldroyd-B oscillation — effect of elasticity
-
-```bash
-julia --project=julia julia/scripts/run_ob_case.jl
-```
-
-Compares the $l = 2$ decay rate and frequency for Newtonian vs OB at increasing $\mathrm{De}_1$. Demonstrates that viscoelasticity suppresses viscous damping.
-
-### OB eigenvalue sweep — characteristic equation parity
-
-```bash
-julia --project=julia julia/scripts/run_eigenvalue_sweep.jl
-```
-
-Sweeps $(\mathrm{Oh}, \mathrm{De}_1, \beta_s)$ and compares the simulated decay rate and frequency against the root of the OB characteristic equation. All errors < 5%.
-
-### Drop impact: MATLAB parity table
-
-```bash
-julia --project=julia julia/scripts/run_matlab_parity.jl
-```
-
-Runs the canonical impact case ($\mathrm{Oh} = 0.3038$, $\mathrm{Fr} = 53.9$, $v_0 = -0.281$) at $M = 6, 10, 20, 40, 60$ and compares against the MATLAB reference (N=90 modes). Expected output at M=20:
-
-```
-M=20   t_c=2.938  err=1.7%   r_max=0.392  err=1.3%   CoR=0.476  err=1.6%
-```
-
-### Drop impact: Newtonian vs Oldroyd-B trajectory
-
-```bash
-julia --project=julia julia/scripts/run_impact.jl
-```
-
-Runs both Newtonian and OB drops at $M = 20$ and prints a side-by-side time series of $(t, z, c_p, A_2)$, showing how viscoelasticity modifies the contact and rebound phases.
-
-## API reference
-
-### Configuration
+## Quick start
 
 ```julia
-make_theta_vec(M)   # M+1 Gauss-Legendre collocation angles (descending, south-pole first)
-make_dt_max(M)      # CFL-stable maximum time step: 2π / (√(M(M+2)(M-1)) · 8)
+using DropSolver
 
-precompute_integrals(NaN, M)  # precomputed Legendre integrals (returns (matrix, ...) tuple)
-SimConstants(M, M+1, Oh, Fr, theta_vec, precomp, dt_max)
-OBParams(De1, beta_s)         # OBParams(0.0, 1.0) = Newtonian
-DropState(M)                  # zero-initialized state; set .z, .v, .dt, .cp manually
+M  = 20       # Legendre modes — more modes = finer shape resolution
+Oh = 0.3038   # Ohnesorge number (viscosity / surface tension)
+Fr = 53.9     # Froude number    (surface tension / gravity)
+
+dt_max    = make_dt_max(M)
+theta_vec = make_theta_vec(M)
+precomp   = precompute_integrals(NaN, M)[1]
+cfg       = SimConstants(M, M+1, Oh, Fr, theta_vec, precomp, dt_max)
+ob        = OBParams(0.0, 1.0)   # Newtonian; use OBParams(De1, beta_s) for polymer
+
+init    = DropState(M)
+init.z  = 1.1      # drop center height (z = 1 means just touching the substrate)
+init.v  = -0.281   # impact velocity (dimensionless, negative = falling)
+init.dt = dt_max
+init.cp = 0        # no contact initially
+
+times, states = solve_drop!(cfg, ob, deepcopy(init); t_end=8.0, save_every=0.05)
+
+# Inspect contact phase
+in_contact = filter(s -> s.cp > 0, states)
+println("Contact frames: ", length(in_contact))
+println("Peak deformation A₂: ", maximum(s.A[2] for s in in_contact))
 ```
 
-### Running a simulation
+## Logging
+
+The solver uses Julia's standard `Logging` library. By default you see:
+
+- `[ Info]  solve_drop! starting` — parameters and rheology at the start of each run
+- `[ Info]  Contact onset` / `Lift-off` — with the exact dimensionless time
+- `[ Warn]  dt approaching minimum` — if the solver is struggling numerically
+
+Enable per-step diagnostics (accepted steps, dt halvings, Jacobian cache events):
+
+```julia
+ENV["JULIA_DEBUG"] = "DropSolver"
+```
+
+Suppress all output:
+
+```julia
+using Logging
+with_logger(NullLogger()) do
+    times, states = solve_drop!(cfg, ob, deepcopy(init); ...)
+end
+```
+
+## API
+
+### Setup
+
+```julia
+make_theta_vec(M)              # M+1 Gauss-Legendre collocation angles
+make_dt_max(M)                 # CFL-stable maximum time step
+precompute_integrals(NaN, M)   # precomputed Legendre integral matrices (returns tuple)
+SimConstants(M, M+1, Oh, Fr, theta_vec, precomp, dt_max)
+OBParams(De1, beta_s)          # rheology; OBParams(0.0, 1.0) = Newtonian
+DropState(M)                   # zero-initialized state; set .z, .v, .dt, .cp before use
+```
+
+### Solver
 
 ```julia
 times, states = solve_drop!(cfg, ob, init;
@@ -141,53 +120,74 @@ times, states = solve_drop!(cfg, ob, init;
                              dt_min     = 1e-6)
 ```
 
-Returns `times::Vector{Float64}` and `states::Vector{DropState}` at each saved frame. The solver uses adaptive BDF1/BDF2 time-stepping with automatic contact detection and dt halving on failure.
-
-### Minimal example
-
-```julia
-using DropSolver
-
-M = 20; Oh = 0.3038; Fr = 53.9
-
-dt_max    = make_dt_max(M)
-theta_vec = make_theta_vec(M)
-precomp   = precompute_integrals(NaN, M)[1]
-cfg       = SimConstants(M, M+1, Oh, Fr, theta_vec, precomp, dt_max)
-ob        = OBParams(0.0, 1.0)   # Newtonian
-
-init   = DropState(M)
-init.z = 1.1          # drop center height (must be > 1 - deformation for no contact)
-init.v = -0.281       # dimensionless impact velocity
-init.dt = dt_max
-init.cp = 0
-
-times, states = solve_drop!(cfg, ob, deepcopy(init); t_end=8.0, save_every=0.05)
-
-contact = filter(s -> s.cp > 0, states)
-println("Contact frames: $(length(contact))")
-println("Max cp: $(maximum(s.cp for s in contact))")
-```
+Returns `times::Vector{Float64}` and `states::Vector{DropState}` at each saved frame. The solver adapts the time step automatically and detects contact transitions. It errors with a clear message if the step size falls below `dt_min`.
 
 ### State fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `A[n]` | `Vector{Float64}` | Deformation amplitudes $A_n$, $n = 1 \ldots M$ ($A_1 \equiv 0$) |
-| `Adot[n]` | `Vector{Float64}` | Time derivatives $\dot{A}_n$ |
-| `B[n]` | `Vector{Float64}` | Pressure amplitudes $B_0 \ldots B_M$ (length $M+1$) |
-| `z` | `Float64` | Center-of-mass height |
-| `v` | `Float64` | Center-of-mass velocity |
-| `t` | `Float64` | Current time |
-| `cp` | `Int` | Number of contact points |
+| Field | Description |
+|-------|-------------|
+| `A[n]` | Shape amplitudes for Legendre modes n = 2…M (A[1] ≡ 0 by symmetry) |
+| `Adot[n]` | Time derivatives Ȧ_n |
+| `B[n]` | Pressure amplitudes B₀…Bₘ |
+| `z` | Center-of-mass height (z = 1: drop just touching substrate) |
+| `v` | Center-of-mass velocity (negative = falling) |
+| `t` | Current simulation time |
+| `cp` | Contact point count (0 = airborne, > 0 = in contact) |
+
+## Showcase scripts
+
+Run from the repo root.
+
+### Viscous decay — Newtonian free oscillation
+
+```bash
+julia --project=julia julia/scripts/run_newtonian.jl
+```
+
+Excites the l = 2 shape mode and extracts the decay rate and oscillation frequency from the time series, comparing against the Lamb (1932) analytical result at several Ohnesorge numbers.
+
+### Viscoelastic oscillation — effect of polymer stress
+
+```bash
+julia --project=julia julia/scripts/run_ob_case.jl
+```
+
+Compares decay rate and frequency for Newtonian vs Oldroyd-B at increasing De₁. Shows that polymer elasticity suppresses viscous damping — the drop rings longer.
+
+### Eigenvalue validation
+
+```bash
+julia --project=julia julia/scripts/run_eigenvalue_sweep.jl
+```
+
+Sweeps (Oh, De₁, β_s) and checks the simulated decay rate and frequency against the exact root of the Oldroyd-B characteristic equation. Errors are below 5% across the parameter space.
+
+### Drop impact — Newtonian vs Oldroyd-B
+
+```bash
+julia --project=julia julia/scripts/run_impact.jl
+```
+
+Runs both fluid types at M = 20 and prints a side-by-side time series of center-of-mass height, contact point count, and leading shape amplitude — showing how polymer stress modifies spreading and rebound.
+
+## Numerical method
+
+The Legendre spectral expansion is exact for the linearized problem. Key implementation choices:
+
+- **Gauss-Legendre collocation**: angular collocation points are the zeros of $P_M$ plus the south pole. This gives a well-conditioned Vandermonde matrix (condition number ~16 at M = 20; uniform spacing gives ~10¹⁶).
+- **CFL time step**: $\Delta t_{\max} = 2\pi / (\sqrt{M(M+2)(M-1)} \cdot 8)$, scaling as $M^{-3/2}$.
+- **Jacobian caching**: the linearized system has a constant Jacobian for fixed (M, contact state, dt, BDF order). $J^{-1}$ is computed once and reused — each time step costs one matrix–vector product.
+
+## Tests
+
+```bash
+julia --project=julia -e 'using Pkg; Pkg.test()'
+```
+
+125 tests cover: Legendre recursion, BDF coefficients, Newtonian free-oscillation decay and frequency (< 5% vs Lamb), Oldroyd-B eigenvalue parity (< 5% vs characteristic equation), and drop impact physics (contact detection, Newtonian vs OB divergence during contact).
 
 ## Reference
 
-Based on the MATLAB v3 solver described in:
+Based on the v3 linearized solver described in:
 
 > Agüero-Vera et al., *Spectral simulation of viscous drop impact with Oldroyd-B rheology*, in preparation.
-
-MATLAB reference values (N=90 modes, $\mathrm{Oh} = 0.3038$, $\mathrm{Fr} = 53.9$):
-- Contact time: 2.99
-- Maximum spreading radius: 0.397
-- Coefficient of restitution: 0.484
