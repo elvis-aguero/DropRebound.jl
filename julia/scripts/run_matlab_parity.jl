@@ -1,13 +1,13 @@
 #!/usr/bin/env julia
-# MATLAB parity: Newtonian KPI convergence vs MATLAB N=90 reference
-# Uses GL-node theta_vec and CFL-based dt_max (matching MATLAB exactly)
+# Newtonian KPI convergence table (contact time, max spreading radius, CoR).
+# Reference values from independent N=90 linearized solver run.
 using Pkg; Pkg.activate(joinpath(@__DIR__, ".."))
 using DropSolver
 using DropSolver: collect_Pl
 using Printf
 
 const MATLAB_Oh           = 0.3038
-const MATLAB_Fr           = 53.9
+const MATLAB_Bo           = 1/53.9
 const MATLAB_v0           = -0.281
 const MATLAB_CONTACT_TIME = 2.99
 const MATLAB_MAX_RADIUS   = 0.397
@@ -23,7 +23,7 @@ function compute_contact_radius(state::DropState, cfg::SimConstants)
     return sin(θ) * (1.0 + deform)
 end
 
-function compute_cor(states, Fr)
+function compute_cor(states, Bo)
     contact_idx = findall(s -> s.cp > 0, states)
     isempty(contact_idx) && return NaN
     first_c = contact_idx[1]
@@ -36,7 +36,7 @@ function compute_cor(states, Fr)
     z_out = states[last_c + 1].z
 
     E_in  = 0.5 * v_in^2
-    E_out = 0.5 * v_out^2 + (z_out - z_in) / Fr
+    E_out = 0.5 * v_out^2 + Bo * (z_out - z_in)
     E_in ≈ 0 && return NaN
     return sqrt(abs(E_out / E_in))
 end
@@ -45,7 +45,7 @@ function run_case(M; t_end=8.0, save_every=0.02)
     dt_max    = make_dt_max(M)
     theta_vec = make_theta_vec(M)
     precomp   = precompute_integrals(NaN, M)[1]
-    cfg       = SimConstants(M, M+1, MATLAB_Oh, MATLAB_Fr, theta_vec, precomp, dt_max)
+    cfg       = SimConstants(M, M+1, MATLAB_Oh, MATLAB_Bo, theta_vec, precomp, dt_max)
     ob        = OBParams(0.0, 1.0)
 
     init = DropState(M); init.z = 1.1; init.v = MATLAB_v0; init.dt = dt_max; init.cp = 0
@@ -57,12 +57,12 @@ function run_case(M; t_end=8.0, save_every=0.02)
 
     t_contact = times[contact_idx[end]] - times[contact_idx[1]]
     max_r     = maximum(compute_contact_radius(s, cfg) for s in states if s.cp > 0)
-    cor       = compute_cor(states, MATLAB_Fr)
+    cor       = compute_cor(states, MATLAB_Bo)
     return t_contact, max_r, cor
 end
 
-println("MATLAB parity: Newtonian drop impact  (Oh=$(MATLAB_Oh), Fr=$(MATLAB_Fr), v0=$(MATLAB_v0))")
-println("MATLAB ref (N=90): contact_time=$(MATLAB_CONTACT_TIME)  max_radius=$(MATLAB_MAX_RADIUS)  CoR=$(MATLAB_COR)")
+println("Newtonian drop impact  (Oh=$(MATLAB_Oh), Bo=$(round(MATLAB_Bo; sigdigits=4)), v0=$(MATLAB_v0))")
+println("Reference (N=90): contact_time=$(MATLAB_CONTACT_TIME)  max_radius=$(MATLAB_MAX_RADIUS)  CoR=$(MATLAB_COR)")
 println()
 @printf("%-6s  %8s  %8s  %8s  %8s  %8s  %8s\n",
         "M", "t_c", "err%", "r_max", "err%", "CoR", "err%")
@@ -90,4 +90,4 @@ for M in [6, 10, 20, 40, 60]
 end
 
 println()
-println("MATLAB ref:     $(MATLAB_CONTACT_TIME)            $(MATLAB_MAX_RADIUS)            $(MATLAB_COR)")
+println("Reference:      $(MATLAB_CONTACT_TIME)            $(MATLAB_MAX_RADIUS)            $(MATLAB_COR)")

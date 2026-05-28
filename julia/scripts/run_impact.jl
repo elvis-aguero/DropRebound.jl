@@ -1,18 +1,18 @@
 #!/usr/bin/env julia
 # Drop impact showcase: Newtonian vs Oldroyd-B side-by-side trajectory table.
-# Parameters: Oh=0.1 (moderate viscosity), Fr=0.5 (strong gravity), M=20 modes.
+# Parameters: Oh=0.1 (moderate viscosity), Bo=2.0 (strong gravity), M=20 modes.
 # Uses GL-node theta_vec and CFL-based dt_max.
 
 using Pkg; Pkg.activate(joinpath(@__DIR__, ".."))
 using DropSolver
 using Printf
 
-M = 20; Oh = 0.1; Fr = 0.5
+M = 20; Oh = 0.1; Bo = 2.0
 
 dt_max    = make_dt_max(M)
 theta_vec = make_theta_vec(M)
 precomp   = precompute_integrals(NaN, M)[1]
-cfg       = SimConstants(M, M+1, Oh, Fr, theta_vec, precomp, dt_max)
+cfg       = SimConstants(M, M+1, Oh, Bo, theta_vec, precomp, dt_max)
 
 init = DropState(M)
 init.z    = 1.1
@@ -21,7 +21,7 @@ init.A[2] = 0.0
 init.dt   = dt_max
 init.cp   = 0
 
-println("Drop impact: Oh=$(Oh), Fr=$(Fr), M=$(M), z0=$(init.z), v0=$(init.v)")
+println("Drop impact: Oh=$(Oh), Bo=$(Bo), M=$(M), z0=$(init.z), v0=$(init.v)")
 println("dt_max=$(round(dt_max; sigdigits=3))")
 println()
 

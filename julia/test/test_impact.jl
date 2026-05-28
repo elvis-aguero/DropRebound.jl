@@ -1,18 +1,18 @@
 using Test
 using DropSolver
 
-# Use MATLAB canonical parameters (Oh=0.3038, Fr=53.9) at M=6 for speed.
+# Use canonical parameters (Oh=0.3038, Bo=1/53.9) at M=6 for speed.
 # Quantitative KPI parity at M=20 is covered by test_matlab_parity.jl.
 const _IMP_M   = 6
 const _IMP_Oh  = 0.3038
-const _IMP_Fr  = 53.9
+const _IMP_Bo  = 1/53.9
 const _IMP_v0  = -0.281
 
 @testset "Drop impact: Newtonian" begin
     dt_max    = make_dt_max(_IMP_M)
     theta_vec = make_theta_vec(_IMP_M)
     precomp   = precompute_integrals(NaN, _IMP_M)[1]
-    cfg       = SimConstants(_IMP_M, _IMP_M+1, _IMP_Oh, _IMP_Fr, theta_vec, precomp, dt_max)
+    cfg       = SimConstants(_IMP_M, _IMP_M+1, _IMP_Oh, _IMP_Bo, theta_vec, precomp, dt_max)
 
     init = DropState(_IMP_M)
     init.z = 1.1; init.v = _IMP_v0; init.A[2] = 0.0; init.dt = dt_max; init.cp = 0
@@ -31,7 +31,7 @@ end
     dt_max    = make_dt_max(_IMP_M)
     theta_vec = make_theta_vec(_IMP_M)
     precomp   = precompute_integrals(NaN, _IMP_M)[1]
-    cfg       = SimConstants(_IMP_M, _IMP_M+1, _IMP_Oh, _IMP_Fr, theta_vec, precomp, dt_max)
+    cfg       = SimConstants(_IMP_M, _IMP_M+1, _IMP_Oh, _IMP_Bo, theta_vec, precomp, dt_max)
 
     init = DropState(_IMP_M)
     init.z = 1.1; init.v = _IMP_v0; init.A[2] = 0.0; init.dt = dt_max; init.cp = 0

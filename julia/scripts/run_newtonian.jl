@@ -9,14 +9,14 @@ println("Oh      γ_lamb   γ_fit    err%     ω_lamb   ω_fit    err%")
 println("-"^65)
 
 for Oh in [0.01, 0.05, 0.1]
-    M = 6; Fr = 1e6; l = 2
+    M = 6; Bo = 1e-6; l = 2
     ω_lamb = sqrt(Float64(l*(l-1)*(l+2)))
     γ_lamb = Float64((l-1)*(2l+1)) * Oh
 
     theta_vec = make_theta_vec(M)
     precomp   = precompute_integrals(NaN, M)[1]
     dt_max    = make_dt_max(M)
-    cfg       = SimConstants(M, M+1, Oh, Fr, theta_vec, precomp, dt_max)
+    cfg       = SimConstants(M, M+1, Oh, Bo, theta_vec, precomp, dt_max)
     ob        = OBParams()
 
     init      = DropState(M)

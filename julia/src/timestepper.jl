@@ -24,7 +24,7 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
     jacobian_fn  = is_ob ? build_jacobian_ob  : build_jacobian
 
     rheol = is_ob ? "Oldroyd-B" : "Newtonian"
-    @info "solve_drop! starting" M=cfg.M Oh=cfg.Oh Fr=cfg.Fr t_end=t_end rheology=rheol dt_max=cfg.dt_max
+    @info "solve_drop! starting" M=cfg.M Oh=cfg.Oh Bo=cfg.Bo t_end=t_end rheology=rheol dt_max=cfg.dt_max
 
     history    = DropState[deepcopy(init)]
     dt         = dt_init

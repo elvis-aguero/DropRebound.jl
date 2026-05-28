@@ -3,7 +3,7 @@ struct SimConstants
     M         :: Int       # harmonics_qtt (number of Legendre modes, A₁…A_M)
     N_angles  :: Int       # angular_sampling = M+1
     Oh        :: Float64   # Ohnesorge number
-    Fr        :: Float64   # Froude number
+    Bo        :: Float64   # Bond number (ρgR²/σ): gravity / surface tension
     theta_vec :: Vector{Float64}  # M+1 angles ∈ (π/2, π], Gauss-Legendre quadrature roots
     precomp_I :: Matrix{Float64}  # precomputed_integrals output (M+1 × M+1)
     dt_max    :: Float64          # maximum allowed time step

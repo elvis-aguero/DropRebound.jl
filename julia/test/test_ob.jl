@@ -2,11 +2,11 @@ using Test, LinearAlgebra
 using DropSolver
 
 @testset "Oldroyd-B extension" begin
-    M = 4; Oh = 0.05; Fr = 1e12   # gravity negligible
+    M = 4; Oh = 0.05; Bo = 1e-12   # gravity negligible
 
     theta_vec = collect(range(π, 0; length=M+1))
     precomp   = precompute_integrals(NaN, M)[1]
-    cfg       = SimConstants(M, M+1, Oh, Fr, theta_vec, precomp, 0.005)
+    cfg       = SimConstants(M, M+1, Oh, Bo, theta_vec, precomp, 0.005)
     ob_newtonian = OBParams(0.0, 1.0)
     ob_ob        = OBParams(0.5, 0.5)
 
@@ -51,11 +51,11 @@ using DropSolver
 end
 
 @testset "OB l=2: decay rate decreases with De₁" begin
-    M  = 6; Oh = 0.02; Fr = 1e6
+    M  = 6; Oh = 0.02; Bo = 1e-6
     theta_vec = collect(range(π, 0; length=M+1))
     precomp   = precompute_integrals(NaN, M)[1]
     dt_max    = 2π / (sqrt(Float64(M*(M+2)*(M-1))) * 8)
-    cfg       = SimConstants(M, M+1, Oh, Fr, theta_vec, precomp, dt_max)
+    cfg       = SimConstants(M, M+1, Oh, Bo, theta_vec, precomp, dt_max)
 
     init = DropState(M)
     init.A[2] = 0.05; init.z = 2.0; init.v = 0.0

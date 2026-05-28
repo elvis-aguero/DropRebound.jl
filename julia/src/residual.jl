@@ -36,7 +36,7 @@ Fill residual vector R (length 3M+1) in-place. Seven blocks:
   R3: contact BCs (cp equations)
   R4: free-surface pressure BCs (M+1-cp equations)
   R6: dz/dτ = v
-  R7: dv/dτ = -1/Fr - cp*B₁
+  R7: dv/dτ = -Bo - cp*B₁
 
 - history: Vector of DropState, most recent last. length=1 → BDF1, length=2 → BDF2.
 - cp: number of contact angles (0 = no contact)
@@ -46,7 +46,7 @@ function build_residual!(R::AbstractVector, state::DropState,
                          cp::Int, cfg::SimConstants, ob::OBParams)
     M  = cfg.M
     Oh = cfg.Oh
-    Fr = cfg.Fr
+    Bo = cfg.Bo
     θv = cfg.theta_vec
     order = length(history)
 
@@ -115,8 +115,8 @@ function build_residual!(R::AbstractVector, state::DropState,
     # ── Block R6: BDF(dz/dτ = v) ────────────────────────────────────────────
     R[3M] = c[end] * z + sum(c[j] * prev_z[j] for j in 1:order) - dt * v
 
-    # ── Block R7: BDF(dv/dτ = -1/Fr - cp*B₁) ────────────────────────────────
+    # ── Block R7: BDF(dv/dτ = -Bo - cp*B₁) ──────────────────────────────────
     B1_force = cp > 0 ? B[2] : 0.0
     R[3M+1] = c[end] * v + sum(c[j] * prev_v[j] for j in 1:order) -
-              dt * (-1.0/Fr - B1_force)
+              dt * (-Bo - B1_force)
 end

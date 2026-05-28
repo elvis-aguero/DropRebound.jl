@@ -70,7 +70,7 @@ end
 # Run one simulation and extract γ and ω
 # ---------------------------------------------------------------------------
 function run_one(Oh, De1, beta_s; l=2, M=6, t_end_periods=6)
-    Fr = 1e6
+    Bo = 1e-6
     sigma_exact = find_ob_eigenvalue(Oh, De1, beta_s, l)
     omega_ex    = imag(sigma_exact)
     gamma_ex    = real(sigma_exact)
@@ -78,7 +78,7 @@ function run_one(Oh, De1, beta_s; l=2, M=6, t_end_periods=6)
     theta_vec = make_theta_vec(M)
     precomp   = precompute_integrals(NaN, M)[1]
     dt_max    = make_dt_max(M)
-    cfg       = SimConstants(M, M + 1, Oh, Fr, theta_vec, precomp, dt_max)
+    cfg       = SimConstants(M, M + 1, Oh, Bo, theta_vec, precomp, dt_max)
     ob        = OBParams(De1, beta_s)
 
     init      = DropState(M)

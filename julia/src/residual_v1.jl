@@ -10,7 +10,7 @@ Row layout (length 3M+1):
     No contact:  M+1 GL nodes on [-1,1], p=0 everywhere
     Contact:     row 2M-1 = contact-height h(θ*)=0;  rows 2M:3M-1 = M GL free-surface nodes
   R6  [3M]          BDF dz/dτ = v
-  R7  [3M+1]        BDF dv/dτ = -1/Fr + F_contact
+  R7  [3M+1]        BDF dv/dτ = -Bo + F_contact
 
 R7 contact force uses v1 formula: (3/2)·z_prev²·ΣBₙ·∫Pₙ(u)/u³du  (z_prev frozen → linear in B)
 """
@@ -19,7 +19,7 @@ function build_residual_v1!(R::AbstractVector, state::DropState,
                              cfg::SimConstants)
     M    = cfg.M
     Oh   = cfg.Oh
-    Fr   = cfg.Fr
+    Bo   = cfg.Bo
     θs   = state.theta_star
     contact = θs < π - 1e-10
 
@@ -83,7 +83,7 @@ function build_residual_v1!(R::AbstractVector, state::DropState,
     end
 
     R[3M+1] = c[end] * v + sum(c[j] * prev_v[j] for j in 1:order) -
-              dt * (-1.0/Fr + F_contact)
+              dt * (-Bo + F_contact)
 end
 
 """

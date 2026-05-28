@@ -86,14 +86,14 @@ end
 # Shared simulation runner
 # ---------------------------------------------------------------------------
 function run_ob_sim(Oh, De1, beta_s; l=2, M=6, A2_init=0.05, t_end_periods=6)
-    Fr = 1e6
+    Bo = 1e-6
     sigma_exact = find_ob_eigenvalue(Oh, De1, beta_s, l)   # σ in simulation units
     omega_exact = imag(sigma_exact)
 
     theta_vec = make_theta_vec(M)
     precomp   = precompute_integrals(NaN, M)[1]
     dt_max    = make_dt_max(M)
-    cfg       = SimConstants(M, M + 1, Oh, Fr, theta_vec, precomp, dt_max)
+    cfg       = SimConstants(M, M + 1, Oh, Bo, theta_vec, precomp, dt_max)
     ob        = OBParams(De1, beta_s)
 
     init      = DropState(M)
