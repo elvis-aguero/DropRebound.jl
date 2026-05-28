@@ -4,7 +4,7 @@ Julia solver for the impact and rebound of a liquid drop on a flat substrate, wi
 
 ![Oldroyd-B drop impact — Oh = 0.30, De₁ = 0.5, β_s = 0.5](docs/impact_ob.gif)
 
-*Oldroyd-B drop (Oh = 0.30, De₁ = 0.5, β_s = 0.5, We ≈ 0.079). Meridional cross-section rendered at M = 20 Legendre modes.*
+*Oldroyd-B drop (Oh = 0.30, De₁ = 0.5, β_s = 0.5, We = 0.5). Meridional cross-section at M = 90 Legendre modes.*
 
 ## What it does
 

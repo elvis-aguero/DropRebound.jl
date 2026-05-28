@@ -11,12 +11,19 @@ function newton_solve!(X::Vector{Float64},
                        R!::Function,
                        J_fn::Function;
                        cache_key::Union{Nothing,Tuple} = nothing,
-                       tol::Float64 = 1e-10,
+                       tol::Float64 = 1e-8,
                        maxiter::Int = 100)
     buf = similar(X)
     R!(buf, X)
-    best_val = norm(buf)
-    best_X   = copy(X)
+    initial_norm = norm(buf)
+    best_val     = initial_norm
+    best_X       = copy(X)
+
+    # Mixed tolerance: absolute floor OR 6-orders-of-magnitude relative
+    # reduction from initial residual.  The relative arm accommodates
+    # ill-conditioned warm-starts (large initial residual) at high M while
+    # still demanding high accuracy when the warm-start is already close.
+    effective_tol = max(tol, initial_norm * 1e-6)
 
     for iter in 1:maxiter
         if cache_key !== nothing && haskey(_jac_cache, cache_key)
@@ -41,13 +48,13 @@ function newton_solve!(X::Vector{Float64},
             best_val = val
             best_X  .= X
         end
-        if val < tol || norm(δX) < 1e-12
+        if val < effective_tol || norm(δX) < 1e-12
             break
         end
     end
 
     X .= best_X
-    return best_val < tol
+    return best_val < effective_tol
 end
 
 """Clear the Jacobian cache (call when cp or dt changes)."""

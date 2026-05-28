@@ -8,14 +8,17 @@ At each step:
      using the penetrated state as the initial guess (warm start)
   3. Also try cp_prev±1 for smooth contact transitions
   4. Accept the cp with smallest |contact_error|; reject penetrating cp=0 states
-  5. If all fail: halve dt and retry
-  6. Ramp dt back toward dt_max at +10% per step
+  5. If narrow search fails: expand search to cp_prev+2…cp_prev+n_extra before
+     halving dt. At high M the collocation points are more densely packed, so a
+     vigorous impact may require several contact points immediately.
+  6. If all fail: halve dt and retry
+  7. Ramp dt back toward dt_max at +10% per step
 """
 function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
                      t_end::Float64      = 10.0,
                      save_every::Float64 = 0.1,
                      dt_init::Float64    = cfg.dt_max,
-                     dt_min::Float64     = 1e-6)
+                     dt_min::Float64     = cfg.dt_max * 1e-4)
 
     is_ob = ob.De1 > 0.0 && ob.beta_s < 1.0
     pack_fn      = is_ob ? pack_X_ob     : (s, M) -> pack_X(s, M)
@@ -93,6 +96,45 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
                 if err < best_err
                     best_err   = err
                     best_state = candidate
+                end
+            end
+        end
+
+        # Expanded cp search: at high M the collocation points are dense, so a
+        # vigorous impact may require more contact points than cp_prev+1.
+        # Before halving dt, search up to cp_prev + n_extra.
+        if best_state === nothing || best_err == Inf
+            n_extra = max(2, cfg.M ÷ 10)
+            for cp in cp_prev + 2 : min(cfg.N_angles - 1, cp_prev + n_extra)
+                hist_slice = order == 2 ? history[end-1:end] : history[end:end]
+                X0 = pack_fn(history[end], cfg.M)
+                R! = (buf, Xv) -> begin
+                    s = deepcopy(history[end])
+                    unpack_fn!(s, Xv, cfg.M)
+                    s.cp = cp
+                    fill!(buf, 0.0)
+                    residual_fn!(buf, s, hist_slice, dt, cp, cfg, ob)
+                end
+                J_fn = Xv -> begin
+                    s = deepcopy(history[end])
+                    unpack_fn!(s, Xv, cfg.M)
+                    s.cp = cp
+                    jacobian_fn(s, hist_slice, dt, cp, cfg, ob)
+                end
+                X   = copy(X0)
+                key = (cfg.M, cp, round(dt; sigdigits=6), order, is_ob)
+                converged = newton_solve!(X, R!, J_fn; cache_key=key)
+                if converged
+                    candidate   = deepcopy(history[end])
+                    unpack_fn!(candidate, X, cfg.M)
+                    candidate.t  = t + dt
+                    candidate.dt = dt
+                    candidate.cp = cp
+                    err = abs(contact_error(candidate, cfg.theta_vec, cp))
+                    if err < best_err
+                        best_err   = err
+                        best_state = candidate
+                    end
                 end
             end
         end
