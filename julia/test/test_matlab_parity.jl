@@ -1,6 +1,5 @@
 using Test
 using DropSolver
-using DropSolver: collect_Pl
 
 # ── Reference values (N=90 modes, linearized solver, BDF1) ───────────────────
 # Physical: ρ=0.96 g/cm³, σ=20.5 dyn/cm, R=0.0201 cm, ν=0.199 cm²/s, v₀=-9.156 cm/s
@@ -12,32 +11,6 @@ const MATLAB_v0           = -0.281
 const MATLAB_CONTACT_TIME = 2.99     # dimensionless contact duration
 const MATLAB_MAX_RADIUS   = 0.397    # dimensionless maximum spreading radius
 const MATLAB_COR          = 0.484    # coefficient of restitution
-
-function compute_contact_radius(state::DropState, cfg::SimConstants)
-    cp = state.cp
-    cp == 0 && return 0.0
-    θ = cfg.theta_vec[cp]
-    M = cfg.M
-    P = collect_Pl(M, [cos(θ)])
-    deform = sum(P[1, n+1] * state.A[n] for n in 2:M)
-    return sin(θ) * (1.0 + deform)
-end
-
-function compute_cor(states, Bo)
-    contact_idx = findall(s -> s.cp > 0, states)
-    isempty(contact_idx) && return NaN
-    first_c = contact_idx[1]
-    last_c  = contact_idx[end]
-    last_c == length(states) && return NaN
-    v_in  = first_c > 1 ? states[first_c - 1].v : states[first_c].v
-    z_in  = first_c > 1 ? states[first_c - 1].z : states[first_c].z
-    v_out = states[last_c + 1].v
-    z_out = states[last_c + 1].z
-    E_in  = 0.5 * v_in^2
-    E_out = 0.5 * v_out^2 + Bo * (z_out - z_in)
-    E_in ≈ 0 && return NaN
-    return sqrt(abs(E_out / E_in))
-end
 
 @testset "MATLAB parity: Newtonian KPIs at M=20 (<5% error)" begin
     M         = 20
@@ -56,15 +29,12 @@ end
     @test all(isfinite(s.A[2]) for s in states)
     @test any(s.cp > 0 for s in states)
 
-    contact_idx = findall(s -> s.cp > 0, states)
-    t_contact = times[contact_idx[end]] - times[contact_idx[1]]
-    max_r     = maximum(compute_contact_radius(s, cfg) for s in states if s.cp > 0)
-    cor       = compute_cor(states, MATLAB_Bo)
+    kpis = extract_kpis(times, states, cfg)
 
-    @test !isnan(cor)
-    @test abs(t_contact - MATLAB_CONTACT_TIME) / MATLAB_CONTACT_TIME < 0.05
-    @test abs(max_r     - MATLAB_MAX_RADIUS)   / MATLAB_MAX_RADIUS   < 0.05
-    @test abs(cor       - MATLAB_COR)           / MATLAB_COR          < 0.05
+    @test !isnan(kpis.cor)
+    @test abs(kpis.contact_time - MATLAB_CONTACT_TIME) / MATLAB_CONTACT_TIME < 0.05
+    @test abs(kpis.max_radius   - MATLAB_MAX_RADIUS)   / MATLAB_MAX_RADIUS   < 0.05
+    @test abs(kpis.cor          - MATLAB_COR)           / MATLAB_COR          < 0.05
 end
 
 @testset "OB impact: polymer stress changes contact metrics" begin
@@ -80,18 +50,18 @@ end
     ob_N  = OBParams(0.0, 1.0)
     ob_OB = OBParams(0.5, 0.5)
 
-    _, states_N  = solve_drop!(cfg, ob_N,  deepcopy(init); t_end=8.0, save_every=0.02)
-    _, states_OB = solve_drop!(cfg, ob_OB, deepcopy(init); t_end=8.0, save_every=0.02)
+    times_N,  states_N  = solve_drop!(cfg, ob_N,  deepcopy(init); t_end=8.0, save_every=0.02)
+    times_OB, states_OB = solve_drop!(cfg, ob_OB, deepcopy(init); t_end=8.0, save_every=0.02)
 
-    @test all(isfinite(s.z)    for s in states_N)
-    @test all(isfinite(s.z)    for s in states_OB)
+    @test all(isfinite(s.z) for s in states_N)
+    @test all(isfinite(s.z) for s in states_OB)
     @test any(s.cp > 0 for s in states_N)
     @test any(s.cp > 0 for s in states_OB)
 
-    cor_N  = compute_cor(states_N,  MATLAB_Bo)
-    cor_OB = compute_cor(states_OB, MATLAB_Bo)
+    kpis_N  = extract_kpis(times_N,  states_N,  cfg)
+    kpis_OB = extract_kpis(times_OB, states_OB, cfg)
 
-    @test !isnan(cor_N)
-    @test !isnan(cor_OB)
-    @test cor_OB != cor_N   # viscoelasticity changes rebound energy
+    @test !isnan(kpis_N.cor)
+    @test !isnan(kpis_OB.cor)
+    @test kpis_OB.cor != kpis_N.cor   # viscoelasticity changes rebound energy
 end

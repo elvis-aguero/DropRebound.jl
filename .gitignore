@@ -2,4 +2,9 @@
 .claude/
 *.jl.cov
 *.jl.mem
-julia/output/
+julia/outputs/csv/*
+julia/outputs/jld/*
+julia/outputs/figures/*
+!julia/outputs/csv/.gitkeep
+!julia/outputs/jld/.gitkeep
+!julia/outputs/figures/.gitkeep

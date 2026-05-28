@@ -1,3 +1,8 @@
-output/
+outputs/csv/*
+outputs/jld/*
+outputs/figures/*
+!outputs/csv/.gitkeep
+!outputs/jld/.gitkeep
+!outputs/figures/.gitkeep
 *.jl.cov
 *.jl.mem

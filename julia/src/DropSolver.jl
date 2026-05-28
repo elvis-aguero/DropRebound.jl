@@ -41,5 +41,9 @@ include("contact.jl")
 include("timestepper.jl")
 include("residual_v1.jl")
 include("timestepper_v1.jl")
+include("postprocessing.jl")
+
+# Export postprocessing
+export SweepKPIs, extract_kpis, compute_contact_radius, drop_profile
 
 end # module

@@ -12,4 +12,5 @@ using DropSolver
     include("test_ob_eigenvalue.jl")
     include("test_impact.jl")
     include("test_matlab_parity.jl")
+    include("test_postprocessing.jl")
 end

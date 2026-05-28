@@ -207,6 +207,47 @@ julia --project=julia julia/scripts/run_impact.jl
 
 Runs both fluid types at $M = 20$ and prints a side-by-side time series of center-of-mass height, contact point count, and leading shape amplitude — showing how polymer stress modifies spreading and rebound.
 
+### Parameter sweep
+
+```bash
+julia --project=julia julia/scripts/run_sweep.jl [output.csv]
+```
+
+Runs a Cartesian product of (Oh, Bo, We, De₁, β_s, M) and streams results to a CSV file. Each row contains the four KPIs: contact time, coefficient of restitution, maximum spreading radius, and maximum $|A_2|$ deformation. Interrupted runs resume automatically — rows already in the CSV are skipped. Edit the grid constants at the top of the script to change the sweep range.
+
+### Animation
+
+```bash
+julia --project=julia julia/scripts/run_animation.jl [output.mp4]
+```
+
+Renders a drop-impact simulation as an MP4 video. Frames are rasterized in pure Julia (no plotting packages) and piped as raw RGB24 to `ffmpeg`. Requires `ffmpeg` on `PATH`. The 2D output shows the meridional cross-section of the drop with the substrate at $z = 0$.
+
+## Postprocessing API
+
+```julia
+# Reconstruct the drop surface as (xs, zs) Cartesian coordinates
+xs, zs = drop_profile(state, cfg; n_theta=200)
+
+# Dimensionless contact-patch radius at a single state
+r = compute_contact_radius(state, cfg)
+
+# Extract all KPIs from a completed simulation run
+kpis = extract_kpis(times, states, cfg)
+# → SweepKPIs(contact_time, cor, max_radius, max_A2)
+```
+
+`SweepKPIs` fields:
+
+| Field | Description |
+|-------|-------------|
+| `contact_time` | Duration of the contact phase in capillary times |
+| `cor` | Coefficient of restitution $\sqrt{|E_{\rm out}/E_{\rm in}|}$ |
+| `max_radius` | Maximum dimensionless spreading radius during contact |
+| `max_A2` | Maximum $|A_2|$ shape amplitude during contact |
+
+All fields are `NaN` / `0.0` when no contact occurs.
+
 ## Numerical method
 
 The Legendre spectral expansion is exact for the linearized problem. Key implementation choices:
@@ -221,7 +262,7 @@ The Legendre spectral expansion is exact for the linearized problem. Key impleme
 julia --project=julia -e 'using Pkg; Pkg.test()'
 ```
 
-125 tests cover: Legendre recursion, BDF coefficients, Newtonian free-oscillation decay and frequency (< 5% vs Lamb), Oldroyd-B eigenvalue parity (< 5% vs characteristic equation), and drop impact physics (contact detection, Newtonian vs OB divergence during contact).
+148 tests cover: Legendre recursion, BDF coefficients, Newtonian free-oscillation decay and frequency (< 5% vs Lamb), Oldroyd-B eigenvalue parity (< 5% vs characteristic equation), drop impact physics (contact detection, Newtonian vs OB divergence during contact), MATLAB parity KPIs, and postprocessing functions (drop profile, contact radius, KPI extraction).
 
 ## License
 
