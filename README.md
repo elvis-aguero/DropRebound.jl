@@ -33,13 +33,13 @@ Two dimensionless groups control the Newtonian problem:
 ## Requirements
 
 - Julia 1.12+
-- No external packages (only `LinearAlgebra` from the standard library)
+- No external packages (only `LinearAlgebra` and `Logging` from the standard library)
 
 ## Installation
 
 ```julia
 # from the julia/ directory
-julia --project=.
+julia --project=julia
 ```
 
 Or activate in any Julia session:
@@ -52,7 +52,7 @@ using DropSolver
 ## Running the tests
 
 ```bash
-julia --project=. -e 'using Pkg; Pkg.test()'
+julia --project=julia -e 'using Pkg; Pkg.test()'
 ```
 
 All 125 tests pass, including:
@@ -64,12 +64,12 @@ All 125 tests pass, including:
 
 ## Showcase scripts
 
-All scripts are run from the `julia/` directory.
+All scripts are run from the repo root.
 
 ### Newtonian free oscillation — Lamb limit
 
 ```bash
-julia --project=. scripts/run_newtonian.jl
+julia --project=julia julia/scripts/run_newtonian.jl
 ```
 
 Prints a table comparing the solver's decay rate $\gamma$ and frequency $\omega$ against the Lamb (1932) analytical result for $l = 2$ oscillations at several Ohnesorge numbers. Expected output:
@@ -84,7 +84,7 @@ Oh=0.100  ...     ...      < 5%     ...      ...      < 2%
 ### Oldroyd-B oscillation — effect of elasticity
 
 ```bash
-julia --project=. scripts/run_ob_case.jl
+julia --project=julia julia/scripts/run_ob_case.jl
 ```
 
 Compares the $l = 2$ decay rate and frequency for Newtonian vs OB at increasing $\mathrm{De}_1$. Demonstrates that viscoelasticity suppresses viscous damping.
@@ -92,7 +92,7 @@ Compares the $l = 2$ decay rate and frequency for Newtonian vs OB at increasing 
 ### OB eigenvalue sweep — characteristic equation parity
 
 ```bash
-julia --project=. scripts/run_eigenvalue_sweep.jl
+julia --project=julia julia/scripts/run_eigenvalue_sweep.jl
 ```
 
 Sweeps $(\mathrm{Oh}, \mathrm{De}_1, \beta_s)$ and compares the simulated decay rate and frequency against the root of the OB characteristic equation. All errors < 5%.
@@ -100,7 +100,7 @@ Sweeps $(\mathrm{Oh}, \mathrm{De}_1, \beta_s)$ and compares the simulated decay 
 ### Drop impact: MATLAB parity table
 
 ```bash
-julia --project=. scripts/run_matlab_parity.jl
+julia --project=julia julia/scripts/run_matlab_parity.jl
 ```
 
 Runs the canonical impact case ($\mathrm{Oh} = 0.3038$, $\mathrm{Fr} = 53.9$, $v_0 = -0.281$) at $M = 6, 10, 20, 40, 60$ and compares against the MATLAB reference (N=90 modes). Expected output at M=20:
@@ -112,7 +112,7 @@ M=20   t_c=2.938  err=1.7%   r_max=0.392  err=1.3%   CoR=0.476  err=1.6%
 ### Drop impact: Newtonian vs Oldroyd-B trajectory
 
 ```bash
-julia --project=. scripts/run_impact.jl
+julia --project=julia julia/scripts/run_impact.jl
 ```
 
 Runs both Newtonian and OB drops at $M = 20$ and prints a side-by-side time series of $(t, z, c_p, A_2)$, showing how viscoelasticity modifies the contact and rebound phases.
