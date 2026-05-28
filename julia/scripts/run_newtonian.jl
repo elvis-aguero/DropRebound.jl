@@ -13,9 +13,9 @@ for Oh in [0.01, 0.05, 0.1]
     ω_lamb = sqrt(Float64(l*(l-1)*(l+2)))
     γ_lamb = Float64((l-1)*(2l+1)) * Oh
 
-    theta_vec = collect(range(π, 0; length=M+1))
+    theta_vec = make_theta_vec(M)
     precomp   = precompute_integrals(NaN, M)[1]
-    dt_max    = 2π / (sqrt(Float64(M*(M+2)*(M-1))) * 8)
+    dt_max    = make_dt_max(M)
     cfg       = SimConstants(M, M+1, Oh, Fr, theta_vec, precomp, dt_max)
     ob        = OBParams()
 

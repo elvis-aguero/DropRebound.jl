@@ -38,6 +38,22 @@ function precompute_integrals(angles_in, N::Int)
     return M_mat, angles
 end
 
+"""
+    integral_at_theta_star(theta_star, M; n_quad=60) → Vector{Float64}
+
+Compute ∫_{-1}^{cos(θ*)} Pₙ(u)/u³ du for n = 0…M.
+Returns a length-(M+1) vector.  Valid for θ* ∈ (π/2, π) so the upper
+limit cos(θ*) ∈ (-1, 0) — the singularity at u=0 is never reached.
+"""
+function integral_at_theta_star(theta_star::Float64, M::Int; n_quad::Int=60)
+    a = -1.0
+    b = cos(theta_star)
+    t, w = gauss_legendre_nodes(n_quad, a, b)
+    Pt = collect_Pl(M, t)          # (n_quad × M+1)
+    integrand = Pt ./ (t .^ 3)    # (n_quad × M+1)
+    return integrand' * w          # length M+1
+end
+
 """Gauss-Legendre nodes and weights on [a, b] via Golub-Welsch."""
 function gauss_legendre_nodes(n::Int, a::Float64, b::Float64)
     β = [k / sqrt(4k^2 - 1) for k in 1:n-1]

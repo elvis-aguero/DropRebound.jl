@@ -27,6 +27,7 @@ function newton_solve!(X::Vector{Float64},
             if cache_key !== nothing
                 Jinv = inv(J)
                 _jac_cache[cache_key] = Jinv
+                @debug "Jacobian cached" key=cache_key
                 δX = Jinv * buf
             else
                 δX = J \ buf

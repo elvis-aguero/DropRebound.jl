@@ -3,16 +3,74 @@
 
 Surface height at polar angle θ: z(θ) = cos(θ)*(1 + Σₙ Pₙ(cosθ)*Aₙ) + z_COM.
 Note: modes in state.A are A[1]=A₁ (always 0), A[2]=A₂, ..., A[M]=A_M.
-Summation is over n=1..M-1 (A[2..M] = A₂..A_M).
+Summation uses Pₙ(cosθ)*Aₙ for n=2..M (mode index matches Legendre index).
 """
 function drop_height(state::DropState, θ::Float64)
     M = length(state.A)     # = M
-    P = collect_Pl(M - 1, [cos(θ)])   # (1 × M), col k = P_{k-1}
-    # Sum: Σₙ₌₁^{M-1} P_n(cosθ) * A_{n+1} ... but A[1]=0, A[2]=A₂...
-    # collect_Pl gives P₀..P_{M-1}. We need P₁..P_{M-1} times A₂..A_M.
-    # P[:,2] = P₁, P[:,3] = P₂, ..., P[:,M] = P_{M-1}
-    Σ = sum(P[1, n+1] * state.A[n+1] for n in 1:M-1)
+    P = collect_Pl(M, [cos(θ)])   # (1 × M+1), col k = P_{k-1}
+    # Sum: Σₙ₌₂^M Pₙ(cosθ) * Aₙ
+    # collect_Pl(M,...) gives columns P₀..P_M.
+    # P[:,n+1] = P_n(cosθ). Mode Aₙ stored at state.A[n] (1-based).
+    Σ = sum(P[1, n+1] * state.A[n] for n in 2:M)
     return cos(θ) * (1.0 + Σ) + state.z
+end
+
+"""
+    update_theta_star!(state) → Bool
+
+Scalar Newton solve to find θ* such that h(θ*) = drop_height(state, θ*) = 0.
+Updates state.theta_star in-place.  Returns true if contact status changed.
+
+Rules:
+- If h(π) > 0 (south pole above substrate): no contact → θ* = π
+- If h(π) ≤ 0: contact is active; find θ* ∈ (π/2, π) where h(θ*) = 0
+  using bisection (robust) followed by one Newton polish step.
+"""
+function update_theta_star!(state::DropState)
+    PI = Float64(π)
+    was_contact = state.theta_star < PI - 1e-10
+
+    if drop_height(state, PI) > 0.0
+        state.theta_star = PI
+        return was_contact
+    end
+
+    # Contact active: bisect on [π/2+ε, π] for the zero of h
+    lo::Float64 = PI/2 + 1e-6
+    hi::Float64 = PI
+    h_lo = drop_height(state, lo)
+
+    if h_lo <= 0.0
+        state.theta_star = lo
+        return !was_contact
+    end
+
+    for _ in 1:50
+        mid = (lo + hi) / 2
+        h_mid = drop_height(state, mid)
+        abs(h_mid) < 1e-12 && break
+        if h_mid > 0.0
+            lo = mid
+        else
+            hi = mid
+        end
+        hi - lo < 1e-14 && break
+    end
+    θ_new = (lo + hi) / 2
+
+    # One Newton polish
+    h_val = drop_height(state, θ_new)
+    M = length(state.A)
+    P  = collect_Pl(M, [cos(θ_new)])
+    Σ  = sum(P[1, n+1] * state.A[n] for n in 2:M)
+    dP = sum(-sin(θ_new) * P[1, n+1] * state.A[n] for n in 2:M)
+    dh = -sin(θ_new) * (1.0 + Σ) + cos(θ_new) * dP
+    if abs(dh) > 1e-15
+        θ_new = clamp(θ_new - h_val / dh, PI/2 + 1e-6, PI - 1e-10)
+    end
+
+    state.theta_star = θ_new
+    return !was_contact
 end
 
 """

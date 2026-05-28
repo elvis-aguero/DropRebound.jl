@@ -1,12 +1,13 @@
 module DropSolver
 
 using LinearAlgebra
+using Logging
 
 # Included in order of dependency
 include("types.jl")
 
 # Export types
-export SimConstants, OBParams, DropState
+export SimConstants, OBParams, DropState, make_theta_vec, make_dt_max
 
 # Export residual and Jacobian functions
 export pack_X, unpack_X!, build_residual!, build_jacobian
@@ -21,10 +22,14 @@ export newton_solve!, clear_jac_cache!
 export precompute_integrals
 
 # Export contact detection functions
-export drop_height, contact_error
+export drop_height, contact_error, update_theta_star!
 
-# Export time-stepper
-export solve_drop!
+# Export time-steppers
+export solve_drop!, solve_drop_v1!
+
+# Export v1 (continuous θ*) residual/Jacobian
+export build_residual_v1!, build_jacobian_v1, integral_at_theta_star
+
 include("legendre.jl")
 include("integrals.jl")
 include("bdf.jl")
@@ -34,5 +39,7 @@ include("ob_extension.jl")
 include("newton.jl")
 include("contact.jl")
 include("timestepper.jl")
+include("residual_v1.jl")
+include("timestepper_v1.jl")
 
 end # module

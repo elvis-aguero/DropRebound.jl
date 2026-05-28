@@ -73,8 +73,8 @@ function build_jacobian(state::DropState, history::Vector{DropState},
     # R7: c[end]*v + ... - dt*(-1/Fr - cp*B₁) = 0
     J[3M+1, 3M+1] = ak
     if cp > 0
-        # B₁ = X[2M], coefficient from -dt*(-B₁) = dt*B₁
-        J[3M+1, 2M] = -dt
+        # B₁ = X[2M], coefficient from -dt*(-B₁) = +dt*B₁
+        J[3M+1, 2M] = dt
     end
 
     return J

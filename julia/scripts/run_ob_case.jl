@@ -5,9 +5,9 @@ using Pkg; Pkg.activate(joinpath(@__DIR__, ".."))
 using DropSolver, Printf
 
 function run_case(Oh, De1, beta_s; M=6, Fr=1e6, t_end=30.0)
-    theta_vec = collect(range(π, 0; length=M+1))
+    theta_vec = make_theta_vec(M)
     precomp   = precompute_integrals(NaN, M)[1]
-    dt_max    = 2π / (sqrt(Float64(M*(M+2)*(M-1))) * 8)
+    dt_max    = make_dt_max(M)
     cfg       = SimConstants(M, M+1, Oh, Fr, theta_vec, precomp, dt_max)
     ob        = OBParams(De1, beta_s)
 

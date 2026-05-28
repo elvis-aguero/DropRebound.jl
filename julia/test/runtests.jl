@@ -9,4 +9,7 @@ using DropSolver
     include("test_contact.jl")
     include("test_newtonian.jl")
     include("test_ob.jl")
+    include("test_ob_eigenvalue.jl")
+    include("test_impact.jl")
+    include("test_matlab_parity.jl")
 end
