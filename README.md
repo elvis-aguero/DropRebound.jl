@@ -2,6 +2,10 @@
 
 Julia solver for the impact and rebound of a liquid drop on a flat substrate, with support for Newtonian and viscoelastic (Oldroyd-B) rheology.
 
+![Oldroyd-B drop impact — Oh = 0.30, De₁ = 0.5, β_s = 0.5](docs/impact_ob.gif)
+
+*Oldroyd-B drop (Oh = 0.30, De₁ = 0.5, β_s = 0.5, We ≈ 0.079). Meridional cross-section rendered at M = 20 Legendre modes.*
+
 ## What it does
 
 A spherical drop falls under gravity, deforms on contact with a solid surface, spreads, then rebounds. This package solves the linearized spectral equations governing that process: the drop shape is expanded in Legendre modes around the spherical base state (valid for small deformations, $|A_n| \ll 1$), contact is tracked through a discrete set of collocation points on the drop surface, and the equations are integrated with an adaptive BDF1/BDF2 time-stepper.

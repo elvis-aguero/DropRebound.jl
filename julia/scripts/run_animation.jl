@@ -4,7 +4,10 @@
 # plotting packages required.
 #
 # Usage:
-#   julia --project=.. scripts/run_animation.jl [output.mp4]
+#   julia --project=.. scripts/run_animation.jl [output.mp4 [De1 [beta_s [Oh [Bo [We]]]]]]
+#
+# Defaults: Newtonian (De1=0, beta_s=1), Oh=0.3038, Bo=1/53.9, We=0.079
+# Example (Oldroyd-B): julia --project=.. scripts/run_animation.jl ob.mp4 0.5 0.5
 #
 # Requires: ffmpeg on PATH.
 
@@ -14,14 +17,15 @@ using Printf
 using Logging
 
 # ---------------------------------------------------------------------------
-# Simulation parameters — edit to taste
+# Simulation parameters (overridable via ARGS)
 # ---------------------------------------------------------------------------
 const M      = 20
-const Oh     = 0.3038
-const Bo     = 1/53.9
-const v0     = -0.281       # impact velocity (We ≈ 0.079)
-const De1    = 0.0
-const beta_s = 1.0          # Newtonian
+const Oh     = length(ARGS) >= 4 ? parse(Float64, ARGS[4]) : 0.3038
+const Bo     = length(ARGS) >= 5 ? parse(Float64, ARGS[5]) : 1/53.9
+const We     = length(ARGS) >= 6 ? parse(Float64, ARGS[6]) : 0.079
+const v0     = -sqrt(We)
+const De1    = length(ARGS) >= 2 ? parse(Float64, ARGS[2]) : 0.0
+const beta_s = length(ARGS) >= 3 ? parse(Float64, ARGS[3]) : 1.0
 
 const T_END      = 8.0
 const SAVE_EVERY = 0.02     # time between saved frames → ~400 frames at T_END=8
@@ -32,7 +36,7 @@ const SAVE_EVERY = 0.02     # time between saved frames → ~400 frames at T_END
 const FPS     = 40
 const WIDTH   = 480        # pixels (should be even)
 const HEIGHT  = 480
-const MP4_OUT = length(ARGS) > 0 ? ARGS[1] :
+const MP4_OUT = length(ARGS) >= 1 ? ARGS[1] :
                 joinpath(@__DIR__, "..", "outputs", "figures", "impact.mp4")
 
 # ---------------------------------------------------------------------------
