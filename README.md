@@ -12,16 +12,17 @@ The Julia module name is `DropSolver` (`using DropSolver`).
 
 All quantities are non-dimensionalized by the drop radius $R$ and the capillary time $\tau_{\rm cap} = \sqrt{\rho R^3 / \sigma}$ (the natural oscillation period of a free drop). Simulation output times are in units of $\tau_{\rm cap}$.
 
-Two numbers control the Newtonian problem:
+Three numbers control the Newtonian problem:
 
 | Parameter | Definition | Physical meaning |
 |-----------|-----------|-----------------|
 | Oh (Ohnesorge) | $\nu\sqrt{\rho/(\sigma R)}$ | Ratio of viscous dissipation to surface-tension restoring force. Oh ≪ 1: nearly inviscid, bounces with little energy loss. Oh ~ 1: heavily damped, may not rebound. |
 | Bo (Bond) | $\rho g R^2 / \sigma$ | Ratio of gravitational body force to surface tension. Bo ≪ 1: surface tension dominates, drop stays nearly spherical at rest. Bo ~ 1: gravity flattens the drop significantly. |
+| We (Weber) | $\rho v_0^2 R / \sigma$ | Ratio of impact kinetic energy to surface tension. We ≪ 1: gentle impact, drop barely deforms. We ~ 1: vigorous spreading. In the solver, We = v₀² where v₀ is the dimensionless impact velocity set via `init.v`. |
 
 The gravity term in the center-of-mass equation is $-\mathrm{Bo}$ (dimensionless), so `Bo = 0` gives a gravity-free oscillation.
 
-As a reference point: a water–glycerol drop of radius 0.2 mm falling at 9 cm/s gives Oh ≈ 0.30, Bo ≈ 0.019.
+As a reference point: a water–glycerol drop of radius 0.2 mm falling at 9 cm/s gives Oh ≈ 0.30, Bo ≈ 0.019, We ≈ 0.079.
 
 ### Viscoelastic drops — the Oldroyd-B model
 
