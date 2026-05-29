@@ -8,10 +8,11 @@ At each step:
      using the penetrated state as the initial guess (warm start)
   3. Also try cp_prev±1 for smooth contact transitions
   4. Accept the cp with smallest |contact_error|; reject penetrating cp=0 states
-  5. If narrow search fails: expand search to cp_prev+2…cp_prev+n_extra before
-     halving dt. At high M the collocation points are more densely packed, so a
-     vigorous impact may require several contact points immediately.
-  6. If all fail: halve dt and retry
+  5. If all fail: halve dt and retry
+  6. After ≥4 halvings with no valid step, restart at the original step dt with
+     cp search expanded to cp_prev+2 (one extra level). This handles cases where
+     the contact patch spans more collocation points than cp_prev+1 predicts — a
+     physical need, not a time-step-size issue.
   7. Ramp dt back toward dt_max at +10% per step
 """
 function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
@@ -39,6 +40,11 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
     next_save    = t + save_every
     step_count   = 0
 
+    # Per-step adaptivity state (reset after each accepted step)
+    dt_step_start  = dt  # dt at the start of the current time step attempt
+    n_halvings     = 0   # halvings within the current step (or since last restart)
+    cp_upper_extra = 0   # additional cp levels granted by restart cycles (0 = normal)
+
     while t < t_end
         order   = min(length(history), 2)
         cp_prev = history[end].cp
@@ -46,11 +52,15 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
         best_state = nothing
         best_err   = Inf
 
+        # cp search upper bound: normally cp_prev+1 (continuity);
+        # each restart cycle grants one extra level up to N_angles-1
+        cp_upper = min(cfg.N_angles - 1, cp_prev + 1 + cp_upper_extra)
+
         # Collect candidate initial guesses: history[end] for each cp, plus
         # a warm-start from cp=0 solution when penetration is detected
         warm_start_X = nothing   # warm-start X for cp=1 if cp=0 penetrates
 
-        for cp in max(0, cp_prev - 1) : cp_prev + 1
+        for cp in max(0, cp_prev - 1) : cp_upper
             # Build history slice for BDF
             hist_slice = order == 2 ? history[end-1:end] : history[end:end]
 
@@ -100,48 +110,27 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
             end
         end
 
-        # Expanded cp search: at high M the collocation points are dense, so a
-        # vigorous impact may require more contact points than cp_prev+1.
-        # Before halving dt, search up to cp_prev + n_extra.
         if best_state === nothing || best_err == Inf
-            n_extra = max(2, cfg.M ÷ 10)
-            for cp in cp_prev + 2 : min(cfg.N_angles - 1, cp_prev + n_extra)
-                hist_slice = order == 2 ? history[end-1:end] : history[end:end]
-                X0 = pack_fn(history[end], cfg.M)
-                R! = (buf, Xv) -> begin
-                    s = deepcopy(history[end])
-                    unpack_fn!(s, Xv, cfg.M)
-                    s.cp = cp
-                    fill!(buf, 0.0)
-                    residual_fn!(buf, s, hist_slice, dt, cp, cfg, ob)
-                end
-                J_fn = Xv -> begin
-                    s = deepcopy(history[end])
-                    unpack_fn!(s, Xv, cfg.M)
-                    s.cp = cp
-                    jacobian_fn(s, hist_slice, dt, cp, cfg, ob)
-                end
-                X   = copy(X0)
-                key = (cfg.M, cp, round(dt; sigdigits=6), order, is_ob)
-                converged = newton_solve!(X, R!, J_fn; cache_key=key)
-                if converged
-                    candidate   = deepcopy(history[end])
-                    unpack_fn!(candidate, X, cfg.M)
-                    candidate.t  = t + dt
-                    candidate.dt = dt
-                    candidate.cp = cp
-                    err = abs(contact_error(candidate, cfg.theta_vec, cp))
-                    if err < best_err
-                        best_err   = err
-                        best_state = candidate
-                    end
-                end
-            end
-        end
+            n_halvings += 1
+            @debug "Step rejected" t=t dt=dt n_halvings=n_halvings cp_prev=cp_prev cp_upper_extra=cp_upper_extra
 
-        if best_state === nothing || best_err == Inf
+            # Principled cp restart: after ≥2 halvings without a valid step,
+            # reset to the original step dt and allow one more cp level. This
+            # handles vigorous impacts where the contact patch jumps more than
+            # one collocation point at once — a physical gap, not a time-step
+            # problem. Repeat up to 4 times (cp_prev+5 max) before halving.
+            # Threshold = 2 so the restart fires before dt can reach dt_min.
+            if n_halvings >= 2 && cp_upper_extra < 4 &&
+               cp_prev + 1 + cp_upper_extra < cfg.N_angles - 1
+                dt             = dt_step_start
+                cp_upper_extra += 1
+                n_halvings     = 0
+                @debug "cp restart: dt reset, cp_upper = cp_prev+$(1 + cp_upper_extra)" t=t dt=dt
+                clear_jac_cache!()
+                continue
+            end
+
             dt /= 2
-            @debug "Step rejected: halving dt" t=t new_dt=dt order=order cp_prev=cp_prev
             if dt < 10 * dt_min
                 @warn "dt approaching minimum — possible numerical difficulty" t=t dt=dt dt_min=dt_min
             end
@@ -175,8 +164,11 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
 
         @debug "Step accepted" t=t dt=dt cp=new_cp contact_err=best_err step=step_count
 
-        # Ramp dt back toward dt_max
-        dt = min(dt * 1.1, cfg.dt_max)
+        # Ramp dt back toward dt_max and reset per-step adaptivity state
+        dt             = min(dt * 1.1, cfg.dt_max)
+        dt_step_start  = dt
+        n_halvings     = 0
+        cp_upper_extra = 0
 
         if t >= next_save
             push!(saved_times, t)
