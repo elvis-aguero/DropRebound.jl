@@ -71,7 +71,7 @@ slightly deformed from its equilibrium spherical shape. Surface tension acts as 
 restoring force, and the drop will oscillate. Viscosity damps those oscillations. The
 question is: \emph{at what frequency does it oscillate, and how fast does it decay?}
 
-This sounds deceptively simple, but it couples three distinct pieces of physics:
+This couples three distinct pieces of physics:
 \begin{enumerate}
   \item The inviscid capillary (surface-tension-driven) oscillation modes, characterized
         by the frequency $\sigma_{l;0}$ for a deformation of spherical-harmonic order $l$.
@@ -377,16 +377,16 @@ radial component as
 where $U(x)$ is a dimensionless scalar function.
 
 \begin{notebox}[Why $U(x)/x^2$?]
-The scaling $1/x^2$ is conventional and simplifies the algebra significantly.
+The scaling $1/x^2$ is conventional and simplifies the algebra.
 It arises from the stream-function representation of poloidal flow, and ensures
-the ODE for $U$ takes the clean form \eqref{eq:ODE_U} below.
+the ODE for $U$ takes the standard form \eqref{eq:ODE_U} below.
 \end{notebox}
 
 \subsection{Derivation of the ODE for $U(x)$}
 
 \begin{derivbox}[Full derivation]
-We substitute the ansatz $u_r = \sigma R\,G(x)\,Y_l^m$ (where $G = U/x^2$, absorbing
-the $\epsilon_0 e^{-\sigma t}$ factors throughout) into the $r$-component of
+We substitute the ansatz $u_r = \sigma R\,G(x)\,Y_l^m$ (where $G = U/x^2$, factoring out
+the $\epsilon_0 e^{-\sigma t}$ terms throughout) into the $r$-component of
 \eqref{eq:NS_sigma}. The $r$-component of the vector Laplacian for an axisymmetric
 poloidal field is:
 \begin{equation}
@@ -555,7 +555,7 @@ The $r\theta$-component of the viscous stress tensor in spherical coordinates is
 \]
 For a poloidal velocity field with harmonic structure $Y_l^m$, using the stream-function
 representation and the incompressibility constraint to express $u_\theta$ in terms of $u_r$,
-one can show (after substantial but straightforward algebra) that $\tau_{r\theta} = 0$ at
+one can show that $\tau_{r\theta} = 0$ at
 $x=1$ reduces to:
 \begin{equation}
   \left[\,\frac{\dd^2}{\dd x^2} - \frac{2}{x}\frac{\dd}{\dd x} + \frac{l(l+1)}{x^2}\,\right]U = 0
@@ -582,8 +582,7 @@ Setting the sum to zero gives one equation relating $C$ and $\Pi_0$.
 
 \subsection{BC3: Normal stress condition}
 
-This is the most physically rich boundary condition, as it involves surface tension
-and couples the pressure, viscous stress, and surface curvature.
+This boundary condition couples pressure, viscous stress, and surface curvature through surface tension.
 
 \subsubsection{Mean curvature of the deformed surface}
 
@@ -680,7 +679,7 @@ This can be written compactly as
   \alpha^4 = q^2\!\left\{\,q^2\Pi_0 - 2l\!\left[\,U'(1) - 2U(1)\,\right]\right\}.
   \label{eq:alpha4}
 \end{equation}
-Crucially, $T_1$ and $\rho$ have \emph{completely cancelled}. The problem in terms
+$T_1$ and $\rho$ have cancelled. The problem in terms
 of $(\alpha, q)$ is universal.
 \end{derivbox}
 
@@ -739,7 +738,7 @@ This is identical to Chandrasekhar's characteristic equation for a viscous
 \emph{self-gravitating} liquid globe, with the identification that the self-gravitational
 parameter maps to $\alpha^2$. The physical restoring force (surface tension vs.\
 self-gravity) enters only through $\sigma_{l;0}$, which defines $\alpha$.
-Thus \eqref{eq:char_eq} is universal for any spherically symmetric restoring force.
+\eqref{eq:char_eq} holds for any spherically symmetric restoring force.
 \end{notebox}
 
 \begin{notebox}[Algebraic derivation remark]
@@ -750,7 +749,7 @@ use the identity
   j_{l+1}(q) = (2l+1)j_l(q)/q - j_{l-1}(q)
 \]
 (spherical Bessel recurrence) and the relation \eqref{eq:bessel_ratio}.
-The algebra is lengthy but elementary; each step uses only linear algebra and
+The algebra is lengthy; each step uses only linear algebra and
 these Bessel identities.
 \end{notebox}
 
@@ -830,7 +829,7 @@ which is a quadratic in $q^2/\alpha^2$, yielding
   \sigma_{l;\nu} = (l-1)(2l+1)\,\frac{\nu}{R^2} \pm \ii\,\sigma_{l;0},
   \label{eq:lamb}
 \end{equation}
-recovering \emph{Lamb's classical result}: viscosity simply adds a real damping rate
+recovering \emph{Lamb's classical result}: viscosity adds a real damping rate
 $(l-1)(2l+1)\nu/R^2$ to the inviscid oscillation frequency $\pm\ii\sigma_{l;0}$.
 
 %% ════════════════════════════════════════════════════════════════════════════
@@ -873,9 +872,7 @@ per mode via a quadratic fit to the dominant eigenvalue pair.
 \paragraph{Justification for discarding higher roots.} The quasi-static assumption
 restricts the drop shape to evolve through a one-parameter family of equilibrium shapes.
 Within that family, only the fundamental surface mode at each harmonic order $l$ is
-representable. Higher radial overtones involve internal nodal surfaces that have no
-counterpart in the quasi-static shape family and decay on timescales $\ll (R^2/\nu)$,
-well separated from the impact timescale.
+representable. Higher radial overtones have internal nodal surfaces absent from the quasi-static shape family. They decay on timescales $\ll (R^2/\nu)$, well separated from the impact timescale.
 
 %% ════════════════════════════════════════════════════════════════════════════
 \section{Summary of Key Equations}
