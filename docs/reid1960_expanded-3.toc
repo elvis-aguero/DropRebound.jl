@@ -51,9 +51,9 @@
 \contentsline {subsection}{\numberline {12.2}Linearisation and effective viscosity}{19}{subsection.12.2}%
 \contentsline {subsubsection}{\numberline {12.2.1}The two Deborah numbers}{20}{subsubsection.12.2.1}%
 \contentsline {subsection}{\numberline {12.3}Boundary condition audit}{21}{subsection.12.3}%
-\contentsline {subsubsection}{\numberline {12.3.1}BC1 (kinematic) --- unchanged}{21}{subsubsection.12.3.1}%
-\contentsline {subsubsection}{\numberline {12.3.2}BC2 (tangential stress) --- unchanged in form}{21}{subsubsection.12.3.2}%
-\contentsline {subsubsection}{\numberline {12.3.3}BC3 (normal stress) --- viscoelastic correction check}{21}{subsubsection.12.3.3}%
+\contentsline {subsubsection}{\numberline {12.3.1}BC1 (kinematic): unchanged}{21}{subsubsection.12.3.1}%
+\contentsline {subsubsection}{\numberline {12.3.2}BC2 (tangential stress): unchanged in form}{21}{subsubsection.12.3.2}%
+\contentsline {subsubsection}{\numberline {12.3.3}BC3 (normal stress): viscoelastic correction check}{21}{subsubsection.12.3.3}%
 \contentsline {subsection}{\numberline {12.4}Modified governing ODE}{22}{subsection.12.4}%
 \contentsline {subsubsection}{\numberline {12.4.1}The modified wavenumber $q_*$}{22}{subsubsection.12.4.1}%
 \contentsline {subsubsection}{\numberline {12.4.2}The ODE for $U(x)$ under Oldroyd-B}{24}{subsubsection.12.4.2}%

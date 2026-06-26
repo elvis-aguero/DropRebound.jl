@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  27 MAY 2026 07:42
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  25 JUN 2026 21:49
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -791,7 +791,7 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 
 
 [2]
-Overfull \hbox (4.27577pt too wide) in paragraph at lines 98--100
+Overfull \hbox (4.27577pt too wide) in paragraph at lines 95--97
 []\OT1/cmr/bx/n/12 Chandrasekhar (1959)\OT1/cmr/m/n/12 : full arbitrary-viscosi
 ty so-lu-tion for a \OT1/cmr/m/it/12 self-gravitating \OT1/cmr/m/n/12 globe. 
  []
@@ -810,11 +810,11 @@ ty so-lu-tion for a \OT1/cmr/m/it/12 self-gravitating \OT1/cmr/m/n/12 globe.
 [7]
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 388.
+(hyperref)                removing `math shift' on input line 385.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 388.
+(hyperref)                removing `math shift' on input line 385.
 
 
 
@@ -831,15 +831,15 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 [12]
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 656.
+(hyperref)                removing `math shift' on input line 652.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `subscript' on input line 656.
+(hyperref)                removing `subscript' on input line 652.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 656.
+(hyperref)                removing `math shift' on input line 652.
 
 
 
@@ -848,7 +848,7 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 [14]
 
 [15]
-Overfull \hbox (5.03871pt too wide) in paragraph at lines 866--868
+Overfull \hbox (5.03871pt too wide) in paragraph at lines 862--864
 []\OT1/cmr/m/n/12 For each mode $\OML/cmm/m/it/12 m$ \OT1/cmr/m/n/12 and Ohne-s
 orge num-ber $[]$, eval-u-ate $\OML/cmm/m/it/12 [] \OT1/cmr/m/n/12 = [][][]$
  []
@@ -860,20 +860,13 @@ orge num-ber $[]$, eval-u-ate $\OML/cmm/m/it/12 [] \OT1/cmr/m/n/12 = [][][]$
 [17]
 
 [18]
-Overfull \hbox (51.66142pt too wide) in paragraph at lines 112--124
+Overfull \hbox (51.66142pt too wide) in paragraph at lines 110--122
  [] 
  []
 
 
-LaTeX Warning: Citation `zirnic2024' on page 19 undefined on input line 131.
-
-
 
 [19]
-
-LaTeX Warning: Citation `zirnic2024' on page 20 undefined on input line 191.
-
-
 
 [20]
 
@@ -882,78 +875,78 @@ pdfTeX warning (ext4): destination with the same identifier (name{equation.52})
  has been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.301 \end{derivbox}
+l.297 \end{derivbox}
                     ]
 pdfTeX warning (ext4): destination with the same identifier (name{equation.52})
  has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.304 \begin{equation}
+l.300 \begin{equation}
                       
 pdfTeX warning (ext4): destination with the same identifier (name{equation.52})
  has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.304 \begin{equation}
+l.300 \begin{equation}
                       
 pdfTeX warning (ext4): destination with the same identifier (name{equation.52})
  has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.304 \begin{equation}
+l.300 \begin{equation}
                       
 pdfTeX warning (ext4): destination with the same identifier (name{equation.52})
  has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.304 \begin{equation}
+l.300 \begin{equation}
                       
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 317.
+(hyperref)                removing `math shift' on input line 313.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `subscript' on input line 317.
+(hyperref)                removing `subscript' on input line 313.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 317.
+(hyperref)                removing `math shift' on input line 313.
 
 
 pdfTeX warning (ext4): destination with the same identifier (name{equation.52})
  has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.323 \begin{equation}
+l.319 \begin{equation}
                       
 pdfTeX warning (ext4): destination with the same identifier (name{equation.52})
  has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.323 \begin{equation}
+l.319 \begin{equation}
                       
 pdfTeX warning (ext4): destination with the same identifier (name{equation.52})
  has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.323 \begin{equation}
+l.319 \begin{equation}
                       
 pdfTeX warning (ext4): destination with the same identifier (name{equation.52})
  has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.323 \begin{equation}
+l.319 \begin{equation}
                       
 
 [22]
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 372.
+(hyperref)                removing `math shift' on input line 366.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 372.
+(hyperref)                removing `math shift' on input line 366.
 
 
 
@@ -962,75 +955,72 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 [24]
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 445.
+(hyperref)                removing `math shift' on input line 439.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `subscript' on input line 445.
+(hyperref)                removing `subscript' on input line 439.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 445.
-
-
-LaTeX Warning: Citation `zirnic2024' on page 25 undefined on input line 510.
+(hyperref)                removing `math shift' on input line 439.
 
 
 
 [25]
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 531.
+(hyperref)                removing `math shift' on input line 525.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `superscript' on input line 531.
+(hyperref)                removing `superscript' on input line 525.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 531.
+(hyperref)                removing `math shift' on input line 525.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 543.
+(hyperref)                removing `math shift' on input line 537.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 543.
+(hyperref)                removing `math shift' on input line 537.
 
 
 
 [26]
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 606.
+(hyperref)                removing `math shift' on input line 599.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `subscript' on input line 606.
+(hyperref)                removing `subscript' on input line 599.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 606.
+(hyperref)                removing `math shift' on input line 599.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 606.
+(hyperref)                removing `math shift' on input line 599.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `subscript' on input line 606.
+(hyperref)                removing `subscript' on input line 599.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 606.
+(hyperref)                removing `math shift' on input line 599.
 
 
 
 [27]
 
 [28]
-Overfull \hbox (10.87822pt too wide) in paragraph at lines 682--702
+Overfull \hbox (10.87822pt too wide) in paragraph at lines 675--695
 \OT1/cmr/m/n/12 Its positive-exponent Laplace trans-form is $[](\OML/cmm/m/it/1
 2 ^^L\OT1/cmr/m/n/12 ) = [][] \OML/cmm/m/it/12 K[]\OT1/cmr/m/n/12 (\OML/cmm/m/i
 t/12 ^^\\OT1/cmr/m/n/12 ) \OML/cmm/m/it/12 e[] \OT1/cmr/m/n/12 d\OML/cmm/m/it/1
@@ -1039,14 +1029,14 @@ t/12 ^^\\OT1/cmr/m/n/12 ) \OML/cmm/m/it/12 e[] \OT1/cmr/m/n/12 d\OML/cmm/m/it/1
  []
 
 
-Overfull \hbox (84.82233pt too wide) in paragraph at lines 721--747
+Overfull \hbox (84.82233pt too wide) in paragraph at lines 714--740
  [] 
  []
 
 
 
 [29]
-Overfull \hbox (27.60057pt too wide) in paragraph at lines 771--778
+Overfull \hbox (27.60057pt too wide) in paragraph at lines 764--771
 []\OT1/cmr/bx/n/12 Numerical tab-u-la-tion. \OT1/cmr/m/n/12 A com-plete ta-ble 
 of $\OML/cmm/m/it/12 A[]\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 l; []; De[]; ^^L[]\OT
 1/cmr/m/n/12 )$ and $\OML/cmm/m/it/12 D[]\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 l; [
@@ -1054,7 +1044,7 @@ of $\OML/cmm/m/it/12 A[]\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 l; []; De[]; ^^L[]\OT
  []
 
 
-Overfull \hbox (5.34784pt too wide) in paragraph at lines 785--793
+Overfull \hbox (5.34784pt too wide) in paragraph at lines 778--786
 \OML/cmm/m/it/12 ^^\[] \OMS/cmsy/m/n/12 ^^@ \OML/cmm/m/it/12 ^^\[]$ \OT1/cmr/m/
 n/12 mod-i-fies the ef-fec-tive sur-face ten-sion as $\OML/cmm/m/it/12 T[] \OMS
 /cmsy/m/n/12 ! \OML/cmm/m/it/12 T[] \OT1/cmr/m/n/12 = \OML/cmm/m/it/12 T[]  []$
@@ -1062,16 +1052,13 @@ n/12 mod-i-fies the ef-fec-tive sur-face ten-sion as $\OML/cmm/m/it/12 T[] \OMS
  []
 
 
-Overfull \hbox (0.94461pt too wide) in paragraph at lines 805--808
+Overfull \hbox (0.94461pt too wide) in paragraph at lines 798--801
 []\OT1/cmr/bx/n/12 Bird, Arm-strong & Has-sager (1987) \OT1/cmr/m/n/12 [[]]: du
 mbbell-model deriva-tion of Oldroyd-
  []
 
 
-LaTeX Warning: Citation `zirnic2024' on page 30 undefined on input line 812.
-
-
-Overfull \hbox (14.51263pt too wide) in paragraph at lines 812--817
+Overfull \hbox (19.88751pt too wide) in paragraph at lines 805--810
 []\OT1/cmr/bx/n/12 Zrni^^Sc & Brenn (2024) \OT1/cmr/m/n/12 [[]]: free-surface O
 ldroyd-B drop os-cil-la-tions; their Eqs.(3.11)--
  []
@@ -1087,18 +1074,21 @@ L3 programming layer <2025-01-18>
  ***********
 
 
-LaTeX Warning: There were undefined references.
-
-
 LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
 
-Package rerunfilecheck Info: File `reid1960_expanded-3.out' has not changed.
-(rerunfilecheck)             Checksum: 40D15A9D111C635D4BFC056C3BA539D3;13609.
+
+Package rerunfilecheck Warning: File `reid1960_expanded-3.out' has changed.
+(rerunfilecheck)                Rerun to get outlines right
+(rerunfilecheck)                or use package `bookmark'.
+
+Package rerunfilecheck Info: Checksums for `reid1960_expanded-3.out':
+(rerunfilecheck)             Before: 40D15A9D111C635D4BFC056C3BA539D3;13609
+(rerunfilecheck)             After:  0A8E63CD93303503A7F68719653757C4;13576.
  ) 
 Here is how much of TeX's memory you used:
  24848 strings out of 473190
  488531 string characters out of 5715801
- 903521 words of memory out of 5000000
+ 903555 words of memory out of 5000000
  47496 multiletter control sequences out of 15000+600000
  573854 words of font info for 90 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
@@ -1120,10 +1110,10 @@ exlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/tex
 live/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/local/texl
 ive/2025/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb></usr/local/
 texlive/2025/texmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb>
-Output written on reid1960_expanded-3.pdf (31 pages, 330210 bytes).
+Output written on reid1960_expanded-3.pdf (31 pages, 329685 bytes).
 PDF statistics:
- 813 PDF objects out of 1000 (max. 8388607)
- 735 compressed objects within 8 object streams
+ 817 PDF objects out of 1000 (max. 8388607)
+ 739 compressed objects within 8 object streams
  216 named destinations out of 1000 (max. 500000)
  501 words of extra memory for PDF output out of 10000 (max. 10000000)
 

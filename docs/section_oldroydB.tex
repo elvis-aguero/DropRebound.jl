@@ -12,7 +12,7 @@ deformation stops; it relaxes on a characteristic timescale set by the
 polymer microstructure.
 
 The \textbf{Oldroyd-B model} is the simplest constitutive law that captures
-this memory faithfully while remaining analytically tractable. It is the
+this memory and remains analytically tractable. It is the
 canonical model for dilute polymer solutions: a Newtonian solvent (viscosity
 $\mu_s$) in which elastic polymer dumbbells are suspended (contributing
 additional viscosity $\mu_p$, with $\mu = \mu_s + \mu_p$ the total). The
@@ -191,8 +191,8 @@ to the capillary timescale $(T_1/(\rho R^3))^{1/2}$, whereas here they are
 referenced to $\sigma_{l;0} = [l(l-1)(l+2)]^{1/2}(T_1/(\rho R^3))^{1/2}$.
 Consequently $De_j^{\text{here}} = \sqrt{l(l-1)(l+2)}\,De_j^{\text{Z\&B}}$;
 numerical values are mode-dependent and should not be compared directly.
-\end{notebox} When $De_1 \ll 1$: polymer relaxes many times
-per cycle, the drop behaves as Newtonian. When $De_1 \sim 1$: elasticity
+\end{notebox} When $De_1 \ll 1$, the polymer relaxes many times
+per cycle and the drop behaves as Newtonian. When $De_1 \sim 1$, elasticity
 and surface tension compete on equal footing.
 
 \begin{derivbox}[Expressing $\lambda_j\sigma$ in terms of $q^2$ and $\alpha^2$]
@@ -254,9 +254,7 @@ At $\sigma = 1/\lambda_2$, the effective viscosity $\mu_{\mathrm{eff}} \to 0$
 and BC2 becomes $0 = 0$ for any $U$: it imposes no constraint.
 The frequency $\sigma = 1/\lambda_2$ is the \emph{retardation pole} of
 $q_*^2$: as $w \to w_{\mathrm{ret}} = \alpha^2/De_2$, $q_*^2 \to \infty$.
-It is not itself a root of the characteristic equation $F(w) = 0$; rather,
-the actual retardation roots of the characteristic equation lie in a
-neighbourhood of $w_{\mathrm{ret}}$ (see Section~\ref{sec:OB_roots}).
+It is not itself a root of the characteristic equation $F(w) = 0$. The actual retardation roots instead lie in a neighbourhood of $w_{\mathrm{ret}}$ (see Section~\ref{sec:OB_roots}).
 At those roots BC2 must be handled by a limiting argument. In practice these
 roots decay at rate $1/\lambda_2$, which is faster than the capillary
 timescale when $De_2 < 1$, and they are discarded as overtones. For
@@ -345,9 +343,7 @@ $\alpha^2$. For Oldroyd-B, the denominator is $\alpha^2 - De_2 q^2$,
 which \emph{vanishes} at $q^2 = \alpha^2/De_2$, i.e.\ at
 $\sigma = \sigma_{l;0}/De_2 = 1/\lambda_2$. As $q^2 \to \alpha^2/De_2$:
 $q_*^2 \to \infty$. This is the \textbf{retardation pole}: a singularity
-in the effective wavenumber that has no analogue in the Maxwell or
-Newtonian problems. All qualitative differences between Oldroyd-B and
-Maxwell trace back to this pole.
+in the effective wavenumber absent from Maxwell or Newtonian problems. All qualitative differences between Oldroyd-B and Maxwell originate in this pole.
 \end{notebox}
 
 \begin{notebox}[Limits of $q_*^2$]
@@ -364,7 +360,7 @@ Maxwell trace back to this pole.
         viscosity vanishes and the Bessel argument diverges.
 \end{itemize}
 Since $De_2 < De_1$, the retardation pole $\alpha^2/De_2 > \alpha^2/De_1$
-is always to the right of the relaxation zero on the positive real $q^2$-axis.
+lies to the right of the relaxation zero on the positive real $q^2$-axis.
 \end{notebox}
 
 \subsubsection{The ODE for $U(x)$ under Oldroyd-B}
@@ -380,8 +376,8 @@ $\nabla^2(\delta p/\rho) = \nu_{\mathrm{eff}}\nabla^2(\nabla\cdot\bu) = 0$.
 The solution $\delta p/\rho = \epsilon P_0 x^l Y_l^m$ is unchanged.
 \end{derivbox}
 
-Following the derivation of Section~5 verbatim, with $\nu \to \nu_{\mathrm{eff}}$
-and hence $q^2 \to q_*^2$ throughout:
+Following Section~5 with the substitution $\nu \to \nu_{\mathrm{eff}}$
+and hence $q^2 \to q_*^2$:
 
 \begin{keybox}[ODE for $U(x)$ under Oldroyd-B]
 \begin{equation}
