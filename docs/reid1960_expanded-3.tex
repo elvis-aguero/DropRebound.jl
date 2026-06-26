@@ -66,7 +66,7 @@
 
 \subsection{What problem are we solving?}
 
-Consider a small liquid droplet — say, a water drop suspended in air — that has been
+Consider a small liquid droplet (say, a water drop suspended in air) that has been
 slightly deformed from its equilibrium spherical shape. Surface tension acts as a
 restoring force, and the drop will oscillate. Viscosity damps those oscillations. The
 question is: \emph{at what frequency does it oscillate, and how fast does it decay?}
@@ -81,12 +81,9 @@ This sounds deceptively simple, but it couples three distinct pieces of physics:
 \end{enumerate}
 
 Reid's paper resolves all three simultaneously for \emph{arbitrary} viscosity, by reducing
-the problem to a single transcendental characteristic equation. Its central insight is
-an elegant rescaling that shows the problem is \emph{universal}: the physics of surface
-tension enters only through the inviscid frequency $\sigma_{l;0}$, and after a suitable
-non-dimensionalization, the characteristic equation is \emph{identical} to the one derived
-by Chandrasekhar for a self-gravitating viscous liquid globe — a seemingly unrelated
-problem.
+the problem to a single transcendental characteristic equation. Its central insight is a rescaling. Surface tension enters only through the inviscid
+frequency $\sigma_{l;0}$. After non-dimensionalisation, the characteristic equation is
+identical to Chandrasekhar's equation for a self-gravitating viscous liquid globe.
 
 \subsection{Historical context and relation to Mola\v{c}ek \& Bush (2012)}
 
@@ -162,7 +159,7 @@ coordinates. Its regular solution is the \emph{spherical Bessel function of the 
 \end{equation}
 
 \begin{notebox}
-A crucial connection: any function of the form $U(x) = x\,j_l(qx)$ satisfies the ODE
+Any function $U(x) = x\,j_l(qx)$ satisfies the ODE
 \begin{equation}
   U'' - \frac{l(l+1)}{x^2}\,U + q^2 U = 0
   \label{eq:helm_U}
@@ -601,8 +598,8 @@ by standard differential geometry. To first order in $\epsilon$:
 
 \textit{Physical interpretation:} The $2/R$ term is the equilibrium curvature.
 The perturbation contributes $(l-1)(l+2)\epsilon Y_l^m/R$. The factor $(l-1)(l+2)$
-is the same one that appears in the inviscid frequency \eqref{eq:inviscid_freq} —
-this is not a coincidence: both arise from the curvature response to a harmonic
+is the same one that appears in the inviscid frequency \eqref{eq:inviscid_freq}.
+Both arise from the curvature response to a harmonic
 deformation.
 \end{derivbox}
 
@@ -775,7 +772,7 @@ the oscillation, i.e., modes with more and more nodal surfaces in the radial dir
 inside the drop.
 
 \paragraph{Ordering by decay rate.} Roots with \emph{smaller} real part of $\sigma$ (i.e.,
-slower decay) are the physically dominant ones — they are the last to die out and govern
+slower decay) are the physically dominant ones: they are the last to die out and govern
 the observable oscillation of the drop. The two roots with the smallest $\mathrm{Re}(\sigma)$
 correspond to the fundamental surface oscillation at harmonic order $l$; all higher roots
 decay exponentially faster.

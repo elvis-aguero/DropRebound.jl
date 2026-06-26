@@ -3,8 +3,7 @@
 \label{sec:oldroydB}
 %% ════════════════════════════════════════════════════════════════════════════
 
-Every result in Sections 1--9 rests on a single constitutive assumption:
-the viscous stress is instantaneously proportional to the rate of strain,
+Every result in Sections 1--9 assumes the viscous stress is instantaneously proportional to the rate of strain,
 $\boldsymbol{\tau} = 2\mu\,\mathbf{e}$. Real polymer solutions violate this.
 A drop of polyethylene oxide (PEO) in water, a silicone oil of moderate
 molecular weight, or a biological fluid such as mucus all retain a
@@ -23,14 +22,13 @@ time} $\lambda_2 < \lambda_1$ (how long the combined fluid takes to respond
 to a new deformation). Setting $\lambda_2 = 0$ reduces Oldroyd-B to the
 Maxwell model; setting $\lambda_1 = \lambda_2$ recovers a Newtonian fluid.
 
-The central result of this section is that Reid's characteristic equation
-\eqref{eq:char_eq} survives the generalisation to Oldroyd-B: the left-hand
-side $\alpha^4/q^4 + 1$ is unchanged, and the right-hand side is Reid's
-right-hand side with $q$ replaced by a modified wavenumber $q_*$ that is a
-rational function of $q^2$. This rational structure introduces a new type
-of pole --- the \emph{retardation pole} --- which captures additional
-eigenvalues beyond Reid's fundamental pair and which is the mechanism by
-which the two-number $\{A_l, D_l\}$ picture eventually breaks down.
+Reid's characteristic equation \eqref{eq:char_eq} survives generalisation
+to Oldroyd-B. The left-hand side $\alpha^4/q^4 + 1$ is unchanged. The
+right-hand side is Reid's right-hand side with $q$ replaced by a modified
+wavenumber $q_*$, a rational function of $q^2$. This rational structure
+introduces a new type of pole, the \emph{retardation pole}, which captures
+additional eigenvalues beyond Reid's fundamental pair and eventually causes
+the two-number $\{A_l, D_l\}$ picture to break down.
 
 %% ────────────────────────────────────────────────────────────────────────────
 \subsection{The Oldroyd-B constitutive law}
@@ -165,7 +163,7 @@ factors:
 \begin{itemize}
   \item \textbf{Zero} at $\sigma = 1/\lambda_2$: solvent and polymer stresses
         cancel in the tangential direction. ($\lambda_2 = 0$ pushes this
-        zero to infinity --- the Maxwell model has no zero.)
+        zero to infinity (the Maxwell model has no zero.)
   \item \textbf{Pole} at $\sigma = 1/\lambda_1$: polymer stress cannot relax;
         effective viscosity diverges (solid-like response).
 \end{itemize}
@@ -225,7 +223,7 @@ function of $q^2/\alpha^2$ only.
 We have a free-surface drop in air. We examine each of the three boundary
 conditions.
 
-\subsubsection{BC1 (kinematic) --- unchanged}
+\subsubsection{BC1 (kinematic): unchanged}
 
 The kinematic condition equates the fluid radial velocity at $x=1$ to the
 rate of change of the surface position. It is a purely geometric statement
@@ -235,7 +233,7 @@ constitutive law does not alter the velocity field structure. Therefore:
   U(1) = -1. \tag{BC1, unchanged}
 \end{equation}
 
-\subsubsection{BC2 (tangential stress) --- unchanged in form}
+\subsubsection{BC2 (tangential stress): unchanged in form}
 
 The free-surface condition $\tau_{r\theta}|_{x=1} = 0$ becomes:
 \[
@@ -265,7 +263,7 @@ timescale when $De_2 < 1$, and they are discarded as overtones. For
 $De_2 > 1$ a more careful treatment is required.
 \end{notebox}
 
-\subsubsection{BC3 (normal stress) --- viscoelastic correction check}
+\subsubsection{BC3 (normal stress): viscoelastic correction check}
 
 \begin{derivbox}[First normal stress difference at $O(\epsilon)$ for Oldroyd-B]
 For the Oldroyd-B family, the first normal stress difference is:
@@ -579,8 +577,7 @@ At $\sigma = 1/\lambda_2$, the solvent and polymer contributions to the
 tangential stress cancel: $\mu_{\mathrm{eff}}(1/\lambda_2) = 0$. The
 retardation roots describe a mode in which the polymer network, instead of
 resisting the flow, briefly \emph{drives} it, before the solvent dissipates
-the energy. This has no Newtonian analogue --- it is intrinsically a
-two-component phenomenon. Physically, it corresponds to the elastic recoil
+the energy. This phenomenon has no Newtonian analogue; it requires two fluid components. Physically, it corresponds to the elastic recoil
 of the polymer network overshooting the equilibrium and being damped by the
 solvent on the retardation timescale $\lambda_2$.
 \end{notebox}
@@ -689,11 +686,11 @@ and its zeroth moment is $\int_0^\infty K^{(\mathrm{cap})}\,\dd\tau = \beta_s + 
 In the Newtonian limit ($De_1\to 0$, or equivalently $\beta_s\to 1$):
 $K^{(\mathrm{cap})}\to\delta(\tau)$, and the equation reduces to
 $A_l^{\mathrm{OB}}\ddot{b}+2a\dot{b}+b=0$.
-This is a \emph{structured approximation}: the convolution kernel replaces the
+This is a structured approximation. The convolution kernel replaces the
 full Newtonian damping function $D_l(\mathrm{Oh})$ by the zeroth moment
-$\tilde{K}^{(\mathrm{cap})}(0)=1$, capturing the frequency-dependent viscosity
-$\nu_{\mathrm{eff}}(\beta\sigma_{l;0})/\nu$ but not the Oh-dependence encoded in
-Reid's Bessel-function structure; the exact $D_l(\mathrm{Oh})$ is obtained via
+$\tilde{K}^{(\mathrm{cap})}(0)=1$. It captures the frequency-dependent viscosity
+$\nu_{\mathrm{eff}}(\beta\sigma_{l;0})/\nu$ but not the Oh-dependence in
+Reid's Bessel-function structure. The exact $D_l(\mathrm{Oh})$ is obtained via
 Vieta extraction from \eqref{eq:char_OB} at $De_1=0$.
 The dimensional kernel $K_{\mathrm{OB}}(s)$ satisfies
 $\tilde{K}_{\mathrm{OB}}(\sigma)
@@ -790,7 +787,7 @@ $De_2 \cdot \mathrm{Re}(\beta_{1,2}) \ll 1$.
         requires the second-order calculation).
         For $\epsilon = O(0.1\text{--}0.3)$ (typical bouncing-drop
         experiments), this correction could reach several percent in $\sigma_{l;0}$.
-  \item \textbf{Experimental validation.} To the authors' knowledge, no
+  \item \textbf{Experimental validation.} No
         experiment has directly measured $A_l$ and $D_l$ for a viscoelastic
         drop and compared to the characteristic equation \eqref{eq:char_OB}.
         PEO-water drops in the range $De_1 \in [0.1, 2]$ and $\beta_s \in
