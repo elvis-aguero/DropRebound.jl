@@ -15,17 +15,19 @@ using Logging
 # ---------------------------------------------------------------------------
 # Simulation parameters
 # ---------------------------------------------------------------------------
-const M      = 20
+const M      = 90
 const Oh     = 0.3038
 const Bo     = 1/53.9
-const We     = 0.079
+const We     = 0.5
 const v0     = -sqrt(We)
 
 # Carreau parameters.
 # Only Γ_2 = 1783566/385 is known analytically (inviscid limit, l=2).
 # Set Gamma[k]=0 for k>1 to use only the validated value.
+# ε_ST=0.08 keeps the bracket (1 - ε_ST·Λ²·Γ₂·Ȧ₂²) positive up to Ȧ₂≈0.92
+# even at the stronger We=0.5 impact (v₀≈−0.707).
 const GAMMA2 = 1783566.0 / 385.0
-const EPS_ST   = 0.15
+const EPS_ST   = 0.08
 const LAMBDA_C = 0.02
 
 const T_END      = 8.0
