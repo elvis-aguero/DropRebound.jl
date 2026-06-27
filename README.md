@@ -15,7 +15,7 @@ Julia solver for the impact and rebound of a liquid drop on a flat substrate, wi
 
 ![Carreau shear-thinning drop impact — Oh = 0.30, ε_ST = 0.15, λ_c = 0.02](docs/impact_st.gif)
 
-*Carreau shear-thinning (Oh = 0.30, ε_ST = 0.15, λ_c = 0.02, We = 0.079, M = 20)*
+*Carreau shear-thinning (Oh = 0.30, ε_ST = 0.08, λ_c = 0.02, We = 0.5, M = 90)*
 
 </td>
 </tr>
