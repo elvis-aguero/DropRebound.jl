@@ -7,13 +7,16 @@ using Logging
 include("types.jl")
 
 # Export types
-export SimConstants, OBParams, DropState, make_theta_vec, make_dt_max
+export SimConstants, OBParams, STParams, DropState, make_theta_vec, make_dt_max
 
 # Export residual and Jacobian functions
 export pack_X, unpack_X!, build_residual!, build_jacobian
 
 # Export OB extension functions
 export pack_X_ob, unpack_X_ob!, build_residual_ob!, build_jacobian_ob
+
+# Export Carreau (shear-thinning) extension functions
+export build_residual_st!, build_jacobian_st
 
 # Export Newton solver
 export newton_solve!, clear_jac_cache!
@@ -36,6 +39,7 @@ include("bdf.jl")
 include("residual.jl")
 include("jacobian.jl")
 include("ob_extension.jl")
+include("st_extension.jl")
 include("newton.jl")
 include("contact.jl")
 include("timestepper.jl")

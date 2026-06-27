@@ -16,18 +16,20 @@ At each step:
   7. Ramp dt back toward dt_max at +10% per step
 """
 function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
+                     st::STParams        = STParams(),
                      t_end::Float64      = 10.0,
                      save_every::Float64 = 0.1,
                      dt_init::Float64    = cfg.dt_max,
                      dt_min::Float64     = cfg.dt_max * 1e-4)
 
     is_ob = ob.De1 > 0.0 && ob.beta_s < 1.0
+    is_st = !is_ob && st.eps_ST > 0.0 && !isempty(st.Gamma)
     pack_fn      = is_ob ? pack_X_ob     : (s, M) -> pack_X(s, M)
     unpack_fn!   = is_ob ? unpack_X_ob!  : (s, X, M) -> unpack_X!(s, X, M)
     residual_fn! = is_ob ? build_residual_ob! : build_residual!
     jacobian_fn  = is_ob ? build_jacobian_ob  : build_jacobian
 
-    rheol = is_ob ? "Oldroyd-B" : "Newtonian"
+    rheol = is_ob ? "Oldroyd-B" : (is_st ? "Carreau" : "Newtonian")
     @info "solve_drop! starting" M=cfg.M Oh=cfg.Oh Bo=cfg.Bo t_end=t_end rheology=rheol dt_max=cfg.dt_max
 
     history    = DropState[deepcopy(init)]
@@ -76,18 +78,27 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
                 unpack_fn!(s, Xv, cfg.M)
                 s.cp = cp
                 fill!(buf, 0.0)
-                residual_fn!(buf, s, hist_slice, dt, cp, cfg, ob)
+                if is_st
+                    build_residual_st!(buf, s, hist_slice, dt, cp, cfg, ob, st)
+                else
+                    residual_fn!(buf, s, hist_slice, dt, cp, cfg, ob)
+                end
             end
 
             J_fn = Xv -> begin
                 s = deepcopy(history[end])
                 unpack_fn!(s, Xv, cfg.M)
                 s.cp = cp
-                jacobian_fn(s, hist_slice, dt, cp, cfg, ob)
+                if is_st
+                    build_jacobian_st(s, hist_slice, dt, cp, cfg, ob, st)
+                else
+                    jacobian_fn(s, hist_slice, dt, cp, cfg, ob)
+                end
             end
 
             X   = copy(X0)
-            key = (cfg.M, cp, round(dt; sigdigits=6), order, is_ob)
+            # Carreau: shear_sq_lag changes each step, so skip Jacobian cache
+            key = is_st ? nothing : (cfg.M, cp, round(dt; sigdigits=6), order, is_ob)
             converged = newton_solve!(X, R!, J_fn; cache_key=key)
 
             if converged

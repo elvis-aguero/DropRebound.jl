@@ -27,6 +27,25 @@ const _IMP_v0  = -0.281
     @test states[contact_idx].z < states[1].z
 end
 
+@testset "Drop impact: full bounce (no contact → contact → no contact)" begin
+    # Low Oh (weak viscous dissipation) and low Bo (surface-tension dominated)
+    # give the drop enough rebound energy to lift off after impact.
+    M = 6; Oh = 0.02; Bo = 0.01
+    dt_max    = make_dt_max(M)
+    theta_vec = make_theta_vec(M)
+    precomp   = precompute_integrals(NaN, M)[1]
+    cfg = SimConstants(M, M+1, Oh, Bo, theta_vec, precomp, dt_max)
+
+    init = DropState(M)
+    init.z = 1.05; init.v = -0.4; init.dt = dt_max; init.cp = 0
+
+    _, states = solve_drop!(cfg, OBParams(), deepcopy(init); t_end=15.0, save_every=0.05)
+
+    cps = [s.cp for s in states]
+    @test any(c > 0 for c in cps)   # contact phase occurred
+    @test cps[end] == 0             # drop is airborne at t=15 (lifted off)
+end
+
 @testset "Drop impact: OB vs Newtonian differ during contact" begin
     dt_max    = make_dt_max(_IMP_M)
     theta_vec = make_theta_vec(_IMP_M)
