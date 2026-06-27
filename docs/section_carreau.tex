@@ -1,0 +1,181 @@
+%% ════════════════════════════════════════════════════════════════════════════
+\section{Weakly Nonlinear Shear-Thinning Drops: the Carreau Model}
+\label{sec:carreau}
+%% ════════════════════════════════════════════════════════════════════════════
+
+Sections 1--9 treat a Newtonian fluid; Section~\ref{sec:oldroydB} treats an
+Oldroyd-B fluid, in both cases at linear order in the oscillation amplitude
+$\epsilon$. This section derives the leading-order effect of shear-thinning
+using the Carreau constitutive law. Shear-thinning is a nonlinear effect: the
+viscosity depends on the instantaneous strain rate. It does not enter the
+linear eigenvalue problem, but first appears at $O(\epsilon^3)$ as a cubic
+correction to the mode damping.
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{The Carreau constitutive law}
+%% ────────────────────────────────────────────────────────────────────────────
+
+The Carreau model relates effective viscosity to the scalar shear rate
+$\dot\gamma = \sqrt{2\,e_{ij}e_{ij}}$:
+\begin{equation}
+  \mu_{\mathrm{eff}}(\dot\gamma)
+  = \mu_0 \left[1 + (\lambda_c\,\dot\gamma)^2\right]^{(n-1)/2},
+  \label{eq:carreau}
+\end{equation}
+where $\mu_0$ is the zero-shear-rate viscosity, $\lambda_c$ is the Carreau
+relaxation time, and $n \in (0,1]$ is the power-law index. Setting $n=1$
+gives $\mu_{\mathrm{eff}} = \mu_0$ (Newtonian); for $n < 1$ the viscosity
+decreases with shear rate (shear-thinning). The shear-thinning parameter
+\begin{equation}
+  \varepsilon_{ST} \equiv \frac{1-n}{2} \geq 0
+  \label{eq:epsST}
+\end{equation}
+is zero for a Newtonian fluid and positive for $n < 1$.
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{Perturbation structure}
+%% ────────────────────────────────────────────────────────────────────────────
+
+In the linearised flow, $\mathbf{e} = O(\epsilon)$ and hence
+$\dot\gamma = O(\epsilon)$. Expanding \eqref{eq:carreau} in $\epsilon$:
+\begin{equation}
+  \mu_{\mathrm{eff}}
+  = \mu_0\left[1 - \varepsilon_{ST}(\lambda_c\dot\gamma)^2 + O(\epsilon^4)\right].
+  \label{eq:carreau_expand}
+\end{equation}
+The $O(\epsilon)$ viscosity correction is exactly zero. The first non-trivial
+Carreau correction appears at $O(\epsilon^2)$ in $\mu_{\mathrm{eff}}$. Because
+the stress is $\boldsymbol\tau = 2\mu_{\mathrm{eff}}\,\mathbf{e}$ and
+$\mathbf{e} = O(\epsilon)$, the stress correction enters at $O(\epsilon^3)$.
+The linear problem is therefore identical to the Newtonian problem with
+viscosity $\mu_0$; the eigenvalue, eigenfunction, and characteristic equation
+of Sections 1--9 are unchanged.
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{Shear-rate field and the correction integral $\Gamma_l$}
+%% ────────────────────────────────────────────────────────────────────────────
+
+At $O(\epsilon)$ the velocity field is the Newtonian one. For a freely
+oscillating drop in mode $l$, the radial and tangential components are:
+\begin{equation}
+  u_r = \dot{b}_l\,\frac{U(x)}{x^2}\,P_l(\cos\theta),
+  \qquad
+  u_\theta = \dot{b}_l\,\frac{f(x)}{x^2}\,\frac{dP_l}{d\theta},
+  \label{eq:vel_carreau}
+\end{equation}
+where $b_l$ is the mode amplitude and $f(x)$ follows from incompressibility.
+
+Define the correction integral as the volume and time average of
+$\dot\gamma^4$, normalized by $(\dot{b}_l/R)^2$ and the mode norm
+$\mathcal{N}_l = \int_0^1 |U(x)|^2 x^2\,dx$:
+\begin{equation}
+  \Gamma_l \equiv
+  \frac{1}{\mathcal{N}_l}
+  \int_0^1
+  \left\langle\int_0^\pi \left(\frac{\dot\gamma(x,\theta)}{\dot{b}_l/R}\right)^4
+  \sin\theta\,d\theta\right\rangle_t
+  x^2\,dx,
+  \label{eq:Gamma_def}
+\end{equation}
+where $\langle\cdot\rangle_t$ denotes the time average over one period. In the
+inviscid limit ($\mathrm{Oh}\to 0$, real $q$), this integral is computable
+analytically from the Newtonian eigenfunctions. For $l=2$:
+\begin{equation}
+  \Gamma_2 = \frac{1783566}{385} \approx 4632.6
+  \qquad (\mathrm{Oh}\to 0).
+  \label{eq:Gamma2}
+\end{equation}
+At finite $\mathrm{Oh}$, $q$ is complex and $U(x)$ is complex-valued. The
+time-averaged $\langle\dot\gamma^4\rangle_t$ then picks up cross-terms between
+the real and imaginary parts of the eigenfunction. The general finite-$\mathrm{Oh}$
+expression is derived in the companion notebook
+(\texttt{shear\_thinning\_derivation.ipynb}).
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{Modified mode equation}
+%% ────────────────────────────────────────────────────────────────────────────
+
+The Carreau correction adds extra viscous dissipation through the Rayleigh
+dissipation function:
+\[
+  \delta\Phi = \mu_0\,\varepsilon_{ST}\,\lambda_c^2
+  \int_V \dot\gamma^4\,dV.
+\]
+The generalized force $\partial(\delta\Phi)/\partial\dot{b}_l$ is cubic in
+$\dot{b}_l$, and moves to the right-hand side of the mode equation with a
+positive sign (shear-thinning reduces dissipation):
+\begin{equation}
+  A_l\,\ddot{b}_l
+  + D_l^{(0)}\,\dot{b}_l
+  + \omega_l^2\,b_l
+  = \varepsilon_{ST}\,\Lambda^2\,\Gamma_l\,D_l^{(0)}\,|\dot{b}_l|^2\,\dot{b}_l
+  + O(\epsilon^5),
+  \label{eq:mode_carreau}
+\end{equation}
+where
+\begin{align}
+  D_l^{(0)} &= 2\,\mathrm{Oh}\,(l-1)(2l+1), \label{eq:Dl0}\\
+  \Lambda    &= \lambda_c\,\sigma_{l;0}, \label{eq:Lambda}\\
+  \omega_l^2 &= l(l-1)(l+2). \notag
+\end{align}
+Here $D_l^{(0)}$ is the Newtonian damping coefficient (from the Lamb limit),
+$\Lambda$ is the Carreau number (Carreau relaxation time non-dimensionalised
+by the inviscid period), and $A_l$ is the kinetic-energy coefficient from
+Mola\v{c}ek \& Bush~\cite{molacek2012}.
+
+Moving the cubic term to the left defines an amplitude-dependent effective
+damping:
+\begin{equation}
+  D_{\mathrm{eff}} = D_l^{(0)}
+  \left[1 - \varepsilon_{ST}\,\Lambda^2\,\Gamma_l\,|\dot{b}_l|^2\right].
+  \label{eq:Deff}
+\end{equation}
+For $\varepsilon_{ST} > 0$, $D_{\mathrm{eff}} < D_l^{(0)}$ at finite
+amplitude, so the drop damps more slowly than a Newtonian drop of the same
+zero-shear viscosity.
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{Slow amplitude equation}
+\label{sec:carreau_slow}
+%% ────────────────────────────────────────────────────────────────────────────
+
+For $\mathrm{Oh} \ll 1$, the leading-order solution is
+$b_l \approx a(t)\cos(\omega_l t + \phi)$ with slowly varying amplitude $a(t)$.
+The cubic term in \eqref{eq:mode_carreau} is a resonant forcing at the
+oscillation frequency. Applying the method of averaging (projecting onto
+$\sin\omega_l t$ and integrating over one period) gives:
+
+\begin{keybox}[Slow amplitude equation (Carreau drop)]
+\begin{equation}
+  \frac{da}{dt}
+  = -\gamma_l^{(0)}\,a
+  \left[1 - \frac{3}{4}\,\varepsilon_{ST}\,\Lambda^2\,\Gamma_l\,a^2\right],
+  \label{eq:slow_amp}
+\end{equation}
+where $\gamma_l^{(0)} = (l-1)(2l+1)\,\mathrm{Oh}$ is the Newtonian decay rate.
+\end{keybox}
+
+The factor $3/4$ is the time average of $\cos^2(\omega_l t)\sin^2(\omega_l t)$
+over one period. Equation~\eqref{eq:slow_amp} is valid to
+$O(\varepsilon_{ST}\Lambda^2 a^2)$. The bracket is less than unity for
+$\varepsilon_{ST} > 0$, so the instantaneous decay rate $|da/dt|/a$ is
+reduced at every amplitude relative to the Newtonian value $\gamma_l^{(0)}$.
+There is no non-zero fixed point: $a\to 0$ as $t\to\infty$, but more slowly
+than in the Newtonian case.
+
+\begin{notebox}[Scope]
+Equation~\eqref{eq:slow_amp} requires:
+\begin{itemize}
+  \item $\mathrm{Oh} \ll 1$: lightly damped oscillations, so the method of
+        averaging applies.
+  \item $\varepsilon_{ST}\Lambda^2 a^2 \ll 1$: the bracket in
+        \eqref{eq:slow_amp} must remain positive.
+  \item No contact: $\Gamma_l$ is computed from the free-oscillation Reid
+        velocity field. Near a contact line $\dot\gamma\to\infty$ and the
+        expansion $(\lambda_c\dot\gamma)^2\ll 1$ breaks down.
+\end{itemize}
+The Julia solver (\texttt{DropSolver.jl}) implements Carreau rheology via
+\texttt{STParams}: pre-compute $\Gamma_l$ per mode from
+\texttt{notebooks/shear\_thinning\_derivation.ipynb} and pass it to
+\texttt{solve\_drop!} as a keyword argument.
+\end{notebox}

@@ -17,6 +17,16 @@ end
 
 OBParams() = OBParams(0.0, 1.0)   # Newtonian default
 
+"""Carreau shear-thinning parameters. Set eps_ST=0 for Newtonian."""
+struct STParams
+    eps_ST   :: Float64             # (1-n)/2 ≥ 0; zero = Newtonian
+    lambda_c :: Float64             # Carreau relaxation time (non-dimensional)
+    Gamma    :: Vector{Float64}     # Γ_l for modes 2..M (length M-1)
+                                    # Compute from shear_thinning_derivation.ipynb
+end
+
+STParams() = STParams(0.0, 0.0, Float64[])
+
 """State at a single time step."""
 mutable struct DropState
     A          :: Vector{Float64}   # deformation amplitudes A₁…A_M (A₁ always 0)

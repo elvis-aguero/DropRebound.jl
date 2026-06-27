@@ -1,10 +1,25 @@
 # DropRebound.jl
 
-Julia solver for the impact and rebound of a liquid drop on a flat substrate, with support for Newtonian and viscoelastic (Oldroyd-B) rheology.
+Julia solver for the impact and rebound of a liquid drop on a flat substrate, with support for Newtonian, viscoelastic (Oldroyd-B), and shear-thinning (Carreau) rheology.
+
+<table>
+<tr>
+<td align="center" width="50%">
 
 ![Oldroyd-B drop impact — Oh = 0.30, De₁ = 0.5, β_s = 0.5](docs/impact_ob.gif)
 
-*Oldroyd-B drop (Oh = 0.30, De₁ = 0.5, β_s = 0.5, We = 0.5). Meridional cross-section at M = 90 Legendre modes.*
+*Oldroyd-B (Oh = 0.30, De₁ = 0.5, β_s = 0.5, We = 0.5, M = 90)*
+
+</td>
+<td align="center" width="50%">
+
+![Carreau shear-thinning drop impact — Oh = 0.30, ε_ST = 0.15, λ_c = 0.02](docs/impact_st.gif)
+
+*Carreau shear-thinning (Oh = 0.30, ε_ST = 0.15, λ_c = 0.02, We = 0.079, M = 20)*
+
+</td>
+</tr>
+</table>
 
 ## What it does
 
