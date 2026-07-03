@@ -14,6 +14,13 @@ At each step:
      the contact patch spans more collocation points than cp_prev+1 predicts — a
      physical need, not a time-step-size issue.
   7. Ramp dt back toward dt_max at +10% per step
+
+Set `event_location=true` to root-find the step size onto the earliest contact
+transition (advancing onset or receding liftoff) within each trial step, instead of
+overshooting and halving. This removes the temporal staircase in contact-set changes
+and sharpens contact-time / spreading-time metrics. It is opt-in: `event_location=false`
+(default) preserves the exact legacy trajectory bit-for-bit, and the halving path
+remains the fallback when an event root-find fails.
 """
 function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
                      st::STParams        = STParams(),
@@ -21,7 +28,8 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
                      t_end::Float64      = 10.0,
                      save_every::Float64 = 0.1,
                      dt_init::Float64    = cfg.dt_max,
-                     dt_min::Float64     = cfg.dt_max * 1e-4)
+                     dt_min::Float64     = cfg.dt_max * 1e-4,
+                     event_location::Bool = false)   # opt-in; false ⇒ bit-for-bit legacy
 
     is_ob = ob.De1 > 0.0 && ob.beta_s < 1.0
     is_st = !is_ob && st.eps_ST > 0.0 && !isempty(st.Gamma)
@@ -36,6 +44,47 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
     unpack_fn!   = is_ob ? unpack_X_ob!  : (s, X, M) -> unpack_X!(s, X, M)
     residual_fn! = is_ob ? build_residual_ob! : build_residual!
     jacobian_fn  = is_ob ? build_jacobian_ob  : build_jacobian
+
+    # Event-location probe: solve one candidate (fixed cp) at a trial step δ from the
+    # current history, returning the resulting state (or nothing on non-convergence).
+    # Uncached; used only for root-finding contact transitions, never for acceptance.
+    function probe_cp(history_loc, δ, cp, order_loc)
+        hist_slice = order_loc == 2 ? history_loc[end-1:end] : history_loc[end:end]
+        X0 = pack_fn(history_loc[end], cfg.M)
+        R! = (buf, Xv) -> begin
+            s = deepcopy(history_loc[end]); unpack_fn!(s, Xv, cfg.M); s.cp = cp
+            fill!(buf, 0.0)
+            is_st ? build_residual_st!(buf, s, hist_slice, δ, cp, cfg, ob, st) :
+                    residual_fn!(buf, s, hist_slice, δ, cp, cfg, ob)
+        end
+        J_fn = Xv -> begin
+            s = deepcopy(history_loc[end]); unpack_fn!(s, Xv, cfg.M); s.cp = cp
+            is_st ? build_jacobian_st(s, hist_slice, δ, cp, cfg, ob, st) :
+                    jacobian_fn(s, hist_slice, δ, cp, cfg, ob)
+        end
+        X = copy(X0)
+        newton_solve!(X, R!, J_fn; cache_key=nothing) || return nothing
+        s = deepcopy(history_loc[end]); unpack_fn!(s, X, cfg.M)
+        s.cp = cp
+        return s
+    end
+
+    # Bisection for the step δ* ∈ (δ_lo, δ_hi] at which g(δ)=drop_height(state(δ), node)=0,
+    # given g(δ_lo) and g(δ_hi) bracket a sign change. ~12 iterations (relative tol 1e-3).
+    function bisect_event(gapfn, δ_lo, g_lo, δ_hi, g_hi)
+        for _ in 1:14
+            δ_mid = 0.5 * (δ_lo + δ_hi)
+            g_mid = gapfn(δ_mid)
+            (isnan(g_mid)) && return δ_hi           # solver failed → fall back to full step
+            if (g_mid > 0) == (g_lo > 0)
+                δ_lo, g_lo = δ_mid, g_mid
+            else
+                δ_hi, g_hi = δ_mid, g_mid
+            end
+            (δ_hi - δ_lo) < 1e-3 * δ_hi && break
+        end
+        return δ_hi   # land just past the event (node in contact / lifted)
+    end
 
     rheol = is_ob ? "Oldroyd-B" : (is_st ? "Carreau" : "Newtonian")
     @info "solve_drop! starting" M=cfg.M Oh=cfg.Oh Bo=cfg.Bo t_end=t_end rheology=rheol dt_max=cfg.dt_max
@@ -61,6 +110,44 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
     while t < t_end
         order   = min(length(history), 2)
         cp_prev = history[end].cp
+
+        # ── Event location (opt-in): shrink dt to land exactly on the earliest contact
+        # transition within the trial step, instead of overshooting and halving. Legacy
+        # (event_location=false) skips this entirely, preserving bit-for-bit behaviour.
+        # Only on a FRESH attempt (n_halvings==0, no cp-restart): if the event-located
+        # step is rejected, the base dt is restored and legacy halving/cp-restart take
+        # over without the event block re-firing and collapsing dt.
+        if event_location && n_halvings == 0 && cp_upper_extra == 0 && dt > 2 * dt_min
+            θv     = cfg.theta_vec
+            e_tol  = 1e-7
+            δ_star = dt                      # smallest event step found so far
+            s_full = probe_cp(history, dt, cp_prev, order)   # trial full step at cp_prev
+            if s_full !== nothing
+                # Advancing onset: node cp_prev+1 penetrates by the end of the step.
+                if cp_prev + 1 <= length(θv) && drop_height(s_full, θv[cp_prev+1]) < -e_tol
+                    node  = cp_prev + 1
+                    gapfn = δ -> (s = probe_cp(history, δ, cp_prev, order);
+                                  s === nothing ? NaN : drop_height(s, θv[node]))
+                    g_lo = gapfn(2 * dt_min)     # small step: node still above the plate
+                    if !isnan(g_lo) && g_lo > 0
+                        δ_star = min(δ_star, bisect_event(gapfn, 2 * dt_min, g_lo, dt,
+                                                          drop_height(s_full, θv[node])))
+                    end
+                end
+                # Receding/liftoff: last contact node rises above the plate by end of step.
+                if cp_prev >= 1 && drop_height(s_full, θv[cp_prev]) > e_tol
+                    node  = cp_prev
+                    gapfn = δ -> (s = probe_cp(history, δ, cp_prev, order);
+                                  s === nothing ? NaN : drop_height(s, θv[node]))
+                    g_lo = gapfn(2 * dt_min)     # small step: node still in contact (<0)
+                    if !isnan(g_lo) && g_lo < 0
+                        δ_star = min(δ_star, bisect_event(gapfn, 2 * dt_min, g_lo, dt,
+                                                          drop_height(s_full, θv[node])))
+                    end
+                end
+            end
+            dt = δ_star   # step to the earliest event (or full dt if none detected)
+        end
 
         best_state = nothing
         best_err   = Inf
@@ -169,6 +256,11 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
         end
 
         if best_state === nothing || best_err == Inf
+            # If this was a fresh, event-located attempt, restore the base dt so that
+            # halving/cp-restart proceed from the full step (not the shrunk event step).
+            if event_location && n_halvings == 0 && cp_upper_extra == 0
+                dt = dt_step_start
+            end
             n_halvings += 1
             @debug "Step rejected" t=t dt=dt n_halvings=n_halvings cp_prev=cp_prev cp_upper_extra=cp_upper_extra
 
@@ -222,7 +314,10 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
 
         @debug "Step accepted" t=t dt=dt cp=new_cp contact_err=best_err step=step_count
 
-        # Ramp dt back toward dt_max and reset per-step adaptivity state
+        # Ramp dt back toward dt_max and reset per-step adaptivity state. Event mode uses
+        # the same gentle *1.1 recovery as legacy, so the extra small steps around a
+        # transition (which set the in-contact resolution) are preserved — the only
+        # difference from legacy is that the transition step lands exactly on the event.
         dt             = min(dt * 1.1, cfg.dt_max)
         dt_step_start  = dt
         n_halvings     = 0

@@ -427,6 +427,51 @@ close numerically, and it certifies that no spurious force (e.g.\ a vertical You
 in \eqref{eq:vdot}) has been introduced --- consistent with
 Proposition~\ref{prop:noforce}.
 
+\section{Adaptive time stepping by contact-event location}\label{sec:events}
+
+The extension above concerns \emph{which} contact set is selected; we first address
+\emph{when} the contact set changes, an improvement to the base solver that is
+independent of wettability. GA advance with an implicit step bounded by a stability
+limit $\delta_t\le\delta_t^{\max}$ and, on a step that overshoots a change in the contact
+count $q$, halve the step ($\delta_t^{\max}/2^n$) until the tangency residual is
+acceptable. The transition time is thereby resolved only to a power-of-two fraction of
+$\delta_t^{\max}$, leaving a temporal staircase in contact onset and lift-off.
+
+Because each change of the contact set is a discrete \emph{event}, it can instead be
+located exactly. Let $q$ be the current contact count and define the switching function
+\be\label{eq:switch}
+g(\delta_t)=
+\begin{cases}
+z\big(\theta_{q+1};\,\mathbf x(\delta_t)\big), & \text{advancing (onset of node $q{+}1$)},\\
+z\big(\theta_{q};\,\mathbf x(\delta_t)\big),   & \text{receding (lift-off of node $q$)},
+\end{cases}
+\ee
+where $z(\theta;\mathbf x)$ is the substrate gap \eqref{eq:cart} evaluated on the implicit
+solution $\mathbf x(\delta_t)$ of a trial step of size $\delta_t$ at fixed $q$. Since the
+BDF coefficients and hence $\mathbf x(\delta_t)$ depend continuously on $\delta_t$,
+$g$ is smooth, and a contact event corresponds to a simple zero $g(\delta_t^\star)=0$
+(the node reaching the substrate, or leaving it). When a full trial step crosses such a
+zero, we bracket it --- $g$ has opposite signs at a vanishingly small step and at
+$\delta_t^{\max}$ --- and recover $\delta_t^\star$ by bisection (a handful of implicit
+solves), taking the \emph{earliest} event across the advancing and receding cases. The
+step is then taken exactly to the transition.
+
+Three properties make this practical and safe. (i) \emph{Backward compatibility:} it is
+opt-in; disabled, the solver is bit-for-bit the halving scheme, and the halving remains
+the fallback whenever a bracket or root find fails. (ii) \emph{Unchanged in-contact
+resolution:} away from events the step is governed exactly as before (the same
+$\delta_t^{\max}$ cap and gentle recovery), so the number and size of steps \emph{within}
+the contact phase --- which set the accuracy of the mode integration and hence the
+rebound metrics --- are preserved; only the transition steps move. (iii) \emph{Cost:} an
+event costs a few extra linear solves for the bracketing, incurred only at transitions.
+
+Two limitations are worth stating. Event location sharpens the transition \emph{time} but
+not the contact \emph{radius}, which remains quantised to the Legendre nodes (the spatial
+staircase noted by GA; the continuous tracker of \S\ref{sec:disc_dynamic} addresses that
+separately). And a node whose gap grazes zero without crossing is a tangential (double)
+root that a sign-change bracket can miss; a minimum-gap guard over the trial step is used
+to shrink $\delta_t$ conservatively in that case.
+
 \section{Discrete formulation}\label{sec:discrete}
 
 We inherit GA Appendix~B verbatim for the bulk: truncation at mode $L$, implicit-Euler
@@ -531,6 +576,16 @@ motion, including at the finite contact angles where the edge-load truncation er
 \eqref{eq:linelift} is largest. Quantitative accuracy is expected to be best near
 $\theta_e=\pi$ (error $\mathcal O(\sin\theta_d)$, Remark~\ref{rem:edgeload}); the
 trustworthy band for the parameters here is $\theta_e\gtrsim0.9\pi$.
+
+\emph{(v) Event location matches the halving scheme.} Across five points spanning the
+rebound-paper regime ($\Oh=0.03$, $\Bo=0.02$, $\We\in\{0.023,\dots,2.269\}$), enabling
+contact-event location (\S\ref{sec:events}) changes the contact time and coefficient of
+restitution by at most $1.3\%$ and $0.7\%$ respectively relative to the halving scheme,
+well within a $3\%$ tolerance; the spreading time agrees to within $3.5\%$, its broad and
+flat maximum making it the most quantisation-sensitive metric. At the most vigorous
+impact ($\We\simeq1$) the halving scheme fails to resolve the onset at $L=20$ (its step
+collapses below the floor), whereas event location advances cleanly --- exact onset
+landing is additionally more robust for violent impacts.
 
 \section{Summary of the extended model}\label{sec:summary}
 

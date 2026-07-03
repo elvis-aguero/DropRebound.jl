@@ -9,10 +9,11 @@ Fields:
   max_A2        – maximum |A₂| deformation amplitude during contact
 """
 struct SweepKPIs
-    contact_time :: Float64
-    cor          :: Float64
-    max_radius   :: Float64
-    max_A2       :: Float64
+    contact_time  :: Float64
+    cor           :: Float64
+    max_radius    :: Float64
+    max_A2        :: Float64
+    spreading_time :: Float64   # onset → maximum contact radius (NaN if no contact)
 end
 
 """
@@ -74,7 +75,7 @@ function extract_kpis(times::Vector{Float64},
                       cfg::SimConstants)
     contact_idx = findall(s -> s.cp > 0, states)
 
-    isempty(contact_idx) && return SweepKPIs(NaN, NaN, 0.0, 0.0)
+    isempty(contact_idx) && return SweepKPIs(NaN, NaN, 0.0, 0.0, NaN)
 
     first_c = contact_idx[1]
     last_c  = contact_idx[end]
@@ -96,5 +97,10 @@ function extract_kpis(times::Vector{Float64},
     max_radius = maximum(compute_contact_radius(s, cfg) for s in states if s.cp > 0)
     max_A2     = maximum(abs(s.A[2]) for s in states if s.cp > 0)
 
-    return SweepKPIs(contact_time, cor, max_radius, max_A2)
+    # Spreading time: from contact onset to the frame of maximum contact radius.
+    radii     = [s.cp > 0 ? compute_contact_radius(s, cfg) : 0.0 for s in states]
+    max_r_idx = argmax(radii)
+    spreading_time = times[max_r_idx] - times[first_c]
+
+    return SweepKPIs(contact_time, cor, max_radius, max_A2, spreading_time)
 end

@@ -114,3 +114,38 @@ end
     # Monotone effect of friction: pinning raises restitution above the mobile case.
     @test cor_pin > cor_qs + 1e-2
 end
+
+# ── Event-located time stepping (opt-in; docs §Discrete) ─────────────────────────
+@testset "Event location: backwards compatible + agrees with legacy" begin
+    M = 14; Oh = 0.03; Bo = 0.02
+    cfg = SimConstants(M, M+1, Oh, Bo, make_theta_vec(M),
+                       precompute_integrals(NaN, M)[1], make_dt_max(M))
+    mk(We) = (i = DropState(M); i.z = 1.0; i.v = -sqrt(We);
+              i.dt = make_dt_max(M); i.cp = 0; i)
+
+    # Bit-for-bit: event_location=false must reproduce the default (legacy) path.
+    # Clear the module-level Jacobian cache before each run so a warm-cache inv(A)*b
+    # vs cold A\b (machine-precision) difference doesn't masquerade as a discrepancy.
+    clear_jac_cache!()
+    t0, s0 = solve_drop!(cfg, OBParams(), mk(0.253); t_end = 8.0, save_every = 0.05)
+    clear_jac_cache!()
+    t1, s1 = solve_drop!(cfg, OBParams(), mk(0.253); t_end = 8.0, save_every = 0.05,
+                         event_location = false)
+    @test t0 == t1
+    @test all(a.z == b.z && a.cp == b.cp && a.A == b.A for (a, b) in zip(s0, s1))
+
+    # Event-located stepping agrees with legacy on the robust KPIs (contact time, COR).
+    # (Spreading time is validated at production resolution in scripts/run_event_validation.jl;
+    # its broad, flat maximum makes it too mesh-sensitive to gate at test resolution.)
+    for We in (0.253, 2.269)
+        o = extract_kpis(solve_drop!(cfg, OBParams(), mk(We);
+                                     t_end = 12.0, save_every = 0.01)..., cfg)
+        n = extract_kpis(solve_drop!(cfg, OBParams(), mk(We);
+                                     t_end = 12.0, save_every = 0.01,
+                                     event_location = true)..., cfg)
+        @test isfinite(n.contact_time) && isfinite(n.cor)
+        @test abs(n.contact_time - o.contact_time) / o.contact_time < 0.04
+        @test abs(n.cor - o.cor) / o.cor < 0.04
+        @test n.cor <= 1.0 + 1e-6
+    end
+end
