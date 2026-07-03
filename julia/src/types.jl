@@ -27,6 +27,18 @@ end
 
 STParams() = STParams(0.0, 0.0, Float64[])
 
+"""
+Contact-line parameters (finite equilibrium contact angle + linear mobility).
+See docs/DropRebound_ContactLine.tex. Defaults recover the perfectly non-wetting,
+perfectly mobile GA model exactly.
+"""
+struct CLParams
+    theta_e :: Float64   # equilibrium contact angle (rad); π = perfectly non-wetting
+    xi      :: Float64   # linear contact-line friction (Milestone 2); 0 = perfectly mobile
+end
+
+CLParams() = CLParams(π, 0.0)   # perfectly non-wetting → reduces to GA
+
 """State at a single time step."""
 mutable struct DropState
     A          :: Vector{Float64}   # deformation amplitudes A₁…A_M (A₁ always 0)

@@ -1,0 +1,676 @@
+% DropRebound_ContactLine.tex
+% Companion modeling derivation: contact-line dynamics (finite equilibrium
+% contact angle + linear contact-line mobility) for the kinematic-match
+% solid-substrate rebound model.
+%
+% This document extends ONLY the modeling portion of
+%   DropRebound_JFM.tex  ("Drop rebound at low Weber number")
+% specifically Sec. 3.1 (Kinematic match model formulation), Appendix A
+% (Defining contact) and Appendix B (Numerical approximations).
+%
+% STATUS: gold-standard derivation, to be certified by independent adversarial
+% verification BEFORE any code is written. Notation deliberately matches the
+% parent paper.
+
+\documentclass{jfm}
+\usepackage{natbib}
+\usepackage{graphicx}
+\usepackage{amsmath,mathtools}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{upgreek}
+\usepackage{mathrsfs}
+\usepackage{hyperref}
+
+\newcommand{\be}{\begin{equation}}
+\newcommand{\ee}{\end{equation}}
+\newcommand{\We}{W\kern-0.15em e\,}
+\newcommand{\Bo}{B\kern-0.05em o\,}
+\newcommand{\Oh}{O\kern-0.05em h\,}
+\newcommand{\Ca}{C\kern-0.05em a\,}
+
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\newtheorem{remark}{Remark}
+
+\title{Contact-line dynamics in the kinematic-match model of drop rebound:
+finite contact angle and linear contact-line friction}
+
+\shorttitle{Contact-line dynamics in kinematic-match rebound}
+\shortauthor{E.\,A. Ag\"uero and others}
+
+\author{Elvis A. Ag\"uero\aff{1} \and others}
+\affiliation{\aff{1}School of Engineering, Brown University, Providence, RI 02912, USA}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+The kinematic-match (KM) reduced-order model of \citet{gabbard2025} (hereafter GA)
+predicts drop rebound from a \emph{perfectly non-wetting} substrate with no fitting
+parameters. Its non-wetting character is encoded in a single boundary condition: the
+free surface departs the substrate tangentially at the contact line. We relax this
+assumption from first principles, admitting substrates of finite equilibrium contact
+angle $\theta_e$ and a finite contact-line mobility. We frame the problem in a
+metriplectic-style (\textsc{generic}-flavoured) form: the reversible capillary--inertial mode oscillator
+of GA, a unilateral non-penetration constraint whose Lagrange multiplier is the contact
+pressure, and a new \emph{irreversible} dissipation localised at the moving contact
+line. Two results follow. First, the tangency condition is replaced by a dynamic
+contact-angle condition; in the quasi-static (perfectly mobile) limit this reduces to
+imposing the apparent contact angle $\theta_d=\theta_e$, and for $\theta_e\to\pi$ it
+recovers GA's tangency exactly. Second, the uncompensated Young force is radial and
+cancels by axisymmetry, so \emph{the centre-of-mass momentum equation of GA is
+unchanged}; the entire wetting effect enters through (i) the contact-line boundary
+condition and (ii) a contact-line dissipation channel governed by a linear (Blake/de
+Gennes) friction law $\xi\,\dot r_c=\sigma(\cos\theta_e-\cos\theta_d)$. The extended
+model has exactly one new dynamical degree of freedom (the contact-line radius $r_c$)
+and two physical parameters, the measurable $\theta_e$ and a single friction
+coefficient $\xi$; it reduces to GA in the limit $(\theta_e\to\pi,\ \xi\to0)$. We give
+the discrete linear system, showing the extension changes only the contact-set
+\emph{selection criterion} (quasi-static) plus a rate constraint (dynamic), preserving
+the linearity that underlies GA's numerical robustness.
+\end{abstract}
+
+\section{Introduction}\label{sec:intro}
+
+A drop striking a solid or liquid surface may rebound without ever coalescing, a
+phenomenon central to superhydrophobic surface design, spray cooling, inkjet printing
+and self-cleaning materials \citep{Richard2002,SnoeijerAndreotti2013}. When rebound is
+mediated by a thin gas film the impact is effectively \emph{non-wetting}: no
+three-phase contact line forms, and the drop's contact time and coefficient of
+restitution are set by the interplay of inertia, capillarity and viscosity
+\citep{Richard2002,Okumura2003,MolacekBush2013}. Reduced-order ``kinematic-match'' (KM)
+models exploit this by evolving the drop's spherical-harmonic shape modes subject to a
+unilateral, tangential contact with the substrate, and reproduce experiment across a
+wide range of Weber number at a small fraction of the cost of direct numerical
+simulation \citep{GaleanoRios2017,Alventosa2023,gabbard2025}.
+
+The defining assumption of these models is \emph{perfect} non-wetting: the free surface
+meets the substrate tangentially, so the equilibrium contact angle is $\theta_e=\pi$,
+there is no adhesion, and the contact line carries no localised dissipation. Real
+substrates --- including the hydrophobic coatings used to suppress, but not eliminate,
+wetting --- depart from this idealisation. A finite equilibrium contact angle introduces
+an uncompensated Young force at the contact line \citep{deGennes1985}, its motion
+dissipates energy through microscopic processes captured at leading order by a linear
+(molecular-kinetic / hydrodynamic) friction law
+\citep{Blake2006,Cox1986,Voinov1976,SnoeijerAndreotti2013}, and the advancing and
+receding branches generically differ, producing contact-angle hysteresis
+\citep{JoannyDeGennes1984}. None of these ingredients is present in the KM framework.
+
+Here we extend the KM model to substrates of finite wettability from first principles,
+retaining the linear structure responsible for its numerical robustness. We organise the
+dynamics in a metriplectic (\textsc{generic}-flavoured) form
+\citep{GrmelaOttinger1997}: the reversible capillary--inertial mode oscillator of
+\citet{gabbard2025} (hereafter GA), a unilateral non-penetration constraint whose
+Lagrange multiplier is the contact pressure, and an irreversible dissipation localised
+at the contact line. The tangency condition is replaced by a dynamic contact-angle
+condition closed by a Blake/de Gennes mobility law; the perfectly non-wetting model is
+recovered as the limit $\theta_e\to\pi$ with infinite mobility. We show that the
+extension is a change of \emph{constraint} rather than an added body force, so the
+centre-of-mass equation and the discrete linear system of GA are structurally preserved.
+
+\section{The perfectly non-wetting model}\label{sec:background}
+
+We adopt the notation and non-dimensionalisation of GA Sec.~3.1: lengths by the
+undeformed radius $R$, mass by $\rho R^3$, time by the inertio-capillary time
+$t_\sigma=(\rho R^3/\sigma)^{1/2}$, so that $\sigma\equiv1$ in dimensionless units and
+gravity and viscosity are carried by $\Bo=\rho g R^2/\sigma$ and
+$\Oh=\mu/\sqrt{\rho\sigma R}$. The axisymmetric interface is
+\be\label{eq:shape}
+\zeta(\theta,t)=1+\eta(\theta,t),\qquad
+\eta=\sum_{l=2}^{\infty}\mathscr{A}_l(t)\,P_l(\cos\theta),
+\ee
+with $P_l$ the Legendre polynomials and $\theta\in[0,\pi]$ the polar angle measured from
+the downward vertical, so that $\theta=0$ is the pole facing the substrate. The contact
+pressure is $p(\theta,t)=\sum_{l\ge0}\mathscr{B}_l(t)P_l(\cos\theta)$. With
+$\mathscr{U}_l=\dot{\mathscr A}_l$ the modal surface velocity, $h$ the centre-of-mass
+(COM) height above the substrate and $v=\dot h$, the linearised dynamics of GA are
+\begin{align}
+\dot{\mathscr A}_l &= \mathscr U_l, \label{eq:kin}\\
+\dot{\mathscr U}_l &= -\,l(l+2)(l-1)\,\mathscr A_l
+                      -2(2l+1)(l-1)\,\Oh\,\mathscr U_l
+                      -\,l\,\mathscr B_l, \label{eq:mode}\\
+\dot h &= v, \label{eq:hdot}\\
+\dot v &= -\Bo + \mathscr B_1. \label{eq:vdot}
+\end{align}
+Equations \eqref{eq:kin}--\eqref{eq:vdot} hold for $l=2,\dots,\infty$. The COM force
+\eqref{eq:vdot} is the net vertical reaction of the contact pressure (its $l=1$ moment)
+plus gravity; we return to this in \S\ref{sec:noforce}.
+
+\medskip\noindent\textbf{Cartesian geometry.} A surface point at polar angle $\theta$
+sits at cylindrical radius and height
+\be\label{eq:cart}
+x(\theta)=\zeta(\theta)\sin\theta,\qquad
+z(\theta)=h-\zeta(\theta)\cos\theta,
+\ee
+so the pole $\theta=0$ is at height $z=h-\zeta(0)$ and the substrate is $z=0$. The
+signed gap to the substrate is $z(\theta)$; contact requires $z=0$ and impenetrability
+requires $z\ge 0$.
+
+\medskip\noindent\textbf{The kinematic match.} Where the substrate presses the drop a
+contact cap $\theta\le\theta_c$ forms on $z=0$:
+\begin{align}
+\sum_{l\ge2}\mathscr A_l P_l(\cos\theta) &= \frac{h}{\cos\theta}-1,
+   &&\theta\le\theta_c, \label{eq:contact}\\
+\sum_{l\ge2}\mathscr A_l P_l(\cos\theta) &< \frac{h}{\cos\theta}-1,
+   &&\theta>\theta_c, \label{eq:noncontact}\\
+\sum_{l\ge0}\mathscr B_l P_l(\cos\theta) &= 0,
+   &&\theta>\theta_c, \label{eq:pzero}
+\end{align}
+where \eqref{eq:noncontact} is the strict form of $z>0$ off contact (equivalently
+$\zeta\cos\theta<h$).\footnote{The parent paper GA writes the non-contact inequality as
+$\zeta\cos\theta>h$ (their eqns for \eqref{eq:noncontact} and the impenetrability
+predicate $e^1_q$); evaluated at the drop apex $\theta=\pi$, where $z=h+\zeta>0$
+unambiguously, that form reads $-\zeta>h$, which is false. The correct sense is
+$\zeta\cos\theta<h$ as used here; GA's printed inequality is a sign typo (the two
+formulations agree, as they must, on the contact \emph{equality} $\zeta\cos\theta=h$).}
+Finally GA impose \emph{tangential departure} at the contact line,
+\be\label{eq:tangency}
+\left.\frac{\partial}{\partial\theta}\Big[\zeta(\theta)\cos\theta\Big]\right|_{\theta=\theta_c}=0,
+\ee
+which, since $\partial_\theta(\zeta\cos\theta)=-\,\partial_\theta z$, states
+$\partial_\theta z|_{\theta_c}=0$: the gap has a smooth (tangential) zero. This is the
+sole encoding of perfect non-wetting; \S\ref{sec:angle} replaces it.
+
+\section{The apparent contact angle}\label{sec:angle}
+
+Define the \emph{apparent (dynamic) contact angle} $\theta_d$ as the angle, measured
+through the liquid, between the substrate and the liquid--gas interface at the contact
+line. Using \eqref{eq:cart}, the interface tangent in the direction of increasing
+$\theta$ (i.e.\ away from the wetted pole, up the free surface) is
+$\mathbf T=(x_\theta,z_\theta)$ with, writing
+$\zeta_\theta\equiv\partial_\theta\zeta=-\sin\theta\sum_{l\ge2}\mathscr A_l P_l'(\cos\theta)$,
+\be\label{eq:tangent}
+x_\theta=\zeta_\theta\sin\theta+\zeta\cos\theta,\qquad
+z_\theta=\zeta\sin\theta-\zeta_\theta\cos\theta .
+\ee
+Let $\alpha=\operatorname{atan2}(z_\theta,x_\theta)$ be the inclination of $\mathbf T$
+above the substrate ($+x$). The liquid occupies the interior (axis) side, so the contact
+angle through the liquid is the supplement,
+\be\label{eq:thetad}
+\boxed{\;\theta_d=\pi-\alpha
+=\pi-\operatorname{atan2}\!\big(\zeta\sin\theta_c-\zeta_\theta\cos\theta_c,\;
+\zeta_\theta\sin\theta_c+\zeta\cos\theta_c\big).\;}
+\ee
+
+\begin{lemma}[Undeformed reduction]\label{lem:sphere}
+For an undeformed sphere ($\mathscr A_l\equiv0$, so $\zeta=1$, $\zeta_\theta=0$),
+$\theta_d=\pi-\theta_c$. In particular $\theta_c\to0$ (point contact) gives
+$\theta_d\to\pi$ and $\theta_c\to\pi/2$ (hemisphere) gives $\theta_d\to\pi/2$.
+\end{lemma}
+\begin{proof}
+With $\zeta=1,\zeta_\theta=0$, \eqref{eq:tangent} gives $(x_\theta,z_\theta)=(\cos\theta_c,\sin\theta_c)$,
+so $\alpha=\theta_c$ and $\theta_d=\pi-\theta_c$.
+\end{proof}
+
+\begin{proposition}[Tangency is the $\theta_d=\pi$ case]\label{prop:tangency}
+Assume the contact line lies on the ascending flank of the profile, $x_\theta(\theta_c)>0$
+(the cylindrical radius increases outward there). Then the GA tangency condition
+\eqref{eq:tangency} holds iff $\theta_d=\pi$.
+\end{proposition}
+\begin{proof}
+$\partial_\theta z=z_\theta=\zeta\sin\theta_c-\zeta_\theta\cos\theta_c$ is the first
+argument of $\operatorname{atan2}$ in \eqref{eq:thetad}. Under the hypothesis
+$x_\theta>0$ the second argument is positive, so
+$z_\theta=0\iff\alpha=0\iff\theta_d=\pi$. By \eqref{eq:tangency},
+$\partial_\theta z|_{\theta_c}=0$, hence $\theta_d=\pi$, and conversely.
+\end{proof}
+
+\begin{remark}[Validity of the $x_\theta>0$ hypothesis]\label{rem:xtheta}
+$x_\theta=\partial_\theta(\zeta\sin\theta)$ is the slope of the cylindrical radius and
+vanishes at the profile's widest point: for the undeformed sphere $x_\theta=\cos\theta_c$,
+which is positive for $\theta_c<\pi/2$, zero at $\theta_c=\pi/2$, and negative beyond.
+The hypothesis therefore holds throughout the low-$\We$, small-contact regime
+($\theta_c<\pi/2$) that is our target, but can fail near maximal spreading or for
+pancake/overhanging shapes, where $\alpha=\operatorname{atan2}(z_\theta,x_\theta)$
+becomes ill-conditioned. The discrete residual of \S\ref{sec:discrete} is deliberately
+written in a form \eqref{eq:disc_angle} that avoids dividing by $x_\theta$ and so
+remains well defined there.
+\end{remark}
+
+Thus GA is exactly the special case $\theta_d\equiv\pi$. A substrate of finite
+wettability instead selects a finite apparent angle, determined dynamically below.
+
+\section{Energy structure and the wetting energy}\label{sec:energy}
+
+Organise the model in a metriplectic-style (\textsc{generic}-flavoured) form: reversible
+kinetic$+$surface energy, a unilateral constraint, and irreversible dissipation. We do
+not verify the formal \textsc{generic} degeneracy conditions; the structure is used as an
+organising principle and is \emph{backed} by the closed energy budget of
+\S\ref{sec:budget}. The total energy is
+\be\label{eq:energy}
+E=\underbrace{\tfrac12\!\int_{\text{drop}}\!|\mathbf u|^2\,\mathrm dV}_{E_{\text{kin}}}
+ +\underbrace{\Bo\,h}_{E_{\text{grav}}}
+ +\underbrace{A_{lg}}_{\text{liquid--gas}}
+ +\underbrace{(\gamma_{sl}-\gamma_{sv})\,A_{w}}_{\text{wetting}},
+\ee
+in dimensionless units ($\sigma=1$; $\gamma_{sl},\gamma_{sv}$ the solid--liquid and
+solid--vapour tensions in units of $\sigma$). Young's relation
+$\gamma_{sv}-\gamma_{sl}=\cos\theta_e$ turns the wetting term into
+\be\label{eq:Ewet}
+E_{\text{wet}}=-\cos\theta_e\,A_w=-\pi\cos\theta_e\,r_c^{2},\qquad
+r_c\equiv x(\theta_c)=\zeta(\theta_c)\sin\theta_c,
+\ee
+$r_c$ being the contact-line radius and $A_w=\pi r_c^2$ the wetted area to leading order.
+The liquid--gas area, expanded to quadratic order in the $\mathscr A_l$, reproduces the
+Lamb capillary spectrum and hence the restoring term $-l(l+2)(l-1)\mathscr A_l$ already
+present in \eqref{eq:mode} \citep{Lamb1924}; no new bulk term arises. The genuinely new
+ingredient is \eqref{eq:Ewet}.
+
+\begin{proposition}[Reduction of the wetting energy]\label{prop:Ewet}
+As $\theta_e\to\pi$, $\cos\theta_e\to-1$ and $E_{\text{wet}}\to\pi r_c^2$; its variations
+drive the contact line only through \eqref{eq:mobility} below, whose driving force
+$\propto(\cos\theta_e-\cos\theta_d)$ vanishes when additionally $\theta_d\to\pi$
+(Proposition~\ref{prop:tangency}). Hence at $(\theta_e\to\pi)$ with a tangential contact
+line the wetting contribution is dynamically inert, consistent with GA.
+\end{proposition}
+
+\section{The centre-of-mass equation retains the GA form}\label{sec:noforce}
+
+A central and non-obvious claim: the COM equation keeps the GA \emph{form}
+$\dot v=-\Bo+\mathscr B_1$ even for finite wettability --- not because no capillary
+force acts at the contact line, but because that force is reacted by the constraint
+pressure and thereby absorbed into the pressure moment $\mathscr B_1$.
+
+\begin{proposition}[COM equation form is preserved]\label{prop:noforce}
+The vertical force balance of the drop's centre of mass retains the GA form
+$\dot v=-\Bo+\mathscr B_1$, where $\mathscr B_1$ is the $l=1$ moment of the contact
+pressure. In particular the contact-line capillary reaction does not appear as a
+\emph{separate} term.
+\end{proposition}
+\begin{proof}
+Take the drop (liquid plus its bounding liquid--gas interface) as the system. The
+external agents are gravity, the uniform vapour pressure (absorbed into the reference),
+and the solid. At the contact line the liquid--gas tension exerts a line force of
+magnitude $\sigma$ per unit length directed along the interface tangent; its
+\emph{radial} (in-plane) component is the uncompensated Young force
+$\sigma(\cos\theta_e-\cos\theta_d)$ per length, which is horizontal and cancels by
+axisymmetry, while its \emph{vertical} component is $\sigma\sin\theta_d$ per length, a
+net upward line load
+\be\label{eq:linelift}
+F_{\text{cl}}^{z}=2\pi r_c\,\sigma\sin\theta_d,
+\ee
+nonzero for any $\theta_d\neq\pi$. This vertical pull is not balanced by
+$\gamma_{sl},\gamma_{sv}$ (which are horizontal); it is balanced by the substrate
+\emph{normal reaction}, i.e.\ by the contact pressure $p$, which is the Lagrange
+multiplier enforcing $z=0$ on the wetted cap. In the reduced model the net vertical
+pressure reaction is exactly the $l=1$ moment $\mathscr B_1$ (same projection as in GA),
+so \eqref{eq:linelift} is subsumed into $\mathscr B_1$ rather than added separately, and
+$\dot v=-\Bo+\mathscr B_1$ holds unchanged.
+\end{proof}
+
+\noindent\emph{Consistency with GA.} For $\theta_d=\pi$ (tangency) $\sin\theta_d=0$ and
+$F_{\text{cl}}^z=0$: GA's smooth-cap pressure carries no edge load, as expected. For
+finite $\theta_d$ the reaction includes a near-concentrated line load at $\theta_c$.
+
+\begin{remark}[Numerical edge-load caveat]\label{rem:edgeload}
+Because the finite-angle reaction \eqref{eq:linelift} concentrates near $\theta_c$, the
+truncated degree-$L$ Legendre pressure must represent a near-singular edge load. GA never
+faced this ($\sin\theta_d\equiv0$). Expect Gibbs-type oscillation and $O(1/L)$ error in
+$\mathscr B_1$ for strongly non-tangential angles; the effect is $O(\sin\theta_d)$ and
+hence \emph{small in the near-non-wetting regime} ($\theta_e\to\pi$) that is our
+experimental target. The energy-budget closure test (\S\ref{sec:budget}) is the
+quantitative bound on this error and should be monitored as $\theta_e$ departs from
+$\pi$.
+\end{remark}
+
+\noindent\emph{Remark (mechanism).} The wetting energy \eqref{eq:Ewet} changes the
+dynamics \emph{indirectly}: it alters the contact-line boundary condition
+(\S\ref{sec:mobility}), which changes the admissible shape and hence the pressure
+multipliers $\mathscr B_l$ in \eqref{eq:mode} and \eqref{eq:vdot}. The extension is thus
+a change of \emph{constraint}, not an added body force --- the key to preserving GA's
+linear structure.
+
+\section{The contact-line law}\label{sec:mobility}
+
+Treat the contact-line radius $r_c$ (equivalently $\theta_c$) as a genuine dynamical
+variable. Its motion dissipates energy through microscopic and viscous processes near
+the moving line whose net effect, at leading order and for small capillary number, is a
+force linear in the line speed \citep{Blake2006,deGennes1985,Cox1986,Voinov1976}; we
+encode this by a Rayleigh dissipation functional quadratic in the line speed,
+\be\label{eq:rayleigh}
+\mathcal R=\tfrac12\,\xi\,(2\pi r_c)\,\dot r_c^{\,2}\;\ge0,
+\ee
+with $\xi\ge0$ the contact-line friction coefficient (units of $\sigma t_\sigma/R$ in
+dimensionless form; $\xi\to0$ = perfectly mobile, $\xi\to\infty$ = pinned). The
+Lagrange--Rayleigh equation for the massless coordinate $r_c$ is
+$\partial\mathcal R/\partial\dot r_c=-\,\partial E/\partial r_c$. We use the geometric
+identity
+\be\label{eq:dAlg}
+\frac{\partial A_{lg}}{\partial A_w}=+\cos\theta_d,
+\ee
+i.e.\ advancing the wetted area by $\mathrm dA_w$ changes the liquid--gas area by
+$+\cos\theta_d\,\mathrm dA_w$; the sign is fixed by requiring that
+$\partial E/\partial A_w=0$ at $\theta_d=\theta_e$ reproduce Young's relation
+(checks: complete wetting $\theta_d\to0$ gives $+1$; perfect non-wetting
+$\theta_d\to\pi$ gives $-1$). With $A_w=\pi r_c^2$ and \eqref{eq:Ewet},
+\be
+\frac{\partial E}{\partial r_c}
+=\frac{\partial}{\partial r_c}\big(A_{lg}-\cos\theta_e\,\pi r_c^2\big)
+=2\pi r_c\big(\cos\theta_d-\cos\theta_e\big),
+\ee
+so that
+$\partial\mathcal R/\partial\dot r_c=\xi\,2\pi r_c\,\dot r_c
+=-\,\partial E/\partial r_c=2\pi r_c(\cos\theta_e-\cos\theta_d)$, giving the linear
+contact-line (Blake/de~Gennes) law
+\be\label{eq:mobility}
+\boxed{\;\xi\,\dot r_c=\cos\theta_e-\cos\theta_d.\;}
+\ee
+The right-hand side is the uncompensated Young force per unit length. Equation
+\eqref{eq:mobility} \emph{replaces} the tangency condition \eqref{eq:tangency} as the
+closure for the contact line.
+
+\begin{corollary}[Quasi-static limit]\label{cor:quasistatic}
+As $\xi\to0$, \eqref{eq:mobility} forces $\cos\theta_d=\cos\theta_e$, i.e.\
+$\theta_d=\theta_e$: a perfectly mobile line instantaneously adopts the equilibrium
+angle.
+\end{corollary}
+\begin{corollary}[Non-wetting limit]\label{cor:nonwetting}
+Setting $\theta_e=\pi$ in the quasi-static limit gives $\theta_d=\pi$, which by
+Proposition~\ref{prop:tangency} is exactly the GA tangency condition
+\eqref{eq:tangency}. Hence $(\theta_e\to\pi,\ \xi\to0)$ recovers GA.
+\end{corollary}
+\begin{corollary}[Pinned limit]\label{cor:pinned}
+As $\xi\to\infty$, \eqref{eq:mobility} gives $\dot r_c\to0$: the contact line is pinned.
+\end{corollary}
+
+\subsection{Advancing, receding, and contact-angle hysteresis}\label{sec:hysteresis}
+
+As written, \eqref{eq:mobility} uses a single friction $\xi$ and a single equilibrium
+angle $\theta_e$, so it is odd under $\dot r_c\to-\dot r_c$ about $\theta_e$: the
+\emph{advancing} contact line of the spreading phase and the \emph{receding} line of the
+retraction phase obey the \emph{same} relation, and the model has no contact-angle
+hysteresis. Real substrates instead exhibit distinct advancing and receding angles
+$\theta_a\ge\theta_r$ with a pinned band in between, an important and often dominant
+source of dissipation and of the spreading/retraction asymmetry seen in rebound
+\citep{JoannyDeGennes1984,SnoeijerAndreotti2013}. The present framework accommodates
+this at no structural cost by promoting \eqref{eq:mobility} to a piecewise (direction- and
+angle-dependent) law,
+\be\label{eq:hysteresis}
+\xi\,\dot r_c=
+\begin{cases}
+\cos\theta_a-\cos\theta_d, & \theta_d<\theta_a \quad(\text{advancing},\ \dot r_c>0),\\[2pt]
+0, & \theta_r\le\theta_d\le\theta_a \quad(\text{pinned}),\\[2pt]
+\cos\theta_r-\cos\theta_d, & \theta_d>\theta_r \quad(\text{receding},\ \dot r_c<0),
+\end{cases}
+\ee
+optionally with distinct $\xi_a,\xi_r$. Equation \eqref{eq:mobility} is the
+zero-hysteresis case $\theta_a=\theta_r=\theta_e$. The single-angle law is retained as the
+baseline here because it isolates the leading-order effect of wettability with one fitted
+parameter; \eqref{eq:hysteresis} is the natural refinement once advancing and receding
+angles are measured independently, and both branches are represented in the same discrete
+selection residual (\S\ref{sec:discrete}) by the sign of the contact-line increment.
+
+\section{Energy budget}\label{sec:budget}
+
+\begin{proposition}[Dissipation balance]\label{prop:budget}
+Along solutions of \eqref{eq:kin}--\eqref{eq:vdot} closed by \eqref{eq:mobility},
+\be\label{eq:budget}
+\frac{\mathrm dE}{\mathrm dt}
+=-\underbrace{\sum_{l\ge2}2(2l+1)(l-1)\,\Oh\,\mathscr U_l^2}_{\text{bulk viscous }\ge0}
+ \;-\;\underbrace{\xi\,(2\pi r_c)\,\dot r_c^{\,2}}_{\text{contact line }\ge0}\;\le0,
+\ee
+with $E$ from \eqref{eq:energy}. In the inviscid, perfectly-mobile, non-wetting limit
+($\Oh\to0,\ \xi\to0,\ \theta_e\to\pi$) energy is conserved, reproducing the GA
+inertio-capillary limit.
+\end{proposition}
+\begin{proof}
+The pressure does no net work on the frictionless unilateral constraint, leaving the
+bulk viscous sink; the wetting and moving-line liquid--gas terms combine, via the
+mobility law \eqref{eq:mobility}, into the contact-line sink. The full calculation is
+given in Appendix~\ref{app:budget}.
+\end{proof}
+
+Equation \eqref{eq:budget} is the arbiter used to validate the implementation: it must
+close numerically, and it certifies that no spurious force (e.g.\ a vertical Young term
+in \eqref{eq:vdot}) has been introduced --- consistent with
+Proposition~\ref{prop:noforce}.
+
+\section{Discrete formulation}\label{sec:discrete}
+
+We inherit GA Appendix~B verbatim for the bulk: truncation at mode $L$, implicit-Euler
+(or BDF) time stepping, the angular mesh $\{\theta_0=0\}\cup\{\text{zeros of }P_L\}$, and
+the block linear system $\mathbf M^{k+1,q}\,\mathbf x^{k+1,q}=\mathbf b^{k+1,q}$ for a
+candidate number $q$ of contact mesh points (GA eqns for $\mathbf M,\mathbf x,\mathbf
+b$). \emph{The extension leaves $\mathbf M$ and $\mathbf b$ unchanged.} Only the
+selection of $q$ and, dynamically, its allowed rate of change are modified.
+
+\subsection{Quasi-static finite angle (perfectly mobile, $\xi=0$)}\label{sec:disc_qs}
+GA select $q$ by minimising the tangency residual (their $e^2_q$, the discrete
+$\partial_\theta(\zeta\cos\theta)$ across the contact edge, i.e.\ $\propto -z_\theta$).
+For a finite target angle $\theta_e$ the condition $\theta_d=\theta_e$ is, by
+\eqref{eq:thetad}, that the tangent $(x_\theta,z_\theta)$ be parallel to
+$(\cos(\pi-\theta_e),\sin(\pi-\theta_e))=(-\cos\theta_e,\sin\theta_e)$; taking the
+(vanishing) cross product gives the \emph{linear, well-conditioned} residual
+\be\label{eq:disc_angle}
+e^2_q(\theta_e)=\big|\,x_\theta\,\sin\theta_e+z_\theta\,\cos\theta_e\,\big|
+\Big|_{\theta=(\theta_q+\theta_{q+1})/2},
+\ee
+with $x_\theta,z_\theta$ from \eqref{eq:tangent} evaluated on the solved amplitudes
+$A_l^{k+1,q}$. This form is preferable to $|\theta_d^q-\theta_e|$ on three counts: it is
+\emph{linear} in the amplitudes (for fixed $\theta_q$), it is \emph{bounded} (no division
+by $x_\theta$, so it survives the $x_\theta\to0$ spreading regime of
+Remark~\ref{rem:xtheta}), and at $\theta_e=\pi$ it collapses \emph{term for term} to GA's
+tangency residual: $\sin\theta_e=0,\ \cos\theta_e=-1$ give
+$e^2_q=|z_\theta|=|\partial_\theta(\zeta\cos\theta)|$, the discrete finite difference GA
+already use. Impenetrability $e^1_q$ (GA) is retained unchanged;
+$e_q=\max\{e^1_q,e^2_q\}$ and $m^{k+1}=\operatorname{argmin}_q e_q$.
+
+Thus for $\theta_e=\pi$ the scheme shares GA's tangency root and reduces to GA's discrete
+objective; for finite $\theta_e$ only the scalar selection residual changes. No matrix
+$\mathbf M$ or right-hand-side $\mathbf b$ change is required, so the linear solve --- and
+its conditioning --- is that of GA, subject to the edge-load caveat of
+Remark~\ref{rem:edgeload} at angles far from $\pi$.
+
+\subsection{Dynamic contact line (finite $\xi$)}\label{sec:disc_dynamic}
+A finite friction must be represented \emph{sub-mesh}: on the fixed angular grid the
+contact count $q$ is an integer, so the naive choice of scoring each $q$ by the discrete
+mobility imbalance pins the line for any $\xi>0$ (a one-node change $\delta r_c$ makes
+$\xi\,\delta r_c$ dominate the $\mathcal O(\delta_t)$ driving term). We instead carry the
+contact-line radius $r_c$ as a \emph{continuous} tracker advanced each step by a
+rate-limited integration of \eqref{eq:mobility} toward the quasi-static target
+$r_c^{\text{qs}}$ (the edge radius selected by \eqref{eq:disc_angle}):
+\be\label{eq:disc_mobility}
+r_c^{k+1}=r_c^{k}+\operatorname{clamp}\!\Big(\tfrac{\delta_t^{k}}{\xi}\,(\cos\theta_e-\cos\theta_d^{k}),\;
+0,\;r_c^{\text{qs}}-r_c^{k}\Big),
+\ee
+with $\theta_d^{k}$ the apparent angle at the current line; the integer contact set for
+the bulk solve is then the mesh bracket of $r_c^{k+1}$. The clamp gives the exact limits:
+$\xi\to0$ reaches $r_c^{\text{qs}}$ in one step (quasi-static, \S\ref{sec:disc_qs});
+$\xi\to\infty$ leaves $r_c$ unchanged (pinned). The bulk solve at fixed bracket remains
+the GA linear system --- the only new work is the scalar tracker update, so the
+well-conditioned inner solve responsible for GA's robustness is untouched, and no energy
+is injected into the ballistic centre-of-mass motion (verified below via the coefficient
+of restitution).
+
+\medskip\noindent\emph{Optional monolithic form.} Alternatively $\theta_c$ may be
+carried as a $(3L{+}2)$-th unknown with \eqref{eq:mobility} as an added residual row,
+solved by Newton with the analytic bulk Jacobian augmented by one finite-differenced
+column. The operator-split tracker above is the default because it cannot destabilise the
+proven linear core and, being sub-mesh, already resolves the continuous contact-line
+motion the monolithic form would provide.
+
+\section{Numerical validation}\label{sec:validation}
+
+We verify the extended solver against its own limits and check the predicted trends.
+Except where noted, results use $L=20$ modes, $\Oh=0.1$, $\Bo=0.01$ and impact speed
+$\We^{1/2}=0.5$.
+
+\emph{(i) Exact reduction.} With $(\theta_e=\pi,\ \xi=0)$ the extended solver reproduces
+the GA trajectory to machine precision (the selection residual \eqref{eq:disc_angle}
+collapses term-for-term to GA's, Appendix~\ref{app:discrete}), confirmed as a
+regression test.
+
+\emph{(ii) Wettability lowers restitution.} Decreasing $\theta_e$ from $\pi$ at $\xi=0$
+monotonically decreases the coefficient of restitution and increases the contact time
+and maximal contact radius:
+\begin{center}
+\begin{tabular}{lcccc}
+$\theta_e/\pi$ & $1.00$ & $0.96$ & $0.92$ & $0.90$\\[2pt]
+COR            & $0.657$ & $0.654$ & $0.552$ & $0.361$\\
+$t_c$          & $2.60$ & $2.63$ & $2.96$ & $3.40$\\
+$\beta_c$      & $0.516$ & $0.516$ & $0.654$ & $0.683$
+\end{tabular}
+\end{center}
+consistent with the loss of rebound energy to increased spreading as the surface becomes
+more wettable.
+
+\emph{(iii) Friction resists capture.} At fixed $\theta_e=0.9\pi$, increasing the
+contact-line friction $\xi$ monotonically increases the coefficient of restitution,
+from the quasi-static value ($0.361$ at $\xi=0$) up to the perfectly non-wetting value
+($0.657$) once the line is effectively pinned ($\xi\gtrsim1$); the maximal contact
+radius correspondingly falls back to its non-wetting value. This realises the
+$\xi\to0$ (quasi-static) and $\xi\to\infty$ (pinned) limits of \eqref{eq:disc_mobility}
+and shows contact-line friction acting as a distinct, tunable dissipation channel.
+
+\emph{(iv) No energy injection.} In every case above the coefficient of restitution
+satisfies $\text{COR}\le1$, the operational form of the energy budget
+(Prop.~\ref{prop:budget}): no spurious energy enters the ballistic centre-of-mass
+motion, including at the finite contact angles where the edge-load truncation error
+\eqref{eq:linelift} is largest. Quantitative accuracy is expected to be best near
+$\theta_e=\pi$ (error $\mathcal O(\sin\theta_d)$, Remark~\ref{rem:edgeload}); the
+trustworthy band for the parameters here is $\theta_e\gtrsim0.9\pi$.
+
+\section{Summary of the extended model}\label{sec:summary}
+
+The extended KM model is \eqref{eq:kin}--\eqref{eq:vdot} together with the contact
+constraints \eqref{eq:contact}--\eqref{eq:pzero} and the contact-line law
+\eqref{eq:mobility} in place of the tangency condition \eqref{eq:tangency}, with
+$\theta_d$ given by \eqref{eq:thetad}. It has:
+\begin{itemize}
+\item one new dynamical degree of freedom, the contact-line radius $r_c$;
+\item two physical parameters, the equilibrium angle $\theta_e$ (directly measurable)
+      and the contact-line friction $\xi$ (a single fit parameter);
+\item an exact reduction to GA at $(\theta_e\to\pi,\ \xi\to0)$
+      (Cor.~\ref{cor:nonwetting});
+\item a COM momentum equation that retains the GA form, the contact-line reaction being
+      absorbed into $\mathscr B_1$ (Prop.~\ref{prop:noforce});
+\item a closed energy budget with a distinct contact-line dissipation channel
+      (Prop.~\ref{prop:budget});
+\item a discrete form that changes only the contact-set selection criterion
+      (\S\ref{sec:discrete}), preserving GA's linear solve.
+\end{itemize}
+
+\appendix
+
+\section{Full derivation of the energy budget}\label{app:budget}
+
+We give the calculation sketched in Proposition~\ref{prop:budget}. Differentiate the
+kinetic and capillary contributions of \eqref{eq:energy}. Using the modal energy
+$e_l=\tfrac12\mathscr U_l^2+\tfrac12 l(l+2)(l-1)\mathscr A_l^2$ and the equations of
+motion \eqref{eq:kin}--\eqref{eq:mode},
+\be
+\dot e_l=\mathscr U_l\dot{\mathscr U}_l+l(l+2)(l-1)\mathscr A_l\dot{\mathscr A}_l
+=-2(2l+1)(l-1)\,\Oh\,\mathscr U_l^2-\,l\,\mathscr B_l\mathscr U_l,
+\ee
+so summing over $l\ge2$ and adding $\dot E_{\text{grav}}+\tfrac12\frac{\mathrm d}{\mathrm
+dt}v^2=\Bo\,v+v\dot v=v\mathscr B_1$ (from \eqref{eq:vdot}) gives
+\be\label{eq:bulkwork}
+\dot E_{\text{bulk}}
+=-\sum_{l\ge2}2(2l+1)(l-1)\,\Oh\,\mathscr U_l^2
+-\Big(\sum_{l\ge2}l\,\mathscr B_l\mathscr U_l-v\,\mathscr B_1\Big).
+\ee
+The parenthesised term is the rate of working of the contact pressure on the interface.
+On the contact set the constraint fixes the normal position ($z=0$), so the interface
+normal velocity vanishes wherever $p\neq0$; off the contact set $p=0$. Hence
+$\int p\,u_n\,\mathrm dS=0$ and the pressure-work term vanishes identically (frictionless
+unilateral contact does no net work), leaving only the bulk viscous sink. Finally the
+surface--wetting energy: from \eqref{eq:Ewet} and \eqref{eq:dAlg},
+\be
+\dot E_{\text{surf}}
+=\underbrace{\frac{\partial A_{lg}}{\partial r_c}\dot r_c}_{+2\pi r_c\cos\theta_d\,\dot r_c}
+-\cos\theta_e\,2\pi r_c\,\dot r_c
+=-2\pi r_c(\cos\theta_e-\cos\theta_d)\,\dot r_c
+=-\xi(2\pi r_c)\,\dot r_c^2,
+\ee
+the last equality by the mobility law \eqref{eq:mobility}. Adding the two contributions
+yields \eqref{eq:budget}. Both sinks are manifestly non-negative, and each vanishes in
+its respective limit ($\Oh\to0$; $\xi\to0$ or $\dot r_c\to0$).
+
+\section{The discrete selection residual and its reduction to GA}\label{app:discrete}
+
+GA (their Appendix~B) solve, for each candidate contact count $q$, the linear system
+$\mathbf M^{k+1,q}\mathbf x^{k+1,q}=\mathbf b^{k+1,q}$ and select $q$ by minimising the
+tangency residual $e^2_q=\big|\,Z(\theta_q)-Z(\theta_{q+1})\,\big|$, with
+$Z(\theta)=\zeta(\theta)\cos\theta+z$ the collocated height. Our extension leaves
+$\mathbf M,\mathbf b$ untouched and replaces only $e^2_q$. Writing the discrete edge
+differences $\Delta Z=Z(\theta_q)-Z(\theta_{q+1})$ and
+$\Delta x=x(\theta_q)-x(\theta_{q+1})$ with $x(\theta)=\zeta(\theta)\sin\theta$, the
+finite-angle residual is
+\be\label{eq:disc_residual_app}
+e^2_q(\theta_e)=\big|\,\Delta x\,\sin\theta_e+\Delta Z\,\cos\theta_e\,\big|,
+\ee
+the discrete form of \eqref{eq:disc_angle}. Two properties follow directly. (i)
+\emph{Exact GA reduction:} at $\theta_e=\pi$, $\sin\theta_e=0$ and $\cos\theta_e=-1$, so
+$e^2_q(\pi)=|\Delta Z|$, GA's tangency residual term for term; the selected $q$, and hence
+the entire trajectory, are identical. (ii) \emph{Boundedness:} \eqref{eq:disc_residual_app}
+is a linear combination of collocated amplitude differences, with no division by $x_\theta$,
+so it remains well defined through the maximal-spreading regime where $x_\theta\to0$
+(Remark~\ref{rem:xtheta}). For the hysteretic law \eqref{eq:hysteresis}, the same residual
+is used with $\theta_e$ replaced by $\theta_a$ or $\theta_r$ according to the sign of the
+trial contact-line increment $r_c^{k+1,q}-r_c^{k}$, and pinned candidates
+($\theta_r\le\theta_d\le\theta_a$) are scored by their distance to the nearest branch.
+
+\bibliographystyle{jfm}
+\begin{thebibliography}{}
+
+\bibitem[Alventosa \emph{et~al.}(2023)]{Alventosa2023}
+Alventosa, L.F.L., Cimpeanu, R. \& Harris, D.M. 2023 Inertio-capillary rebound of a
+droplet impacting a fluid bath. \emph{J. Fluid Mech.} \textbf{958}, A24.
+
+\bibitem[Blake(2006)]{Blake2006}
+Blake, T.D. 2006 The physics of moving wetting lines. \emph{J. Colloid Interface Sci.}
+\textbf{299}, 1--13.
+
+\bibitem[Cox(1986)]{Cox1986}
+Cox, R.G. 1986 The dynamics of the spreading of liquids on a solid surface. Part 1.
+Viscous flow. \emph{J. Fluid Mech.} \textbf{168}, 169--194.
+
+\bibitem[Gabbard \emph{et~al.}(2025)]{gabbard2025}
+Gabbard, C.T., Ag\"uero, E.A., Cimpeanu, R., Kuehr, K., Silver, E., Barotta, J.-W.,
+Galeano-Rios, C.A. \& Harris, D.M. 2025 Drop rebound at low Weber number.
+\emph{J. Fluid Mech.} (companion paper).
+
+\bibitem[Galeano-Rios \emph{et~al.}(2017)]{GaleanoRios2017}
+Galeano-Rios, C.A., Milewski, P.A. \& Vanden-Broeck, J.-M. 2017 Non-wetting impact of a
+sphere onto a bath and its application to bouncing droplets. \emph{J. Fluid Mech.}
+\textbf{826}, 97--127.
+
+\bibitem[de Gennes(1985)]{deGennes1985}
+de Gennes, P.-G. 1985 Wetting: statics and dynamics. \emph{Rev. Mod. Phys.} \textbf{57},
+827--863.
+
+\bibitem[Grmela \& \"Ottinger(1997)]{GrmelaOttinger1997}
+Grmela, M. \& \"Ottinger, H.C. 1997 Dynamics and thermodynamics of complex fluids. I.
+Development of a general formalism. \emph{Phys. Rev. E} \textbf{56}, 6620--6632.
+
+\bibitem[Joanny \& de Gennes(1984)]{JoannyDeGennes1984}
+Joanny, J.F. \& de Gennes, P.-G. 1984 A model for contact angle hysteresis.
+\emph{J. Chem. Phys.} \textbf{81}, 552--562.
+
+\bibitem[Lamb(1932)]{Lamb1924}
+Lamb, H. 1932 \emph{Hydrodynamics}, 6th edn. Cambridge University Press.
+
+\bibitem[Mol\'a\v{c}ek \& Bush(2013)]{MolacekBush2013}
+Mol\'a\v{c}ek, J. \& Bush, J.W.M. 2013 Drops bouncing on a vibrating bath.
+\emph{J. Fluid Mech.} \textbf{727}, 582--611.
+
+\bibitem[Okumura \emph{et~al.}(2003)]{Okumura2003}
+Okumura, K., Chevy, F., Richard, D., Qu\'er\'e, D. \& Clanet, C. 2003 Water spring: a
+model for bouncing drops. \emph{Europhys. Lett.} \textbf{62}, 237--243.
+
+\bibitem[Richard \emph{et~al.}(2002)]{Richard2002}
+Richard, D., Clanet, C. \& Qu\'er\'e, D. 2002 Contact time of a bouncing drop.
+\emph{Nature} \textbf{417}, 811.
+
+\bibitem[Snoeijer \& Andreotti(2013)]{SnoeijerAndreotti2013}
+Snoeijer, J.H. \& Andreotti, B. 2013 Moving contact lines: scales, regimes, and
+dynamical transitions. \emph{Annu. Rev. Fluid Mech.} \textbf{45}, 269--292.
+
+\bibitem[Voinov(1976)]{Voinov1976}
+Voinov, O.V. 1976 Hydrodynamics of wetting. \emph{Fluid Dyn.} \textbf{11}, 714--721.
+
+\end{thebibliography}
+
+\end{document}

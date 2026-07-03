@@ -7,7 +7,7 @@ using Logging
 include("types.jl")
 
 # Export types
-export SimConstants, OBParams, STParams, DropState, make_theta_vec, make_dt_max
+export SimConstants, OBParams, STParams, CLParams, DropState, make_theta_vec, make_dt_max
 
 # Export residual and Jacobian functions
 export pack_X, unpack_X!, build_residual!, build_jacobian
@@ -26,6 +26,7 @@ export precompute_integrals
 
 # Export contact detection functions
 export drop_height, contact_error, update_theta_star!
+export cyl_radius, contact_angle, contact_angle_error, contact_edge_radius
 
 # Export time-steppers
 export solve_drop!, solve_drop_v1!
@@ -48,6 +49,6 @@ include("timestepper_v1.jl")
 include("postprocessing.jl")
 
 # Export postprocessing
-export SweepKPIs, extract_kpis, compute_contact_radius, drop_profile
+export SweepKPIs, extract_kpis, compute_contact_radius, drop_profile, com_energy
 
 end # module

@@ -53,6 +53,17 @@ function drop_profile(state::DropState, cfg::SimConstants; n_theta::Int=200)
 end
 
 """
+    com_energy(state, cfg) → Float64
+
+Centre-of-mass mechanical energy per unit mass, ½v² + Bo·z. Conserved in free flight
+and strictly decreasing across a bounce (equivalently COR ≤ 1); used as the robust
+energy-injection acceptance gate. (The full internal energy budget, which requires the
+liquid–gas cap-area accounting, is not evaluated here — see the coefficient of
+restitution in `extract_kpis`.)
+"""
+com_energy(state::DropState, cfg::SimConstants) = 0.5 * state.v^2 + cfg.Bo * state.z
+
+"""
     extract_kpis(times, states, cfg) → SweepKPIs
 
 Extract key performance indicators from a completed `solve_drop!` run.
