@@ -472,6 +472,15 @@ separately). And a node whose gap grazes zero without crossing is a tangential (
 root that a sign-change bracket can miss; a minimum-gap guard over the trial step is used
 to shrink $\delta_t$ conservatively in that case.
 
+Event location applies to the quasi-static contact model. Under finite contact-line
+friction (\S\ref{sec:mobility}, $\xi>0$) the contact set is set by the rate-limited
+tracker rather than by a node reaching the substrate, so the geometric switching function
+\eqref{eq:switch} is no longer the controlling transition; there the standard adaptive
+stepper is used, and a dt-refinement study confirms it is convergent (its trajectory is
+insensitive to the step at the resolutions of interest). A friction-consistent event
+--- locating the step at which the tracked contact radius crosses a mesh node --- is a
+natural extension but is not pursued here.
+
 \section{Discrete formulation}\label{sec:discrete}
 
 We inherit GA Appendix~B verbatim for the bulk: truncation at mode $L$, implicit-Euler

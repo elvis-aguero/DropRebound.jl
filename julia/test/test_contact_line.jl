@@ -148,4 +148,16 @@ end
         @test abs(n.cor - o.cor) / o.cor < 0.04
         @test n.cor <= 1.0 + 1e-6
     end
+
+    # Guard: event_location with finite friction (ξ>0) must fall back to legacy
+    # stepping (the geometric event is not the controlling transition), producing the
+    # same result as legacy — not a dt-floor crash.
+    clear_jac_cache!()
+    tf, sf = solve_drop!(cfg, OBParams(), mk(0.253); cl = CLParams(0.9π, 1.0),
+                         t_end = 10.0, save_every = 0.05)
+    clear_jac_cache!()
+    te, se = solve_drop!(cfg, OBParams(), mk(0.253); cl = CLParams(0.9π, 1.0),
+                         t_end = 10.0, save_every = 0.05, event_location = true)
+    @test tf == te
+    @test all(a.z == b.z && a.cp == b.cp for (a, b) in zip(sf, se))
 end

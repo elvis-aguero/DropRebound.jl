@@ -40,6 +40,17 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
     # (θ_e=π, ξ=0) ⇒ neither ⇒ identical to GA.
     is_cl_mob = cl.xi > 0.0
     is_cl     = cl.theta_e < π - 1e-12 || is_cl_mob
+
+    # Event location roots on a geometric switching function (a node's substrate gap
+    # → 0). Under finite contact-line friction (ξ>0) the contact set is governed by the
+    # rate-limited mobility tracker, which can hold a node through a gap-zero; the
+    # geometric event is then not the controlling transition and the two fight to the
+    # dt floor. Event location is therefore restricted to the quasi-static case (ξ=0);
+    # finite friction uses the (well-converged) legacy stepper.
+    if event_location && is_cl_mob
+        @warn "event_location is not supported with contact-line friction (ξ>0); using legacy adaptive stepping."
+        event_location = false
+    end
     pack_fn      = is_ob ? pack_X_ob     : (s, M) -> pack_X(s, M)
     unpack_fn!   = is_ob ? unpack_X_ob!  : (s, X, M) -> unpack_X!(s, X, M)
     residual_fn! = is_ob ? build_residual_ob! : build_residual!
