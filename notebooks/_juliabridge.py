@@ -73,3 +73,97 @@ def run_julia_decay(julia_setup_lines, l, t_periods=6.0, n_save=50, timeout=120)
         f"Julia bridge produced no JULIABRIDGE_RESULT line.\n"
         f"--- stdout ---\n{result.stdout}\n--- stderr ---\n{result.stderr}"
     )
+
+
+def find_ob_eigenvalue_only(Oh, De1, beta_s, l, timeout=60):
+    """Return the Oldroyd-B characteristic-equation root only (no simulation).
+
+    Reuses `find_ob_eigenvalue` from `julia/test/test_ob_eigenvalue.jl` (see
+    `run_ob_eigenvalue_check`'s docstring for why we call into that file rather
+    than reimplementing it). Unlike `run_ob_eigenvalue_check`/`run_ob_sim`,
+    this works correctly for any `l` — `run_ob_sim` itself hardcodes
+    `init.A[2]` regardless of its own `l` keyword, so it silently excites mode
+    2 while comparing against mode `l`'s eigenvalue whenever `l != 2`. That is
+    a real latent bug in that test helper (never exercised because every test
+    in that file calls `run_ob_sim` with the default `l=2`), noted here rather
+    than fixed, since fixing test code is out of scope for this notebook.
+
+    Returns {"gamma_exact": float, "omega_exact": float}.
+    """
+    test_file = JULIA_PROJECT / "test" / "test_ob_eigenvalue.jl"
+    script = f"""
+    using Pkg; Pkg.activate(raw"{JULIA_PROJECT}")
+    using DropSolver
+
+    src = read(raw"{test_file}", String)
+    idx = findfirst("@testset", src)
+    Base.include_string(Main, src[1:idx[1]-1])
+
+    sigma_exact = find_ob_eigenvalue({Oh}, {De1}, {beta_s}, {l})
+    println("JULIABRIDGE_RESULT:" * "{{\\"gamma_exact\\": $(real(sigma_exact)), \\"omega_exact\\": $(imag(sigma_exact))}}")
+    """
+    result = subprocess.run(
+        ["julia", "-e", script],
+        capture_output=True, text=True, timeout=timeout, cwd=REPO_ROOT,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Julia bridge call failed (exit {result.returncode}):\n"
+            f"--- stdout ---\n{result.stdout}\n--- stderr ---\n{result.stderr}"
+        )
+    for line in result.stdout.splitlines():
+        if line.startswith("JULIABRIDGE_RESULT:"):
+            return json.loads(line[len("JULIABRIDGE_RESULT:"):])
+    raise RuntimeError(
+        f"Julia bridge produced no JULIABRIDGE_RESULT line.\n"
+        f"--- stdout ---\n{result.stdout}\n--- stderr ---\n{result.stderr}"
+    )
+
+
+def run_ob_eigenvalue_check(Oh, De1, beta_s, l=2, timeout=120):
+    """Cross-check the Oldroyd-B char. equation root against a live simulation.
+
+    Reuses `find_ob_eigenvalue`/`run_ob_sim`/`extract_decay_freq` directly from
+    `julia/test/test_ob_eigenvalue.jl` (290 lines of dedicated, already-CI-green
+    tests covering the Bessel-ratio root-finder) instead of reimplementing a
+    second, independent Bessel root-finder in Python. This is a deliberate
+    choice: it reuses already-audited code rather than risking a second,
+    redundant implementation with its own bugs. Only the top of that file (the
+    function definitions, before the first `@testset`) is evaluated, so no
+    tests run here — just the helper functions become callable.
+
+    Returns {"gamma_exact": float, "omega_exact": float,
+             "gamma_sim": float, "omega_sim": float}, where "_exact" is the
+    characteristic-equation root and "_sim" is extracted from a real
+    `solve_drop!` time series.
+    """
+    test_file = JULIA_PROJECT / "test" / "test_ob_eigenvalue.jl"
+    script = f"""
+    using Pkg; Pkg.activate(raw"{JULIA_PROJECT}")
+    using DropSolver
+
+    src = read(raw"{test_file}", String)
+    idx = findfirst("@testset", src)
+    Base.include_string(Main, src[1:idx[1]-1])
+
+    times, A2, sigma_exact = run_ob_sim({Oh}, {De1}, {beta_s}; l={l})
+    gamma_sim, omega_sim = extract_decay_freq(times, A2)
+
+    println("JULIABRIDGE_RESULT:" * "{{\\"gamma_exact\\": $(real(sigma_exact)), \\"omega_exact\\": $(imag(sigma_exact)), \\"gamma_sim\\": $(gamma_sim), \\"omega_sim\\": $(omega_sim)}}")
+    """
+    result = subprocess.run(
+        ["julia", "-e", script],
+        capture_output=True, text=True, timeout=timeout, cwd=REPO_ROOT,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Julia bridge call failed (exit {result.returncode}):\n"
+            f"--- stdout ---\n{result.stdout}\n--- stderr ---\n{result.stderr}"
+        )
+    for line in result.stdout.splitlines():
+        if line.startswith("JULIABRIDGE_RESULT:"):
+            return json.loads(line[len("JULIABRIDGE_RESULT:"):])
+    raise RuntimeError(
+        f"Julia bridge produced no JULIABRIDGE_RESULT line.\n"
+        f"--- stdout ---\n{result.stdout}\n--- stderr ---\n{result.stderr}"
+    )
