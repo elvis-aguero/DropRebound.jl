@@ -14,4 +14,5 @@ using DropSolver
     include("test_matlab_parity.jl")
     include("test_postprocessing.jl")
     include("test_carreau.jl")
+    include("test_carreau_yasuda.jl")
 end
