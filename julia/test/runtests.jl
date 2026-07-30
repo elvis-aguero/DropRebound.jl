@@ -5,6 +5,7 @@ using DropSolver
     include("test_legendre.jl")
     include("test_integrals.jl")
     include("test_bdf.jl")
+    include("test_reid.jl")
     include("test_residual.jl")
     include("test_contact.jl")
     include("test_timestepper.jl")

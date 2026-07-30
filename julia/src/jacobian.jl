@@ -13,7 +13,6 @@ State-vector layout (length 3M+1):
 function build_jacobian(state::DropState, history::Vector{DropState},
                         dt::Float64, cp::Int, cfg::SimConstants, ob::OBParams)
     M  = cfg.M
-    Oh = cfg.Oh
     θv = cfg.theta_vec
     order = length(history)
     c  = bdf_coefficients(order, dt, order == 2 ? history[end-1].dt : NaN)
@@ -23,8 +22,10 @@ function build_jacobian(state::DropState, history::Vector{DropState},
     Nm = M - 1
     sz = 3M + 1
 
-    D1 = Diagonal(ns .* (ns .+ 2) .* (ns .- 1))
-    D2 = Diagonal(2Oh .* (ns .- 1) .* (2 .* ns .+ 1))
+    # λₙ, ωₙ² are Lamb's small-Oh asymptotics by default, or Reid's exact
+    # finite-Oh values when cfg.viscous == :reid (see julia/src/reid.jl).
+    D1 = Diagonal(cfg.drop_omega2)
+    D2 = Diagonal(2 .* cfg.drop_lambda)
     damp_factor = (ob.De1 > 0.0 && ob.beta_s < 1.0) ? ob.beta_s : 1.0
 
     J = zeros(sz, sz)

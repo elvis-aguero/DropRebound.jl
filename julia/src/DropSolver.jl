@@ -4,10 +4,14 @@ using LinearAlgebra
 using Logging
 
 # Included in order of dependency
+include("reid.jl")
 include("types.jl")
 
 # Export types
 export SimConstants, OBParams, STParams, DropState, make_theta_vec, make_dt_max
+
+# Export Reid finite-Oh viscous model
+export reid_char, dominant_root, second_root, reid_lambda_omega2, drop_viscous_coeffs
 
 # Export residual and Jacobian functions
 export pack_X, unpack_X!, build_residual!, build_jacobian

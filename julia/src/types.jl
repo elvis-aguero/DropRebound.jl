@@ -1,4 +1,14 @@
-"""Physical and numerical parameters for one simulation run."""
+"""
+Physical and numerical parameters for one simulation run.
+
+`viscous`, `drop_lambda`, `drop_omega2` select and precompute the per-mode
+damping/frequency coefficients used by `build_residual!`/`build_jacobian!`
+(see `julia/src/reid.jl`): `:lamb` (default) is the classical small-Oh
+asymptotic formula this package has always used; `:reid` is the exact
+finite-Oh result from Reid (1960)'s characteristic equation. `drop_lambda[k]`,
+`drop_omega2[k]` correspond to mode `l=k+1` (length M-1, matching
+`A[2:end]`/`Adot[2:end]` indexing).
+"""
 struct SimConstants
     M         :: Int       # harmonics_qtt (number of Legendre modes, A₁…A_M)
     N_angles  :: Int       # angular_sampling = M+1
@@ -7,7 +17,16 @@ struct SimConstants
     theta_vec :: Vector{Float64}  # M+1 angles ∈ (π/2, π], Gauss-Legendre quadrature roots
     precomp_I :: Matrix{Float64}  # precomputed_integrals output (M+1 × M+1)
     dt_max    :: Float64          # maximum allowed time step
+    viscous     :: Symbol           # :lamb (default) or :reid
+    drop_lambda :: Vector{Float64}  # per-mode damping (length M-1)
+    drop_omega2 :: Vector{Float64}  # per-mode squared frequency (length M-1)
 end
+
+SimConstants(M::Int, N_angles::Int, Oh::Float64, Bo::Float64,
+             theta_vec::Vector{Float64}, precomp_I::Matrix{Float64}, dt_max::Float64;
+             viscous::Symbol=:lamb) =
+    SimConstants(M, N_angles, Oh, Bo, theta_vec, precomp_I, dt_max, viscous,
+                 drop_viscous_coeffs(M, Oh, viscous)...)
 
 """Oldroyd-B parameters. Set De1=0 or beta_s=1 for Newtonian."""
 struct OBParams
