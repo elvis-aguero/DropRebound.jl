@@ -21,15 +21,15 @@ OBParams() = OBParams(0.0, 1.0)   # Newtonian default
 Carreau-Yasuda shear-thinning parameters. Set eps_ST=0 for Newtonian.
 
 `a` is the Carreau-Yasuda shape exponent (a=2 recovers standard Carreau
-exactly — see shear_thinning_derivation.ipynb §1-§2). The 3-argument
-constructor defaults a=2.0 for backward compatibility with existing Carreau
-call sites; nothing about their behavior changes.
+exactly — see julia/derivations/carreau_yasuda_derivation.jl §1-§2). The
+3-argument constructor defaults a=2.0 for backward compatibility with
+existing Carreau call sites; nothing about their behavior changes.
 """
 struct STParams
     eps_ST   :: Float64             # (1-n)/a ≥ 0 (a=2: (1-n)/2, standard Carreau); zero = Newtonian
     lambda_c :: Float64             # relaxation time (non-dimensional)
     Gamma    :: Vector{Float64}     # Γ_l^(a) for modes 2..M (length M-1)
-                                    # Compute from shear_thinning_derivation.ipynb
+                                    # Compute from julia/derivations/carreau_yasuda_derivation.jl
     a        :: Float64             # Carreau-Yasuda shape exponent (2.0 = standard Carreau)
 end
 

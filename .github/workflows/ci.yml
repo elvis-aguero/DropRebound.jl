@@ -22,7 +22,7 @@ jobs:
         with:
           project: julia
 
-  notebooks:
+  derivations:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,16 +30,13 @@ jobs:
         with:
           version: '1.12'
       - uses: julia-actions/cache@v2
-      - name: Precompile DropSolver
-        run: julia --project=julia -e 'using Pkg; Pkg.instantiate(); using DropSolver'
-      - uses: astral-sh/setup-uv@v3
-      - name: Install notebook dependencies
-        run: uv sync
-      - name: Execute every derivation notebook
+      - name: Instantiate derivations environment
+        run: julia --project=julia/derivations -e 'using Pkg; Pkg.instantiate()'
+      - name: Run every CAS derivation script
         run: |
           set -e
-          for nb in notebooks/*.ipynb; do
-            echo "::group::$nb"
-            uv run jupyter nbconvert --to notebook --execute --stdout "$nb" > /dev/null
+          for script in julia/derivations/*.jl; do
+            echo "::group::$script"
+            julia --project=julia/derivations "$script"
             echo "::endgroup::"
           done
