@@ -9,11 +9,28 @@ At each step:
   3. Also try cp_prev±1 for smooth contact transitions
   4. Accept the cp with smallest |contact_error|; reject penetrating cp=0 states
   5. If all fail: halve dt and retry
-  6. After ≥4 halvings with no valid step, restart at the original step dt with
-     cp search expanded to cp_prev+2 (one extra level). This handles cases where
-     the contact patch spans more collocation points than cp_prev+1 predicts — a
-     physical need, not a time-step-size issue.
-  7. Ramp dt back toward dt_max at +10% per step
+
+Once in contact, the search window is limited to cp_prev-1 : cp_prev+1. Per
+Gabbard et al. (2025, JFM, "Drop rebound at low Weber number") §C.1-C.2: the
+contact point count must never change by more than one collocation point in
+a single accepted step *while already in contact*. Testing only these three
+candidates (rather than a wider window) is what makes the tangency-error
+scoring in `contact_error` reliable — a wider window can accept a candidate
+that merely scores lowest among a set that includes points where the
+linearized height function's scoring is no longer trustworthy, rather than a
+genuine local minimum. If no candidate in this window converges without
+penetration, the step is rejected and dt is halved, exactly as the reference
+algorithm requires — never widened.
+
+Contact *onset* (cp_prev == 0) is the one genuine exception: a smooth convex
+body touching a flat plane nucleates a contact patch whose radius initially
+grows like √(t − t_onset), i.e. arbitrarily fast in continuum time, so no
+achievable dt can resolve the very first instants of contact one collocation
+point at a time — this is a real feature of rigid-contact kinematics, not a
+discretization artifact. At cp_prev == 0 the full candidate range 0:N_angles-1
+is searched and the true error-minimizing cp accepted directly (no incremental
+widening, so there is no risk of settling on a merely-locally-best candidate).
+  6. Ramp dt back toward dt_max at +10% per step
 """
 function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
                      st::STParams        = STParams(),
@@ -42,11 +59,6 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
     next_save    = t + save_every
     step_count   = 0
 
-    # Per-step adaptivity state (reset after each accepted step)
-    dt_step_start  = dt  # dt at the start of the current time step attempt
-    n_halvings     = 0   # halvings within the current step (or since last restart)
-    cp_upper_extra = 0   # additional cp levels granted by restart cycles (0 = normal)
-
     while t < t_end
         order   = min(length(history), 2)
         cp_prev = history[end].cp
@@ -54,9 +66,10 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
         best_state = nothing
         best_err   = Inf
 
-        # cp search upper bound: normally cp_prev+1 (continuity);
-        # each restart cycle grants one extra level up to N_angles-1
-        cp_upper = min(cfg.N_angles - 1, cp_prev + 1 + cp_upper_extra)
+        # cp search window: cp_prev-1 : cp_prev+1 while in contact (never
+        # widened); the full range at contact onset (cp_prev == 0) — see
+        # docstring above.
+        cp_upper = cp_prev == 0 ? cfg.N_angles - 1 : min(cfg.N_angles - 1, cp_prev + 1)
 
         # Collect candidate initial guesses: history[end] for each cp, plus
         # a warm-start from cp=0 solution when penetration is detected
@@ -122,25 +135,13 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
         end
 
         if best_state === nothing || best_err == Inf
-            n_halvings += 1
-            @debug "Step rejected" t=t dt=dt n_halvings=n_halvings cp_prev=cp_prev cp_upper_extra=cp_upper_extra
+            @debug "Step rejected" t=t dt=dt cp_prev=cp_prev
 
-            # Principled cp restart: after ≥2 halvings without a valid step,
-            # reset to the original step dt and allow one more cp level. This
-            # handles vigorous impacts where the contact patch jumps more than
-            # one collocation point at once — a physical gap, not a time-step
-            # problem. Repeat up to 4 times (cp_prev+5 max) before halving.
-            # Threshold = 2 so the restart fires before dt can reach dt_min.
-            if n_halvings >= 2 && cp_upper_extra < 4 &&
-               cp_prev + 1 + cp_upper_extra < cfg.N_angles - 1
-                dt             = dt_step_start
-                cp_upper_extra += 1
-                n_halvings     = 0
-                @debug "cp restart: dt reset, cp_upper = cp_prev+$(1 + cp_upper_extra)" t=t dt=dt
-                clear_jac_cache!()
-                continue
-            end
-
+            # No candidate in cp_prev-1:cp_prev+1 converged without penetration —
+            # the contact patch needs to change by more than one collocation
+            # point to remain valid. Per the reference algorithm, this is always
+            # a time-step-size problem, never a reason to widen the cp search:
+            # halve dt and retry so cp can only ever advance one point per step.
             dt /= 2
             if dt < 10 * dt_min
                 @warn "dt approaching minimum — possible numerical difficulty" t=t dt=dt dt_min=dt_min
@@ -175,11 +176,8 @@ function solve_drop!(cfg::SimConstants, ob::OBParams, init::DropState;
 
         @debug "Step accepted" t=t dt=dt cp=new_cp contact_err=best_err step=step_count
 
-        # Ramp dt back toward dt_max and reset per-step adaptivity state
-        dt             = min(dt * 1.1, cfg.dt_max)
-        dt_step_start  = dt
-        n_halvings     = 0
-        cp_upper_extra = 0
+        # Ramp dt back toward dt_max
+        dt = min(dt * 1.1, cfg.dt_max)
 
         if t >= next_save
             push!(saved_times, t)

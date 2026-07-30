@@ -7,6 +7,7 @@ using DropSolver
     include("test_bdf.jl")
     include("test_residual.jl")
     include("test_contact.jl")
+    include("test_timestepper.jl")
     include("test_newtonian.jl")
     include("test_ob.jl")
     include("test_ob_eigenvalue.jl")
