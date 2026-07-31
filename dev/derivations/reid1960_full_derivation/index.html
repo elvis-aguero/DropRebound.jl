@@ -100,7 +100,23 @@ println(&quot;exactly, for symbolic l -- confirming the regular pressure solutio
 println(&quot;(after discarding the B term for regularity at the origin).&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 ASSERTION 5 OK: f = A*x^l + B*x^-(l+1) solves f&#39;&#39; + (2/x)f&#39; - l(l+1)f/x^2 = 0
 exactly, for symbolic l -- confirming the regular pressure solution x^l
-(after discarding the B term for regularity at the origin).</code></pre><p>The pressure GRADIENT is a poloidal, divergence-free field with angular structure <span>$Y_l^m$</span>, so (same logic as Section 2.3&#39;s poloidal-field statement) it is entirely determined by a single scalar function <span>$\Pi(x)$</span> through its radial component. Matching the explicit radial derivative of <span>$\epsilon P_0 x^l Y_l^m$</span> against the defining relation for <span>$\Pi$</span> gives <span>$\Pi(x) = \Pi_0 x^{l+1}$</span> with</p><p class="math-container">\[\Pi_0 = \frac{l}{\sigma^2 R^2}\,P_0.\]</p><hr/><h2 id="Section-4:-The-velocity-field-and-its-governing-ODE-(Reid&#39;s-Eq.-9)"><a class="docs-heading-anchor" href="#Section-4:-The-velocity-field-and-its-governing-ODE-(Reid&#39;s-Eq.-9)">Section 4: The velocity field and its governing ODE (Reid&#39;s Eq. 9)</a><a id="Section-4:-The-velocity-field-and-its-governing-ODE-(Reid&#39;s-Eq.-9)-1"></a><a class="docs-heading-anchor-permalink" href="#Section-4:-The-velocity-field-and-its-governing-ODE-(Reid&#39;s-Eq.-9)" title="Permalink"></a></h2><hr/><p>This is the technical heart of the whole problem: one ODE that packages up the entire viscous, incompressible flow field consistent with the linearized momentum equation.</p><p>Since the pressure gradient is purely poloidal, the momentum equation forces the velocity to be purely poloidal too (nothing drives a toroidal part). We write the radial velocity as</p><p class="math-container">\[u_r = \epsilon_0\,\sigma R\,\frac{U(x)}{x^2}\,Y_l^m\,e^{-\sigma t}\]</p><p>(the <span>$1/x^2$</span> scaling is conventional – it is exactly what makes the final ODE for <span>$U$</span> take the clean Bessel-equation form derived in Section 2.2, which is the entire point of choosing it). Write <span>$G(x)=U(x)/x^2$</span>, so <span>$u_r \propto G(x)$</span>.</p><p><strong>A fact we cite rather than re-derive</strong> (matching the level of the companion <code>.tex</code>, which also treats this as standard poloidal-field machinery, Section 2.3): for an axisymmetric poloidal field, the incompressibility constraint lets you eliminate the angular (<span>$u_\theta$</span>) part of the vector Laplacian entirely in favor of radial derivatives of <span>$u_r$</span>, giving</p><p class="math-container">\[\left[\nabla^2\bm u\right]_r = \nabla^2 u_r + \frac{2}{r^2}u_r + \frac{2}{r}\frac{\partial u_r}{\partial r}.\]</p><p>Doing full justice to <em>why</em> would mean setting up the explicit poloidal stream-function representation of <span>$u_\theta$</span> – a real vector-calculus derivation, but a different one from the ODE algebra that follows, and not where the risk of a silent sign error actually lives. <strong>What we DO verify</strong> is everything downstream of this formula, since that is where a subtle mistake is easy to make and easy to miss.</p><p>Substituting <span>$u_r=\sigma R\,G(x)\,Y_l^m$</span> (the <span>$\epsilon_0 e^{-\sigma t}$</span> prefactor cancels throughout, exactly as in the source) and using the scalar Laplacian formula (Section 2.1) for <span>$\nabla^2 u_r$</span>, all three terms combine into a single operator on <span>$G$</span>:</p><pre><code class="language-julia hljs">@variables Gfun(..)
+(after discarding the B term for regularity at the origin).</code></pre><p>The pressure GRADIENT is a poloidal, divergence-free field with angular structure <span>$Y_l^m$</span>, so (same logic as Section 2.3&#39;s poloidal-field statement) it is entirely determined by a single scalar function <span>$\Pi(x)$</span> through its radial component. Matching the explicit radial derivative of <span>$\epsilon P_0 x^l Y_l^m$</span> against the defining relation for <span>$\Pi$</span> gives <span>$\Pi(x) = \Pi_0 x^{l+1}$</span> with</p><p class="math-container">\[\Pi_0 = \frac{l}{\sigma^2 R^2}\,P_0.\]</p><hr/><h2 id="Section-4:-The-velocity-field-and-its-governing-ODE-(Reid&#39;s-Eq.-9)"><a class="docs-heading-anchor" href="#Section-4:-The-velocity-field-and-its-governing-ODE-(Reid&#39;s-Eq.-9)">Section 4: The velocity field and its governing ODE (Reid&#39;s Eq. 9)</a><a id="Section-4:-The-velocity-field-and-its-governing-ODE-(Reid&#39;s-Eq.-9)-1"></a><a class="docs-heading-anchor-permalink" href="#Section-4:-The-velocity-field-and-its-governing-ODE-(Reid&#39;s-Eq.-9)" title="Permalink"></a></h2><hr/><p>This is the technical heart of the whole problem: one ODE that packages up the entire viscous, incompressible flow field consistent with the linearized momentum equation.</p><p>Since the pressure gradient is purely poloidal, the momentum equation forces the velocity to be purely poloidal too (nothing drives a toroidal part). We write the radial velocity as</p><p class="math-container">\[u_r = \epsilon_0\,\sigma R\,\frac{U(x)}{x^2}\,Y_l^m\,e^{-\sigma t}\]</p><p>(the <span>$1/x^2$</span> scaling is conventional – it is exactly what makes the final ODE for <span>$U$</span> take the clean Bessel-equation form derived in Section 2.2, which is the entire point of choosing it). Write <span>$G(x)=U(x)/x^2$</span>, so <span>$u_r \propto G(x)$</span>.</p><p>For an axisymmetric poloidal field, the incompressibility constraint lets you eliminate the angular (<span>$u_\theta$</span>) part of the vector Laplacian entirely in favor of radial derivatives of <span>$u_r$</span>, giving</p><p class="math-container">\[\left[\nabla^2\bm u\right]_r = \nabla^2 u_r + \frac{2}{r^2}u_r + \frac{2}{r}\frac{\partial u_r}{\partial r}.\]</p><p>We derive this from two standard, textbook spherical-coordinate operator formulas (these are coordinate-system facts, not specific to this problem, so we cite them the way we&#39;d cite &quot;the Laplacian in spherical coordinates has this form&quot; – but everything built FROM them below is checked). For an axisymmetric field with no <span>$\varphi$</span>-dependence and no <span>$u_\varphi$</span>, the raw r-component of the vector Laplacian is</p><p class="math-container">\[\left[\nabla^2\bm u\right]_r = \nabla^2 u_r - \frac{2}{r^2}u_r - \frac{2}{r^2}A,
+\qquad
+A \equiv \frac{1}{\sin\theta}\frac{\partial(\sin\theta\,u_\theta)}{\partial\theta},\]</p><p>and incompressibility (<span>$\nabla\cdot\bm u=0$</span>) in the same coordinates is</p><p class="math-container">\[\frac{1}{r^2}\frac{\partial(r^2 u_r)}{\partial r} + \frac{1}{r}A = 0.\]</p><p>Solving the second for <span>$A$</span> gives <span>$A = -(2u_r + r\,\partial_r u_r)$</span> – purely in terms of <span>$u_r$</span>&#39;s radial dependence, no explicit <span>$u_\theta$</span> needed. Substituting this into the raw formula should reproduce the target formula above. We check this treating <span>$A$</span>, <span>$u_r$</span>, and <span>$\partial_r u_r$</span> as independent symbols related by exactly that one incompressibility identity (the same style as the <span>$v,v&#39;,v&#39;&#39;$</span> relation used for the homogeneous-solution check in Section 5) – if it did NOT collapse to zero, it would mean the two &quot;citable&quot; formulas above are inconsistent with the target formula this whole section is built on.</p><pre><code class="language-julia hljs">@variables r_var A_ang ur_r ur_r_prime Lap_ur
+raw_vec_lap_r = Lap_ur - 2 / r_var^2 * ur_r - 2 / r_var^2 * A_ang
+incompressibility_A = -(2 * ur_r + r_var * ur_r_prime)   # from (1/r^2)(r^2 u_r)&#39; = -(1/r)*A, solved for A
+target_vec_lap_r = Lap_ur + 2 / r_var^2 * ur_r + 2 / r_var * ur_r_prime
+vec_lap_residual = simplify(substitute(raw_vec_lap_r, Dict(A_ang =&gt; incompressibility_A)) - target_vec_lap_r; expand=true)
+@assert symbolic_zero(vec_lap_residual)
+println()
+println(&quot;ASSERTION 6 OK: eliminating the raw formula&#39;s u_theta-derivative term A&quot;)
+println(&quot;via incompressibility reproduces [nabla^2 u]_r = nabla^2 u_r + 2u_r/r^2 +&quot;)
+println(&quot;(2/r) du_r/dr exactly -- the formula used throughout the rest of this&quot;)
+println(&quot;section is now derived, not merely cited.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+ASSERTION 6 OK: eliminating the raw formula&#39;s u_theta-derivative term A
+via incompressibility reproduces [nabla^2 u]_r = nabla^2 u_r + 2u_r/r^2 +
+(2/r) du_r/dr exactly -- the formula used throughout the rest of this
+section is now derived, not merely cited.</code></pre><p>Substituting <span>$u_r=\sigma R\,G(x)\,Y_l^m$</span> (the <span>$\epsilon_0 e^{-\sigma t}$</span> prefactor cancels throughout, exactly as in the source) and using the scalar Laplacian formula (Section 2.1) for <span>$\nabla^2 u_r$</span>, all three terms combine into a single operator on <span>$G$</span>:</p><pre><code class="language-julia hljs">@variables Gfun(..)
 G = Gfun(x)
 term_scalar_lap = Dx_(Dx_(G)) + 2 / x * Dx_(G) - l * (l + 1) / x^2 * G   # nabla^2 u_r, via Section 2.1&#39;s eigenvalue property
 term_2_over_r2 = 2 / x^2 * G                                             # (2/r^2) u_r
@@ -109,10 +125,10 @@ combined_operator = expand_derivatives(term_scalar_lap + term_2_over_r2 + term_2
 target_operator = expand_derivatives(Dx_(Dx_(G)) + 4 / x * Dx_(G) + (2 - l * (l + 1)) / x^2 * G)
 @assert symbolic_zero(combined_operator - target_operator)
 println()
-println(&quot;ASSERTION 6 OK: [nabla^2 u]_r, written in terms of G(x)=u_r/(sigma R Y),&quot;)
+println(&quot;ASSERTION 7 OK: [nabla^2 u]_r, written in terms of G(x)=u_r/(sigma R Y),&quot;)
 println(&quot;equals G&#39;&#39; + (4/x)G&#39; + (2-l(l+1))/x^2 * G exactly -- the three pieces&quot;)
 println(&quot;(scalar Laplacian, 2u_r/r^2, 2u_r&#39;/r) combine into a single ODE operator.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 6 OK: [nabla^2 u]_r, written in terms of G(x)=u_r/(sigma R Y),
+ASSERTION 7 OK: [nabla^2 u]_r, written in terms of G(x)=u_r/(sigma R Y),
 equals G&#39;&#39; + (4/x)G&#39; + (2-l(l+1))/x^2 * G exactly -- the three pieces
 (scalar Laplacian, 2u_r/r^2, 2u_r&#39;/r) combine into a single ODE operator.</code></pre><p>The r-component of the momentum equation (after canceling <span>$Y_l^m e^{-\sigma t}$</span> and using <span>$x=r/R$</span>, <span>$q^2=\sigma R^2/\nu$</span>) is then</p><p class="math-container">\[-q^2 G = -\frac{P_0\,l\,x^{l-1}}{\sigma\nu} + G&#39;&#39; + \frac{4}{x}G&#39; + \frac{2-l(l+1)}{x^2}G.\]</p><p>Now substitute <span>$G = U/x^2$</span> – this is where the <span>$1/x^2$</span> scaling earns its keep. Verify the same kind of identity as before, now in this section&#39;s own x/l symbols and generalized with the <span>$q^2$</span> term included.</p><pre><code class="language-julia hljs">@variables Ufun(..)
 Usym = Ufun(x)
@@ -121,10 +137,10 @@ lhs_full = expand_derivatives(Dx_(Dx_(Gsub)) + 4 / x * Dx_(Gsub) + (2 - l * (l +
 rhs_full = expand_derivatives((Dx_(Dx_(Usym)) - l * (l + 1) / x^2 * Usym) / x^2)
 @assert symbolic_zero(lhs_full - rhs_full)
 println()
-println(&quot;ASSERTION 7 OK: with G=U/x^2, G&#39;&#39;+(4/x)G&#39;+(2-l(l+1))/x^2*G equals&quot;)
+println(&quot;ASSERTION 8 OK: with G=U/x^2, G&#39;&#39;+(4/x)G&#39;+(2-l(l+1))/x^2*G equals&quot;)
 println(&quot;[U&#39;&#39;-l(l+1)U/x^2]/x^2 exactly -- the substitution that turns the&quot;)
 println(&quot;momentum equation into an ODE purely in U.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 7 OK: with G=U/x^2, G&#39;&#39;+(4/x)G&#39;+(2-l(l+1))/x^2*G equals
+ASSERTION 8 OK: with G=U/x^2, G&#39;&#39;+(4/x)G&#39;+(2-l(l+1))/x^2*G equals
 [U&#39;&#39;-l(l+1)U/x^2]/x^2 exactly -- the substitution that turns the
 momentum equation into an ODE purely in U.</code></pre><p>Multiplying the momentum equation through by <span>$x^2$</span> and using the pressure solution <span>$P_0 = \sigma^2 R^2 \Pi_0/l$</span> (Section 3) to write <span>$P_0 l/(\sigma\nu) = \sigma R^2\Pi_0/\nu = q^2\Pi_0$</span>, the momentum equation becomes exactly <strong>Reid&#39;s Eq. 9</strong> – the single equation that packages up the entire linearized, viscous, incompressible flow problem:</p><p class="math-container">\[\left[\frac{d^2}{dx^2} - \frac{l(l+1)}{x^2} + q^2\right] U(x) = \begin{equation}
 q^{2} ~ x^{1 + l} ~ \Pi_{0}
@@ -135,11 +151,11 @@ Up = Pi_0 * x^(l + 1)
 particular_residual = expand_derivatives(Dx_(Dx_(Up)) - l * (l + 1) / x^2 * Up + q^2 * Up - q^2 * Pi_0 * x^(l + 1))
 @assert symbolic_zero(particular_residual)
 println()
-println(&quot;ASSERTION 8 OK: U_p = Pi_0 * x^(l+1) solves Reid&#39;s Eq. 9 exactly, for&quot;)
+println(&quot;ASSERTION 9 OK: U_p = Pi_0 * x^(l+1) solves Reid&#39;s Eq. 9 exactly, for&quot;)
 println(&quot;symbolic l and q -- the l(l+1)/x^2 and q^2 pieces of the U_p&#39;&#39;-term&quot;)
 println(&quot;cancel the corresponding pieces on the left, leaving exactly the&quot;)
 println(&quot;q^2*Pi_0*x^(l+1) forcing on the right.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 8 OK: U_p = Pi_0 * x^(l+1) solves Reid&#39;s Eq. 9 exactly, for
+ASSERTION 9 OK: U_p = Pi_0 * x^(l+1) solves Reid&#39;s Eq. 9 exactly, for
 symbolic l and q -- the l(l+1)/x^2 and q^2 pieces of the U_p&#39;&#39;-term
 cancel the corresponding pieces on the left, leaving exactly the
 q^2*Pi_0*x^(l+1) forcing on the right.</code></pre><p><strong>Homogeneous solution.</strong> The homogeneous equation <span>$U&#39;&#39;-l(l+1)U/x^2+q^2U=0$</span> is Section 2.2&#39;s ODE with <span>$x\to qx$</span>: writing <span>$U_h = x\,v(qx)$</span>, the chain rule gives <span>$U_h&#39;=v+xqv&#39;$</span>, <span>$U_h&#39;&#39;=2qv&#39;+xq^2v&#39;&#39;$</span>, and substituting <span>$v$</span> satisfying the spherical Bessel equation at argument <span>$z=qx$</span> (<span>$v&#39;&#39;=-\tfrac{2}{z}v&#39;-(1-\tfrac{l(l+1)}{z^2})v$</span>) collapses the whole thing to zero – verified below by treating <span>$v, v&#39;, v&#39;&#39;$</span> as related exactly by that one substitution, not by evaluating an actual Bessel function (this is the general, function-independent statement, exactly analogous to Section 2.2).</p><pre><code class="language-julia hljs">@variables v vp vpp
@@ -152,7 +168,7 @@ vpp_relation = -(2 / z) * vp - (1 - l * (l + 1) / z^2) * v
 homogeneous_residual = simplify(substitute(Uh_pp, Dict(vpp =&gt; vpp_relation)) - l * (l + 1) / x^2 * Uh + q^2 * Uh; expand=true)
 @assert isequal(homogeneous_residual, 0)
 println()
-println(&quot;ASSERTION 9 OK: U_h = x*v(qx) solves the homogeneous ODE U&#39;&#39;-l(l+1)U/x^2+q^2U=0&quot;)
+println(&quot;ASSERTION 10 OK: U_h = x*v(qx) solves the homogeneous ODE U&#39;&#39;-l(l+1)U/x^2+q^2U=0&quot;)
 println(&quot;exactly, given only that v satisfies the spherical Bessel equation at z=qx --&quot;)
 println(&quot;i.e. U_h = C*x*j_l(qx) for any constant C.&quot;)
 println()
@@ -160,7 +176,7 @@ println(&quot;Discarding the OTHER homogeneous solution (built from the second-k
 println(&quot;spherical Bessel function n_l, which diverges as z-&gt;0) on regularity&quot;)
 println(&quot;grounds -- the same argument as the pressure-field B-term in Section 3 --&quot;)
 println(&quot;the GENERAL solution is&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 9 OK: U_h = x*v(qx) solves the homogeneous ODE U&#39;&#39;-l(l+1)U/x^2+q^2U=0
+ASSERTION 10 OK: U_h = x*v(qx) solves the homogeneous ODE U&#39;&#39;-l(l+1)U/x^2+q^2U=0
 exactly, given only that v satisfies the spherical Bessel equation at z=qx --
 i.e. U_h = C*x*j_l(qx) for any constant C.
 
@@ -179,11 +195,11 @@ fluid_velocity_at_1 = epsilon0 * sigma_sym * U1      # u_r at x=1, with U(1) sti
 bc1_solution = Symbolics.solve_for(surface_velocity - fluid_velocity_at_1 ~ 0, U1)
 @assert symbolic_zero(bc1_solution - (-1))
 println()
-println(&quot;ASSERTION 10 OK: equating surface velocity to fluid velocity at x=1 and&quot;)
+println(&quot;ASSERTION 11 OK: equating surface velocity to fluid velocity at x=1 and&quot;)
 println(&quot;solving for U(1) gives U(1) = -1 exactly (evaluated at x=1, the&quot;)
 println(&quot;UNDEFORMED surface -- evaluating at the true deformed surface would&quot;)
 println(&quot;only add O(epsilon^2) corrections, negligible at this linear order).&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 10 OK: equating surface velocity to fluid velocity at x=1 and
+ASSERTION 11 OK: equating surface velocity to fluid velocity at x=1 and
 solving for U(1) gives U(1) = -1 exactly (evaluated at x=1, the
 UNDEFORMED surface -- evaluating at the true deformed surface would
 only add O(epsilon^2) corrections, negligible at this linear order).</code></pre><h3 id="BC2:-Tangential-stress-condition"><a class="docs-heading-anchor" href="#BC2:-Tangential-stress-condition">BC2: Tangential stress condition</a><a id="BC2:-Tangential-stress-condition-1"></a><a class="docs-heading-anchor-permalink" href="#BC2:-Tangential-stress-condition" title="Permalink"></a></h3><p>At a free surface (no exterior viscous fluid), the tangential viscous stress must vanish. Using the stream-function representation of a poloidal field to eliminate <span>$u_\theta$</span> (the same kind of standard poloidal-field fact cited in Section 4), this reduces to a single operator condition on <span>$U$</span> at <span>$x=1$</span>:</p><p class="math-container">\[\mathcal{L}_2[U] \equiv \left[\frac{d^2}{dx^2} - \frac{2}{x}\frac{d}{dx} + \frac{l(l+1)}{x^2}\right]U = 0 \qquad\text{at } x=1.\]</p><p><strong>What we verify</strong>, rather than cite, is evaluating this operator on the general solution from Section 5.</p><pre><code class="language-julia hljs">@variables x l q Pi_0 C
@@ -194,7 +210,7 @@ Up = Pi_0 * x^(l + 1)
 L2_Up_target = 2 * (l - 1) * (l + 1) * Pi_0 * x^(l - 1)
 @assert symbolic_zero(L2(Up) - L2_Up_target)
 println()
-println(&quot;ASSERTION 11 OK: L2[U_p]=2(l-1)(l+1)*Pi_0*x^(l-1) exactly, for symbolic l.&quot;)
+println(&quot;ASSERTION 12 OK: L2[U_p]=2(l-1)(l+1)*Pi_0*x^(l-1) exactly, for symbolic l.&quot;)
 
 @variables v vp vpp
 z = q * x
@@ -204,30 +220,46 @@ vpp_relation = -(2 / q) * vp - (1 - l * (l + 1) / q^2) * v
 L2_Uh_target = C * (-q^2 * v + 2 * (l^2 + l - 1) * v - 2 * q * vp)
 @assert isequal(simplify(substitute(L2_Uh_at_1, Dict(vpp =&gt; vpp_relation)) - L2_Uh_target; expand=true), 0)
 println()
-println(&quot;ASSERTION 12 OK: L2[U_h]|_{x=1} = C*[-q^2*j_l(q) + 2(l^2+l-1)*j_l(q) - 2q*j_l&#39;(q)]&quot;)
+println(&quot;ASSERTION 13 OK: L2[U_h]|_{x=1} = C*[-q^2*j_l(q) + 2(l^2+l-1)*j_l(q) - 2q*j_l&#39;(q)]&quot;)
 println(&quot;exactly, after eliminating v&#39;&#39; via the spherical Bessel equation at z=q --&quot;)
 println(&quot;matching Reid&#39;s own stated coefficient, now independently re-derived.&quot;)
 println()
 println(&quot;Setting the sum L2[U_h]|_{x=1} + L2[U_p]|_{x=1} = 0 (BC2) gives one linear&quot;)
 println(&quot;relation between C and Pi_0.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 11 OK: L2[U_p]=2(l-1)(l+1)*Pi_0*x^(l-1) exactly, for symbolic l.
+ASSERTION 12 OK: L2[U_p]=2(l-1)(l+1)*Pi_0*x^(l-1) exactly, for symbolic l.
 
-ASSERTION 12 OK: L2[U_h]|_{x=1} = C*[-q^2*j_l(q) + 2(l^2+l-1)*j_l(q) - 2q*j_l&#39;(q)]
+ASSERTION 13 OK: L2[U_h]|_{x=1} = C*[-q^2*j_l(q) + 2(l^2+l-1)*j_l(q) - 2q*j_l&#39;(q)]
 exactly, after eliminating v&#39;&#39; via the spherical Bessel equation at z=q --
 matching Reid&#39;s own stated coefficient, now independently re-derived.
 
 Setting the sum L2[U_h]|_{x=1} + L2[U_p]|_{x=1} = 0 (BC2) gives one linear
-relation between C and Pi_0.</code></pre><h3 id="BC3:-Normal-stress-condition"><a class="docs-heading-anchor" href="#BC3:-Normal-stress-condition">BC3: Normal stress condition</a><a id="BC3:-Normal-stress-condition-1"></a><a class="docs-heading-anchor-permalink" href="#BC3:-Normal-stress-condition" title="Permalink"></a></h3><p>The most involved of the three: it couples pressure, viscous normal stress, and the curvature of the deformed surface through surface tension. The radial normal stress inside the drop is <span>$-p_{rr} = p + \delta p - 2\mu\,\partial u_r/\partial r$</span>, and the free-surface condition is <span>$-p_{rr} = T_1(1/R_1+1/R_2)$</span>.</p><p><strong>Cited, not re-derived here</strong> (standard differential geometry, matching the level of the companion <code>.tex</code>): to first order in <span>$\epsilon$</span>, the mean curvature of the perturbed surface is</p><p class="math-container">\[\frac{1}{R_1}+\frac{1}{R_2} = \frac{1}{R}\Big[2 + (l-1)(l+2)\,\epsilon\,Y_l^m\Big].\]</p><p>The <span>$2/R$</span> piece is just the equilibrium curvature (Young-Laplace, Section 1); the <span>$(l-1)(l+2)$</span> factor is the SAME combination that appears in the inviscid frequency <span>$\sigma_{l;0}^2$</span> – both come from the curvature response to a harmonic deformation, so this is a consistency check worth noting, not a coincidence.</p><p>At <span>$O(\epsilon^0)$</span> the equilibrium Young-Laplace balance is automatically satisfied. At <span>$O(\epsilon^1)$</span>, using the pressure solution (<span>$\delta p|_{x=1}=\rho\epsilon P_0 Y_l^m$</span>) and <span>$u_r=\epsilon_0\sigma R\,G(x)Y_l^m e^{-\sigma t}$</span> for the viscous term:</p><p>The one genuinely computational piece here is the viscous term <span>$\partial u_r/\partial r$</span> at the surface, which needs <span>$d(U/x^2)/dx$</span> evaluated at <span>$x=1$</span> – verified directly:</p><pre><code class="language-julia hljs">@variables x
+relation between C and Pi_0.</code></pre><h3 id="BC3:-Normal-stress-condition"><a class="docs-heading-anchor" href="#BC3:-Normal-stress-condition">BC3: Normal stress condition</a><a id="BC3:-Normal-stress-condition-1"></a><a class="docs-heading-anchor-permalink" href="#BC3:-Normal-stress-condition" title="Permalink"></a></h3><p>The most involved of the three: it couples pressure, viscous normal stress, and the curvature of the deformed surface through surface tension. The radial normal stress inside the drop is <span>$-p_{rr} = p + \delta p - 2\mu\,\partial u_r/\partial r$</span>, and the free-surface condition is <span>$-p_{rr} = T_1(1/R_1+1/R_2)$</span>.</p><p>To first order in <span>$\epsilon$</span>, the mean curvature of the perturbed surface is</p><p class="math-container">\[\frac{1}{R_1}+\frac{1}{R_2} = \frac{1}{R}\Big[2 + (l-1)(l+2)\,\epsilon\,Y_l^m\Big].\]</p><p>The <span>$2/R$</span> piece is just the equilibrium curvature (Young-Laplace, Section 1); the <span>$(l-1)(l+2)$</span> factor is the SAME combination that appears in the inviscid frequency <span>$\sigma_{l;0}^2$</span> – both come from the curvature response to a harmonic deformation, so this is a consistency check worth noting, not a coincidence.</p><p><strong>Where this comes from.</strong> The starting point – standard differential geometry, citable the way &quot;the Laplacian in spherical coordinates has this form&quot; is citable – is the linearized mean-curvature formula for a nearly-spherical surface <span>$r=R+\zeta(\theta,\varphi)$</span> with <span>$\zeta$</span> small:</p><p class="math-container">\[\frac{1}{R_1}+\frac{1}{R_2} = \frac{2}{R} - \frac{1}{R^2}\Big[2\zeta + \nabla^2_{\text{angular}}\zeta\Big].\]</p><p>What we DO verify is the algebraic collapse from there: with <span>$\zeta=\epsilon R\,Y_l^m$</span> and the angular eigenvalue property from Section 2.1 (<span>$\nabla^2_{\text{angular}}Y_l^m=-l(l+1)Y_l^m$</span>, already established, not re-assumed here), this should reproduce the boxed formula above exactly.</p><pre><code class="language-julia hljs">@variables l_sym eps_sym R_sym Yl
+zeta = eps_sym * R_sym * Yl
+angular_lap_zeta = eps_sym * R_sym * (-l_sym * (l_sym + 1) * Yl)   # Section 2.1&#39;s eigenvalue property applied to zeta
+curvature_from_formula = 2 / R_sym - (1 / R_sym^2) * (2 * zeta + angular_lap_zeta)
+curvature_target = (1 / R_sym) * (2 + (l_sym - 1) * (l_sym + 2) * eps_sym * Yl)
+@assert symbolic_zero(simplify(curvature_from_formula - curvature_target; expand=true))
+println()
+println(&quot;ASSERTION 14 OK: substituting zeta=eps*R*Y_l^m and the angular eigenvalue&quot;)
+println(&quot;property into the linearized curvature formula reproduces&quot;)
+println(&quot;1/R1+1/R2 = (1/R)[2+(l-1)(l+2)*eps*Y_l^m] exactly, for symbolic l -- a&quot;)
+println(&quot;failing assertion here would mean either the cited curvature formula or&quot;)
+println(&quot;this section&#39;s own algebra disagrees with the stated (l-1)(l+2) result.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+ASSERTION 14 OK: substituting zeta=eps*R*Y_l^m and the angular eigenvalue
+property into the linearized curvature formula reproduces
+1/R1+1/R2 = (1/R)[2+(l-1)(l+2)*eps*Y_l^m] exactly, for symbolic l -- a
+failing assertion here would mean either the cited curvature formula or
+this section&#39;s own algebra disagrees with the stated (l-1)(l+2) result.</code></pre><p>At <span>$O(\epsilon^0)$</span> the equilibrium Young-Laplace balance is automatically satisfied. At <span>$O(\epsilon^1)$</span>, using the pressure solution (<span>$\delta p|_{x=1}=\rho\epsilon P_0 Y_l^m$</span>) and <span>$u_r=\epsilon_0\sigma R\,G(x)Y_l^m e^{-\sigma t}$</span> for the viscous term:</p><p>The one genuinely computational piece here is the viscous term <span>$\partial u_r/\partial r$</span> at the surface, which needs <span>$d(U/x^2)/dx$</span> evaluated at <span>$x=1$</span> – verified directly:</p><pre><code class="language-julia hljs">@variables x
 @variables U(x)
 Dx__ = Differential(x)
 dGdx_at_1 = substitute(expand_derivatives(Dx__(U / x^2)), Dict(x =&gt; 1))
 target_at_1 = substitute(Dx__(U) - 2 * U, Dict(x =&gt; 1))
 @assert isequal(simplify(dGdx_at_1 - target_at_1; expand=true), 0)
 println()
-println(&quot;ASSERTION 13 OK: d/dx(U/x^2)|_{x=1} = U&#39;(1) - 2U(1) exactly.&quot;)
+println(&quot;ASSERTION 15 OK: d/dx(U/x^2)|_{x=1} = U&#39;(1) - 2U(1) exactly.&quot;)
 println()
 println(&quot;Dividing through by rho*epsilon*Y_l^m and using mu=rho*nu, BC3 becomes&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 13 OK: d/dx(U/x^2)|_{x=1} = U&#39;(1) - 2U(1) exactly.
+ASSERTION 15 OK: d/dx(U/x^2)|_{x=1} = U&#39;(1) - 2U(1) exactly.
 
 Dividing through by rho*epsilon*Y_l^m and using mu=rho*nu, BC3 becomes</code></pre><p class="math-container">\[\begin{equation}
 \frac{\mathrm{T}_{1} ~ \left( 2 + l \right) ~ \left( -1 + l \right)}{R ~ \rho}
@@ -246,12 +278,12 @@ rhs_rescaled = simplify(substitute(bc3_rhs, Dict(P0 =&gt; sigma^2 * R^2 * Pi_0 /
 rhs_in_q = simplify(substitute(rhs_rescaled, Dict(sigma =&gt; q^2 * nu / R^2)); expand=true)   # sigma = q^2*nu/R^2
 @assert symbolic_zero(rhs_in_q - q^2 * (q^2 * Pi_0 - 2 * l * Uterm))
 println()
-println(&quot;ASSERTION 14 OK: rescaling BC3 by l*R^2/nu^2 turns sigma_{l;0}^2*R^2/l&quot;)
+println(&quot;ASSERTION 16 OK: rescaling BC3 by l*R^2/nu^2 turns sigma_{l;0}^2*R^2/l&quot;)
 println(&quot;into alpha^4 = sigma_{l;0}^2*R^4/nu^2 on the left (T_1 and rho cancel),&quot;)
 println(&quot;and turns the right side into q^4*Pi_0 - 2*l*q^2*Uterm exactly, using&quot;)
 println(&quot;q^2=sigma*R^2/nu -- i.e. T_1 and rho have both cancelled, leaving a&quot;)
 println(&quot;problem purely in the dimensionless (alpha,q):&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 14 OK: rescaling BC3 by l*R^2/nu^2 turns sigma_{l;0}^2*R^2/l
+ASSERTION 16 OK: rescaling BC3 by l*R^2/nu^2 turns sigma_{l;0}^2*R^2/l
 into alpha^4 = sigma_{l;0}^2*R^4/nu^2 on the left (T_1 and rho cancel),
 and turns the right side into q^4*Pi_0 - 2*l*q^2*Uterm exactly, using
 q^2=sigma*R^2/nu -- i.e. T_1 and rho have both cancelled, leaving a
@@ -267,10 +299,10 @@ Pi0sol = simplify(substitute(bc_solution[2], Dict(jlp =&gt; jl * (l - q * Q) / q
 
 @assert symbolic_zero(Csol - 2 * (l^2 - 1) / (jl * q * (2Q - q)))
 println()
-println(&quot;ASSERTION 15 OK: solving BC1+BC2 gives C = 2(l-1)(l+1) / [j_l(q)*q*(2Q-q)]&quot;)
+println(&quot;ASSERTION 17 OK: solving BC1+BC2 gives C = 2(l-1)(l+1) / [j_l(q)*q*(2Q-q)]&quot;)
 println(&quot;exactly, matching Reid&#39;s Eq. 20 (this repo&#39;s docs/reid1960_expanded-3.tex,&quot;)
 println(&quot;Eq. C_soln), now via an independent symbolic solve rather than by-hand algebra.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 15 OK: solving BC1+BC2 gives C = 2(l-1)(l+1) / [j_l(q)*q*(2Q-q)]
+ASSERTION 17 OK: solving BC1+BC2 gives C = 2(l-1)(l+1) / [j_l(q)*q*(2Q-q)]
 exactly, matching Reid&#39;s Eq. 20 (this repo&#39;s docs/reid1960_expanded-3.tex,
 Eq. C_soln), now via an independent symbolic solve rather than by-hand algebra.</code></pre><p>Finally: substitute C, Pi_0 into <span>$U&#39;(1)-2U(1)$</span> (using <span>$U(1)=-1$</span> from BC1), then into the <span>$\alpha^4$</span> relation above. This is the single largest algebraic reduction in the whole derivation – the <span>$.tex$</span> calls the by-hand version of this step &quot;lengthy&quot; and does not show every intermediate line. Symbolics does not get tired.</p><p>NOTE: two SEPARATE substitute passes, not one combined dict – C/Pi_0&#39;s own raw solutions still contain jlp, and a single-pass substitute does not recursively re-process values it has just substituted in.</p><pre><code class="language-julia hljs">Uprime1_minus_2U1 = substitute(C * (jl + q * jlp) + Pi_0 * (l + 1) + 2, Dict(C =&gt; bc_solution[1], Pi_0 =&gt; bc_solution[2]))
 Uprime1_minus_2U1 = simplify(substitute(Uprime1_minus_2U1, Dict(jlp =&gt; jl * (l - q * Q) / q)); expand=true)
@@ -279,7 +311,7 @@ alpha4_derived = simplify(q^2 * (q^2 * Pi0sol - 2 * l * Uprime1_minus_2U1); expa
 characteristic_eq_rhs = q^4 * ((2 * (l - 1) / q^2) * (l + (l + 1) * (q - 2 * l * Q) / (q - 2 * Q)) - 1)
 @assert symbolic_zero(alpha4_derived - characteristic_eq_rhs)
 println()
-println(&quot;ASSERTION 16 OK -- THE MAIN RESULT: substituting the boundary-condition&quot;)
+println(&quot;ASSERTION 18 OK -- THE MAIN RESULT: substituting the boundary-condition&quot;)
 println(&quot;solutions into the T1-eliminated alpha^4 relation gives EXACTLY Reid&#39;s&quot;)
 println(&quot;closed-form characteristic equation, for symbolic l and q. This is the&quot;)
 println(&quot;single equation the rest of this repo&#39;s viscous-drop physics rests on.&quot;)
@@ -291,7 +323,7 @@ derivation -- the oscillation frequency, the damping rate, whether a drop
 of a given size and viscosity oscillates or just squashes back down --
 is now known to follow from exactly this one equation:
 &quot;&quot;&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 16 OK -- THE MAIN RESULT: substituting the boundary-condition
+ASSERTION 18 OK -- THE MAIN RESULT: substituting the boundary-condition
 solutions into the T1-eliminated alpha^4 relation gives EXACTLY Reid&#39;s
 closed-form characteristic equation, for symbolic l and q. This is the
 single equation the rest of this repo&#39;s viscous-drop physics rests on.
@@ -308,10 +340,10 @@ characteristic_rhs_full = (2 * (l - 1) / q^2) * (l + (l + 1) * (q - 2 * l * Q) /
 characteristic_rhs_Q0 = substitute(characteristic_rhs_full, Dict(Q =&gt; 0))
 @assert symbolic_zero(characteristic_rhs_Q0 - 2 * (l - 1) * (2l + 1) / q^2)
 println()
-println(&quot;ASSERTION 17 OK: setting Q=0 in the exact characteristic equation&#39;s RHS&quot;)
+println(&quot;ASSERTION 19 OK: setting Q=0 in the exact characteristic equation&#39;s RHS&quot;)
 println(&quot;collapses the bracket [l+(l+1)(q-2lQ)/(q-2Q)] to exactly 2l+1 -- the&quot;)
 println(&quot;q-&gt;infinity idealization used throughout this section.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 17 OK: setting Q=0 in the exact characteristic equation&#39;s RHS
+ASSERTION 19 OK: setting Q=0 in the exact characteristic equation&#39;s RHS
 collapses the bracket [l+(l+1)(q-2lQ)/(q-2Q)] to exactly 2l+1 -- the
 q-&gt;infinity idealization used throughout this section.</code></pre><p>Multiplying through by <span>$q^4$</span> turns this into a genuine QUADRATIC in <span>$q^2$</span>:</p><p class="math-container">\[q^4 - 2(l-1)(2l+1)\,q^2 + \alpha^4 = 0.\]</p><p>Solved by the quadratic formula, <span>$q^2 = (l-1)(2l+1) \pm \sqrt{(l-1)^2(2l+1)^2-\alpha^4}$</span>. For <span>$\alpha \gg 1$</span> (the low-viscosity regime this limit describes), the <span>$\alpha^4$</span> term dominates under the square root, giving <span>$q^2 \approx (l-1)(2l+1) \pm i\alpha^2$</span> to leading order – and since <span>$\sigma = q^2\nu/R^2$</span> and <span>$\alpha^2\nu/R^2=\sigma_{l;0}$</span> by definition, this is exactly <strong>Lamb&#39;s classical result</strong>:</p><p class="math-container">\[\sigma_{l;\nu} = (l-1)(2l+1)\,\frac{\nu}{R^2} \pm i\,\sigma_{l;0}.\]</p><p>We check this quantitatively rather than just asymptotically: the relative error between the EXACT quadratic root and Lamb&#39;s leading-order formula should shrink as <span>$\alpha\to\infty$</span>.</p><pre><code class="language-julia hljs">for l_val in (2, 3, 5, 10)
     prev_err = Inf
@@ -324,7 +356,7 @@ q-&gt;infinity idealization used throughout this section.</code></pre><p>Multipl
     end
 end
 println()
-println(&quot;ASSERTION 18 OK: the exact quadratic&#39;s root and Lamb&#39;s leading-order&quot;)
+println(&quot;ASSERTION 20 OK: the exact quadratic&#39;s root and Lamb&#39;s leading-order&quot;)
 println(&quot;formula converge (relative gap shrinks monotonically as alpha grows,&quot;)
 println(&quot;l=2,3,5,10) -- confirming Lamb&#39;s formula IS the alpha-&gt;infinity limit&quot;)
 println(&quot;of the exact characteristic equation, not an unrelated approximation.&quot;)
@@ -348,7 +380,7 @@ machinery that solves this transcendental equation robustly at finite Oh,
 the (lambda_l(Oh), omega_l^2(Oh)) parametrization actually wired into
 `julia/src/reid.jl`, and a live cross-check against the running solver.
 &quot;&quot;&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 18 OK: the exact quadratic&#39;s root and Lamb&#39;s leading-order
+ASSERTION 20 OK: the exact quadratic&#39;s root and Lamb&#39;s leading-order
 formula converge (relative gap shrinks monotonically as alpha grows,
 l=2,3,5,10) -- confirming Lamb&#39;s formula IS the alpha-&gt;infinity limit
 of the exact characteristic equation, not an unrelated approximation.
@@ -398,7 +430,7 @@ for (Oh_val, l_val) in ((0.02, 2), (0.02, 3), (0.05, 2))
     @assert err &lt; 0.05
 end
 println()
-println(&quot;ASSERTION 19 OK: a live, small-Oh solve_drop! run decays at the rate&quot;)
+println(&quot;ASSERTION 21 OK: a live, small-Oh solve_drop! run decays at the rate&quot;)
 println(&quot;Section 8&#39;s Lamb-limit derivation predicts, to &lt;5% -- confirming this&quot;)
 println(&quot;document&#39;s physics matches the actual running production code, not&quot;)
 println(&quot;just its own internal algebra.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Info: solve_drop! starting
@@ -438,7 +470,7 @@ println(&quot;just its own internal algebra.&quot;)</code></pre><pre class="docu
 └   saved_frames = 242
   Oh=0.05 l=2: gamma_lamb(Section 8)=0.25  gamma_sim(live solve_drop!)=0.25333  rel_err=0.0133
 
-ASSERTION 19 OK: a live, small-Oh solve_drop! run decays at the rate
+ASSERTION 21 OK: a live, small-Oh solve_drop! run decays at the rate
 Section 8&#39;s Lamb-limit derivation predicts, to &lt;5% -- confirming this
 document&#39;s physics matches the actual running production code, not
-just its own internal algebra.</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../reid1960/06-velocity-ode/">« The Velocity ODE</a><a class="docs-footer-nextpage" href="../reid_finite_oh_derivation/">Part 2 – Finite-Oh damping and frequency (production wiring) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 31 July 2026 23:38">Friday 31 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+just its own internal algebra.</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../reid1960/06-velocity-ode/">« The Velocity ODE</a><a class="docs-footer-nextpage" href="../reid_finite_oh_derivation/">Part 2 – Finite-Oh damping and frequency (production wiring) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 31 July 2026 23:56">Friday 31 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
