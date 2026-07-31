@@ -3,9 +3,7 @@
 Two facts from mathematical physics do essentially all of the geometric work
 in the rest of this derivation. Neither is specific to viscous flow -- they
 are facts about spherical harmonics and Bessel functions that would show up
-in any spherically-symmetric wave or diffusion problem. Both are checked
-below against the actual computer-algebra objects verified in
-`julia/derivations/reid1960_full_derivation.jl`, not merely asserted.
+in any spherically-symmetric wave or diffusion problem.
 
 ## Spherical harmonics
 
@@ -37,14 +35,13 @@ the full scalar Laplacian is
 where primes denote ``d/dr``. For axisymmetric problems we take ``m=0``, so
 ``Y_l^0 \propto P_l(\cos\theta)`` is just the Legendre polynomial.
 
-!!! note "Live check, not just a citation"
+!!! note "Why this is an eigenvalue property"
     The eigenvalue property above splits into two independent facts: a
     change of variables from ``\theta`` to ``x=\cos\theta`` turns the
     angular Laplacian into the operator ``\frac{d}{dx}\!\left[(1-x^2)\frac{dQ}{dx}\right]``
     for *any* function; and the Legendre polynomials specifically satisfy
-    ``(1-x^2)P_l'' - 2xP_l' + l(l+1)P_l = 0``. Both are verified in the
-    companion script for symbolic ``l``. Concretely, for ``l=3``, built from
-    the same Bonnet-recursion code this repo's other derivations use:
+    ``(1-x^2)P_l'' - 2xP_l' + l(l+1)P_l = 0``. Take ``l=3``, built via the
+    Bonnet recursion ``(n+1)P_{n+1}(x) = (2n+1)xP_n(x) - nP_{n-1}(x)``:
 
 ```@eval
 using Symbolics, Markdown
@@ -62,7 +59,7 @@ P3 = simplify(legendre_P(3, x); expand=true)
 Dx = Differential(x)
 residual = simplify(expand_derivatives((1 - x^2) * Dx(Dx(P3)) - 2 * x * Dx(P3) + 3 * 4 * P3); expand=true)
 Markdown.parse("```math\nP_3(x) = " * Main.pretty_latex(P3) *
-    "\n```\nand substituting into Legendre's equation gives, literally, `" * string(residual) * "` -- exactly zero, not approximately.")
+    "\n```\nSubstituting into Legendre's equation, the left-hand side collapses to `" * string(residual) * "`.")
 ```
 
 ## Spherical Bessel functions
@@ -96,11 +93,10 @@ of the first kind, ``j_l(z) = \sqrt{\pi/2z}\,J_{l+1/2}(z)``.
     ``U'=v+xv'`` and ``U''=2v'+xv''``, and substituting gives
     ``x\left[v''+\frac{2}{x}v'+q^2v-\frac{l(l+1)}{x^2}v\right]=0``, which is
     exactly the spherical Bessel equation above (at argument ``qx``). This
-    identity -- verified symbolically for symbolic ``l`` in the companion
-    script, not just at concrete values -- is what makes ``U(x)=x\,j_l(qx)``
-    the natural building block for everything that follows, and is why the
-    scaling ``u_r \propto U(x)/x^2`` is chosen the way it is once we reach
-    the velocity-field ODE.
+    identity is what makes ``U(x)=x\,j_l(qx)`` the natural building block
+    for everything that follows, and is why the scaling
+    ``u_r \propto U(x)/x^2`` is chosen the way it is once we reach the
+    velocity-field ODE.
 
 We will also need the derivative identity. Using the standard recurrence
 ``j_l'(z) = \frac{l}{z}j_l(z) - j_{l+1}(z)``,
@@ -112,7 +108,7 @@ We will also need the derivative identity. Using the standard recurrence
 Reid defines the ratio ``Q_{l+1/2}(q) \equiv j_{l+1}(q)/j_l(q) = J_{l+3/2}(q)/J_{l+1/2}(q)``,
 so this becomes ``qj_l'(q)/j_l(q) = l - qQ_{l+1/2}(q)`` -- the one Bessel
 combination the entire characteristic equation reduces to, later in this
-chapter.
+derivation.
 
 ## The poloidal decomposition
 

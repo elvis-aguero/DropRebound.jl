@@ -6,14 +6,6 @@ This is the physics underneath every rheology model in this repo. Every other
 derivation here (Oldroyd-B, Carreau-Yasuda) is a correction layered on top of
 what gets derived across this chapter; read this one first.
 
-The full CAS derivation and its live cross-check against the running solver
-live in `julia/derivations/reid1960_full_derivation.jl`. Starting from the
-next chapter, this text's load-bearing results are typeset directly from
-that script's own verified symbolic objects, not transcribed by hand -- the
-handful of formulas cited in this introductory chapter (the inviscid
-frequency below, Lamb's correction) are exactly that, citations, the same
-way Reid's own paper takes them as given rather than re-deriving them.
-
 ## What problem are we solving?
 
 Consider a small liquid droplet (say, a water drop suspended in air) that has
