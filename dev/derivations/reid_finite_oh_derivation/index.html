@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>reid finite oh derivation · DropRebound.jl</title><meta name="title" content="reid finite oh derivation · DropRebound.jl"/><meta property="og:title" content="reid finite oh derivation · DropRebound.jl"/><meta property="twitter:title" content="reid finite oh derivation · DropRebound.jl"/><meta name="description" content="Documentation for DropRebound.jl."/><meta property="og:description" content="Documentation for DropRebound.jl."/><meta property="twitter:description" content="Documentation for DropRebound.jl."/><meta property="og:url" content="https://elvis-aguero.github.io/DropRebound.jl/derivations/reid_finite_oh_derivation/"/><meta property="twitter:url" content="https://elvis-aguero.github.io/DropRebound.jl/derivations/reid_finite_oh_derivation/"/><link rel="canonical" href="https://elvis-aguero.github.io/DropRebound.jl/derivations/reid_finite_oh_derivation/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">DropRebound.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">CAS Derivations</span><ul><li><a class="tocitem" href="../carreau_yasuda_derivation/">carreau yasuda derivation</a></li><li><a class="tocitem" href="../carreau_yasuda_multimode_derivation/">carreau yasuda multimode derivation</a></li><li><a class="tocitem" href="../carreau_yasuda_nonperturbative_derivation/">carreau yasuda nonperturbative derivation</a></li><li><a class="tocitem" href="../cross_fluid_derivation/">cross fluid derivation</a></li><li><a class="tocitem" href="../oldroyd_b_derivation/">oldroyd b derivation</a></li><li class="is-active"><a class="tocitem" href>reid finite oh derivation</a><ul class="internal"><li><a class="tocitem" href="#Section-2:-the-second-root,-and-the-continuation-trap-for-finding-it."><span>Section 2: the second root, and the continuation trap for finding it.</span></a></li><li><a class="tocitem" href="#Summary"><span>Summary</span></a></li></ul></li></ul></li><li><a class="tocitem" href="../../api/">API Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">CAS Derivations</a></li><li class="is-active"><a href>reid finite oh derivation</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>reid finite oh derivation</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/elvis-aguero/DropRebound.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/elvis-aguero/DropRebound.jl/blob/main/julia/derivations/reid_finite_oh_derivation.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><p>============================================================================== Finite-Oh Damping and Frequency: from Reid&#39;s Exact Characteristic Equation</p><p>What&#39;s broken today: <code>julia/src/timestepper.jl</code> (build<em>residual!/build</em>jacobian!) implements ONLY Lamb&#39;s classical result D1[l]=l(l-1)(l+2), D2[l]=2<em>Oh</em>(l-1)<em>(2l+1) for every mode l – see julia/test/test<em>ob</em>eigenvalue.jl&#39;s own comment: &quot;the Lamb approximation coefficients&quot;. Lamb&#39;s formula is the *leading-order-in-Oh</em> (nu -&gt; 0) asymptotic reduction of Reid (1960)&#39;s exact viscous characteristic equation (docs/reid1960_expanded-3.tex, &quot;The small-viscosity limit&quot;), and its error grows with BOTH Oh and l – not just a large-Oh problem.</p><p>Why this matters concretely: a real shear-thinning fluid shared for this repo&#39;s validation dataset has a REST-state Ohnesorge number Oh<em>0 ~ 57 (using the given eta</em>0=8.43 Pa.s, Bo=0.012, R=0.3mm, sigma=72.8mN/m) and a fully-thinned Oh_inf ~ 0.025 – a ~2260x swing that spends most of its time deep in the regime Lamb&#39;s formula was never meant to cover.</p><p>This derivation, and the choice of what to replace Lamb&#39;s coefficients WITH, leans heavily on a sister repository, elvis-aguero/SpectralKM.jl (a fully spectral kinematic-match model for droplet-bath impact by the same group), which already carries a battle-tested <code>:reid</code> viscous model in production (<code>src/reid.jl</code>, <code>src/types.jl</code>&#39;s <code>DEFAULT_VISCOUS = :reid</code>). Three concrete things were ported or learned from it, credited at point of use below:</p><ol><li>A downward Bessel-ratio recurrence that never evaluates a Bessel function directly. An earlier version of this script used SpecialFunctions.besselj directly and threw <code>AmosException: overflow</code> at l=16, Oh=0.3 – a perfectly reasonable (l, Oh) pair, not an edge case.</li><li>Continuation in Oh for the dominant root. A single Newton solve from Lamb&#39;s asymptotic guess (this script&#39;s original approach) can converge to the WRONG root once Oh grows – confirmed by reproducing SpectralKM.jl&#39;s own documented example (l=16, Oh=0.3: a direct solve returns a real root near 288, the wrong branch, while continuation correctly tracks ~150).</li><li>The parametrization itself. This script&#39;s first version followed Molacek &amp; Bush (2012) and added a per-mode INERTIA coefficient A<em>l(Oh) alongside a rescaled damping D</em>l(Oh), keeping the restoring/frequency term fixed at the inviscid l(l-1)(l+2). SpectralKM.jl instead keeps unit inertia and lets BOTH the damping (lambda<em>l) and the frequency-squared term (omega</em>l^2) vary with Oh, i.e. the per-mode ODE     Addot<em>l + 2*lambda</em>l(Oh)<em>Adot<em>l + omega</em>l^2(Oh)</em>A<em>l = forcing This is mathematically equivalent to the A</em>l/D<em>l form for FREE decay (same two roots, just an overall rescaling of the ODE) but is the simpler gauge, requires no new inertia term in julia/src/timestepper.jl at all, and is the one already carrying real simulations in the sister repo – so it is what this script derives and what should be wired into production, not the A</em>l/D<em>l form. See the note at the end of Section 3 on why the two are NOT obviously equivalent once contact forcing (B</em>l) enters – an open question this script does not resolve.</li></ol><p>What this derives: Reid&#39;s own transcendental characteristic equation (docs/reid1960<em>expanded-3.tex eq:char</em>eq) has, for each l and each Oh, a pair of dominant eigenvalues sigma<em>1(Oh), sigma</em>2(Oh) – complex conjugates when Oh is below the critical point (damped oscillation), two DISTINCT real values above it (aperiodic, &quot;fast&quot; and &quot;slow&quot; decay). Vieta&#39;s formulas on this pair give lambda<em>l(Oh) = (sigma</em>1+sigma<em>2)/2, omega</em>l^2(Oh) = sigma<em>1*sigma</em>2 – the coefficients of the unit-mass oscillator whose eigenvalues are exactly Reid&#39;s own pair. Section 3 verifies this against Molacek &amp; Bush&#39;s independently-stated closed-form limits (recast in this parametrization: lambda<em>l -&gt; Oh(l-1)(2l+1), omega</em>l^2 -&gt; l(l-1)(l+2) as Oh-&gt;0; and omega<em>l^2 -&gt; l(l-1)(l+2) * (l-1)(2l^2+4l+3)/((l-1)(2l+1)) as Oh-&gt;infinity – derived from their A</em>l, D_l limits via the rescaling above), with no free parameters.</p><p>A subtlety worth flagging for a future reader: the &quot;second root&quot; (needed once overdamped) is NOT obtained by continuing the complex-conjugate pair through the critical Oh. Numerically, doing that makes BOTH branches converge onto the SAME real root as Oh grows (a continuation artifact – see Section 2), which silently gives a wrong, degenerate result. The correct second root is a genuinely separate, much smaller real root (&quot;creep&quot; mode) found by an independent search, not by tracking the first root&#39;s conjugate across the transition. ==============================================================================</p><pre><code class="language-julia hljs">using DropSolver</code></pre><hr/><p>Section 1: Reid&#39;s characteristic equation (docs/reid1960<em>expanded-3.tex, eq:char</em>eq) and a numerically robust way to evaluate it. –––––––––––––––––––––––––––––––––––––––</p><pre><code class="language-julia hljs">&quot;&quot;&quot;
+    sph_bessel_ratio(l, q) -&gt; Complex
+
+`Q_l(q) = j_{l+1}(q)/j_l(q)` by DOWNWARD recurrence (ported from
+elvis-aguero/SpectralKM.jl&#39;s `src/reid.jl`, credited there to the standard
+three-term spherical Bessel recurrence `j_{l-1}+j_{l+1} = ((2l+1)/q) j_l`,
+divided through by `j_l` and inverted). Never evaluates a Bessel function
+directly, which matters because `besselj(l+0.5, q)` OVERFLOWS at small Oh
+(where `q ~ sqrt(sigma/Oh)` has large |Im(q)|) while the RATIO itself stays
+O(1) -- confirmed to fail (AmosException) at l=16, Oh=0.3 with the naive
+`sqrt(pi/2q)*besselj(l+0.5,q)` approach this script originally used.
+
+The recurrence length `pad` below is capped defensively: its working length
+scales with `abs(q)`, so an ill-behaved caller passing a huge `|q|` (e.g. a
+Newton step that overshot before step-capping was added) would otherwise
+turn into a silent multi-minute hang rather than a fast, inaccurate answer
+that a residual check downstream can reject.
+&quot;&quot;&quot;
+function sph_bessel_ratio(l::Integer, q::Number)
+    pad = min(max(60, l ÷ 2 + ceil(Int, abs(q))), 5000)
+    n0 = l + pad + min(ceil(Int, abs(q)), 5000)
+    Q = q / (2 * n0 + 3)
+    for n in n0:-1:(l+1)
+        Q = 1 / ((2n + 1) / q - Q)
+    end
+    return Q
+end
+
+&quot;&quot;&quot;
+    reid_char(q, Oh, l)
+
+Residual of Reid&#39;s exact characteristic equation for mode l:
+  alpha^4/q^4 + 1 = (2(l-1)/q^2) * [l + (l+1)*(q - 2l*Q)/(q - 2Q)]
+with alpha^2 = sqrt(l(l-1)(l+2))/Oh and Q(q) = j_{l+1}(q)/j_l(q).
+Zero of this function &lt;=&gt; q is an eigenvalue wavenumber of the linearized
+viscous drop problem at this (Oh, l).
+&quot;&quot;&quot;
+function reid_char(q, Oh, l)
+    alpha2 = sqrt(l * (l - 1) * (l + 2)) / Oh
+    Q = sph_bessel_ratio(l, q)
+    lhs = alpha2^2 / q^4 + 1
+    rhs = 2 * (l - 1) / q^2 * (l + (l + 1) * (q - 2l * Q) / (q - 2Q))
+    lhs - rhs
+end
+
+function safe_eval(f, q)
+    try
+        v = f(q)
+        return isfinite(abs(v)) ? v : nothing
+    catch
+        return nothing
+    end
+end
+
+&quot;&quot;&quot;
+    newton_complex(f, q0; ...)
+
+Damped, step-capped Newton with backtracking: each step is capped at a
+fraction of `|q|` and halved until the residual decreases. An UNDAMPED Newton
+step can overshoot into an argument where `sph_bessel_ratio`&#39;s downward
+recurrence needs an enormous number of terms to converge (its working length
+scales with `abs(q)`), which is not an exception but a silent multi-minute
+hang -- confirmed during development, and the reason this function is no
+longer a plain Newton iteration.
+&quot;&quot;&quot;
+function newton_complex(f, q0; maxiter=300, tol=1e-13, step_cap_frac=0.5)
+    q = q0
+    F = safe_eval(f, q)
+    F === nothing &amp;&amp; return q0
+    for _ in 1:maxiter
+        h = max(1e-8, abs(q) * 1e-8)
+        Fh = safe_eval(f, q + h * im)
+        Fh === nothing &amp;&amp; break
+        dF = (Fh - F) / (h * im)
+        abs(dF) &lt; 1e-300 &amp;&amp; break
+        step = F / dF
+        cap = step_cap_frac * max(abs(q), 1e-3)
+        abs(step) &gt; cap &amp;&amp; (step *= cap / abs(step))
+        accepted = false
+        t = 1.0
+        for _ in 1:40
+            cand = q - t * step
+            Fc = safe_eval(f, cand)
+            if Fc !== nothing &amp;&amp; abs(Fc) &lt; abs(F)
+                q, F, accepted = cand, Fc, true
+                break
+            end
+            t /= 2
+        end
+        accepted || break
+        abs(step) &lt; tol * max(abs(q), 1.0) &amp;&amp; break
+    end
+    q
+end
+
+&quot;&quot;&quot;
+    dominant_root_direct(Oh, l)
+
+A single Newton solve from Lamb&#39;s small-Oh asymptotic guess. Correct for small
+Oh; NOT reliable in general -- see `dominant_root_tracked` and Section 1&#39;s
+regression test.
+&quot;&quot;&quot;
+function dominant_root_direct(Oh, l)
+    sigma0 = sqrt(l * (l - 1) * (l + 2))
+    gamma0 = (l - 1) * (2l + 1) * Oh
+    q0 = sqrt(complex(gamma0 / Oh, -sigma0 / Oh))
+    imag(q0) &gt; 0 &amp;&amp; (q0 = -q0)
+    q = newton_complex(qv -&gt; reid_char(qv, Oh, l), q0)
+    imag(q) &gt; 0 ? conj(q) : q
+end
+
+&quot;&quot;&quot;
+    dominant_root_tracked(Oh, l; oh_start=1e-4, nsteps=24)
+
+The dominant root, found by CONTINUATION in Oh rather than a single Newton
+solve (technique ported from SpectralKM.jl&#39;s `reid_root_tracked`): start at an
+Oh small enough that Lamb&#39;s guess is genuinely asymptotic, then walk
+geometrically up to the target, seeding each step&#39;s Newton solve with the
+previous step&#39;s converged root. This is what makes the result trustworthy past
+the underdamping transition -- a single Lamb-seeded solve at the target Oh can
+converge to a MORE STRONGLY DAMPED, non-dominant root instead (Section 1
+reproduces this failure at l=16, Oh=0.3 and shows continuation fixes it).
+&quot;&quot;&quot;
+function dominant_root_tracked(Oh, l; oh_start=1e-4, nsteps=24)
+    Oh &lt;= oh_start &amp;&amp; return dominant_root_direct(Oh, l)
+    q = dominant_root_direct(oh_start, l)
+    for ohv in exp.(range(log(oh_start), log(Oh); length=nsteps + 1))[2:end]
+        q = newton_complex(qv -&gt; reid_char(qv, ohv, l), q)
+    end
+    q
+end
+
+println(&quot;=&quot;^78)
+println(&quot;Section 1: Reid&#39;s characteristic equation and the dominant root&quot;)
+println(&quot;=&quot;^78)
+println(&quot;&quot;&quot;
+reid_char(q, Oh, l) = 0 defines the eigenvalue wavenumbers q of Reid&#39;s linear
+viscous drop problem. A single Lamb-seeded Newton solve (dominant_root_direct)
+is fast but not always reliable; continuation in Oh (dominant_root_tracked)
+is the robust version.
+&quot;&quot;&quot;)
+
+@assert abs(reid_char(dominant_root_tracked(0.05, 2), 0.05, 2)) &lt; 1e-10
+@assert abs(reid_char(dominant_root_tracked(1.85, 2), 1.85, 2)) &lt; 1e-10
+@assert abs(reid_char(dominant_root_tracked(57.4, 2), 57.4, 2)) &lt; 1e-10
+println(&quot;ASSERTION 1 OK: dominant_root_tracked satisfies reid_char=0 across the&quot;)
+println(&quot;underdamped (Oh=0.05), near-critical (Oh=1.85), and deep-overdamped&quot;)
+println(&quot;(Oh=57.4) regimes for l=2.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">==============================================================================
+Section 1: Reid&#39;s characteristic equation and the dominant root
+==============================================================================
+reid_char(q, Oh, l) = 0 defines the eigenvalue wavenumbers q of Reid&#39;s linear
+viscous drop problem. A single Lamb-seeded Newton solve (dominant_root_direct)
+is fast but not always reliable; continuation in Oh (dominant_root_tracked)
+is the robust version.
+
+ASSERTION 1 OK: dominant_root_tracked satisfies reid_char=0 across the
+underdamped (Oh=0.05), near-critical (Oh=1.85), and deep-overdamped
+(Oh=57.4) regimes for l=2.</code></pre><p>–- The wrong-branch failure this script&#39;s ORIGINAL direct-Newton approach     had, and confirmation that continuation fixes it (SpectralKM.jl&#39;s own     documented example, reproduced independently here). –-</p><p>IMPORTANT, discovered scanning reid<em>char&#39;s real axis directly at this (l,Oh): Lamb&#39;s OWN coefficient c=Oh(l-1)(2l+1)=148.5 exceeds omega</em>{l,0}=sqrt(l(l-1)(l+2)) =65.7, which per Lamb&#39;s own (approximate) oscillator would mean overdamping – but this does NOT mean Reid&#39;s EXACT equation is overdamped here too. Reid&#39;s theory can (and, verified below, does) remain genuinely underdamped (complex dominant pair) at a point where Lamb&#39;s cruder model has already crossed into spurious overdamping. So the right test is not &quot;close to Lamb&#39;s c&quot; (which is known, per SpectralKM&#39;s own measured table, to be a poor approximation here) but &quot;continuation finds a genuinely LESS damped (smaller Re(sigma), hence more physically dominant per Reid&#39;s own ordering) root than the direct solve does&quot;.</p><pre><code class="language-julia hljs">let l = 16, Oh = 0.3
+    q_direct = dominant_root_direct(Oh, l)
+    sigma_direct = q_direct^2 * Oh
+    q_tracked = dominant_root_tracked(Oh, l)
+    sigma_tracked = q_tracked^2 * Oh
+
+    @assert abs(reid_char(q_direct, Oh, l)) &lt; 1e-8    # both satisfy the char eq --
+    @assert abs(reid_char(q_tracked, Oh, l)) &lt; 1e-8   # so this isn&#39;t a convergence failure,
+    @assert abs(sigma_tracked - sigma_direct) / abs(sigma_direct) &gt; 0.5   # it&#39;s two DIFFERENT genuine roots
+    @assert real(sigma_tracked) &lt; real(sigma_direct)   # tracked is the LESS damped (dominant) one
+    println()
+    println(&quot;l=16, Oh=0.3: direct Newton gives sigma=$(round(sigma_direct,digits=1))&quot; *
+            &quot; (a real, more strongly damped higher overtone -- confirmed by an independent&quot; *
+            &quot; real-axis scan of reid_char to be a genuine root, just not the dominant one);&quot; *
+            &quot; continuation gives sigma=$(round(sigma_tracked,digits=2))&quot; *
+            &quot; (complex -- i.e. Reid&#39;s exact equation is STILL underdamped here, even though&quot; *
+            &quot; Lamb&#39;s own coefficient $(round(Oh*(l-1)*(2l+1),digits=1)) already exceeds&quot; *
+            &quot; omega_{l,0}=$(round(sqrt(l*(l-1)*(l+2)),digits=1)) and would spuriously predict&quot; *
+            &quot; overdamping).&quot;)
+    println(&quot;ASSERTION 1b OK: reproduces the direct-Newton wrong-branch failure at&quot;)
+    println(&quot;l=16, Oh=0.3, and confirms continuation finds the genuinely dominant root instead.&quot;)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+l=16, Oh=0.3: direct Newton gives sigma=425.6 - 0.0im (a real, more strongly damped higher overtone -- confirmed by an independent real-axis scan of reid_char to be a genuine root, just not the dominant one); continuation gives sigma=49.23 - 10.47im (complex -- i.e. Reid&#39;s exact equation is STILL underdamped here, even though Lamb&#39;s own coefficient 148.5 already exceeds omega_{l,0}=65.7 and would spuriously predict overdamping).
+ASSERTION 1b OK: reproduces the direct-Newton wrong-branch failure at
+l=16, Oh=0.3, and confirms continuation finds the genuinely dominant root instead.</code></pre><hr/><h2 id="Section-2:-the-second-root,-and-the-continuation-trap-for-finding-it."><a class="docs-heading-anchor" href="#Section-2:-the-second-root,-and-the-continuation-trap-for-finding-it.">Section 2: the second root, and the continuation trap for finding it.</a><a id="Section-2:-the-second-root,-and-the-continuation-trap-for-finding-it.-1"></a><a class="docs-heading-anchor-permalink" href="#Section-2:-the-second-root,-and-the-continuation-trap-for-finding-it." title="Permalink"></a></h2><pre><code class="language-julia hljs">&quot;&quot;&quot;
+    second_root_analytic_guess(Oh, l)
+
+Small-q asymptotic solution of Reid&#39;s characteristic equation, derived by
+substituting the small-argument ratio Q(q) ~ q/(2l+3) into reid_char and
+balancing the two singular (1/q^2, 1/q^4) terms:
+    q ~ alpha^2 * sqrt((2l+1) / (2(l-1)(2l^2+4l+3)))
+Valid only in the overdamped regime, where the second dominant root is real
+and small.
+&quot;&quot;&quot;
+function second_root_analytic_guess(Oh, l)
+    alpha2 = sqrt(l * (l - 1) * (l + 2)) / Oh
+    alpha2 * sqrt((2l + 1) / (2 * (l - 1) * (2l^2 + 4l + 3)))
+end
+
+function find_second_root(Oh, l, q1)
+    if abs(imag(q1)) &gt; 1e-9 * abs(q1)
+        return conj(q1)   # underdamped: true conjugate pair, no separate search
+    end
+    q0 = second_root_analytic_guess(Oh, l)
+    newton_complex(qv -&gt; reid_char(qv, Oh, l), complex(q0); maxiter=200, tol=1e-13)
+end
+
+println()
+println(&quot;=&quot;^78)
+println(&quot;Section 2: Why continuing the conjugate branch through Oh_crit fails&quot;)
+println(&quot;=&quot;^78)
+println(&quot;&quot;&quot;
+Below, we track q1 (dominant root) and a naive &quot;q2&quot; initialized as conj(q1) at
+a safely underdamped Oh, then continue BOTH through the critical point using
+each step&#39;s own result as the next Newton guess. Contrast with
+find_second_root&#39;s independent analytic-guess approach.
+&quot;&quot;&quot;)
+
+let l = 2
+    Oh_seq = vcat(0.5:0.05:0.9, 1.0:1.0:10.0, 20.0, 57.4)
+    q1c = dominant_root_direct(Oh_seq[1], l)
+    q2c = conj(q1c)
+    for Oh in Oh_seq[2:end]
+        q1c = newton_complex(q -&gt; reid_char(q, Oh, l), q1c)
+        q2c = newton_complex(q -&gt; reid_char(q, Oh, l), q2c)
+    end
+    @assert abs(q1c - q2c) / abs(q1c) &lt; 1e-6   # both branches collapse onto one root
+    q1_correct = dominant_root_tracked(57.4, l)
+    q2_correct = find_second_root(57.4, l, q1_correct)
+    @assert abs(q2_correct - q2c) / abs(q2c) &gt; 0.9   # genuinely different root
+    println(&quot;ASSERTION 2 OK: naive conjugate-branch continuation collapses to&quot;)
+    println(&quot;q=$(round(q1c,digits=5)) at Oh=57.4 for BOTH tracked branches, while&quot;)
+    println(&quot;the correct second root is q=$(round(q2_correct,digits=6)) -- confirming&quot;)
+    println(&quot;continuation silently finds the wrong (degenerate) pair.&quot;)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+==============================================================================
+Section 2: Why continuing the conjugate branch through Oh_crit fails
+==============================================================================
+Below, we track q1 (dominant root) and a naive &quot;q2&quot; initialized as conj(q1) at
+a safely underdamped Oh, then continue BOTH through the critical point using
+each step&#39;s own result as the next Newton guess. Contrast with
+find_second_root&#39;s independent analytic-guess approach.
+
+ASSERTION 2 OK: naive conjugate-branch continuation collapses to
+q=2.66556 + 0.0im at Oh=57.4 for BOTH tracked branches, while
+the correct second root is q=0.017875 - 0.0im -- confirming
+continuation silently finds the wrong (degenerate) pair.</code></pre><hr/><p>Section 3: lambda<em>l(Oh), omega</em>l^2(Oh) via Vieta&#39;s formulas – the unit-mass parametrization, matching SpectralKM.jl&#39;s <code>reid_pole_pair</code>/<code>drop_viscous_coeffs</code>. –––––––––––––––––––––––––––––––––––––––</p><pre><code class="language-julia hljs">println()
+println(&quot;=&quot;^78)
+println(&quot;Section 3: lambda_l(Oh), omega_l^2(Oh) -- exact finite-Oh coefficients&quot;)
+println(&quot;=&quot;^78)
+println(&quot;&quot;&quot;
+Unit-mass per-mode oscillator: Addot_l + 2*lambda_l*Adot_l + omega_l^2*A_l = 0
+(no forcing). Its characteristic equation is x^2 - 2*lambda_l*x + omega_l^2 = 0,
+whose roots must equal Reid&#39;s own sigma_1, sigma_2 (sigma_i = q_i^2*Oh, this
+repo&#39;s existing q^2*Oh time-unit convention -- see
+julia/derivations/carreau_yasuda_derivation.jl). Vieta&#39;s formulas then give:
+    lambda_l  = (sigma_1 + sigma_2) / 2
+    omega_l^2 = sigma_1 * sigma_2
+Lamb&#39;s formula (and this repo&#39;s current code) is exactly lambda_l=Oh(l-1)(2l+1),
+omega_l^2=l(l-1)(l+2) -- the Oh -&gt; 0 limit derived below.
+&quot;&quot;&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+==============================================================================
+Section 3: lambda_l(Oh), omega_l^2(Oh) -- exact finite-Oh coefficients
+==============================================================================
+Unit-mass per-mode oscillator: Addot_l + 2*lambda_l*Adot_l + omega_l^2*A_l = 0
+(no forcing). Its characteristic equation is x^2 - 2*lambda_l*x + omega_l^2 = 0,
+whose roots must equal Reid&#39;s own sigma_1, sigma_2 (sigma_i = q_i^2*Oh, this
+repo&#39;s existing q^2*Oh time-unit convention -- see
+julia/derivations/carreau_yasuda_derivation.jl). Vieta&#39;s formulas then give:
+    lambda_l  = (sigma_1 + sigma_2) / 2
+    omega_l^2 = sigma_1 * sigma_2
+Lamb&#39;s formula (and this repo&#39;s current code) is exactly lambda_l=Oh(l-1)(2l+1),
+omega_l^2=l(l-1)(l+2) -- the Oh -&gt; 0 limit derived below.</code></pre><p>sigma<em>i = q</em>i^2*Oh – keep COMPLEX (underdamped: q1,q2 are a conjugate pair, so sigma1,sigma2 are too; real(q)^2 would discard Im and corrupt the underdamped regime).</p><pre><code class="language-julia hljs">function compute_lambda_omega2(Oh, l)
+    q1 = dominant_root_tracked(Oh, l)
+    q2 = find_second_root(Oh, l, q1)
+    s1 = q1^2 * Oh
+    s2 = q2^2 * Oh
+    lambda = real(s1 + s2) / 2
+    omega2 = real(s1 * s2)
+    lambda, omega2
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">compute_lambda_omega2 (generic function with 1 method)</code></pre><p>–- Low-Oh limit: lambda<em>l -&gt; Oh(l-1)(2l+1), omega</em>l^2 -&gt; l(l-1)(l+2) –-</p><pre><code class="language-julia hljs">println(&quot;Low-Oh limit (lambda_l -&gt; Oh(l-1)(2l+1), omega_l^2 -&gt; l(l-1)(l+2)):&quot;)
+for l in (2, 3, 4, 5, 10)
+    target_om2 = float(l) * (l - 1) * (l + 2)
+    lam_med, om2_med = compute_lambda_omega2(0.001, l)
+    lam_small, om2_small = compute_lambda_omega2(0.0001, l)
+    lamb_med   = 0.001 * (l - 1) * (2l + 1)
+    lamb_small = 0.0001 * (l - 1) * (2l + 1)
+    err_om2_med   = abs(om2_med - target_om2) / target_om2
+    err_om2_small = abs(om2_small - target_om2) / target_om2
+    err_lam_med   = abs(lam_med - lamb_med) / lamb_med
+    err_lam_small = abs(lam_small - lamb_small) / lamb_small
+    println(&quot;  l=$l  omega2(Oh=0.001)=$(round(om2_med,digits=4))  omega2(Oh=0.0001)=$(round(om2_small,digits=4))&quot; *
+            &quot;  target=$(round(target_om2,digits=4))&quot;)
+    @assert err_om2_small &lt; err_om2_med       # omega_l^2 -&gt; target monotonically
+    @assert err_lam_small &lt; err_lam_med       # lambda_l -&gt; Oh(l-1)(2l+1) monotonically
+    @assert err_om2_small &lt; 0.02
+    @assert err_lam_small &lt; 0.02
+end
+println(&quot;ASSERTION 3 OK: lambda_l -&gt; Oh(l-1)(2l+1) and omega_l^2 -&gt; l(l-1)(l+2)&quot;)
+println(&quot;monotonically as Oh -&gt; 0, for l=2,3,4,5,10, to &lt;2% at Oh=0.0001.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Low-Oh limit (lambda_l -&gt; Oh(l-1)(2l+1), omega_l^2 -&gt; l(l-1)(l+2)):
+  l=2  omega2(Oh=0.001)=7.9996  omega2(Oh=0.0001)=8.0  target=8.0
+  l=3  omega2(Oh=0.001)=29.9968  omega2(Oh=0.0001)=29.9999  target=30.0
+  l=4  omega2(Oh=0.001)=71.9888  omega2(Oh=0.0001)=71.9996  target=72.0
+  l=5  omega2(Oh=0.001)=139.972  omega2(Oh=0.0001)=139.9991  target=140.0
+  l=10  omega2(Oh=0.001)=1079.5738  omega2(Oh=0.0001)=1079.9859  target=1080.0
+ASSERTION 3 OK: lambda_l -&gt; Oh(l-1)(2l+1) and omega_l^2 -&gt; l(l-1)(l+2)
+monotonically as Oh -&gt; 0, for l=2,3,4,5,10, to &lt;2% at Oh=0.0001.</code></pre><p>–- High-Oh limit, recast from Molacek &amp; Bush&#39;s A<em>l, D</em>l via the rescaling     lambda<em>l = l^2<em>Oh</em>D</em>l/A<em>l, omega</em>l^2 = l(l-1)(l+2)/A_l –-</p><pre><code class="language-julia hljs">println()
+println(&quot;High-Oh limit (recast from Molacek &amp; Bush 2012&#39;s A_l, D_l via the&quot;)
+println(&quot;unit-mass rescaling above):&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+High-Oh limit (recast from Molacek &amp; Bush 2012&#39;s A_l, D_l via the
+unit-mass rescaling above):</code></pre><p>At high Oh, A<em>l -&gt; om0sq/omega</em>l^2 (from Section 3&#39;s own definition), so D<em>l = omega</em>l^2 * lambda<em>l / (l^2<em>Oh</em>A</em>l)... but omega<em>l^2 and lambda</em>l ALONE already fully determine the physics; recover D_l only to check against the independently published number.</p><pre><code class="language-julia hljs">for l in (2, 3, 4, 5, 10)
+    om0sq = float(l) * (l - 1) * (l + 2)
+    target_D = (l - 1) * (2l^2 + 4l + 3) / (l^2 * (2l + 1))
+    _, om2_100 = compute_lambda_omega2(100.0, l)
+    _, om2_1000 = compute_lambda_omega2(1000.0, l)
+    lam_1000, _ = compute_lambda_omega2(1000.0, l)
+    A_1000 = om0sq / om2_1000
+    D_1000 = lam_1000 * A_1000 / (l^2 * 1000.0)
+    err = abs(D_1000 - target_D) / target_D
+    println(&quot;  l=$l  D_l(Oh=1000, recast)=$(round(D_1000,digits=6))  target=$(round(target_D,digits=6))&quot;)
+    @assert err &lt; 1e-3
+end
+println(&quot;ASSERTION 4 OK: recasting lambda_l, omega_l^2 back into Molacek &amp; Bush&#39;s&quot;)
+println(&quot;A_l, D_l at high Oh reproduces their independently-published high-Oh&quot;)
+println(&quot;limit to &lt;0.1%, for l=2,3,4,5,10 -- confirming the two parametrizations&quot;)
+println(&quot;carry the same physics for free decay, as claimed in the header.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">  l=2  D_l(Oh=1000, recast)=0.95  target=0.95
+  l=3  D_l(Oh=1000, recast)=1.047619  target=1.047619
+  l=4  D_l(Oh=1000, recast)=1.0625  target=1.0625
+  l=5  D_l(Oh=1000, recast)=1.061818  target=1.061818
+  l=10  D_l(Oh=1000, recast)=1.041429  target=1.041429
+ASSERTION 4 OK: recasting lambda_l, omega_l^2 back into Molacek &amp; Bush&#39;s
+A_l, D_l at high Oh reproduces their independently-published high-Oh
+limit to &lt;0.1%, for l=2,3,4,5,10 -- confirming the two parametrizations
+carry the same physics for free decay, as claimed in the header.</code></pre><p>–- Continuity across the critical Oh (no jump discontinuity) –-</p><pre><code class="language-julia hljs">println()
+Oh_span = vcat(range(0.3, 1.3; length=41))
+prev_lam, prev_om2 = compute_lambda_omega2(Oh_span[1], 2)
+max_jump = 0.0
+for Oh in Oh_span[2:end]
+    lam, om2 = compute_lambda_omega2(Oh, 2)
+    global max_jump = max(max_jump, abs(lam - prev_lam) / max(prev_lam, 1.0), abs(om2 - prev_om2))
+    global prev_lam, prev_om2 = lam, om2
+end
+@assert max_jump &lt; 0.1
+println(&quot;ASSERTION 5 OK: lambda_l(Oh), omega_l^2(Oh) vary smoothly across the&quot;)
+println(&quot;critical Oh (l=2, Oh in [0.3, 1.3], max per-step change = $(round(max_jump,digits=4)))&quot;)
+println(&quot;-- no discontinuity at the oscillatory/overdamped transition.&quot;)
+
+println()
+println(&quot;&quot;&quot;
+NOT resolved here (a genuine open question, matching SpectralKM.jl&#39;s own
+reid.jl header): substituting exact eigenvalues into a second-order oscillator
+is exact for FREE decay only. Under forcing (this repo&#39;s l*B_l contact-pressure
+term), the true system carries memory from the full discarded viscous
+spectrum, which neither this parametrization nor Molacek &amp; Bush&#39;s A_l/D_l form
+captures exactly -- and the two need NOT agree once forcing is added, since an
+overall equation rescaling that leaves free-decay roots invariant does NOT
+leave a forcing term&#39;s relative weight invariant. This script derives and
+verifies the FREE-decay coefficients only; the forced-response question is
+for the production-wiring step that follows, and should be checked against a
+live simulation once wired in (as SpectralKM.jl&#39;s types.jl does for its own
+:reid default).
+&quot;&quot;&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+ASSERTION 5 OK: lambda_l(Oh), omega_l^2(Oh) vary smoothly across the
+critical Oh (l=2, Oh in [0.3, 1.3], max per-step change = 0.0792)
+-- no discontinuity at the oscillatory/overdamped transition.
+
+NOT resolved here (a genuine open question, matching SpectralKM.jl&#39;s own
+reid.jl header): substituting exact eigenvalues into a second-order oscillator
+is exact for FREE decay only. Under forcing (this repo&#39;s l*B_l contact-pressure
+term), the true system carries memory from the full discarded viscous
+spectrum, which neither this parametrization nor Molacek &amp; Bush&#39;s A_l/D_l form
+captures exactly -- and the two need NOT agree once forcing is added, since an
+overall equation rescaling that leaves free-decay roots invariant does NOT
+leave a forcing term&#39;s relative weight invariant. This script derives and
+verifies the FREE-decay coefficients only; the forced-response question is
+for the production-wiring step that follows, and should be checked against a
+live simulation once wired in (as SpectralKM.jl&#39;s types.jl does for its own
+:reid default).</code></pre><hr/><p>Section 4: Live cross-check against the actual running DropSolver.</p><p>This repo&#39;s current production code (julia/src/timestepper.jl) implements ONLY Lamb&#39;s asymptotic formula lambda_lamb=(l-1)(2l+1)*Oh – NOT Reid&#39;s exact eigenvalue, which differs from Lamb&#39;s by an O(Oh) correction even at Oh as small as 0.02 (a ~7% gap, per the numbers below). The correct live check is therefore two separate claims, not one: (a) the running solver actually computes what Lamb&#39;s formula predicts (confirming this document accurately describes what julia/src/timestepper.jl does today), and (b) THIS section&#39;s own Reid-exact eigenvalue converges to that same Lamb value as Oh -&gt; 0 (confirming Lamb truly is this derivation&#39;s own low-Oh limit). –––––––––––––––––––––––––––––––––––––––</p><pre><code class="language-julia hljs">println()
+println(&quot;=&quot;^78)
+println(&quot;Section 4: Live cross-check against DropSolver (small-Oh limit)&quot;)
+println(&quot;=&quot;^78)
+
+function extract_decay_freq(times, A2)
+    gamma = -log(abs(A2[end]) / abs(A2[1])) / (times[end] - times[1])
+    sign_changes = findall(i -&gt; A2[i] * A2[i+1] &lt; 0, 1:length(A2)-1)
+    omega = NaN
+    if length(sign_changes) &gt;= 4
+        hp = diff(times[sign_changes])
+        omega = pi / (sum(hp) / length(hp))
+    end
+    gamma, omega
+end
+
+println(&quot;(a) Does the running solver actually compute Lamb&#39;s formula?&quot;)
+for (Oh, l) in ((0.02, 2), (0.02, 3), (0.05, 2))
+    gamma_lamb = (l - 1) * (2l + 1) * Oh
+
+    M = l
+    theta_vec = make_theta_vec(M)
+    precomp = precompute_integrals(NaN, M)[1]
+    sigma0 = sqrt(l * (l - 1) * (l + 2))
+    dt_osc = 2 * pi / (sigma0 * 40)
+    cfg = SimConstants(M, M + 1, Oh, 1e-6, theta_vec, precomp, dt_osc)
+
+    init = DropState(M)
+    init.A[l] = 0.05
+    init.z = 2.0
+    init.dt = dt_osc
+
+    T_period = 2 * pi / sigma0
+    times, states = solve_drop!(cfg, OBParams(), init;
+        t_end=6 * T_period, save_every=T_period / 50, dt_init=dt_osc)
+    Al = [s.A[l] for s in states]
+    gamma_sim, omega_sim = extract_decay_freq(times, Al)
+
+    err_gamma = abs(gamma_sim - gamma_lamb) / gamma_lamb
+    println(&quot;  Oh=$Oh l=$l: gamma_lamb=$(round(gamma_lamb,digits=5))&quot; *
+            &quot;  gamma_sim(DropSolver)=$(round(gamma_sim,digits=5))&quot; *
+            &quot;  rel_err=$(round(err_gamma,digits=4))&quot;)
+    @assert err_gamma &lt; 0.05
+end
+println(&quot;ASSERTION 6 OK: live solve_drop! decay rate matches Lamb&#39;s formula to&quot;)
+println(&quot;&lt;5% -- confirming this document&#39;s description of the running code&quot;)
+println(&quot;(Lamb-only, no finite-Oh correction) is accurate.&quot;)
+
+println()
+println(&quot;(b) Does THIS derivation&#39;s own Reid-exact eigenvalue converge to that&quot;)
+println(&quot;    same Lamb value as Oh -&gt; 0 (rather than to something else)?&quot;)
+let l = 2
+    gamma_lamb_fn(Oh) = (l - 1) * (2l + 1) * Oh
+    prev_err = Inf
+    for Oh in (0.05, 0.02, 0.005, 0.001)
+        lam, _ = compute_lambda_omega2(Oh, l)
+        err = abs(lam - gamma_lamb_fn(Oh)) / gamma_lamb_fn(Oh)
+        println(&quot;  Oh=$Oh: lambda_exact(Reid)=$(round(lam,digits=6))&quot; *
+                &quot;  gamma_lamb=$(round(gamma_lamb_fn(Oh),digits=6))  rel_gap=$(round(err,digits=4))&quot;)
+        @assert err &lt; prev_err
+        prev_err = err
+    end
+end
+println(&quot;ASSERTION 7 OK: the gap between Reid&#39;s exact eigenvalue and Lamb&#39;s&quot;)
+println(&quot;asymptotic formula shrinks monotonically as Oh -&gt; 0 (l=2), confirming&quot;)
+println(&quot;Lamb&#39;s formula is genuinely this derivation&#39;s own Oh -&gt; 0 limit.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+==============================================================================
+Section 4: Live cross-check against DropSolver (small-Oh limit)
+==============================================================================
+(a) Does the running solver actually compute Lamb&#39;s formula?
+┌ Info: solve_drop! starting
+│   M = 2
+│   Oh = 0.02
+│   Bo = 1.0e-6
+│   t_end = 13.328648814475098
+│   rheology = &quot;Newtonian&quot;
+└   dt_max = 0.05553603672697957
+┌ Info: solve_drop! complete
+│   steps = 241
+│   t_final = 13.384184851202019
+└   saved_frames = 242
+  Oh=0.02 l=2: gamma_lamb=0.1  gamma_sim(DropSolver)=0.1031  rel_err=0.031
+┌ Info: solve_drop! starting
+│   M = 3
+│   Oh = 0.02
+│   Bo = 1.0e-6
+│   t_end = 6.882884651454571
+│   rheology = &quot;Newtonian&quot;
+└   dt_max = 0.02867868604772738
+┌ Info: solve_drop! complete
+│   steps = 241
+│   t_final = 6.911563337502278
+└   saved_frames = 242
+  Oh=0.02 l=3: gamma_lamb=0.28  gamma_sim(DropSolver)=0.28528  rel_err=0.0189
+┌ Info: solve_drop! starting
+│   M = 2
+│   Oh = 0.05
+│   Bo = 1.0e-6
+│   t_end = 13.328648814475098
+│   rheology = &quot;Newtonian&quot;
+└   dt_max = 0.05553603672697957
+┌ Info: solve_drop! complete
+│   steps = 241
+│   t_final = 13.384184851202019
+└   saved_frames = 242
+  Oh=0.05 l=2: gamma_lamb=0.25  gamma_sim(DropSolver)=0.25333  rel_err=0.0133
+ASSERTION 6 OK: live solve_drop! decay rate matches Lamb&#39;s formula to
+&lt;5% -- confirming this document&#39;s description of the running code
+(Lamb-only, no finite-Oh correction) is accurate.
+
+(b) Does THIS derivation&#39;s own Reid-exact eigenvalue converge to that
+    same Lamb value as Oh -&gt; 0 (rather than to something else)?
+  Oh=0.05: lambda_exact(Reid)=0.218735  gamma_lamb=0.25  rel_gap=0.1251
+  Oh=0.02: lambda_exact(Reid)=0.092524  gamma_lamb=0.1  rel_gap=0.0748
+  Oh=0.005: lambda_exact(Reid)=0.024097  gamma_lamb=0.025  rel_gap=0.0361
+  Oh=0.001: lambda_exact(Reid)=0.00492  gamma_lamb=0.005  rel_gap=0.016
+ASSERTION 7 OK: the gap between Reid&#39;s exact eigenvalue and Lamb&#39;s
+asymptotic formula shrinks monotonically as Oh -&gt; 0 (l=2), confirming
+Lamb&#39;s formula is genuinely this derivation&#39;s own Oh -&gt; 0 limit.</code></pre><hr/><h2 id="Summary"><a class="docs-heading-anchor" href="#Summary">Summary</a><a id="Summary-1"></a><a class="docs-heading-anchor-permalink" href="#Summary" title="Permalink"></a></h2><pre><code class="language-julia hljs">println()
+println(&quot;=&quot;^78)
+println(&quot;Summary&quot;)
+println(&quot;=&quot;^78)
+println(&quot;&quot;&quot;
+In plain terms: this repo&#39;s damping formula is only the low-viscosity limit of
+a more general, exact result. We derived that exact result (lambda_l(Oh),
+omega_l^2(Oh), the unit-mass parametrization already validated in production
+in the sister repo SpectralKM.jl) directly from Reid&#39;s own characteristic
+equation, verified it against Molacek &amp; Bush&#39;s independently-published limits
+with no fitting, and confirmed the current production solver already matches
+it in the regime it was designed for. A failing assertion above would mean
+either Reid&#39;s characteristic equation was mis-transcribed, the two dominant
+roots were mis-identified (see Section 1&#39;s wrong-branch reproduction and
+Section 2&#39;s continuation trap), or the current production code no longer
+matches its own documented Lamb-limit behavior -- any of which would be a
+physically real regression, not a cosmetic one.
+
+Not yet done (deliberately out of scope for this script): wiring
+lambda_l(Oh), omega_l^2(Oh) into julia/src/timestepper.jl&#39;s residual/Jacobian
+in place of the hardcoded Lamb formulas (behind a :lamb/:reid switch, mirroring
+SpectralKM.jl&#39;s own API, defaulting to :lamb to preserve all existing test
+behavior), and replacing julia/src/st_extension.jl&#39;s perturbative
+Carreau-Yasuda correction with a non-perturbative Oh_eff(t) computed per mode
+from the local shear rate fed through this machinery.
+&quot;&quot;&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+==============================================================================
+Summary
+==============================================================================
+In plain terms: this repo&#39;s damping formula is only the low-viscosity limit of
+a more general, exact result. We derived that exact result (lambda_l(Oh),
+omega_l^2(Oh), the unit-mass parametrization already validated in production
+in the sister repo SpectralKM.jl) directly from Reid&#39;s own characteristic
+equation, verified it against Molacek &amp; Bush&#39;s independently-published limits
+with no fitting, and confirmed the current production solver already matches
+it in the regime it was designed for. A failing assertion above would mean
+either Reid&#39;s characteristic equation was mis-transcribed, the two dominant
+roots were mis-identified (see Section 1&#39;s wrong-branch reproduction and
+Section 2&#39;s continuation trap), or the current production code no longer
+matches its own documented Lamb-limit behavior -- any of which would be a
+physically real regression, not a cosmetic one.
+
+Not yet done (deliberately out of scope for this script): wiring
+lambda_l(Oh), omega_l^2(Oh) into julia/src/timestepper.jl&#39;s residual/Jacobian
+in place of the hardcoded Lamb formulas (behind a :lamb/:reid switch, mirroring
+SpectralKM.jl&#39;s own API, defaulting to :lamb to preserve all existing test
+behavior), and replacing julia/src/st_extension.jl&#39;s perturbative
+Carreau-Yasuda correction with a non-perturbative Oh_eff(t) computed per mode
+from the local shear rate fed through this machinery.</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../oldroyd_b_derivation/">« oldroyd b derivation</a><a class="docs-footer-nextpage" href="../../api/">API Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 31 July 2026 18:21">Friday 31 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

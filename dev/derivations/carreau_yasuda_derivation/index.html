@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>carreau yasuda derivation · DropRebound.jl</title><meta name="title" content="carreau yasuda derivation · DropRebound.jl"/><meta property="og:title" content="carreau yasuda derivation · DropRebound.jl"/><meta property="twitter:title" content="carreau yasuda derivation · DropRebound.jl"/><meta name="description" content="Documentation for DropRebound.jl."/><meta property="og:description" content="Documentation for DropRebound.jl."/><meta property="twitter:description" content="Documentation for DropRebound.jl."/><meta property="og:url" content="https://elvis-aguero.github.io/DropRebound.jl/derivations/carreau_yasuda_derivation/"/><meta property="twitter:url" content="https://elvis-aguero.github.io/DropRebound.jl/derivations/carreau_yasuda_derivation/"/><link rel="canonical" href="https://elvis-aguero.github.io/DropRebound.jl/derivations/carreau_yasuda_derivation/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">DropRebound.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">CAS Derivations</span><ul><li class="is-active"><a class="tocitem" href>carreau yasuda derivation</a><ul class="internal"><li><a class="tocitem" href="#Notation"><span>Notation</span></a></li><li><a class="tocitem" href="#Section-1:-Carreau-Yasuda-Constitutive-Law-and-Perturbation-Expansion"><span>Section 1: Carreau-Yasuda Constitutive Law and Perturbation Expansion</span></a></li></ul></li><li><a class="tocitem" href="../carreau_yasuda_multimode_derivation/">carreau yasuda multimode derivation</a></li><li><a class="tocitem" href="../carreau_yasuda_nonperturbative_derivation/">carreau yasuda nonperturbative derivation</a></li><li><a class="tocitem" href="../cross_fluid_derivation/">cross fluid derivation</a></li><li><a class="tocitem" href="../oldroyd_b_derivation/">oldroyd b derivation</a></li><li><a class="tocitem" href="../reid_finite_oh_derivation/">reid finite oh derivation</a></li></ul></li><li><a class="tocitem" href="../../api/">API Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">CAS Derivations</a></li><li class="is-active"><a href>carreau yasuda derivation</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>carreau yasuda derivation</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/elvis-aguero/DropRebound.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/elvis-aguero/DropRebound.jl/blob/main/julia/derivations/carreau_yasuda_derivation.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Weakly-Nonlinear-Shear-Thinning-Drop:-Carreau-Yasuda-Derivation"><a class="docs-heading-anchor" href="#Weakly-Nonlinear-Shear-Thinning-Drop:-Carreau-Yasuda-Derivation">Weakly Nonlinear Shear-Thinning Drop: Carreau-Yasuda Derivation</a><a id="Weakly-Nonlinear-Shear-Thinning-Drop:-Carreau-Yasuda-Derivation-1"></a><a class="docs-heading-anchor-permalink" href="#Weakly-Nonlinear-Shear-Thinning-Drop:-Carreau-Yasuda-Derivation" title="Permalink"></a></h1><p>Derives the perturbation expansion for a shear-thinning drop oscillating on a flat substrate, using the Carreau-Yasuda constitutive law – Carreau with a free shape exponent <span>$a$</span>, rather than <span>$a$</span> hardcoded to 2. Follows the same non-dimensionalisation as the Newtonian (Reid 1960) and Oldroyd-B analyses in the companion LaTeX documents (<code>docs/reid1960_expanded-3.tex</code>, <code>docs/section_oldroydB.tex</code>).</p><p><strong>Why Carreau-Yasuda, not plain Carreau?</strong> The standard Carreau model&#39;s nonlinearity is always built from <span>$(\lambda_c\dot\gamma)^2$</span> – the shape of the transition between the zero-shear plateau and the power-law region is fixed. Carreau-Yasuda adds one parameter, <span>$a$</span>, controlling that transition shape; <span>$a=2$</span> recovers standard Carreau exactly. Real experimental shear-thinning fits (including Cross-model characterizations, which convert directly to an equivalent Carreau-Yasuda <span>$a$</span>) commonly need <span>$a \neq 2$</span> to fit well.</p><p>Each section derives one piece of the chain symbolically or numerically, then asserts the result against an independent check. <strong>A failing assertion means the derivation broke</strong> – fix the math, not the assertion.</p><h2 id="Notation"><a class="docs-heading-anchor" href="#Notation">Notation</a><a id="Notation-1"></a><a class="docs-heading-anchor-permalink" href="#Notation" title="Permalink"></a></h2><p>(matches <code>reid1960_expanded-3.tex</code>)</p><table><tr><th style="text-align: left">symbol</th><th style="text-align: left">meaning</th></tr><tr><td style="text-align: left"><span>$x = r/R$</span></td><td style="text-align: left">dimensionless radial coordinate</td></tr><tr><td style="text-align: left"><span>$\varepsilon$</span></td><td style="text-align: left">oscillation amplitude, small parameter</td></tr><tr><td style="text-align: left"><span>$\sigma = -\gamma + i\omega$</span></td><td style="text-align: left">complex modal frequency (<span>$\gamma&gt;0$</span> = decay)</td></tr><tr><td style="text-align: left"><span>$q$</span>, <span>$\sigma = q^2 \mathrm{Oh}$</span></td><td style="text-align: left">viscous wavenumber</td></tr><tr><td style="text-align: left"><span>$\alpha^2 = \sigma_{l;0}/\mathrm{Oh}$</span>, <span>$\sigma_{l;0} = \sqrt{l(l-1)(l+2)}$</span></td><td style="text-align: left"></td></tr><tr><td style="text-align: left"><span>$\mathrm{Oh} = \mu/\sqrt{\rho T_1 R}$</span></td><td style="text-align: left">Ohnesorge number</td></tr><tr><td style="text-align: left"><span>$U(x)$</span></td><td style="text-align: left">radial velocity eigenfunction (Reid)</td></tr><tr><td style="text-align: left"><span>$b_l(t)$</span></td><td style="text-align: left">dimensionless amplitude of mode <span>$l$</span> (solver&#39;s <span>$A_l$</span>)</td></tr><tr><td style="text-align: left"><span>$P_l(\cos\theta)$</span></td><td style="text-align: left">Legendre polynomial of degree <span>$l$</span></td></tr><tr><td style="text-align: left"><span>$a$</span></td><td style="text-align: left">the Carreau-Yasuda SHAPE EXPONENT (a model parameter) – distinct from the mode AMPLITUDE <span>$a(t)$</span> used in Sections 7-8; the shape exponent is always <code>a_shape</code> in code</td></tr></table><pre><code class="language-julia hljs">using Symbolics
+using QuadGK
+using SpecialFunctions
+using DropSolver
+
+nth_derivative_at_zero(expr, var, n) = begin
+    d = expr
+    for _ in 1:n
+        d = Symbolics.derivative(d, var)
+    end
+    simplify(substitute(d, Dict(var =&gt; 0)))
+end
+
+&quot;&quot;&quot;
+Robust symbolic-equality check: Symbolics.jl&#39;s `simplify` does not always
+collapse an algebraically-zero difference to the literal `0` (a known
+limitation, weaker than sympy&#39;s simplifier here). Rather than trust
+`isequal(simplify(a-b), 0)` alone, evaluate both expressions at several
+concrete numeric points for every free variable and require they match to
+near machine precision -- an independent, purely numeric check that is
+immune to this limitation, used throughout this script wherever a symbolic
+identity needs verifying.
+&quot;&quot;&quot;
+const _FIXED_TEST_VALUES = (0.31, 0.57, 1.13, 1.94, 2.71)
+
+function numerically_equal(expr1, expr2, test_points::Dict=Dict())
+    vars = collect(union(Symbolics.get_variables(expr1), Symbolics.get_variables(expr2)))
+    isempty(vars) &amp;&amp; return isequal(simplify(expr1 - expr2), 0)
+    f1 = Symbolics.build_function(expr1, vars...; expression=false)
+    f2 = Symbolics.build_function(expr2, vars...; expression=false)
+    for trial in 1:length(_FIXED_TEST_VALUES)
+        vals = [haskey(test_points, v) ? test_points[v] :
+                _FIXED_TEST_VALUES[mod1(trial + i, length(_FIXED_TEST_VALUES))]
+                for (i, v) in enumerate(vars)]
+        v1 = f1(vals...)
+        v2 = f2(vals...)
+        isapprox(v1, v2; atol=1e-8, rtol=1e-6) || return false
+    end
+    true
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">numerically_equal (generic function with 2 methods)</code></pre><h2 id="Section-1:-Carreau-Yasuda-Constitutive-Law-and-Perturbation-Expansion"><a class="docs-heading-anchor" href="#Section-1:-Carreau-Yasuda-Constitutive-Law-and-Perturbation-Expansion">Section 1: Carreau-Yasuda Constitutive Law and Perturbation Expansion</a><a id="Section-1:-Carreau-Yasuda-Constitutive-Law-and-Perturbation-Expansion-1"></a><a class="docs-heading-anchor-permalink" href="#Section-1:-Carreau-Yasuda-Constitutive-Law-and-Perturbation-Expansion" title="Permalink"></a></h2><p>The Carreau-Yasuda effective viscosity is</p><p class="math-container">\[\mu_{\mathrm{eff}}(\dot\gamma) = \mu_0 \left[1 + (\lambda_c\dot\gamma)^{a}\right]^{(n-1)/a}\]</p><p><span>$n \in (0,1]$</span>: power-law index (<span>$n=1$</span>: Newtonian). <span>$a&gt;0$</span>: shape exponent (<span>$a=2$</span>: standard Carreau). <span>$\mu_\infty=0$</span> (matches <code>julia/src/st_extension.jl</code>, which has never had a separate infinite-shear viscosity) – a nonzero <span>$\mu_\infty$</span> from a real fluid characterization folds entirely into a redefined <span>$\varepsilon_{ST}$</span> below (see the note in Section 7), so this is not a loss of generality for this repo&#39;s linearized solver.</p><pre><code class="language-julia hljs">@variables mu_0 lambda_c eps gammadot_hat a_shape n_idx
+
+x_small = (lambda_c * gammadot_hat)^a_shape * eps^a_shape
+p_exp = (n_idx - 1) / a_shape
+mu_CY_leading = mu_0 * (1 + p_exp * x_small)
+println(&quot;Leading-order expansion: mu_CY ~ mu_0*(1 + p*x), p=(n-1)/a, x=(lambda_c*gammadot)^a&quot;)
+println(&quot;mu_CY_leading = &quot;, mu_CY_leading)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Leading-order expansion: mu_CY ~ mu_0*(1 + p*x), p=(n-1)/a, x=(lambda_c*gammadot)^a
+mu_CY_leading = mu_0*(1 + (((gammadot_hat*lambda_c)^a_shape)*(eps^a_shape)*(-1 + n_idx)) / a_shape)</code></pre><p><strong>Leading-order expansion</strong> (as derived, not transcribed):</p><p class="math-container">\[\begin{equation}
+\mu_{0} ~ \left( 1 + \frac{\varepsilon^{\mathrm{a}_{shape}} ~ \left( \dot{\gamma}_{hat} ~ \lambda_{c} \right)^{\mathrm{a}_{shape}} ~ \left( -1 + \mathrm{n}_{idx} \right)}{\mathrm{a}_{shape}} \right)
+\end{equation}
+\]</p><p>ASSERTION 1: the leading-order expansion is the correct O(eps^a) Taylor term of (1+x)^p – verified directly via repeated symbolic differentiation (Taylor&#39;s theorem) at CONCRETE integer a (Symbolics.jl has no built-in series() the way sympy does), confirming all intermediate powers vanish.</p><pre><code class="language-julia hljs">for a_val in (2, 3, 4)
+    mu_CY_concrete = mu_0 * (1 + (lambda_c*eps*gammadot_hat)^a_val)^((n_idx-1)/a_val)
+    coeff_exact = nth_derivative_at_zero(mu_CY_concrete, eps, a_val) / factorial(a_val)
+    hand_built  = substitute(mu_CY_leading, Dict(a_shape =&gt; a_val))
+    coeff_hand  = Symbolics.coeff(expand(hand_built - mu_0), eps^a_val)
+    match = numerically_equal(coeff_exact, coeff_hand)
+    println(&quot;a=$a_val: exact coeff=&quot;, simplify(coeff_exact), &quot;  hand-built=&quot;, simplify(coeff_hand), &quot;  match=$match&quot;)
+    @assert match
+    for lower_power in 1:(a_val-1)
+        lower = nth_derivative_at_zero(mu_CY_concrete, eps, lower_power)
+        @assert isequal(lower, 0) &quot;a=$a_val: unexpected nonzero O(eps^$lower_power) term: $lower&quot;
+    end
+end
+println(&quot;ASSERTION 1 OK: hand-built leading-order expansion verified via repeated&quot;)
+println(&quot;differentiation at a=2,3,4; all intermediate powers confirmed to vanish&quot;)
+
+@assert numerically_equal(substitute(mu_CY_leading, Dict(n_idx =&gt; 1)), mu_0)
+println(&quot;ASSERTION 2 OK: n=1 recovers Newtonian (zero correction) for any a&quot;)
+
+@assert numerically_equal(substitute(mu_CY_leading, Dict(lambda_c =&gt; 0)), mu_0)
+println(&quot;ASSERTION 3 OK: lambda_c=0 recovers Newtonian for any a&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">a=2: exact coeff=(1//2)*(gammadot_hat^2)*(lambda_c^2)*mu_0*(-1 + n_idx)  hand-built=-(1//2)*(gammadot_hat^2)*(lambda_c^2)*mu_0 + (1//2)*(gammadot_hat^2)*(lambda_c^2)*mu_0*n_idx  match=true
+a=3: exact coeff=(1//3)*(gammadot_hat^3)*(lambda_c^3)*mu_0*(-1 + n_idx)  hand-built=-(1//3)*(gammadot_hat^3)*(lambda_c^3)*mu_0 + (1//3)*(gammadot_hat^3)*(lambda_c^3)*mu_0*n_idx  match=true
+a=4: exact coeff=(1//4)*(gammadot_hat^4)*(lambda_c^4)*mu_0*(-1 + n_idx)  hand-built=-(1//4)*(gammadot_hat^4)*(lambda_c^4)*mu_0 + (1//4)*(gammadot_hat^4)*(lambda_c^4)*mu_0*n_idx  match=true
+ASSERTION 1 OK: hand-built leading-order expansion verified via repeated
+differentiation at a=2,3,4; all intermediate powers confirmed to vanish
+ASSERTION 2 OK: n=1 recovers Newtonian (zero correction) for any a
+ASSERTION 3 OK: lambda_c=0 recovers Newtonian for any a</code></pre><p>ASSERTION 4: exact reduction to the ORIGINAL (pre-generalization) Carreau result at a=2: eps_ST = (1-n)/2.</p><pre><code class="language-julia hljs">eps_ST_CY = (1 - n_idx) / a_shape
+correction_a2 = simplify(substitute(mu_CY_leading - mu_0, Dict(a_shape =&gt; 2)))
+target_original = eps.^2 .* gammadot_hat.^2 .* lambda_c.^2 .* mu_0 .* (n_idx - 1) ./ 2
+@assert numerically_equal(correction_a2, target_original)
+println(&quot;ASSERTION 4 OK: exact match at a=2 (eps_ST -&gt; &quot;, simplify(substitute(eps_ST_CY, Dict(a_shape=&gt;2))),
+        &quot;, matching (1-n)/2)&quot;)
+
+println()
+println(&quot;=&quot;^78)
+println(&quot;Sections 2-5: Newtonian base-flow machinery (rheology-independent)&quot;)
+println(&quot;=&quot;^78)
+println(&quot;&quot;&quot;
+The Reid velocity field, strain-rate tensor, and angular-integration
+machinery below do not depend on the shear-thinning law at all -- they are
+exact properties of the Newtonian base flow, and are identical regardless of
+which shear-thinning correction (Carreau, Carreau-Yasuda, Cross, or none) is
+applied at higher order.
+&quot;&quot;&quot;)
+
+println(&quot;--- Section 2: Reid velocity field, l=2 ---&quot;)
+println(&quot;&quot;&quot;
+U(x) = C*x*j_l(qx) + Pi0*x^(l+1) solves Reid&#39;s ODE:
+  [d^2/dx^2 - l(l+1)/x^2 + q^2] U(x) = q^2 * Pi0 * x^(l+1)
+
+Spherical Bessel functions of integer order reduce to elementary functions;
+for l=2, j_2(z) = (3/z^3 - 1/z)*sin(z) - (3/z^2)*cos(z). We use this explicit
+elementary form so Symbolics.jl&#39;s ordinary calculus (no special-function
+differentiation rules needed) verifies the ODE directly.
+&quot;&quot;&quot;)
+
+@variables x_sym q_sym C_sym Pi0_sym
+j2(z) = (3/z^3 - 1/z)*sin(z) - (3/z^2)*cos(z)
+
+l_test = 2
+U_expr = C_sym * x_sym * j2(q_sym * x_sym) + Pi0_sym * x_sym^(l_test + 1)
+U_expr_p  = Symbolics.derivative(U_expr, x_sym)
+U_expr_pp = Symbolics.derivative(U_expr_p, x_sym)
+ODE_lhs = U_expr_pp - l_test*(l_test+1)/x_sym^2 * U_expr + q_sym^2 * U_expr
+ODE_rhs = q_sym^2 * Pi0_sym * x_sym^(l_test + 1)
+residual = simplify(ODE_lhs - ODE_rhs)
+println(&quot;ODE residual (should be 0): &quot;, residual)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ASSERTION 4 OK: exact match at a=2 (eps_ST -&gt; (1 - n_idx) / 2, matching (1-n)/2)
+
+==============================================================================
+Sections 2-5: Newtonian base-flow machinery (rheology-independent)
+==============================================================================
+The Reid velocity field, strain-rate tensor, and angular-integration
+machinery below do not depend on the shear-thinning law at all -- they are
+exact properties of the Newtonian base flow, and are identical regardless of
+which shear-thinning correction (Carreau, Carreau-Yasuda, Cross, or none) is
+applied at higher order.
+
+--- Section 2: Reid velocity field, l=2 ---
+U(x) = C*x*j_l(qx) + Pi0*x^(l+1) solves Reid&#39;s ODE:
+  [d^2/dx^2 - l(l+1)/x^2 + q^2] U(x) = q^2 * Pi0 * x^(l+1)
+
+Spherical Bessel functions of integer order reduce to elementary functions;
+for l=2, j_2(z) = (3/z^3 - 1/z)*sin(z) - (3/z^2)*cos(z). We use this explicit
+elementary form so Symbolics.jl&#39;s ordinary calculus (no special-function
+differentiation rules needed) verifies the ODE directly.
+
+ODE residual (should be 0): 0</code></pre><p>ASSERTION 5: verify residual == 0 both symbolically AND numerically (a concrete-value check catches cases where simplify() can&#39;t fully collapse a transcendental expression that IS actually zero).</p><pre><code class="language-julia hljs">symbolic_zero = isequal(residual, 0)
+numeric_zero = let
+    f = Symbolics.build_function(residual, x_sym, q_sym, C_sym, Pi0_sym; expression=false)
+    all(abs(f(xv, qv, 1.3, -0.7)) &lt; 1e-9 for xv in (0.2, 0.5, 0.9), qv in (1.1, 2.7, 4.3))
+end
+@assert symbolic_zero || numeric_zero &quot;Reid ODE not satisfied: $residual&quot;
+println(&quot;ASSERTION 5 OK: U(x) = C*x*j_2(qx) + Pi0*x^3 satisfies Reid&#39;s ODE&quot;,
+        symbolic_zero ? &quot; (symbolically)&quot; : &quot; (verified numerically at several (x,q,C,Pi0))&quot;)
+
+println()
+println(&quot;--- Boundary conditions: solve the 2x2 system for C, Pi0 ---&quot;)
+@variables jl_sym jlp_sym l_s
+A_mat = [jl_sym                                             1;
+         -q_sym^2*jl_sym + 2*(l_s^2+l_s-1)*jl_sym - 2*q_sym*jlp_sym    2*(l_s^2-1)]
+b_vec = [-1, 0]
+sol = Symbolics.simplify.(A_mat \ b_vec)
+C_sol, Pi0_sol = sol[1], sol[2]
+
+bc1_pi0 = simplify(C_sol * jl_sym + Pi0_sol + 1)
+@assert isequal(bc1_pi0, 0)
+println(&quot;ASSERTION 6 OK: C*j_l + Pi0 = -1 (BC1 verified for Pi0)&quot;)
+
+C_reid = 2*(l_s-1)*(l_s+1) / ((2*l_s - q_sym^2)*jl_sym - 2*q_sym*jlp_sym)
+@assert numerically_equal(C_sol, C_reid)
+println(&quot;ASSERTION 7 OK: BC solution for C matches Reid eq. (38)&quot;)
+
+@assert numerically_equal(C_sol * jl_sym + Pi0_sol + 1, 0)
+println(&quot;ASSERTION 8 OK: BC1 satisfied: U(1) = -1&quot;)
+
+println()
+println(&quot;--- Section 3: velocity field incompressibility ---&quot;)
+@variables theta_sym</code></pre><p class="math-container">\[ \begin{equation}
+\left[
+\begin{array}{c}
+\mathtt{theta\_sym} \\
+\end{array}
+\right]
+\end{equation}
+ \]</p><p>V(x) = (x^2 U)&#39; / (l(l+1) x), verify continuity: (x^2 U)&#39;/x^2 - l(l+1)*V/x = 0</p><pre><code class="language-julia hljs">l_num = 2
+V_from_U(Uexpr) = Symbolics.derivative(x_sym^2 * Uexpr, x_sym) / (l_num*(l_num+1)*x_sym)
+
+@variables Utest(x_sym)
+Vtest = V_from_U(Utest)
+div_check = Symbolics.derivative(x_sym^2*Utest, x_sym)/x_sym^2 - l_num*(l_num+1)*Vtest/x_sym
+@assert numerically_equal(div_check, 0)
+println(&quot;ASSERTION 9 OK: velocity field u_r=U*P_l, u_theta=V*(dP_l/dtheta) is incompressible&quot;)
+println(&quot;V(x) = &quot;, Vtest)
+
+println()
+println(&quot;--- Section 4: strain rate tensor (l=2) ---&quot;)
+Pl_expr = (3*cos(theta_sym)^2 - 1)/2
+dPl_dth = Symbolics.derivative(Pl_expr, theta_sym)
+d2Pl_dth = Symbolics.derivative(dPl_dth, theta_sym)
+
+@variables f_sym(x_sym) g_sym(x_sym)
+fxp = Symbolics.derivative(f_sym, x_sym)
+gxp = Symbolics.derivative(g_sym, x_sym)
+
+e_rr = fxp * Pl_expr
+e_rth = (1//2) * (gxp - g_sym/x_sym + f_sym/x_sym) * dPl_dth
+e_thth = (f_sym/x_sym)*Pl_expr + (g_sym/x_sym)*d2Pl_dth
+e_phph = (f_sym/x_sym)*Pl_expr + (g_sym*cos(theta_sym)/sin(theta_sym)/x_sym)*dPl_dth
+gdot_sq = 2*(e_rr^2 + e_thth^2 + e_phph^2 + 2*e_rth^2)
+println(&quot;Strain rate components defined (l=2). Proceeding to angular integration...&quot;)
+
+println()
+println(&quot;--- Section 5: angular integration (Legendre orthogonality), via QuadGK ---&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ASSERTION 9 OK: velocity field u_r=U*P_l, u_theta=V*(dP_l/dtheta) is incompressible
+V(x) = (2Utest(x_sym)*x_sym + Differential(x_sym, 1)(Utest(x_sym))*(x_sym^2)) / (6x_sym)
+
+--- Section 4: strain rate tensor (l=2) ---
+Strain rate components defined (l=2). Proceeding to angular integration...
+
+--- Section 5: angular integration (Legendre orthogonality), via QuadGK ---</code></pre><p>Numeric definite integrals over theta in [0,pi] – Symbolics.jl has no general symbolic integrate(); QuadGK.jl gives a fully rigorous numeric check of the known closed-form Legendre-orthogonality identities.</p><pre><code class="language-julia hljs">Pl_f  = Symbolics.build_function(Pl_expr, theta_sym; expression=false)
+dPl_f = Symbolics.build_function(dPl_dth, theta_sym; expression=false)
+
+I_Pl2, _  = quadgk(th -&gt; Pl_f(th)^2 * sin(th), 0, pi)
+I_dPl2, _ = quadgk(th -&gt; dPl_f(th)^2 * sin(th), 0, pi)
+
+l_check = 2
+@assert abs(I_Pl2 - 2/(2*l_check+1)) &lt; 1e-10
+println(&quot;ASSERTION 10 OK: int P_2^2 sin(theta) dtheta = 2/(2l+1) = &quot;, 2/(2*l_check+1), &quot; (quadgk: $I_Pl2)&quot;)
+@assert abs(I_dPl2 - 2*l_check*(l_check+1)/(2*l_check+1)) &lt; 1e-10
+println(&quot;ASSERTION 11 OK: int (dP_2/dtheta)^2 sin(theta) dtheta = 2l(l+1)/(2l+1) = &quot;,
+        2*l_check*(l_check+1)/(2*l_check+1), &quot; (quadgk: $I_dPl2)&quot;)
+
+println()
+println(&quot;=&quot;^78)
+println(&quot;Section 6: The Correction Integral Gamma_l^(a) -- generalized&quot;)
+println(&quot;=&quot;^78)
+println(&quot;&quot;&quot;
+Gamma_l^(a) = [int_0^1 (int_0^pi gammadot^(a+2) sin(theta) dtheta) x^2 dx] / N_l^((a+2)/2)
+
+generalizing the old (a=2-hardcoded) Gamma_l&#39;s N_l^2 normalization, since
+gammadot^(a+2) ~ U^(a+2) while N_l ~ U^2, so N_l^((a+2)/2) ~ U^(a+2) -- the
+same power, keeping Gamma_l^(a) dimensionless in powers of U for any a.
+
+Inviscid limit: U(x) = Pi0*x^(l+1) = -x^(l+1) makes every strain component
+proportional to x^l, so gammadot^2(x,theta) = x^(2l)*H(theta) EXACTLY -- this
+factorization holds for any power you then raise it to, not just squared.
+&quot;&quot;&quot;)
+
+l_val = 2
+Pi0_inviscid = -1
+f_inviscid = Pi0_inviscid * x_sym^(l_val+1)
+fp_inviscid = Symbolics.derivative(f_inviscid, x_sym)
+
+@assert isequal(substitute(f_inviscid, Dict(x_sym =&gt; 1)), -1)
+println(&quot;ASSERTION 12 OK: BC1 satisfied in inviscid limit: U(1) = -1&quot;)
+
+N_l_inviscid = simplify((f_inviscid^2 * x_sym^2 |&gt; expr -&gt; begin
+    1//9   # int_0^1 x^8 dx = 1/9 (f_inviscid^2 = x^6, times x^2 Jacobian = x^8)
+end))
+println(&quot;N_l (inviscid) = int U^2 x^2 dx = &quot;, N_l_inviscid)
+
+g_inv_l2 = simplify(Symbolics.derivative(x_sym^2 * f_inviscid, x_sym) / (l_val*(l_val+1)*x_sym))
+gp_inv_l2 = Symbolics.derivative(g_inv_l2, x_sym)
+e_rr_inv   = fp_inviscid * Pl_expr
+e_rth_inv  = (1//2)*(gp_inv_l2 - g_inv_l2/x_sym + f_inviscid/x_sym)*dPl_dth
+e_thth_inv = (f_inviscid/x_sym)*Pl_expr + (g_inv_l2/x_sym)*d2Pl_dth
+e_phph_inv = (f_inviscid/x_sym)*Pl_expr + (g_inv_l2*cos(theta_sym)/(sin(theta_sym)*x_sym))*dPl_dth
+gdot_sq_inv = 2*(e_rr_inv^2 + e_thth_inv^2 + e_phph_inv^2 + 2*e_rth_inv^2)
+
+H_theta = simplify(substitute(gdot_sq_inv, Dict(x_sym =&gt; 1)))
+println(&quot;H(theta) = gdot_sq / x^(2l) at x=1 = &quot;, H_theta)
+
+factorization_residual = simplify(gdot_sq_inv - x_sym^4 * H_theta)
+symbolic_zero_13 = isequal(factorization_residual, 0)
+numeric_zero_13 = let
+    f = Symbolics.build_function(factorization_residual, x_sym, theta_sym; expression=false)
+    all(abs(f(xv, thv)) &lt; 1e-9 for xv in (0.1,0.4,0.7,0.99), thv in (0.3,1.1,2.0,2.9))
+end
+@assert symbolic_zero_13 || numeric_zero_13 &quot;Factorization failed: $factorization_residual&quot;
+println(&quot;ASSERTION 13 OK: gdot_sq = x^(2l) * H(theta) exactly (inviscid l=2)&quot;)
+
+H_f = Symbolics.build_function(H_theta, theta_sym; expression=false)
+H_poly_ref(th) = 3*cos(th)^4 + 11*cos(th)^2 + 13
+@assert all(abs(H_f(th) - H_poly_ref(th)) &lt; 1e-10 for th in range(0.01, pi-0.01, length=20))
+println(&quot;ASSERTION 14 OK: H(theta) = 3cos^4(theta) + 11cos^2(theta) + 13 confirmed&quot;)
+
+function Gamma_l_a_inviscid_l2(a_val)
+    exponent = (a_val + 2) / 2
+    ang, _ = quadgk(th -&gt; H_poly_ref(th)^exponent * sin(th), 0, pi)
+    radial_denom = l_val*(a_val + 2) + 3
+    (ang / radial_denom) / (1/9)^exponent
+end
+
+G2_a2 = Gamma_l_a_inviscid_l2(2.0)
+target = 1783566 / 385
+println(&quot;Gamma_2^(a=2) computed = &quot;, G2_a2, &quot;   old notebook&#39;s exact value = &quot;, target)
+@assert abs(G2_a2 - target)/target &lt; 1e-9
+println(&quot;ASSERTION 15 OK: Gamma_l^(a) reduces EXACTLY to the old (Python) notebook&#39;s&quot;,
+        &quot; sympy-exact Gamma_2 = 1783566/385 at a=2&quot;)
+
+println()
+println(&quot;Gamma_2^(a) for several shape exponents a (inviscid limit):&quot;)
+for a_val in (0.5, 1.0, 1.5, 2.0, 3.0, 4.0)
+    println(&quot;  a=$a_val: Gamma_2^(a) = &quot;, round(Gamma_l_a_inviscid_l2(a_val), digits=4))
+end
+
+println()
+println(&quot;=&quot;^78)
+println(&quot;Section 7: The Modified Mode Equation, and Its Effective Damping&quot;)
+println(&quot;=&quot;^78)
+println(&quot;&quot;&quot;
+Generalized dissipation function: delta_Phi = -(coeff)*|bdot|^(a+2), giving a
+generalized dissipative force d(delta_Phi)/d(bdot) ~ |bdot|^a * bdot --
+verified below by direct NUMERICAL differentiation (the exact step an
+earlier, unrelated attempt at this same generalization for the Cross model
+got wrong; checked carefully here for the same reason).
+&quot;&quot;&quot;)
+
+function check_force_order(a_val; x0=0.37, h=1e-6)
+    f(xv) = -abs(xv)^(a_val+2)
+    dfdx = (f(x0+h) - f(x0-h)) / (2h)
+    claimed = -(a_val+2)*abs(x0)^a_val*x0
+    dfdx, claimed
+end
+
+mismatches = Float64[]
+for a_val in (0.5, 1.0, 1.5, 2.0, 3.0)
+    d, c = check_force_order(a_val)
+    matchv = abs(d-c) &lt; 1e-4
+    println(&quot;a=$a_val: numeric d(delta_Phi)/d(bdot)=$d  claimed=-(a+2)|bdot|^a*bdot=$c  match=$matchv&quot;)
+    matchv || push!(mismatches, a_val)
+end
+@assert isempty(mismatches)
+println(&quot;ASSERTION 16 OK: generalized force ~ |bdot|^a * bdot verified numerically&quot;)
+
+@variables Oh_sym Lambda_sym eps_ST_sym Gamma_l_sym bdot_sym
+D0_newtonian = 2*Oh_sym*(l_val-1)*(2*l_val+1)
+D_eff = D0_newtonian * (1 - eps_ST_sym * Lambda_sym^a_shape * Gamma_l_sym * abs(bdot_sym)^a_shape)
+println(&quot;Newtonian damping D_l^(0) [l=2] = &quot;, D0_newtonian)
+println(&quot;Effective damping D_eff = &quot;, D_eff)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ASSERTION 10 OK: int P_2^2 sin(theta) dtheta = 2/(2l+1) = 0.4 (quadgk: 0.4)
+ASSERTION 11 OK: int (dP_2/dtheta)^2 sin(theta) dtheta = 2l(l+1)/(2l+1) = 2.4 (quadgk: 2.4)
+
+==============================================================================
+Section 6: The Correction Integral Gamma_l^(a) -- generalized
+==============================================================================
+Gamma_l^(a) = [int_0^1 (int_0^pi gammadot^(a+2) sin(theta) dtheta) x^2 dx] / N_l^((a+2)/2)
+
+generalizing the old (a=2-hardcoded) Gamma_l&#39;s N_l^2 normalization, since
+gammadot^(a+2) ~ U^(a+2) while N_l ~ U^2, so N_l^((a+2)/2) ~ U^(a+2) -- the
+same power, keeping Gamma_l^(a) dimensionless in powers of U for any a.
+
+Inviscid limit: U(x) = Pi0*x^(l+1) = -x^(l+1) makes every strain component
+proportional to x^l, so gammadot^2(x,theta) = x^(2l)*H(theta) EXACTLY -- this
+factorization holds for any power you then raise it to, not just squared.
+
+ASSERTION 12 OK: BC1 satisfied in inviscid limit: U(1) = -1
+N_l (inviscid) = int U^2 x^2 dx = 1//9
+H(theta) = gdot_sq / x^(2l) at x=1 = 2((9//4)*((-1 + 3(cos(theta_sym)^2))^2) + (-(1//2)*(-1 + 3(cos(theta_sym)^2)) - (5//6)*(-(3//1)*(cos(theta_sym)^2) + (3//1)*(sin(theta_sym)^2)))^2 + (-(1//2)*(-1 + 3(cos(theta_sym)^2)) + (5//2)*(cos(theta_sym)^2))^2 + (32//1)*(cos(theta_sym)^2)*(sin(theta_sym)^2))
+ASSERTION 13 OK: gdot_sq = x^(2l) * H(theta) exactly (inviscid l=2)
+ASSERTION 14 OK: H(theta) = 3cos^4(theta) + 11cos^2(theta) + 13 confirmed
+Gamma_2^(a=2) computed = 4632.6389610389615   old notebook&#39;s exact value = 4632.638961038961
+ASSERTION 15 OK: Gamma_l^(a) reduces EXACTLY to the old (Python) notebook&#39;s sympy-exact Gamma_2 = 1783566/385 at a=2
+
+Gamma_2^(a) for several shape exponents a (inviscid limit):
+  a=0.5: Gamma_2^(a) = 138.309
+  a=1.0: Gamma_2^(a) = 439.1737
+  a=1.5: Gamma_2^(a) = 1416.789
+  a=2.0: Gamma_2^(a) = 4632.639
+  a=3.0: Gamma_2^(a) = 51233.222
+  a=4.0: Gamma_2^(a) = 588150.7912
+
+==============================================================================
+Section 7: The Modified Mode Equation, and Its Effective Damping
+==============================================================================
+Generalized dissipation function: delta_Phi = -(coeff)*|bdot|^(a+2), giving a
+generalized dissipative force d(delta_Phi)/d(bdot) ~ |bdot|^a * bdot --
+verified below by direct NUMERICAL differentiation (the exact step an
+earlier, unrelated attempt at this same generalization for the Cross model
+got wrong; checked carefully here for the same reason).
+
+a=0.5: numeric d(delta_Phi)/d(bdot)=-0.5626555340393358  claimed=-(a+2)|bdot|^a*bdot=-0.5626555340525853  match=true
+a=1.0: numeric d(delta_Phi)/d(bdot)=-0.41069999998782913  claimed=-(a+2)|bdot|^a*bdot=-0.41069999999999995  match=true
+a=1.5: numeric d(delta_Phi)/d(bdot)=-0.2914555666325147  claimed=-(a+2)|bdot|^a*bdot=-0.2914555666392392  match=true
+a=2.0: numeric d(delta_Phi)/d(bdot)=-0.2026119999953141  claimed=-(a+2)|bdot|^a*bdot=-0.202612  match=true
+a=3.0: numeric d(delta_Phi)/d(bdot)=-0.09370804999889529  claimed=-(a+2)|bdot|^a*bdot=-0.09370804999999999  match=true
+ASSERTION 16 OK: generalized force ~ |bdot|^a * bdot verified numerically
+Newtonian damping D_l^(0) [l=2] = 10Oh_sym
+Effective damping D_eff = 10(1 - Gamma_l_sym*(abs(bdot_sym)^a_shape)*(Lambda_sym^a_shape)*eps_ST_sym)*Oh_sym</code></pre><p>ASSERTION 17: at a=2, D<em>eff MUST reduce exactly to the old notebook&#39;s D</em>eff: D0<em>(1 - eps_ST</em>Lambda^2<em>Gamma_l</em>bdot^2). Since |bdot|^2 == bdot^2 for real bdot, substitute abs(bdot)-&gt;sqrt(bdot^2) to compare on equal footing.</p><pre><code class="language-julia hljs">D_eff_a2 = simplify(substitute(D_eff, Dict(a_shape =&gt; 2, abs(bdot_sym) =&gt; sqrt(bdot_sym^2))))
+D_eff_original = D0_newtonian * (1 - eps_ST_sym * Lambda_sym^2 * Gamma_l_sym * bdot_sym^2)
+match17 = numerically_equal(D_eff_a2, D_eff_original)
+println(&quot;D_eff at a=2: &quot;, D_eff_a2)
+println(&quot;Original D_eff: &quot;, D_eff_original)
+@assert match17
+println(&quot;ASSERTION 17 OK: generalized D_eff reduces EXACTLY to the old notebook&#39;s D_eff at a=2&quot;)
+
+@assert numerically_equal(substitute(D_eff, Dict(eps_ST_sym =&gt; 0)), D0_newtonian)
+println(&quot;ASSERTION 18 OK: eps_ST=0 recovers Newtonian damping for any a&quot;)
+
+println()
+println(&quot;=&quot;^78)
+println(&quot;Section 8: Secular Terms and the Generalized Slow-Amplitude Equation&quot;)
+println(&quot;=&quot;^78)
+println(&quot;&quot;&quot;
+The old (a=2-hardcoded) notebook&#39;s cubic damping term projects onto
+sin(omega*t) via &lt;sin^4&gt;=3/8, giving the 3/4 secular factor. For the
+generalized |bdot|^a*bdot damping (non-polynomial for non-even a), the
+analogous projection is a classical Wallis-type integral, closed-form via
+the Gamma function for any real a:
+  C(a) = (2/sqrt(pi)) * Gamma((a+3)/2) / Gamma((a+4)/2)
+verified below against QuadGK direct quadrature (not just cited).
+&quot;&quot;&quot;)
+
+C_of_a(a_val) = (2/sqrt(pi)) * gamma((a_val+3)/2) / gamma((a_val+4)/2)
+
+mismatches2 = Float64[]
+for a_val in (0.5, 1.0, 1.5, 2.0, 3.0, 4.0)
+    closed = C_of_a(a_val)
+    numeric, _ = quadgk(th -&gt; sin(th)^(a_val+2), 0, pi)
+    numeric *= 2/pi
+    err = abs(closed - numeric)
+    println(&quot;a=$a_val: closed-form=$closed  numeric-quadrature=$numeric  |diff|=$err&quot;)
+    err &gt; 1e-9 &amp;&amp; push!(mismatches2, a_val)
+end
+@assert isempty(mismatches2)
+println(&quot;ASSERTION 19 OK: closed-form C(a) matches direct quadrature for all a tested&quot;)
+
+@assert abs(C_of_a(2.0) - 0.75) &lt; 1e-12
+println(&quot;ASSERTION 20 OK: C(2) = 3/4, exactly matching the old notebook&#39;s validated secular factor&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">D_eff at a=2: 10(1 - Gamma_l_sym*(Lambda_sym^2)*(bdot_sym^2)*eps_ST_sym)*Oh_sym
+Original D_eff: 10(1 - Gamma_l_sym*(Lambda_sym^2)*(bdot_sym^2)*eps_ST_sym)*Oh_sym
+ASSERTION 17 OK: generalized D_eff reduces EXACTLY to the old notebook&#39;s D_eff at a=2
+ASSERTION 18 OK: eps_ST=0 recovers Newtonian damping for any a
+
+==============================================================================
+Section 8: Secular Terms and the Generalized Slow-Amplitude Equation
+==============================================================================
+The old (a=2-hardcoded) notebook&#39;s cubic damping term projects onto
+sin(omega*t) via &lt;sin^4&gt;=3/8, giving the 3/4 secular factor. For the
+generalized |bdot|^a*bdot damping (non-polynomial for non-even a), the
+analogous projection is a classical Wallis-type integral, closed-form via
+the Gamma function for any real a:
+  C(a) = (2/sqrt(pi)) * Gamma((a+3)/2) / Gamma((a+4)/2)
+verified below against QuadGK direct quadrature (not just cited).
+
+a=0.5: closed-form=0.9153117162021759  numeric-quadrature=0.9153117161974923  |diff|=4.683586851683685e-12
+a=1.0: closed-form=0.8488263631567751  numeric-quadrature=0.8488263631567752  |diff|=1.1102230246251565e-16
+a=1.5: closed-form=0.79488270635626  numeric-quadrature=0.7948827063586669  |diff|=2.406852495084877e-12
+a=2.0: closed-form=0.75  numeric-quadrature=0.75  |diff|=0.0
+a=3.0: closed-form=0.6790610905254201  numeric-quadrature=0.6790610905254202  |diff|=1.1102230246251565e-16
+a=4.0: closed-form=0.625  numeric-quadrature=0.6250000000000001  |diff|=1.1102230246251565e-16
+ASSERTION 19 OK: closed-form C(a) matches direct quadrature for all a tested
+ASSERTION 20 OK: C(2) = 3/4, exactly matching the old notebook&#39;s validated secular factor</code></pre><p>Cross-check against a direct symbolic period integral (mirrors the old notebook&#39;s explicit sin^4 integral exactly, now via QuadGK since Symbolics has no integrate()):</p><pre><code class="language-julia hljs">coeff_34, _ = quadgk(t -&gt; sin(t)^4, 0, 2pi)
+coeff_34 /= pi
+@assert abs(coeff_34 - 0.75) &lt; 1e-10
+println(&quot;ASSERTION 21 OK: direct &lt;sin^4&gt; period integral (quadgk) still gives exactly 3/4&quot;)
+
+println()
+println(&quot;Assembling the generalized slow-amplitude equation:&quot;)
+println(&quot;da/dt = -gamma0*a*[1 - C(a)*eps_ST*Lambda^a*Gamma_l^(a)*a^a]&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ASSERTION 21 OK: direct &lt;sin^4&gt; period integral (quadgk) still gives exactly 3/4
+
+Assembling the generalized slow-amplitude equation:
+da/dt = -gamma0*a*[1 - C(a)*eps_ST*Lambda^a*Gamma_l^(a)*a^a]</code></pre><p>ASSERTION 22: at a=2, MUST collapse to the old boxed equation da/dt = -gamma0<em>a</em>(1 - (3/4)<em>eps_ST</em>Lambda^2<em>Gamma_l</em>a^2). Verify at several concrete numeric points rather than symbolically (avoids fragile gamma() symbolic simplification), which is an equally rigorous check.</p><pre><code class="language-julia hljs">function da_dt_general(gamma0, a_amp, eps_ST, Lambda, Gamma_l, a_val)
+    -gamma0 * a_amp * (1 - C_of_a(a_val) * eps_ST * Lambda^a_val * Gamma_l * a_amp^a_val)
+end
+function da_dt_original(gamma0, a_amp, eps_ST, Lambda, Gamma_l)
+    -gamma0 * a_amp * (1 - 0.75 * eps_ST * Lambda^2 * Gamma_l * a_amp^2)
+end
+
+mismatches3 = []
+for (gamma0, a_amp, eps_ST, Lambda, Gamma_l) in
+        [(1.0, 0.3, 0.1, 0.2, 5.0), (0.5, 0.1, 0.05, 0.15, 100.0), (2.0, 0.4, 0.02, 0.3, 4632.639)]
+    gen = da_dt_general(gamma0, a_amp, eps_ST, Lambda, Gamma_l, 2.0)
+    orig = da_dt_original(gamma0, a_amp, eps_ST, Lambda, Gamma_l)
+    err = abs(gen - orig)
+    err &gt; 1e-9 &amp;&amp; push!(mismatches3, (gamma0, a_amp, eps_ST, Lambda, Gamma_l, err))
+end
+@assert isempty(mismatches3) &quot;mismatches: $mismatches3&quot;
+println(&quot;ASSERTION 22 OK: generalized slow-amplitude equation collapses EXACTLY to the&quot;)
+println(&quot;old notebook&#39;s boxed equation at a=2, verified at several concrete parameter points&quot;)
+
+for (gamma0, a_amp, Lambda, Gamma_l) in [(1.0, 0.3, 0.2, 5.0), (2.0, 0.1, 0.3, 100.0)]
+    @assert abs(da_dt_general(gamma0, a_amp, 0.0, Lambda, Gamma_l, 2.5) - (-gamma0*a_amp)) &lt; 1e-12
+end
+println(&quot;ASSERTION 23 OK: eps_ST=0 gives da/dt = -gamma0*a (Newtonian) for any a&quot;)
+
+println()
+println(&quot;Boxed result:&quot;)
+println(&quot;  da/dt = -gamma_l^(0) * a * [1 - C(a)*eps_ST*Lambda^a*Gamma_l^(a)*a^a]&quot;)
+println(&quot;  C(a) = (2/sqrt(pi)) * Gamma((a+3)/2)/Gamma((a+4)/2),  C(2) = 3/4&quot;)
+println(&quot;well-posed (correction -&gt; 0 as amplitude -&gt; 0) for every a&gt;0, and reduces&quot;)
+println(&quot;to exactly the old Carreau-only boxed equation at a=2.&quot;)
+
+println()
+println(&quot;=&quot;^78)
+println(&quot;Section 6 (continued): Gamma_l^(a) for l=2,3,4,5, inviscid limit&quot;)
+println(&quot;=&quot;^78)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ASSERTION 22 OK: generalized slow-amplitude equation collapses EXACTLY to the
+old notebook&#39;s boxed equation at a=2, verified at several concrete parameter points
+ASSERTION 23 OK: eps_ST=0 gives da/dt = -gamma0*a (Newtonian) for any a
+
+Boxed result:
+  da/dt = -gamma_l^(0) * a * [1 - C(a)*eps_ST*Lambda^a*Gamma_l^(a)*a^a]
+  C(a) = (2/sqrt(pi)) * Gamma((a+3)/2)/Gamma((a+4)/2),  C(2) = 3/4
+well-posed (correction -&gt; 0 as amplitude -&gt; 0) for every a&gt;0, and reduces
+to exactly the old Carreau-only boxed equation at a=2.
+
+==============================================================================
+Section 6 (continued): Gamma_l^(a) for l=2,3,4,5, inviscid limit
+==============================================================================</code></pre><p>f_inv = -x^(l+1); build strain components the same way as l=2 above, for general l.</p><pre><code class="language-julia hljs">function Gamma_l_a_general_l(l_val_, a_val)
+    fp_c(xv) = -(l_val_+1)*xv^l_val_
+    f_c(xv)  = -xv^(l_val_+1)
+    Plfun(u) = begin   # Legendre polynomial via Bonnet&#39;s recursion (u = cos(theta))
+        P0, P1 = one(u), u
+        l_val_ == 0 &amp;&amp; return P0
+        l_val_ == 1 &amp;&amp; return P1
+        Pkm1, Pk = P0, P1
+        for k in 1:(l_val_-1)
+            Pkp1 = ((2k+1)*u*Pk - k*Pkm1) / (k+1)
+            Pkm1, Pk = Pk, Pkp1
+        end
+        Pk
+    end
+    function H_at_theta(thv)
+        xv = 1.0
+        u = cos(thv); s = sin(thv)
+        h = 1e-6   # numeric differentiation of the Legendre function in theta (small h)
+        Pl_here = Plfun(cos(thv))
+        dPl_here = (Plfun(cos(thv+h)) - Plfun(cos(thv-h))) / (2h)
+        d2Pl_here = (Plfun(cos(thv+h)) - 2*Plfun(cos(thv)) + Plfun(cos(thv-h))) / h^2
+        g_c  = (2*f_c(xv) + xv*fp_c(xv)) / (l_val_*(l_val_+1))
+        fpp_c = -(l_val_+1)*l_val_*xv^(l_val_-1)
+        gp_c = (3*fp_c(xv) + xv*fpp_c) / (l_val_*(l_val_+1))
+        e_rr   = fp_c(xv) * Pl_here
+        e_rth  = 0.5*(gp_c - g_c/xv + f_c(xv)/xv)*dPl_here
+        e_thth = (f_c(xv)/xv)*Pl_here + (g_c/xv)*d2Pl_here
+        e_phph = (f_c(xv)/xv)*Pl_here + (g_c*u/(s*xv))*dPl_here
+        2*(e_rr^2 + e_thth^2 + e_phph^2 + 2*e_rth^2)
+    end
+    exponent = (a_val+2)/2
+    ang, _ = quadgk(th -&gt; H_at_theta(th)^exponent * sin(th), 1e-6, pi-1e-6)
+    radial_denom = l_val_*(a_val + 2) + 3
+    N_l_val = 1/(2*l_val_ + 5)
+    (ang/radial_denom) / N_l_val^exponent
+end
+
+println(&quot;Gamma_l^(a) (inviscid limit) for l=2,3,4,5, a=1,2,3:&quot;)
+for l_val_ in (2,3,4,5)
+    row = [Gamma_l_a_general_l(l_val_, a_val) for a_val in (1.0, 2.0, 3.0)]
+    println(&quot;  l=$l_val_:  a=1: &quot;, round(row[1],digits=2), &quot;  a=2: &quot;, round(row[2],digits=2),
+            &quot;  a=3: &quot;, round(row[3],digits=2))
+end
+
+G_l2_a2 = Gamma_l_a_general_l(2, 2.0)
+rel_err_24 = abs(G_l2_a2 - target)/target
+println()
+println(&quot;Cross-check: general-l function at l=2,a=2 -&gt; $G_l2_a2  vs exact $target  rel_err=$rel_err_24&quot;)
+@assert rel_err_24 &lt; 1e-4   # numeric theta-derivatives (finite difference) limit precision vs the exact symbolic l=2 result
+println(&quot;ASSERTION 24 OK: general-l Gamma_l^(a) matches the exact l=2,a=2 value&quot;)
+
+for l_val_ in (2,3,4,5), a_val in (0.5, 1.0, 1.5, 2.0, 3.0)
+    @assert Gamma_l_a_general_l(l_val_, a_val) &gt; 0
+end
+println(&quot;ASSERTION 25 OK: Gamma_l^(a) &gt; 0 for l=2..5, a in {0.5,1,1.5,2,3} (inviscid limit)&quot;)
+
+println()
+println(&quot;=&quot;^78)
+println(&quot;Section 6.5: Finite-Oh Correction Integral Gamma_l^(a)(Oh)&quot;)
+println(&quot;=&quot;^78)
+println(&quot;&quot;&quot;
+At finite Oh, the eigenvalue q acquires a negative imaginary part and the
+eigenfunction becomes complex, U=U_R+i*U_I. The old (a=2-hardcoded)
+notebook computed &lt;gammadot^4&gt; via a closed-form algebraic identity specific
+to the exponent 4; for general a we compute &lt;[...]^((a+2)/2)&gt; by DIRECT
+NUMERICAL time-averaging over one period -- fully general, verified below to
+reproduce the old closed-form result to high precision at a=2 (the only
+case where both methods are available to compare).
+
+Normalization: the old Gamma_l is defined WITHOUT any time-average baked
+in (a purely spatial integral; §7-8 apply the temporal average separately).
+The old code divides its raw time-averaged quantity by 3/8=&lt;sin^4&gt; &quot;to match
+the inviscid convention&quot; (its own words). We generalize that normalization
+to &lt;sin^(a+2)&gt; = Gamma((a+3)/2) / [sqrt(pi)*Gamma((a+4)/2)] -- verified below
+to equal 3/8 exactly at a=2.
+&quot;&quot;&quot;)
+
+function sph_bessel_j(l, z)
+    sqrt(pi/(2z)) * besselj(l + 0.5, z)
+end
+
+function bessel_ratio(l, z)
+    sph_bessel_j(l+1, z) / sph_bessel_j(l, z)
+end
+
+function reid_char(qv, Oh, l)
+    alpha2 = sqrt(l*(l-1)*(l+2)) / Oh
+    Qv = bessel_ratio(l, qv)
+    lhs = alpha2^2/qv^4 + 1
+    rhs = 2*(l-1)/qv^2 * (l + (l+1)*(qv - 2*l*Qv)/(qv - 2*Qv))
+    lhs - rhs
+end
+
+function find_eigenvalue(Oh_val, l=2; maxiter=200, tol=1e-13)
+    sigma0 = sqrt(l*(l-1)*(l+2))
+    gamma0 = (l-1)*(2l+1) * Oh_val
+    q = sqrt(complex(gamma0/Oh_val, -sigma0/Oh_val))
+    imag(q) &gt; 0 &amp;&amp; (q = -q)
+    for _ in 1:maxiter
+        F = reid_char(q, Oh_val, l)
+        h = max(1e-7, abs(q)*1e-7)
+        dF = (reid_char(q + h*im, Oh_val, l) - F) / (h*im)
+        step = F/dF
+        q -= step
+        abs(F) &lt; tol &amp;&amp; break
+    end
+    imag(q) &gt; 0 ? conj(q) : q
+end
+
+function eigenfunction(x_arr, qv, l=2)
+    jlq  = sph_bessel_j(l, qv)
+    jl1q = sph_bessel_j(l+1, qv)
+    Cv   = 2*(l^2-1) / (qv*(2*jl1q - qv*jlq))
+    Pi0v = -1 - Cv*jlq
+    n = length(x_arr)
+    U = zeros(ComplexF64, n); dU = zeros(ComplexF64, n); d2U = zeros(ComplexF64, n)
+    for (i, xv) in enumerate(x_arr)
+        xv &lt; 1e-12 &amp;&amp; continue
+        jlv  = sph_bessel_j(l, qv*xv)
+        jl1v = sph_bessel_j(l+1, qv*xv)
+        jl2v = sph_bessel_j(l+2, qv*xv)
+        U[i]   = Cv*xv*jlv + Pi0v*xv^(l+1)
+        dU[i]  = Cv*((l+1)*jlv - qv*xv*jl1v) + Pi0v*(l+1)*xv^l
+        d2U[i] = Cv*(l*(l+1)/xv*jlv - (2l+3)*qv*jl1v + qv^2*xv*jl2v) + Pi0v*l*(l+1)*xv^(l-1)
+    end
+    U, dU, d2U
+end
+
+function legendre_arrays(l, u_pts)
+    n = length(u_pts)
+    Pl = zeros(n); Pl1 = zeros(n)
+    for (i,u) in enumerate(u_pts)
+        P0, P1 = 1.0, u
+        if l == 0
+            Pl[i] = P0
+        elseif l == 1
+            Pl[i] = P1
+        else
+            pkm1, pk = P0, P1
+            for k in 1:(l-1)
+                pkp1 = ((2k+1)*u*pk - k*pkm1)/(k+1)
+                pkm1, pk = pk, pkp1
+            end
+            Pl[i] = pk
+        end
+        if l-1 == 0   # P_{l-1}
+            Pl1[i] = 1.0
+        else
+            pkm1, pk = 1.0, u
+            for k in 1:(l-2)
+                pkp1 = ((2k+1)*u*pk - k*pkm1)/(k+1)
+                pkm1, pk = pk, pkp1
+            end
+            Pl1[i] = pk
+        end
+    end
+    dPl = similar(Pl); d2Pl = similar(Pl); sin_th = similar(Pl)
+    for i in 1:n
+        u = u_pts[i]
+        sin_th[i] = sqrt(max(1-u^2, 0.0))
+        if abs(u) &lt; 1 - 1e-14
+            dPl[i] = l*(Pl1[i] - u*Pl[i])/(1-u^2)
+        else
+            dPl[i] = 0.0
+        end
+    end
+    for i in 1:n
+        u = u_pts[i]
+        if abs(u) &lt; 1 - 1e-14
+            d2Pl[i] = (2*u*dPl[i] - l*(l+1)*Pl[i])/(1-u^2)
+        else
+            d2Pl[i] = 0.0
+        end
+    end
+    Pl, dPl, d2Pl, sin_th
+end
+
+function gdot_sq_matrix(f_arr, df_arr, x_arr, l, u_pts, d2f_arr)
+    nx, nth = length(x_arr), length(u_pts)
+    g_arr = (2 .* f_arr .+ x_arr .* df_arr) ./ (l*(l+1))
+    dg_arr = (3 .* df_arr .+ x_arr .* d2f_arr) ./ (l*(l+1))
+    Pl, dPl, d2Pl, sin_th = legendre_arrays(l, u_pts)
+    H = zeros(nx, nth)
+    for i in 1:nx
+        xv = x_arr[i]
+        xv &lt; 1e-12 &amp;&amp; continue
+        f_, fp, g_, gp = f_arr[i], df_arr[i], g_arr[i], dg_arr[i]
+        for j in 1:nth
+            e_rr   = fp * Pl[j]
+            e_thth = (f_/xv)*Pl[j] - (g_/xv)*(u_pts[j]*dPl[j] - sin_th[j]^2*d2Pl[j])
+            e_phph = (f_/xv)*Pl[j] - (g_/xv)*(u_pts[j]*dPl[j])
+            e_rth  = 0.5*sin_th[j]*dPl[j]*(g_/xv - gp - f_/xv)
+            H[i,j] = 2*(e_rr^2 + e_thth^2 + e_phph^2 + 2*e_rth^2)
+        end
+    end
+    H
+end
+
+function gdot_cross_matrix(f1, df1, d2f1, f2, df2, d2f2, x_arr, l, u_pts)
+    nx, nth = length(x_arr), length(u_pts)
+    g1 = (2 .* f1 .+ x_arr .* df1) ./ (l*(l+1)); dg1 = (3 .* df1 .+ x_arr .* d2f1) ./ (l*(l+1))
+    g2 = (2 .* f2 .+ x_arr .* df2) ./ (l*(l+1)); dg2 = (3 .* df2 .+ x_arr .* d2f2) ./ (l*(l+1))
+    Pl, dPl, d2Pl, sin_th = legendre_arrays(l, u_pts)
+    Hc = zeros(nx, nth)
+    for i in 1:nx
+        xv = x_arr[i]
+        xv &lt; 1e-12 &amp;&amp; continue
+        f1_,fp1,g1_,gp1 = f1[i],df1[i],g1[i],dg1[i]
+        f2_,fp2,g2_,gp2 = f2[i],df2[i],g2[i],dg2[i]
+        for j in 1:nth
+            e_rr1   = fp1 * Pl[j]
+            e_thth1 = (f1_/xv)*Pl[j] - (g1_/xv)*(u_pts[j]*dPl[j] - sin_th[j]^2*d2Pl[j])
+            e_phph1 = (f1_/xv)*Pl[j] - (g1_/xv)*(u_pts[j]*dPl[j])
+            e_rth1  = 0.5*sin_th[j]*dPl[j]*(g1_/xv - gp1 - f1_/xv)
+            e_rr2   = fp2 * Pl[j]
+            e_thth2 = (f2_/xv)*Pl[j] - (g2_/xv)*(u_pts[j]*dPl[j] - sin_th[j]^2*d2Pl[j])
+            e_phph2 = (f2_/xv)*Pl[j] - (g2_/xv)*(u_pts[j]*dPl[j])
+            e_rth2  = 0.5*sin_th[j]*dPl[j]*(g2_/xv - gp2 - f2_/xv)
+            Hc[i,j] = 2*(e_rr1*e_rr2 + e_thth1*e_thth2 + e_phph1*e_phph2 + 2*e_rth1*e_rth2)
+        end
+    end
+    Hc
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">gdot_cross_matrix (generic function with 1 method)</code></pre><p>Gauss-Legendre nodes/weights via Jacobi matrix eigendecomposition (no external quadrature-rule package needed – matches julia/src/types.jl&#39;s own make<em>theta</em>vec approach).</p><pre><code class="language-julia hljs">using LinearAlgebra
+function gauss_legendre(n)
+    bvec = [k / sqrt(4*k^2 - 1) for k in 1:n-1]
+    J = diagm(1 =&gt; bvec, -1 =&gt; bvec)
+    F = eigen(J)
+    nodes = F.values
+    weights = 2 .* (F.vectors[1, :]).^2
+    nodes, weights
+end
+
+norm_p(p) = gamma(p+0.5) / (sqrt(pi)*gamma(p+1))
+
+function compute_gamma_l_a(Oh_val, a_val, l=2; n_x=300, n_theta=100, n_phi=128)
+    qv = find_eigenvalue(Oh_val, l)
+    sigma = qv^2 * Oh_val
+    gamma_, omega_ = real(sigma), -imag(sigma)
+
+    x_arr = range(1e-4, 1.0, length=n_x)
+    U, dU, d2U = eigenfunction(x_arr, qv, l)
+    u_pts, wts = gauss_legendre(n_theta)
+    fR, dfR, d2fR = real.(U), real.(dU), real.(d2U)
+    fI, dfI, d2fI = imag.(U), imag.(dU), imag.(d2U)
+    H_R = gdot_sq_matrix(fR, dfR, x_arr, l, u_pts, d2fR)
+    H_I = gdot_sq_matrix(fI, dfI, x_arr, l, u_pts, d2fI)
+    H_cross = gdot_cross_matrix(fR, dfR, d2fR, fI, dfI, d2fI, x_arr, l, u_pts)
+
+    p = (a_val + 2)/2
+    time_avg = zeros(n_x, n_theta)
+    for k in 1:n_phi
+        phv = 2pi*(k-1)/n_phi
+        sinp, cosp = sin(phv), cos(phv)
+        @. time_avg += abs(H_R*sinp^2 + H_I*cosp^2 + 2*H_cross*sinp*cosp)^p
+    end
+    time_avg ./= n_phi
+    time_avg ./= norm_p(p)
+
+    numerator = trapz(x_arr, (time_avg * wts) .* x_arr.^2)
+    N_l = trapz(x_arr, (abs.(U).^2) .* x_arr.^2)
+    numerator / N_l^p, gamma_, omega_
+end
+
+function trapz(xs, ys)
+    s = 0.0
+    for i in 1:length(xs)-1
+        s += (xs[i+1]-xs[i]) * (ys[i+1]+ys[i]) / 2
+    end
+    s
+end
+
+function compute_gamma_l_original(Oh_val, l=2; n_x=300, n_theta=100)
+    qv = find_eigenvalue(Oh_val, l)
+    sigma = qv^2 * Oh_val
+    gamma_, omega_ = real(sigma), -imag(sigma)
+    x_arr = range(1e-4, 1.0, length=n_x)
+    U, dU, d2U = eigenfunction(x_arr, qv, l)
+    u_pts, wts = gauss_legendre(n_theta)
+    H_R = gdot_sq_matrix(real.(U), real.(dU), x_arr, l, u_pts, real.(d2U))
+    H_I = gdot_sq_matrix(imag.(U), imag.(dU), x_arr, l, u_pts, imag.(d2U))
+    H_cross = gdot_cross_matrix(real.(U),real.(dU),real.(d2U), imag.(U),imag.(dU),imag.(d2U), x_arr, l, u_pts)
+    H_sq = @. H_R^2 + H_I^2 + (2/3)*H_R*H_I + (4/3)*H_cross^2
+    numerator = trapz(x_arr, (H_sq * wts) .* x_arr.^2)
+    N_l = trapz(x_arr, (abs.(U).^2) .* x_arr.^2)
+    numerator / N_l^2, gamma_, omega_
+end
+
+println(&quot;Comparing generalized (numerical time-average) vs. old (closed-form) at a=2:&quot;)
+mismatches4 = Float64[]
+for Oh_v in (0.001, 0.05, 0.1, 0.3)
+    G_gen, gam_gen, om_gen = compute_gamma_l_a(Oh_v, 2.0, 2)
+    G_orig, gam_orig, om_orig = compute_gamma_l_original(Oh_v, 2)
+    rel_err = abs(G_gen - G_orig)/G_orig
+    println(&quot;Oh=$Oh_v: generalized=$(round(G_gen,digits=6))  original=$(round(G_orig,digits=6))  rel_err=$rel_err&quot;)
+    rel_err &gt; 1e-6 &amp;&amp; push!(mismatches4, Oh_v)
+end
+@assert isempty(mismatches4)
+println(&quot;ASSERTION 26 OK: generalized finite-Oh Gamma_l^(a) matches the old notebook&#39;s&quot;)
+println(&quot;compute_gamma_l to high precision at a=2, for every Oh tested&quot;)
+
+@assert abs(norm_p(2.0) - 0.375) &lt; 1e-12
+println(&quot;ASSERTION 27 OK: norm_p(2) = 3/8 exactly, matching the old notebook&#39;s convention&quot;)
+
+Gamma_inv_ref = 1783566/385
+println()
+println(&quot;Oh sweep, Gamma_l^(a)(Oh) for a=1,2,3:&quot;)
+sweep_results_a2 = Tuple{Float64,Float64,Float64,Float64}[]
+for Oh_v in (0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.5)
+    row = Float64[]
+    for a_val in (1.0, 2.0, 3.0)
+        G, gam, om = compute_gamma_l_a(Oh_v, a_val, 2)
+        push!(row, G)
+        a_val == 2.0 &amp;&amp; push!(sweep_results_a2, (Oh_v, G, gam, om))
+    end
+    println(&quot;  Oh=$Oh_v:  a=1: $(round(row[1],digits=2))  a=2: $(round(row[2],digits=2))  a=3: $(round(row[3],digits=2))&quot;)
+end
+
+for a_val in (1.0, 2.0, 3.0)
+    vals = [compute_gamma_l_a(Oh_v, a_val, 2)[1] for Oh_v in (0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.5)]
+    @assert all(v -&gt; v &gt; 0, vals)
+    @assert all(i -&gt; vals[i] &gt; vals[i+1], 1:length(vals)-1)
+end
+println(&quot;ASSERTION 28 OK: Gamma_l^(a)(Oh) positive and strictly decreasing with Oh, for a in {1,2,3}&quot;)
+
+G_001 = sweep_results_a2[1][2]
+rel_corr_001 = (Gamma_inv_ref - G_001)/Gamma_inv_ref
+@assert 0.04 &lt; rel_corr_001 &lt; 0.12
+println(&quot;ASSERTION 29 OK: Oh=0.001 viscous correction (a=2) = $rel_corr_001, in the&quot;)
+println(&quot;  (4%-12%) band the old notebook established&quot;)
+
+gamma_03 = first(r[3] for r in sweep_results_a2 if abs(r[1]-0.3) &lt; 1e-9)
+gamma_Lamb = (2-1)*(2*2+1)*0.3
+rel_diff_Lamb = abs(gamma_03 - gamma_Lamb)/gamma_Lamb
+@assert rel_diff_Lamb &lt; 0.30
+println(&quot;ASSERTION 30 OK: gamma(Oh=0.3, a=2) = $gamma_03 within 30% of Lamb ($gamma_Lamb)&quot;)
+
+println()
+println(&quot;=&quot;^78)
+println(&quot;SUMMARY: 30/30 assertions passed. This is a strict generalization of the&quot;)
+println(&quot;Carreau-only derivation -- every place the old derivation could be checked&quot;)
+println(&quot;against this one at a=2, the match is exact or near-machine-precision.&quot;)
+println()
+println(&quot;Implemented in julia/src/st_extension.jl and julia/src/types.jl:&quot;)
+println(&quot;  STParams gains an a::Float64 field (default 2.0, backward-compatible).&quot;)
+println(&quot;  The two places the code hardcoded the exponent 2&quot;)
+println(&quot;  (Gamma_eff = Gamma .* (lambda_c.*sigma0).^2 and&quot;)
+println(&quot;   shear_sq_lag = sum(Gamma_eff.*Adot_prev.^2)) now use .^a, with abs()&quot;)
+println(&quot;  added on the second since a need not be an even integer.&quot;)
+println()
+println(&quot;Ready for real experimental data: convert Cross-model fit parameters&quot;)
+println(&quot;(K, m, mu0, mu_infty) via lambda_c=K, a=m, n=1-m,&quot;)
+println(&quot;eps_ST=[(mu0-mu_infty)/mu0]*(1-n)/a, compute Gamma_l^(a)(Oh) via this&quot;)
+println(&quot;script&#39;s Section 6.5 machinery, and STParams/build_residual_st! are ready.&quot;)
+println(&quot;=&quot;^78)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Comparing generalized (numerical time-average) vs. old (closed-form) at a=2:
+Oh=0.001: generalized=4283.694296  original=4283.694296  rel_err=0.0
+Oh=0.05: generalized=2270.445501  original=2270.445501  rel_err=2.0028992133893562e-16
+Oh=0.1: generalized=1505.605912  original=1505.605912  rel_err=1.51018054367999e-16
+Oh=0.3: generalized=832.979941  original=832.979941  rel_err=0.0
+ASSERTION 26 OK: generalized finite-Oh Gamma_l^(a) matches the old notebook&#39;s
+compute_gamma_l to high precision at a=2, for every Oh tested
+ASSERTION 27 OK: norm_p(2) = 3/8 exactly, matching the old notebook&#39;s convention
+
+Oh sweep, Gamma_l^(a)(Oh) for a=1,2,3:
+  Oh=0.001:  a=1: 417.09  a=2: 4283.69  a=3: 46002.46
+  Oh=0.01:  a=1: 367.54  a=2: 3540.93  a=3: 35476.8
+  Oh=0.05:  a=1: 269.72  a=2: 2270.45  a=3: 19795.82
+  Oh=0.1:  a=1: 201.42  a=2: 1505.61  a=3: 11619.3
+  Oh=0.2:  a=1: 147.43  a=2: 972.66  a=3: 6596.25
+  Oh=0.3:  a=1: 131.87  a=2: 832.98  a=3: 5399.52
+  Oh=0.5:  a=1: 122.95  a=2: 756.03  a=3: 4766.35
+ASSERTION 28 OK: Gamma_l^(a)(Oh) positive and strictly decreasing with Oh, for a in {1,2,3}
+ASSERTION 29 OK: Oh=0.001 viscous correction (a=2) = 0.075323086567771, in the
+  (4%-12%) band the old notebook established
+ASSERTION 30 OK: gamma(Oh=0.3, a=2) = 1.0971293798092503 within 30% of Lamb (1.5)
+
+==============================================================================
+SUMMARY: 30/30 assertions passed. This is a strict generalization of the
+Carreau-only derivation -- every place the old derivation could be checked
+against this one at a=2, the match is exact or near-machine-precision.
+
+Implemented in julia/src/st_extension.jl and julia/src/types.jl:
+  STParams gains an a::Float64 field (default 2.0, backward-compatible).
+  The two places the code hardcoded the exponent 2
+  (Gamma_eff = Gamma .* (lambda_c.*sigma0).^2 and
+   shear_sq_lag = sum(Gamma_eff.*Adot_prev.^2)) now use .^a, with abs()
+  added on the second since a need not be an even integer.
+
+Ready for real experimental data: convert Cross-model fit parameters
+(K, m, mu0, mu_infty) via lambda_c=K, a=m, n=1-m,
+eps_ST=[(mu0-mu_infty)/mu0]*(1-n)/a, compute Gamma_l^(a)(Oh) via this
+script&#39;s Section 6.5 machinery, and STParams/build_residual_st! are ready.
+==============================================================================</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Home</a><a class="docs-footer-nextpage" href="../carreau_yasuda_multimode_derivation/">carreau yasuda multimode derivation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 31 July 2026 18:21">Friday 31 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

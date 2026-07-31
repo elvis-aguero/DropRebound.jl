@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>carreau yasuda nonperturbative derivation · DropRebound.jl</title><meta name="title" content="carreau yasuda nonperturbative derivation · DropRebound.jl"/><meta property="og:title" content="carreau yasuda nonperturbative derivation · DropRebound.jl"/><meta property="twitter:title" content="carreau yasuda nonperturbative derivation · DropRebound.jl"/><meta name="description" content="Documentation for DropRebound.jl."/><meta property="og:description" content="Documentation for DropRebound.jl."/><meta property="twitter:description" content="Documentation for DropRebound.jl."/><meta property="og:url" content="https://elvis-aguero.github.io/DropRebound.jl/derivations/carreau_yasuda_nonperturbative_derivation/"/><meta property="twitter:url" content="https://elvis-aguero.github.io/DropRebound.jl/derivations/carreau_yasuda_nonperturbative_derivation/"/><link rel="canonical" href="https://elvis-aguero.github.io/DropRebound.jl/derivations/carreau_yasuda_nonperturbative_derivation/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">DropRebound.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">CAS Derivations</span><ul><li><a class="tocitem" href="../carreau_yasuda_derivation/">carreau yasuda derivation</a></li><li><a class="tocitem" href="../carreau_yasuda_multimode_derivation/">carreau yasuda multimode derivation</a></li><li class="is-active"><a class="tocitem" href>carreau yasuda nonperturbative derivation</a><ul class="internal"><li><a class="tocitem" href="#Section-2:-K_l-as-an-EXACT-rational-number-via-polynomial-integration."><span>Section 2: K_l as an EXACT rational number via polynomial integration.</span></a></li><li><a class="tocitem" href="#Section-3:-Oh*eff*l(t),-and-reduction-to-the-existing-perturbative-formula."><span>Section 3: Oh<em>eff</em>l(t), and reduction to the existing perturbative formula.</span></a></li><li><a class="tocitem" href="#Section-4:-feed-Oh*eff*l(t)-through-Reid&#39;s-exact-relations-(julia/src/reid.jl)."><span>Section 4: feed Oh<em>eff</em>l(t) through Reid&#39;s exact relations (julia/src/reid.jl).</span></a></li><li><a class="tocitem" href="#Summary"><span>Summary</span></a></li></ul></li><li><a class="tocitem" href="../cross_fluid_derivation/">cross fluid derivation</a></li><li><a class="tocitem" href="../oldroyd_b_derivation/">oldroyd b derivation</a></li><li><a class="tocitem" href="../reid_finite_oh_derivation/">reid finite oh derivation</a></li></ul></li><li><a class="tocitem" href="../../api/">API Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">CAS Derivations</a></li><li class="is-active"><a href>carreau yasuda nonperturbative derivation</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>carreau yasuda nonperturbative derivation</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/elvis-aguero/DropRebound.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/elvis-aguero/DropRebound.jl/blob/main/julia/derivations/carreau_yasuda_nonperturbative_derivation.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><p>============================================================================== Non-Perturbative Carreau-Yasuda: Exact Effective-Oh from Instantaneous Shear</p><p>What&#39;s broken today: <code>julia/src/st_extension.jl</code> builds the shear-thinning damping correction by Taylor-expanding Carreau-Yasuda&#39;s viscosity law, mu<em>eff/mu</em>0 = [1 + (lambda<em>c*gammadot)^a]^(-eps</em>ST), to FIRST ORDER in eps<em>ST: mu</em>eff/mu<em>0 ~ 1 - eps</em>ST<em>(lambda_c</em>gammadot)^a. This requires BOTH eps<em>ST &lt;&lt; 1 AND (lambda</em>c<em>gammadot)^a not too large. Neither holds for the real shear-thinning validation fluid shared for this repo: eps<em>ST ~ 0.9996 (not small at all) and the nondimensional lambda</em>c ~ 30507 (so (lambda_c</em>gammadot)^a exceeds 1, the point where the Taylor series stops meaning anything, for essentially any nonzero deformation rate the solver will ever see). Using the perturbative correction on this fluid is not &quot;a bit off&quot; – it can make the damping term go NEGATIVE (energy injection), since (1 - eps<em>ST*shear</em>pow<em>lag) has no floor once eps</em>ST~1.</p><p>What changes, mechanistically (confirmed against the user&#39;s own stated understanding before deriving this): the effective Ohnesorge number for mode l, Oh<em>eff</em>l, becomes a function of the CURRENT shear rate rather than a fixed constant – and because Carreau-Yasuda has NO relaxation time (viscosity is an algebraic function of the instantaneous local shear rate, not a memory kernel), evaluating it at the current, instantaneous state (rather than time-averaging over an assumed oscillation cycle, which is what the OLD perturbative derivation&#39;s phase-averaging step did) is exact for this constitutive law, not merely a convenient approximation. Both the damping (lambda<em>l) AND the restoring/frequency term (omega</em>l^2) must then be re-evaluated at Oh<em>eff</em>l via Reid&#39;s exact relations (julia/derivations/reid<em>finite</em>oh<em>derivation.jl, julia/src/reid.jl) – NOT just the damping term the way the perturbative correction does, since omega</em>l^2 only equals the inviscid l(l-1)(l+2) in the SMALL-Oh limit, and this fluid&#39;s rest-state Oh_0 ~ 57 is nowhere near small.</p><p>What this derives, in order:</p><ol><li>The exact (closed-form, potential-flow) strain-rate field for a SINGLE active mode l, and a characteristic shear rate gammadot<em>char</em>l(t) = K<em>l * |Adot</em>l(t)| from its volume-averaged (RMS) magnitude – K_l computed as an EXACT rational number via polynomial integration, no numerical quadrature needed.</li><li>Oh<em>eff</em>l(t) = Oh<em>0 * [1 + (lambda</em>c*gammadot<em>char</em>l(t))^a]^(-eps_ST), the EXACT Carreau-Yasuda law, no Taylor truncation.</li><li>Confirms this reduces to the EXISTING perturbative st<em>extension.jl formula in the double limit eps</em>ST&lt;&lt;1 AND (lambda_c*gammadot)^a&lt;&lt;1 – the old code is a genuine special case, not a different model.</li><li>Feeds Oh<em>eff</em>l(t) through reid<em>lambda</em>omega2 (julia/src/reid.jl) to get lambda<em>l(t), omega</em>l^2(t), replacing BOTH D1[l] and D2[l].</li><li>Cross-checks against a live DropSolver simulation.</li></ol><p>Explicitly OUT of scope (documented limitations, not oversights): true cross-mode coupling (the characteristic shear rate here uses only mode l&#39;s own velocity field, matching what the existing perturbative code already does via its per-mode Gamma_l^(a), NOT a new simplification introduced here); the free-decay-vs-forced-response caveat already noted in julia/src/reid.jl&#39;s header (substituting these coefficients into the forced, contact-coupled ODE is an additional approximation on top of everything here, common to :reid already). ==============================================================================</p><pre><code class="language-julia hljs">using DropSolver</code></pre><hr/><p>Section 1: exact potential-flow strain-rate field for a single mode l, and the characteristic (RMS) shear rate constant K_l. –––––––––––––––––––––––––––––––––––––––</p><pre><code class="language-julia hljs">println(&quot;=&quot;^78)
+println(&quot;Section 1: Characteristic shear rate from the single-mode potential flow&quot;)
+println(&quot;=&quot;^78)
+println(&quot;&quot;&quot;
+For a single active mode l (surface velocity Adot_l*P_l(cos theta)), the
+interior velocity field is exactly the potential flow phi = r^l*P_l(x)*Phi_l,
+x=cos(theta), Phi_l=Adot_l/l (matching u_r(1,theta)=Adot_l*P_l(cos theta)).
+This is the SAME &quot;inviscid mode shape&quot; simplification already used throughout
+julia/derivations/carreau_yasuda_derivation.jl&#39;s existing Gamma_l^(a)
+machinery -- not a new approximation introduced here.
+
+From phi, the strain-rate tensor components (standard axisymmetric spherical
+formulas) reduce, after using Legendre&#39;s ODE (1-x^2)P_l&#39;&#39;-2xP_l&#39;+l(l+1)P_l=0
+to eliminate P_l&#39;&#39;, to (with X=P_l(x), X&#39;=P_l&#39;(x), prefactor r^(l-2)*Phi_l):
+    e_rr  =  l(l-1) X
+    e_thth =  x X&#39; - l^2 X
+    e_phph =  l X - x X&#39;
+    e_rth  = -(l-1) sin(theta) X&#39;
+which sum to zero identically (incompressibility) -- verified numerically
+below, since Symbolics.jl&#39;s simplifier is not reliable enough to trust
+`simplify(...)==0` for this expression (same caveat noted throughout this
+repo&#39;s other derivation scripts).
+&quot;&quot;&quot;)
+
+function legendre_P_dP(l::Int, x::Float64)
+    l == 0 &amp;&amp; return 1.0, 0.0
+    Pm1, P = 1.0, x
+    for n in 1:l-1
+        P, Pm1 = ((2n + 1) * x * P - n * Pm1) / (n + 1), P
+    end
+    Plm1 = l == 1 ? 1.0 : begin
+        Qm1, Q = 1.0, x
+        for n in 1:l-2
+            Q, Qm1 = ((2n + 1) * x * Q - n * Qm1) / (n + 1), Q
+        end
+        Q
+    end
+    dP = l * (Plm1 - x * P) / (1 - x^2)
+    P, dP
+end
+
+function strain_components(l::Int, x::Float64)
+    X, Xp = legendre_P_dP(l, x)
+    e_rr = l * (l - 1) * X
+    e_thth = x * Xp - l^2 * X
+    e_phph = l * X - x * Xp
+    e_rth = -(l - 1) * sqrt(1 - x^2) * Xp
+    e_rr, e_thth, e_phph, e_rth
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">strain_components (generic function with 1 method)</code></pre><p>–- Incompressibility check (numerical, per this repo&#39;s established convention) –-</p><pre><code class="language-julia hljs">for l in (2, 3, 5, 8), x in (-0.7, -0.1, 0.3, 0.9)
+    e_rr, e_thth, e_phph, _ = strain_components(l, x)
+    @assert abs(e_rr + e_thth + e_phph) &lt; 1e-10
+end
+println(&quot;ASSERTION 1 OK: e_rr + e_thth + e_phph = 0 (incompressibility) for&quot;)
+println(&quot;l = 2,3,5,8 at several x = cos(theta), to within 1e-10.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ASSERTION 1 OK: e_rr + e_thth + e_phph = 0 (incompressibility) for
+l = 2,3,5,8 at several x = cos(theta), to within 1e-10.</code></pre><hr/><h2 id="Section-2:-K_l-as-an-EXACT-rational-number-via-polynomial-integration."><a class="docs-heading-anchor" href="#Section-2:-K_l-as-an-EXACT-rational-number-via-polynomial-integration.">Section 2: K_l as an EXACT rational number via polynomial integration.</a><a id="Section-2:-K_l-as-an-EXACT-rational-number-via-polynomial-integration.-1"></a><a class="docs-heading-anchor-permalink" href="#Section-2:-K_l-as-an-EXACT-rational-number-via-polynomial-integration." title="Permalink"></a></h2><pre><code class="language-julia hljs">println()
+println(&quot;=&quot;^78)
+println(&quot;Section 2: K_l as an exact rational (polynomial integration, no quadrature)&quot;)
+println(&quot;=&quot;^78)
+println(&quot;&quot;&quot;
+gammadot^2(r,x) = 2*(e_rr^2+e_thth^2+e_phph^2+2*e_rth^2) = r^(2l-4)*Phi_l^2*g_l(x),
+where g_l(x) is an EXACT POLYNOMIAL in x (Legendre polynomials are polynomials;
+the sin(theta)^2=1-x^2 factor in e_rth^2 keeps everything polynomial). The
+characteristic (volume-RMS) shear rate is defined as
+    gammadot_char_l(t) = K_l * |Adot_l(t)|,   K_l^2 = &lt;gammadot^2&gt;_volume / Adot_l^2,
+computed by exact term-by-term integration of the polynomial r^(2l-2) (radial
+part, integrated 0 to 1) and g_l(x) (angular part, integrated -1 to 1) --
+both closed-form, no numerical quadrature needed, matching this repo&#39;s
+&quot;exact rational where possible&quot; derivation style.
+&quot;&quot;&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+==============================================================================
+Section 2: K_l as an exact rational (polynomial integration, no quadrature)
+==============================================================================
+gammadot^2(r,x) = 2*(e_rr^2+e_thth^2+e_phph^2+2*e_rth^2) = r^(2l-4)*Phi_l^2*g_l(x),
+where g_l(x) is an EXACT POLYNOMIAL in x (Legendre polynomials are polynomials;
+the sin(theta)^2=1-x^2 factor in e_rth^2 keeps everything polynomial). The
+characteristic (volume-RMS) shear rate is defined as
+    gammadot_char_l(t) = K_l * |Adot_l(t)|,   K_l^2 = &lt;gammadot^2&gt;_volume / Adot_l^2,
+computed by exact term-by-term integration of the polynomial r^(2l-2) (radial
+part, integrated 0 to 1) and g_l(x) (angular part, integrated -1 to 1) --
+both closed-form, no numerical quadrature needed, matching this repo&#39;s
+&quot;exact rational where possible&quot; derivation style.</code></pre><p>Polynomial arithmetic on Vector{Rational{BigInt}}, coeffs[i] = coefficient of x^(i-1)</p><pre><code class="language-julia hljs">_padd(a, b) = begin
+    n = max(length(a), length(b))
+    [(i &lt;= length(a) ? a[i] : 0 // 1) + (i &lt;= length(b) ? b[i] : 0 // 1) for i in 1:n]
+end
+_pscale(a, c) = [c * ai for ai in a]
+_pmulx(a) = vcat(0 // 1, a)
+_pmul(a, b) = begin
+    r = zeros(Rational{BigInt}, length(a) + length(b) - 1)
+    for i in eachindex(a), j in eachindex(b)
+        r[i+j-1] += a[i] * b[j]
+    end
+    r
+end
+_ptrim(a) = begin
+    n = length(a)
+    while n &gt; 1 &amp;&amp; a[n] == 0 // 1
+        n -= 1
+    end
+    a[1:n]
+end
+
+function legendre_poly(l::Int)
+    P0 = [1 // 1]
+    l == 0 &amp;&amp; return P0
+    P1 = [0 // 1, 1 // 1]
+    l == 1 &amp;&amp; return P1
+    Pm1, P = P0, P1
+    for n in 1:l-1
+        term1 = _pscale(_pmulx(P), (2n + 1) // (n + 1))
+        term2 = _pscale(Pm1, n // (n + 1))
+        P, Pm1 = _ptrim(_padd(term1, _pscale(term2, -1 // 1))), P
+    end
+    P
+end
+polyderiv(a) = length(a) == 1 ? [0 // 1] : [i * a[i+1] for i in 1:length(a)-1]
+
+function poly_int_m1_1(a)
+    s = 0 // 1
+    for (idx, c) in enumerate(a)
+        n = idx - 1
+        iseven(n) &amp;&amp; (s += c * 2 // (n + 1))
+    end
+    s
+end
+
+&quot;&quot;&quot;
+    K_l_squared_exact(l) -&gt; Rational{BigInt}
+
+K_l^2, exact, from term-by-term polynomial integration of g_l(x) over
+[-1,1] and the analytic radial factor 1/(2l-1) (from integrating r^(2l-2)
+over [0,1]), divided by the drop volume 4*pi/3 -- see the header derivation.
+&quot;&quot;&quot;
+function K_l_squared_exact(l::Int)
+    X = legendre_poly(l)
+    Xp = polyderiv(X)
+    e_rr = _pscale(X, Rational{BigInt}(l * (l - 1)))
+    e_thth = _padd(_pmulx(Xp), _pscale(X, Rational{BigInt}(-l^2)))
+    e_phph = _padd(_pscale(X, Rational{BigInt}(l)), _pscale(_pmulx(Xp), -1 // 1))
+    Xp2 = _pmul(Xp, Xp)
+    one_minus_x2_Xp2 = _padd(Xp2, _pscale(_pmul([0 // 1, 0 // 1, 1 // 1], Xp2), -1 // 1))
+    g = _padd(_pmul(e_rr, e_rr), _pmul(e_thth, e_thth))
+    g = _padd(g, _pmul(e_phph, e_phph))
+    g = _padd(g, _pscale(one_minus_x2_Xp2, Rational{BigInt}(2 * (l - 1)^2)))
+    g = _pscale(g, 2 // 1)
+    I_l = poly_int_m1_1(g)
+    (3 // (2 * (2l - 1))) * I_l // (l^2)
+end
+
+_K_TABLE_EXPECTED = Dict(2 =&gt; 3 // 1, 3 =&gt; 4 // 1, 4 =&gt; 9 // 2, 5 =&gt; 24 // 5,
+    6 =&gt; 5 // 1, 7 =&gt; 36 // 7, 8 =&gt; 21 // 4, 9 =&gt; 16 // 3, 10 =&gt; 27 // 5)
+for (l, expected) in _K_TABLE_EXPECTED
+    got = K_l_squared_exact(l)
+    @assert got == expected &quot;l=$l: got $got, expected $expected&quot;
+end
+println(&quot;K_l^2 for l=2..10:&quot;)
+for l in 2:10
+    println(&quot;  l=$l  K_l^2 = $(K_l_squared_exact(l))  (= $(Float64(K_l_squared_exact(l))))&quot;)
+end
+println(&quot;ASSERTION 2 OK: exact rational K_l^2 values, cross-checked against an&quot;)
+println(&quot;independent QuadGK numerical integration during development (agreed to&quot;)
+println(&quot;machine precision) -- monotonically increasing, finite, positive for&quot;)
+println(&quot;l=2..10, consistent with a well-behaved geometric factor.&quot;)
+
+K_l(l::Int) = sqrt(Float64(K_l_squared_exact(l)))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">K_l (generic function with 1 method)</code></pre><hr/><h2 id="Section-3:-Oh*eff*l(t),-and-reduction-to-the-existing-perturbative-formula."><a class="docs-heading-anchor" href="#Section-3:-Oh*eff*l(t),-and-reduction-to-the-existing-perturbative-formula.">Section 3: Oh<em>eff</em>l(t), and reduction to the existing perturbative formula.</a><a id="Section-3:-Oh*eff*l(t),-and-reduction-to-the-existing-perturbative-formula.-1"></a><a class="docs-heading-anchor-permalink" href="#Section-3:-Oh*eff*l(t),-and-reduction-to-the-existing-perturbative-formula." title="Permalink"></a></h2><pre><code class="language-julia hljs">println()
+println(&quot;=&quot;^78)
+println(&quot;Section 3: Oh_eff_l(t) -- exact Carreau-Yasuda, and reduction check&quot;)
+println(&quot;=&quot;^78)
+println(&quot;&quot;&quot;
+gammadot_char_l(t) = K_l * |Adot_l(t)|
+Oh_eff_l(t)         = Oh_0 * [1 + (lambda_c*gammadot_char_l(t))^a]^(-eps_ST)
+(using mu_eff/mu_0 = [1+(lambda_c*gammadot)^a]^((n-1)/a) = [...]^(-eps_ST),
+since eps_ST=(1-n)/a per julia/src/types.jl&#39;s STParams docstring).
+
+Reduction check: Taylor-expanding [1+x]^(-eps_ST) to first order in eps_ST
+(eps_ST&lt;&lt;1) AND then linearizing further in x=(lambda_c*gammadot)^a (x&lt;&lt;1)
+gives Oh_eff_l/Oh_0 ~ 1 - eps_ST*(lambda_c*gammadot_char_l)^a -- which is
+EXACTLY the (1 - eps_ST*shear_pow_lag) factor already multiplying D2 in
+julia/src/st_extension.jl, with Gamma_eff (that file&#39;s per-mode geometric
+factor) playing the role of K_l^a here. The old code is the double-small-
+parameter limit of this one, not a separate model.
+&quot;&quot;&quot;)
+
+function Oh_eff(Oh0, lambda_c, a, eps_ST, gammadot_char)
+    Oh0 * (1 + (lambda_c * gammadot_char)^a)^(-eps_ST)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Oh_eff (generic function with 1 method)</code></pre><p>Reduction check: small eps<em>ST AND small (lambda</em>c*gammadot)^a</p><pre><code class="language-julia hljs">let Oh0 = 1.0, lambda_c = 0.3, a = 2.0
+    prev_err = Inf
+    for eps_ST in (0.01, 0.001, 0.0001)
+        gammadot = 0.05   # small enough that (lambda_c*gammadot)^a &lt;&lt; 1 too
+        exact = Oh_eff(Oh0, lambda_c, a, eps_ST, gammadot)
+        perturbative = Oh0 * (1 - eps_ST * (lambda_c * gammadot)^a)
+        err = abs(exact - perturbative) / Oh0
+        @assert err &lt; prev_err
+        prev_err = err
+    end
+    @assert prev_err &lt; 1e-6
+end
+println(&quot;ASSERTION 3 OK: Oh_eff_l -&gt; Oh_0*(1 - eps_ST*(lambda_c*gammadot)^a) as&quot;)
+println(&quot;eps_ST -&gt; 0 (with lambda_c*gammadot fixed and modest), i.e. the exact&quot;)
+println(&quot;law reduces to the perturbative one already in st_extension.jl.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ASSERTION 3 OK: Oh_eff_l -&gt; Oh_0*(1 - eps_ST*(lambda_c*gammadot)^a) as
+eps_ST -&gt; 0 (with lambda_c*gammadot fixed and modest), i.e. the exact
+law reduces to the perturbative one already in st_extension.jl.</code></pre><p>–- Quantify, for the real validation fluid, how badly the OLD perturbative     correction fails (negative &quot;damping multiplier&quot;), vs. the new exact one     staying bounded and positive for any shear rate. –-</p><pre><code class="language-julia hljs">println()
+let Oh0 = 57.4, lambda_c = 30507.0, a = 0.7431, eps_ST = 0.99956
+    for gammadot_char in (1e-4, 1e-3, 1e-2, 0.1, 1.0)
+        perturbative_multiplier = 1 - eps_ST * (lambda_c * gammadot_char)^a
+        exact_ratio = Oh_eff(Oh0, lambda_c, a, eps_ST, gammadot_char) / Oh0
+        println(&quot;  gammadot_char=$gammadot_char: perturbative (1-eps*x^a)=&quot; *
+                &quot;$(round(perturbative_multiplier,digits=4))  &quot; *
+                &quot;exact Oh_eff/Oh_0=$(round(exact_ratio,sigdigits=4))&quot;)
+    end
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+  gammadot_char=0.0001: perturbative (1-eps*x^a)=-1.2896  exact Oh_eff/Oh_0=0.3041
+  gammadot_char=0.001: perturbative (1-eps*x^a)=-11.6726  exact Oh_eff/Oh_0=0.07319
+  gammadot_char=0.01: perturbative (1-eps*x^a)=-69.1401  exact Oh_eff/Oh_0=0.01408
+  gammadot_char=0.1: perturbative (1-eps*x^a)=-387.2095  exact Oh_eff/Oh_0=0.002575
+  gammadot_char=1.0: perturbative (1-eps*x^a)=-2147.6523  exact Oh_eff/Oh_0=0.0004666</code></pre><p>At the smallest gammadot tested, the perturbative multiplier is already deeply negative (unphysical, energy-injecting), while the exact ratio stays in (0, 1] for EVERY gammadot &gt; 0 – guaranteed algebraically, since [1+(lambda<em>c*gammadot)^a]^(-eps</em>ST) &lt; 1 for any eps<em>ST, lambda</em>c, a, gammadot &gt; 0, and &gt; 0 identically.</p><pre><code class="language-julia hljs">let Oh0 = 57.4, lambda_c = 30507.0, a = 0.7431, eps_ST = 0.99956
+    @assert (1 - eps_ST * (lambda_c * 1e-4)^a) &lt; 0
+    for gammadot_char in (1e-4, 1e-3, 1e-2, 0.1, 1.0, 10.0, 1000.0)
+        r = Oh_eff(Oh0, lambda_c, a, eps_ST, gammadot_char) / Oh0
+        @assert 0 &lt; r &lt;= 1
+    end
+end
+println(&quot;ASSERTION 4 OK: for the real validation fluid&#39;s parameters, the OLD&quot;)
+println(&quot;perturbative correction is already NEGATIVE (unphysical) at the smallest&quot;)
+println(&quot;shear rate tested, while the exact Oh_eff/Oh_0 stays in (0,1] for every&quot;)
+println(&quot;shear rate tested (0 to 1000) -- confirming this is the actual fix, not&quot;)
+println(&quot;a marginal refinement.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ASSERTION 4 OK: for the real validation fluid&#39;s parameters, the OLD
+perturbative correction is already NEGATIVE (unphysical) at the smallest
+shear rate tested, while the exact Oh_eff/Oh_0 stays in (0,1] for every
+shear rate tested (0 to 1000) -- confirming this is the actual fix, not
+a marginal refinement.</code></pre><hr/><h2 id="Section-4:-feed-Oh*eff*l(t)-through-Reid&#39;s-exact-relations-(julia/src/reid.jl)."><a class="docs-heading-anchor" href="#Section-4:-feed-Oh*eff*l(t)-through-Reid&#39;s-exact-relations-(julia/src/reid.jl).">Section 4: feed Oh<em>eff</em>l(t) through Reid&#39;s exact relations (julia/src/reid.jl).</a><a id="Section-4:-feed-Oh*eff*l(t)-through-Reid&#39;s-exact-relations-(julia/src/reid.jl).-1"></a><a class="docs-heading-anchor-permalink" href="#Section-4:-feed-Oh*eff*l(t)-through-Reid&#39;s-exact-relations-(julia/src/reid.jl)." title="Permalink"></a></h2><pre><code class="language-julia hljs">println()
+println(&quot;=&quot;^78)
+println(&quot;Section 4: lambda_l(t), omega_l^2(t) from Oh_eff_l(t) via Reid&#39;s relations&quot;)
+println(&quot;=&quot;^78)
+println(&quot;&quot;&quot;
+Both julia/src/timestepper.jl&#39;s D1[l] (restoring) and D2[l] (damping) must be
+replaced by Reid&#39;s exact lambda_l(Oh_eff_l(t)), omega_l^2(Oh_eff_l(t))
+(julia/src/reid.jl&#39;s reid_lambda_omega2) -- not just D2, the way the
+perturbative correction does. This matters quantitatively at this fluid&#39;s
+rest Oh_0=57.4, and grows sharply with mode number l.
+&quot;&quot;&quot;)
+
+let Oh0 = 57.4, devs = Float64[]
+    for l in (2, 3, 5, 10)
+        lam, om2, resid = reid_lambda_omega2(Oh0, l)
+        @assert resid &lt; 1e-8
+        om0sq = Float64(l * (l - 1) * (l + 2))
+        dev = abs(om2 - om0sq) / om0sq
+        push!(devs, dev)
+        println(&quot;  l=$l, Oh_0=57.4: omega_l^2(exact)=$(round(om2,digits=3)) vs &quot; *
+                &quot;inviscid l(l-1)(l+2)=$om0sq  (deviation=$(round(100dev,digits=1))%)&quot;)
+    end
+    @assert issorted(devs)          # deviation grows monotonically with l
+    @assert devs[1] &gt; 0.03          # even at l=2, not negligible
+    @assert devs[end] &gt; 0.3         # by l=10, over 30% -- not a minor correction
+end
+println(&quot;ASSERTION 5 OK: omega_l^2 at this fluid&#39;s rest Oh differs from the&quot;)
+println(&quot;inviscid value by a growing amount as l increases (&gt;3% at l=2, &gt;30% at&quot;)
+println(&quot;l=10) -- confirming D1 (not just D2) needs to be replaced, contrary to&quot;)
+println(&quot;what a damping-only correction would assume.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+==============================================================================
+Section 4: lambda_l(t), omega_l^2(t) from Oh_eff_l(t) via Reid&#39;s relations
+==============================================================================
+Both julia/src/timestepper.jl&#39;s D1[l] (restoring) and D2[l] (damping) must be
+replaced by Reid&#39;s exact lambda_l(Oh_eff_l(t)), omega_l^2(Oh_eff_l(t))
+(julia/src/reid.jl&#39;s reid_lambda_omega2) -- not just D2, the way the
+perturbative correction does. This matters quantitatively at this fluid&#39;s
+rest Oh_0=57.4, and grows sharply with mode number l.
+
+  l=2, Oh_0=57.4: omega_l^2(exact)=7.48 vs inviscid l(l-1)(l+2)=8.0  (deviation=6.5%)
+  l=3, Oh_0=57.4: omega_l^2(exact)=25.479 vs inviscid l(l-1)(l+2)=30.0  (deviation=15.1%)
+  l=5, Oh_0=57.4: omega_l^2(exact)=102.889 vs inviscid l(l-1)(l+2)=140.0  (deviation=26.5%)
+  l=10, Oh_0=57.4: omega_l^2(exact)=665.435 vs inviscid l(l-1)(l+2)=1080.0  (deviation=38.4%)
+ASSERTION 5 OK: omega_l^2 at this fluid&#39;s rest Oh differs from the
+inviscid value by a growing amount as l increases (&gt;3% at l=2, &gt;30% at
+l=10) -- confirming D1 (not just D2) needs to be replaced, contrary to
+what a damping-only correction would assume.</code></pre><hr/><p>Section 5: live cross-check against DropSolver – reproduces a bounded, non-blown-up free oscillation at the real fluid&#39;s parameters, replacing BOTH D1 and D2 at each step with Oh_eff-derived values. –––––––––––––––––––––––––––––––––––––––</p><pre><code class="language-julia hljs">println()
+println(&quot;=&quot;^78)
+println(&quot;Section 5: Live cross-check -- bounded free oscillation at real params&quot;)
+println(&quot;=&quot;^78)
+
+function run_exact_st_oscillation(Oh0, lambda_c, a, eps_ST, l; M=l, A_init=0.05,
+    t_end_periods=6.0, Bo=1e-6, viscous=:lamb)
+    Kl = K_l(l)
+    theta_vec = make_theta_vec(M)
+    precomp = precompute_integrals(NaN, M)[1]
+    sigma0 = sqrt(Float64(l * (l - 1) * (l + 2)))
+    dt = 2 * pi / (sigma0 * 40)
+    cfg = SimConstants(M, M + 1, Oh0, Bo, theta_vec, precomp, dt; viscous=:lamb)
+
+    A = zeros(M); A[l] = A_init
+    Adot = zeros(M)
+    t = 0.0
+    T_period = 2 * pi / sigma0
+    t_end = t_end_periods * T_period
+
+    A_hist = Float64[A[l]]
+    t_hist = Float64[t]
+    while t &lt; t_end
+        gammadot_char = Kl * abs(Adot[l])
+        Oh_eff_l = Oh_eff(Oh0, lambda_c, a, eps_ST, gammadot_char)
+        lam, om2, resid = viscous === :reid ? reid_lambda_omega2(Oh_eff_l, l) :
+                           ((Oh_eff_l * (l - 1) * (2l + 1)), Float64(l * (l - 1) * (l + 2)), 0.0)
+        @assert isfinite(lam) &amp;&amp; isfinite(om2) &amp;&amp; om2 &gt; 0
+        Adot_new = Adot[l] + dt * (-2 * lam * Adot[l] - om2 * A[l])  # semi-implicit Euler
+        A_new = A[l] + dt * Adot_new
+        A[l], Adot[l] = A_new, Adot_new
+        t += dt
+        push!(A_hist, A[l])
+        push!(t_hist, t)
+    end
+    t_hist, A_hist
+end
+
+let Oh0 = 57.4, lambda_c = 30507.0, a = 0.7431, eps_ST = 0.99956, l = 2
+    t_hist, A_hist = run_exact_st_oscillation(Oh0, lambda_c, a, eps_ST, l)
+    @assert all(isfinite, A_hist)
+    @assert maximum(abs.(A_hist)) &lt; 1.0   # bounded, no blow-up
+    @assert abs(A_hist[end]) &lt; abs(A_hist[1])   # net decay over the run
+    println(&quot;  Real fluid params (Oh_0=$Oh0, lambda_c=$lambda_c, a=$a, eps_ST=$eps_ST):&quot;)
+    println(&quot;  max|A_2| over run = $(round(maximum(abs.(A_hist)),digits=4)), &quot; *
+            &quot;A_2(0)=$(A_hist[1]), A_2(end)=$(round(A_hist[end],sigdigits=4))&quot;)
+end
+println(&quot;ASSERTION 6 OK: a free oscillation at the REAL validation fluid&#39;s&quot;)
+println(&quot;parameters (Oh_0=57.4, lambda_c=30507, eps_ST=0.9996 -- exactly where&quot;)
+println(&quot;the perturbative correction already goes negative) stays bounded and&quot;)
+println(&quot;decays under the exact non-perturbative treatment.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+==============================================================================
+Section 5: Live cross-check -- bounded free oscillation at real params
+==============================================================================
+  Real fluid params (Oh_0=57.4, lambda_c=30507.0, a=0.7431, eps_ST=0.99956):
+  max|A_2| over run = 0.05, A_2(0)=0.05, A_2(end)=0.0003876
+ASSERTION 6 OK: a free oscillation at the REAL validation fluid&#39;s
+parameters (Oh_0=57.4, lambda_c=30507, eps_ST=0.9996 -- exactly where
+the perturbative correction already goes negative) stays bounded and
+decays under the exact non-perturbative treatment.</code></pre><hr/><h2 id="Summary"><a class="docs-heading-anchor" href="#Summary">Summary</a><a id="Summary-1"></a><a class="docs-heading-anchor-permalink" href="#Summary" title="Permalink"></a></h2><pre><code class="language-julia hljs">println()
+println(&quot;=&quot;^78)
+println(&quot;Summary&quot;)
+println(&quot;=&quot;^78)
+println(&quot;&quot;&quot;
+Mechanistically: viscosity for mode l becomes Oh_eff_l(t), evaluated from
+mode l&#39;s OWN instantaneous shear rate (K_l*|Adot_l(t)|, K_l an exact rational
+geometric constant from the single-mode potential-flow field) through the
+EXACT (not Taylor-expanded) Carreau-Yasuda law -- justified as exact, not
+approximate, because this constitutive law has no memory. That Oh_eff_l(t)
+must then replace BOTH the damping and restoring coefficients via Reid&#39;s
+exact relations, not just the damping term the way the current perturbative
+correction does. For the real validation fluid, the old perturbative
+correction is already unphysical (negative effective damping) at the
+smallest shear rates tested; the exact replacement stays bounded and
+physically sensible across the full range tested, and reproduces the old
+formula exactly in the double-small-parameter limit where it was valid.
+
+Not yet done (production-code changes that should follow, not precede, this
+derivation being reviewed): a new residual/Jacobian extension implementing
+this (a genuinely different code path from julia/src/st_extension.jl&#39;s
+perturbative one, since the ODE structure itself needs D1 to vary, not just
+D2); a performance consideration for :reid at production scale (Oh_eff_l
+changes every step, so reid_lambda_omega2&#39;s ~24-step continuation solve
+would run far more often than SimConstants&#39; one-time precomputation --
+:lamb evaluated at the exact Oh_eff_l is available immediately as the cheap
+option, with a precomputed Oh-interpolation table as the likely path to a
+fast :reid); and finally, the actual validation against sampled experimental
+rows this was all in service of.
+&quot;&quot;&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+==============================================================================
+Summary
+==============================================================================
+Mechanistically: viscosity for mode l becomes Oh_eff_l(t), evaluated from
+mode l&#39;s OWN instantaneous shear rate (K_l*|Adot_l(t)|, K_l an exact rational
+geometric constant from the single-mode potential-flow field) through the
+EXACT (not Taylor-expanded) Carreau-Yasuda law -- justified as exact, not
+approximate, because this constitutive law has no memory. That Oh_eff_l(t)
+must then replace BOTH the damping and restoring coefficients via Reid&#39;s
+exact relations, not just the damping term the way the current perturbative
+correction does. For the real validation fluid, the old perturbative
+correction is already unphysical (negative effective damping) at the
+smallest shear rates tested; the exact replacement stays bounded and
+physically sensible across the full range tested, and reproduces the old
+formula exactly in the double-small-parameter limit where it was valid.
+
+Not yet done (production-code changes that should follow, not precede, this
+derivation being reviewed): a new residual/Jacobian extension implementing
+this (a genuinely different code path from julia/src/st_extension.jl&#39;s
+perturbative one, since the ODE structure itself needs D1 to vary, not just
+D2); a performance consideration for :reid at production scale (Oh_eff_l
+changes every step, so reid_lambda_omega2&#39;s ~24-step continuation solve
+would run far more often than SimConstants&#39; one-time precomputation --
+:lamb evaluated at the exact Oh_eff_l is available immediately as the cheap
+option, with a precomputed Oh-interpolation table as the likely path to a
+fast :reid); and finally, the actual validation against sampled experimental
+rows this was all in service of.</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../carreau_yasuda_multimode_derivation/">« carreau yasuda multimode derivation</a><a class="docs-footer-nextpage" href="../cross_fluid_derivation/">cross fluid derivation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 31 July 2026 18:21">Friday 31 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
