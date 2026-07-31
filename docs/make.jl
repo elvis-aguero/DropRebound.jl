@@ -48,6 +48,10 @@ makedocs(
         "Reid (1960) [pilot: hand-authored prose]" => [
             "Introduction" => "reid1960/01-introduction.md",
             "Mathematical Preliminaries" => "reid1960/02-preliminaries.md",
+            "Problem Setup" => "reid1960/03-problem-setup.md",
+            "Linearized Governing Equations" => "reid1960/04-linearized-equations.md",
+            "The Pressure Field" => "reid1960/05-pressure-field.md",
+            "The Velocity ODE" => "reid1960/06-velocity-ode.md",
         ],
         "CAS Derivations" => derivation_pages,
         "API Reference" => "api.md",
