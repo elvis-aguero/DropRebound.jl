@@ -12,6 +12,7 @@ export SimConstants, OBParams, STParams, DropState, make_theta_vec, make_dt_max
 
 # Export Reid finite-Oh viscous model
 export reid_char, dominant_root, second_root, reid_lambda_omega2, drop_viscous_coeffs
+export ReidTable, build_reid_table, reid_lambda_omega2_fast, build_reid_cache
 
 # Export residual and Jacobian functions
 export pack_X, unpack_X!, build_residual!, build_jacobian
