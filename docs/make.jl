@@ -2,6 +2,8 @@ using Documenter
 using Literate
 using DropSolver
 
+include(joinpath(@__DIR__, "prettylatex.jl"))
+
 const DERIVATIONS_SRC = joinpath(@__DIR__, "..", "julia", "derivations")
 const DERIVATIONS_OUT = joinpath(@__DIR__, "src", "derivations")
 

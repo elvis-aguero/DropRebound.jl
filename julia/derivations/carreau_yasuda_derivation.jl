@@ -1,41 +1,40 @@
-# ==============================================================================
-# Weakly Nonlinear Shear-Thinning Drop: Carreau-Yasuda Derivation
+# # Weakly Nonlinear Shear-Thinning Drop: Carreau-Yasuda Derivation
 #
 # Derives the perturbation expansion for a shear-thinning drop oscillating on
 # a flat substrate, using the Carreau-Yasuda constitutive law -- Carreau with
-# a free shape exponent `a`, rather than `a` hardcoded to 2. Follows the same
-# non-dimensionalisation as the Newtonian (Reid 1960) and Oldroyd-B analyses
-# in the companion LaTeX documents (docs/reid1960_expanded-3.tex,
-# docs/section_oldroydB.tex).
+# a free shape exponent ``a``, rather than ``a`` hardcoded to 2. Follows the
+# same non-dimensionalisation as the Newtonian (Reid 1960) and Oldroyd-B
+# analyses in the companion LaTeX documents (`docs/reid1960_expanded-3.tex`,
+# `docs/section_oldroydB.tex`).
 #
-# Why Carreau-Yasuda, not plain Carreau: the standard Carreau model's
-# nonlinearity is always built from (lambda_c*gammadot)^2 -- the shape of the
-# transition between the zero-shear plateau and the power-law region is
-# fixed. Carreau-Yasuda adds one parameter, `a`, controlling that transition
-# shape; a=2 recovers standard Carreau exactly. Real experimental
-# shear-thinning fits (including Cross-model characterizations, which
-# convert directly to an equivalent Carreau-Yasuda `a`) commonly need a!=2
-# to fit well.
+# **Why Carreau-Yasuda, not plain Carreau?** The standard Carreau model's
+# nonlinearity is always built from ``(\lambda_c\dot\gamma)^2`` -- the shape
+# of the transition between the zero-shear plateau and the power-law region
+# is fixed. Carreau-Yasuda adds one parameter, ``a``, controlling that
+# transition shape; ``a=2`` recovers standard Carreau exactly. Real
+# experimental shear-thinning fits (including Cross-model characterizations,
+# which convert directly to an equivalent Carreau-Yasuda ``a``) commonly
+# need ``a \neq 2`` to fit well.
 #
 # Each section derives one piece of the chain symbolically or numerically,
-# then asserts the result against an independent check. A failing assertion
-# means the derivation broke -- fix the math, not the assertion.
+# then asserts the result against an independent check. **A failing
+# assertion means the derivation broke** -- fix the math, not the assertion.
 #
-# Notation (matches reid1960_expanded-3.tex):
-#   x = r/R                       dimensionless radial coordinate
-#   eps                           oscillation amplitude, small parameter
-#   sigma = -gamma + i*omega       complex modal frequency (gamma>0 = decay)
-#   q, sigma = q^2 * Oh            viscous wavenumber
-#   alpha^2 = sigma_{l;0}/Oh, sigma_{l;0} = sqrt(l(l-1)(l+2))
-#   Oh = mu/sqrt(rho*T1*R)         Ohnesorge number
-#   U(x)                          radial velocity eigenfunction (Reid)
-#   b_l(t)                        dimensionless amplitude of mode l (solver's A_l)
-#   P_l(cos(theta))               Legendre polynomial of degree l
-#   a                             the Carreau-Yasuda SHAPE EXPONENT (a model
-#                                 parameter) -- distinct from the mode
-#                                 AMPLITUDE a(t) used in Sections 7-8; the
-#                                 shape exponent is always `a_shape` in code.
-# ==============================================================================
+# ## Notation
+# (matches `reid1960_expanded-3.tex`)
+#
+# | symbol | meaning |
+# |:--|:--|
+# | ``x = r/R`` | dimensionless radial coordinate |
+# | ``\varepsilon`` | oscillation amplitude, small parameter |
+# | ``\sigma = -\gamma + i\omega`` | complex modal frequency (``\gamma>0`` = decay) |
+# | ``q``, ``\sigma = q^2 \mathrm{Oh}`` | viscous wavenumber |
+# | ``\alpha^2 = \sigma_{l;0}/\mathrm{Oh}``, ``\sigma_{l;0} = \sqrt{l(l-1)(l+2)}`` | |
+# | ``\mathrm{Oh} = \mu/\sqrt{\rho T_1 R}`` | Ohnesorge number |
+# | ``U(x)`` | radial velocity eigenfunction (Reid) |
+# | ``b_l(t)`` | dimensionless amplitude of mode ``l`` (solver's ``A_l``) |
+# | ``P_l(\cos\theta)`` | Legendre polynomial of degree ``l`` |
+# | ``a`` | the Carreau-Yasuda SHAPE EXPONENT (a model parameter) -- distinct from the mode AMPLITUDE ``a(t)`` used in Sections 7-8; the shape exponent is always `a_shape` in code |
 
 using Symbolics
 using QuadGK
@@ -78,37 +77,47 @@ function numerically_equal(expr1, expr2, test_points::Dict=Dict())
     true
 end
 
-println("="^78)
-println("Section 1: Carreau-Yasuda Constitutive Law and Perturbation Expansion")
-println("="^78)
-println("""
-mu_eff(gammadot) = mu0 * [1 + (lambda_c*gammadot)^a_shape]^((n-1)/a_shape)
+# ## Section 1: Carreau-Yasuda Constitutive Law and Perturbation Expansion
+#
+# The Carreau-Yasuda effective viscosity is
+# ```math
+# \mu_{\mathrm{eff}}(\dot\gamma) = \mu_0 \left[1 + (\lambda_c\dot\gamma)^{a}\right]^{(n-1)/a}
+# ```
+# ``n \in (0,1]``: power-law index (``n=1``: Newtonian). ``a>0``: shape
+# exponent (``a=2``: standard Carreau). ``\mu_\infty=0`` (matches
+# `julia/src/st_extension.jl`, which has never had a separate infinite-shear
+# viscosity) -- a nonzero ``\mu_\infty`` from a real fluid characterization
+# folds entirely into a redefined ``\varepsilon_{ST}`` below (see the note in
+# Section 7), so this is not a loss of generality for this repo's linearized
+# solver.
 
-n in (0,1]: power-law index (n=1: Newtonian). a_shape>0: shape exponent
-(a_shape=2: standard Carreau). mu_infty=0 (matches julia/src/st_extension.jl,
-which has never had a separate infinite-shear viscosity) -- a nonzero
-mu_infty from a real fluid characterization folds entirely into a redefined
-eps_ST below (see the note in Section 7), so this is not a loss of
-generality for this repo's linearized solver.
-""")
+@variables mu_0 lambda_c eps gammadot_hat a_shape n_idx
 
-@variables mu0 lam_c eps gdot_hat a_shape n_idx
-
-x_small = (lam_c * gdot_hat)^a_shape * eps^a_shape
+x_small = (lambda_c * gammadot_hat)^a_shape * eps^a_shape
 p_exp = (n_idx - 1) / a_shape
-mu_CY_leading = mu0 * (1 + p_exp * x_small)
-println("Leading-order expansion: mu_CY ~ mu0*(1 + p*x), p=(n-1)/a, x=(lam_c*gammadot)^a")
+mu_CY_leading = mu_0 * (1 + p_exp * x_small)
+println("Leading-order expansion: mu_CY ~ mu_0*(1 + p*x), p=(n-1)/a, x=(lambda_c*gammadot)^a")
 println("mu_CY_leading = ", mu_CY_leading)
+
+#md # ```@eval
+#md # using Symbolics, Markdown
+#md # @variables mu_0 lambda_c eps gammadot_hat a_shape n_idx
+#md # x_small = (lambda_c * gammadot_hat)^a_shape * eps^a_shape
+#md # p_exp = (n_idx - 1) / a_shape
+#md # mu_CY_leading = mu_0 * (1 + p_exp * x_small)
+#md # Markdown.parse("**Leading-order expansion** (as derived, not transcribed):\n```math\n" *
+#md #     Main.pretty_latex(mu_CY_leading) * "\n```")
+#md # ```
 
 # ASSERTION 1: the leading-order expansion is the correct O(eps^a) Taylor term
 # of (1+x)^p -- verified directly via repeated symbolic differentiation
 # (Taylor's theorem) at CONCRETE integer a (Symbolics.jl has no built-in
 # series() the way sympy does), confirming all intermediate powers vanish.
 for a_val in (2, 3, 4)
-    mu_CY_concrete = mu0 * (1 + (lam_c*eps*gdot_hat)^a_val)^((n_idx-1)/a_val)
+    mu_CY_concrete = mu_0 * (1 + (lambda_c*eps*gammadot_hat)^a_val)^((n_idx-1)/a_val)
     coeff_exact = nth_derivative_at_zero(mu_CY_concrete, eps, a_val) / factorial(a_val)
     hand_built  = substitute(mu_CY_leading, Dict(a_shape => a_val))
-    coeff_hand  = Symbolics.coeff(expand(hand_built - mu0), eps^a_val)
+    coeff_hand  = Symbolics.coeff(expand(hand_built - mu_0), eps^a_val)
     match = numerically_equal(coeff_exact, coeff_hand)
     println("a=$a_val: exact coeff=", simplify(coeff_exact), "  hand-built=", simplify(coeff_hand), "  match=$match")
     @assert match
@@ -120,17 +129,17 @@ end
 println("ASSERTION 1 OK: hand-built leading-order expansion verified via repeated")
 println("differentiation at a=2,3,4; all intermediate powers confirmed to vanish")
 
-@assert numerically_equal(substitute(mu_CY_leading, Dict(n_idx => 1)), mu0)
+@assert numerically_equal(substitute(mu_CY_leading, Dict(n_idx => 1)), mu_0)
 println("ASSERTION 2 OK: n=1 recovers Newtonian (zero correction) for any a")
 
-@assert numerically_equal(substitute(mu_CY_leading, Dict(lam_c => 0)), mu0)
+@assert numerically_equal(substitute(mu_CY_leading, Dict(lambda_c => 0)), mu_0)
 println("ASSERTION 3 OK: lambda_c=0 recovers Newtonian for any a")
 
 # ASSERTION 4: exact reduction to the ORIGINAL (pre-generalization) Carreau
 # result at a=2: eps_ST = (1-n)/2.
 eps_ST_CY = (1 - n_idx) / a_shape
-correction_a2 = simplify(substitute(mu_CY_leading - mu0, Dict(a_shape => 2)))
-target_original = eps.^2 .* gdot_hat.^2 .* lam_c.^2 .* mu0 .* (n_idx - 1) ./ 2
+correction_a2 = simplify(substitute(mu_CY_leading - mu_0, Dict(a_shape => 2)))
+target_original = eps.^2 .* gammadot_hat.^2 .* lambda_c.^2 .* mu_0 .* (n_idx - 1) ./ 2
 @assert numerically_equal(correction_a2, target_original)
 println("ASSERTION 4 OK: exact match at a=2 (eps_ST -> ", simplify(substitute(eps_ST_CY, Dict(a_shape=>2))),
         ", matching (1-n)/2)")
