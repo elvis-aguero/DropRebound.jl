@@ -47,6 +47,7 @@ makedocs(
         "Home" => "index.md",
         "Reid (1960) [pilot: hand-authored prose]" => [
             "Introduction" => "reid1960/01-introduction.md",
+            "Mathematical Preliminaries" => "reid1960/02-preliminaries.md",
         ],
         "CAS Derivations" => derivation_pages,
         "API Reference" => "api.md",
