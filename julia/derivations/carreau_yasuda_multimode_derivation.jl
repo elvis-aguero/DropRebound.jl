@@ -1,4 +1,3 @@
-#!/usr/bin/env julia
 # ==============================================================================
 # Multi-Mode-Coupled Non-Perturbative Carreau-Yasuda: Shear Rate Is Kinematic
 #
@@ -152,6 +151,10 @@ function H_kl(k::Int, l::Int; n_x::Int=200)
     2 * pi * radial * s
 end
 
+# H(l,l) DOES grow with l (an earlier, less careful check with a coarse
+# uniform-grid quadrature wrongly suggested it was l-independent -- caught
+# by testing l=3,4,5 explicitly here, not just l=2), but NOT in Lamb's
+# (l-1)(2l+1) proportion: the ratio H(l,l)/Lamb is not constant.
 let
     Hs = [H_kl(l, l) for l in (2, 3, 4, 5)]
     lamb_scaling = [(l - 1) * (2l + 1) for l in (2, 3, 4, 5)]
@@ -159,10 +162,6 @@ let
     println("H(l,l) for l=2,3,4,5: ", round.(Hs, digits=4))
     println("Lamb's (l-1)(2l+1):    ", lamb_scaling)
     println("ratio H(l,l)/Lamb:     ", round.(ratios, digits=4))
-    # H(l,l) DOES grow with l (an earlier, less careful check with a coarse
-    # uniform-grid quadrature wrongly suggested it was l-independent -- caught
-    # by testing l=3,4,5 explicitly here, not just l=2), but NOT in Lamb's
-    # (l-1)(2l+1) proportion: the ratio H(l,l)/Lamb is not constant.
     @assert issorted(Hs)                                  # H grows with l...
     @assert maximum(ratios) / minimum(ratios) > 2.0        # ...but not proportionally to Lamb's scaling
 end
@@ -322,6 +321,11 @@ println("="^78)
 println("Section 4: contact-onset truncation ringing concentrates in mode l=M")
 println("="^78)
 
+# LIVE SOLVER CROSS-CHECK below (not just this script's own algebra): the
+# single highest mode should be orders of magnitude larger than every other
+# mode at the exact frame contact first registers. A failing assertion
+# would mean the ringing is NOT a large-amplitude OUTLIER after all, and
+# the fix in Section 4b would need a different signature to detect it by.
 let
     RHO = 989.4665307509346
     OH0 = 57.371648873370795
@@ -353,13 +357,7 @@ let
         println("  M=$M: |Adot_M|=$(round(top_mode_val,sigdigits=3))" *
                 "  max|Adot_l| for l<M: $(round(other_modes_max,sigdigits=3))" *
                 "  ratio: $(round(top_mode_val/other_modes_max,sigdigits=3))x")
-        # LIVE SOLVER CROSS-CHECK (not just this script's own algebra): the
-        # single highest mode is orders of magnitude larger than every other
-        # mode at the exact frame contact first registers. A failing
-        # assertion here would mean the ringing is NOT a large-amplitude
-        # OUTLIER after all, and the fix below (Section 4b) would need a
-        # different signature to detect it by.
-        @assert top_mode_val / other_modes_max > 100
+        @assert top_mode_val / other_modes_max > 100   # ringing signature: see note above
     end
 end
 println("ASSERTION 5 OK: at contact onset, on a LIVE DropSolver run, the single")
@@ -395,29 +393,33 @@ println("="^78)
 println("Section 4b: index-restricted, trusted-amplitude outlier detection")
 println("="^78)
 
+# Case A: the ringing signature from Section 4 (M=12, contact onset) --
+# every trusted (low/mid) mode at floating-point noise, mode M large.
 let
-    # Case A: the ringing signature from Section 4 (M=12, contact onset) --
-    # every trusted (low/mid) mode at floating-point noise, mode M large.
     Adot_ringing = fill(1e-15, 11)
     Adot_ringing[end] = 0.673
     mask_a = DropSolver._ringing_outlier_mask(Adot_ringing)
     println("  ringing case:        mask=$mask_a (mode M excluded: $(mask_a[end]))")
     @assert mask_a[end] == true
     @assert all(mask_a[1:end-1] .== false)
+end
 
-    # Case B: LIVE low-We data (We=0.0158, M=12, i=60 in the derivation's own
-    # trace) -- mode M (last entry) genuinely active, comparable to mode 2.
+# Case B: LIVE low-We data (We=0.0158, M=12, i=60 in the derivation's own
+# trace) -- mode M (last entry) genuinely active, comparable to mode 2.
+let
     Adot_real = [-0.0159, 0.00719, -0.0137, 0.0135, -0.00666, 0.00287,
                  -0.00241, 0.002, -0.00129, 0.000523, 0.0163]
     mask_b = DropSolver._ringing_outlier_mask(Adot_real)
     println("  real low-We case:    mask=$mask_b (mode M excluded: $(mask_b[end]))")
     @assert all(mask_b .== false)
+end
 
-    # Case C: the mid-mode failure of a pure amplitude-ratio rule -- mode 2 at
-    # noise floor (1e-15, NOT exactly 0), mode 8 (a non-candidate, trusted
-    # index) genuinely large. A rule comparing candidates against ALL other
-    # modes would (and did) wrongly flag mode 8; index-restriction keeps it
-    # out of the candidate set entirely, regardless of amplitude.
+# Case C: the mid-mode failure of a pure amplitude-ratio rule -- mode 2 at
+# noise floor (1e-15, NOT exactly 0), mode 8 (a non-candidate, trusted
+# index) genuinely large. A rule comparing candidates against ALL other
+# modes would (and did) wrongly flag mode 8; index-restriction keeps it
+# out of the candidate set entirely, regardless of amplitude.
+let
     Adot_midmode = zeros(11)
     Adot_midmode[1] = 1e-15
     Adot_midmode[7] = 0.286   # l=8, a trusted (non-candidate) index at M=12
@@ -489,10 +491,7 @@ let
     init.dt = dt_max
     init.cp = 0
 
-    # LIVE SOLVER CROSS-CHECK: run the real solver a short way past contact
-    # onset and check whether the floor-less Oh_eff dips below the physical
-    # floor at any saved frame -- not asserted from algebra alone.
-    times, states = solve_drop!(cfg, OBParams(), init; stx=stx_no_floor,
+    times, states = solve_drop!(cfg, OBParams(), init; stx=stx_no_floor,  # live cross-check, not just algebra
         t_end=0.25, save_every=dt_max / 4)
     min_oh_eff_no_floor = Inf
     for s in states
@@ -503,10 +502,7 @@ let
     end
     println("  physical floor Oh0*eta_inf/eta_0 = $(round(physical_floor,digits=4))")
     println("  min Oh_eff observed WITHOUT the floor term: $(round(min_oh_eff_no_floor,digits=4))")
-    # A failing assertion here would mean the floor-less formula never
-    # actually violates the physical floor in this regime after all, and
-    # this fix would be unnecessary/premature.
-    @assert min_oh_eff_no_floor < physical_floor
+    @assert min_oh_eff_no_floor < physical_floor  # failing means the floor-less formula never violates the floor here
 
     stx_floor = STExactParams(M, OH0, LAMBDA_C, A_SHAPE, EPS_ST;
         viscous=:reid, eta_inf_ratio=ETA_INF_OVER_ETA_0)

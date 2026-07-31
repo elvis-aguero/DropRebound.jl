@@ -1,4 +1,3 @@
-#!/usr/bin/env julia
 # ==============================================================================
 # Non-Perturbative Carreau-Yasuda: Exact Effective-Oh from Instantaneous Shear
 #
@@ -283,11 +282,14 @@ let Oh0 = 57.4, lambda_c = 30507.0, a = 0.7431, eps_ST = 0.99956
                 "$(round(perturbative_multiplier,digits=4))  " *
                 "exact Oh_eff/Oh_0=$(round(exact_ratio,sigdigits=4))")
     end
-    # At the smallest gammadot tested, the perturbative multiplier is already
-    # deeply negative (unphysical, energy-injecting), while the exact ratio
-    # stays in (0, 1] for EVERY gammadot > 0 -- guaranteed algebraically, since
-    # [1+(lambda_c*gammadot)^a]^(-eps_ST) < 1 for any eps_ST, lambda_c, a,
-    # gammadot > 0, and > 0 identically.
+end
+
+# At the smallest gammadot tested, the perturbative multiplier is already
+# deeply negative (unphysical, energy-injecting), while the exact ratio
+# stays in (0, 1] for EVERY gammadot > 0 -- guaranteed algebraically, since
+# [1+(lambda_c*gammadot)^a]^(-eps_ST) < 1 for any eps_ST, lambda_c, a,
+# gammadot > 0, and > 0 identically.
+let Oh0 = 57.4, lambda_c = 30507.0, a = 0.7431, eps_ST = 0.99956
     @assert (1 - eps_ST * (lambda_c * 1e-4)^a) < 0
     for gammadot_char in (1e-4, 1e-3, 1e-2, 0.1, 1.0, 10.0, 1000.0)
         r = Oh_eff(Oh0, lambda_c, a, eps_ST, gammadot_char) / Oh0
@@ -369,8 +371,7 @@ function run_exact_st_oscillation(Oh0, lambda_c, a, eps_ST, l; M=l, A_init=0.05,
         lam, om2, resid = viscous === :reid ? reid_lambda_omega2(Oh_eff_l, l) :
                            ((Oh_eff_l * (l - 1) * (2l + 1)), Float64(l * (l - 1) * (l + 2)), 0.0)
         @assert isfinite(lam) && isfinite(om2) && om2 > 0
-        # Semi-implicit Euler on Addot = -2*lam*Adot - om2*A
-        Adot_new = Adot[l] + dt * (-2 * lam * Adot[l] - om2 * A[l])
+        Adot_new = Adot[l] + dt * (-2 * lam * Adot[l] - om2 * A[l])  # semi-implicit Euler
         A_new = A[l] + dt * Adot_new
         A[l], Adot[l] = A_new, Adot_new
         t += dt

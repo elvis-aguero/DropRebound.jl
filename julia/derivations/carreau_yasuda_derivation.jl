@@ -1,4 +1,3 @@
-#!/usr/bin/env julia
 # ==============================================================================
 # Weakly Nonlinear Shear-Thinning Drop: Carreau-Yasuda Derivation
 #
@@ -278,8 +277,7 @@ fp_inviscid = Symbolics.derivative(f_inviscid, x_sym)
 println("ASSERTION 12 OK: BC1 satisfied in inviscid limit: U(1) = -1")
 
 N_l_inviscid = simplify((f_inviscid^2 * x_sym^2 |> expr -> begin
-    # int_0^1 x^8 dx = 1/9 (f_inviscid^2 = x^6, times x^2 Jacobian = x^8)
-    1//9
+    1//9   # int_0^1 x^8 dx = 1/9 (f_inviscid^2 = x^6, times x^2 Jacobian = x^8)
 end))
 println("N_l (inviscid) = int U^2 x^2 dx = ", N_l_inviscid)
 
@@ -460,12 +458,11 @@ println("="^78)
 println("Section 6 (continued): Gamma_l^(a) for l=2,3,4,5, inviscid limit")
 println("="^78)
 
+# f_inv = -x^(l+1); build strain components the same way as l=2 above, for general l.
 function Gamma_l_a_general_l(l_val_, a_val)
-    # f_inv = -x^(l+1); build strain components the same way as l=2 above, for general l.
     fp_c(xv) = -(l_val_+1)*xv^l_val_
     f_c(xv)  = -xv^(l_val_+1)
-    Plfun(u) = begin
-        # Legendre polynomial via Bonnet's recursion (u = cos(theta))
+    Plfun(u) = begin   # Legendre polynomial via Bonnet's recursion (u = cos(theta))
         P0, P1 = one(u), u
         l_val_ == 0 && return P0
         l_val_ == 1 && return P1
@@ -479,8 +476,7 @@ function Gamma_l_a_general_l(l_val_, a_val)
     function H_at_theta(thv)
         xv = 1.0
         u = cos(thv); s = sin(thv)
-        # numeric differentiation of the Legendre function in theta (small h)
-        h = 1e-6
+        h = 1e-6   # numeric differentiation of the Legendre function in theta (small h)
         Pl_here = Plfun(cos(thv))
         dPl_here = (Plfun(cos(thv+h)) - Plfun(cos(thv-h))) / (2h)
         d2Pl_here = (Plfun(cos(thv+h)) - 2*Plfun(cos(thv)) + Plfun(cos(thv-h))) / h^2
@@ -608,8 +604,7 @@ function legendre_arrays(l, u_pts)
             end
             Pl[i] = pk
         end
-        # P_{l-1}
-        if l-1 == 0
+        if l-1 == 0   # P_{l-1}
             Pl1[i] = 1.0
         else
             pkm1, pk = 1.0, u

@@ -1,4 +1,3 @@
-#!/usr/bin/env julia
 # ==============================================================================
 # Finite-Oh Damping and Frequency: from Reid's Exact Characteristic Equation
 #
@@ -89,13 +88,14 @@ directly, which matters because `besselj(l+0.5, q)` OVERFLOWS at small Oh
 (where `q ~ sqrt(sigma/Oh)` has large |Im(q)|) while the RATIO itself stays
 O(1) -- confirmed to fail (AmosException) at l=16, Oh=0.3 with the naive
 `sqrt(pi/2q)*besselj(l+0.5,q)` approach this script originally used.
+
+The recurrence length `pad` below is capped defensively: its working length
+scales with `abs(q)`, so an ill-behaved caller passing a huge `|q|` (e.g. a
+Newton step that overshot before step-capping was added) would otherwise
+turn into a silent multi-minute hang rather than a fast, inaccurate answer
+that a residual check downstream can reject.
 """
 function sph_bessel_ratio(l::Integer, q::Number)
-    # Capped defensively: the recurrence's working length scales with abs(q),
-    # so an ill-behaved caller passing a huge |q| (e.g. a Newton step that
-    # overshot before step-capping was added) would otherwise turn into a
-    # silent multi-minute hang rather than a fast, inaccurate answer that a
-    # residual check downstream can reject.
     pad = min(max(60, l ÷ 2 + ceil(Int, abs(q))), 5000)
     n0 = l + pad + min(ceil(Int, abs(q)), 5000)
     Q = q / (2 * n0 + 3)
@@ -248,8 +248,7 @@ let l = 16, Oh = 0.3
 
     @assert abs(reid_char(q_direct, Oh, l)) < 1e-8    # both satisfy the char eq --
     @assert abs(reid_char(q_tracked, Oh, l)) < 1e-8   # so this isn't a convergence failure,
-    # it's TWO DIFFERENT genuine roots, and only one is the dominant pair.
-    @assert abs(sigma_tracked - sigma_direct) / abs(sigma_direct) > 0.5   # genuinely different roots
+    @assert abs(sigma_tracked - sigma_direct) / abs(sigma_direct) > 0.5   # it's two DIFFERENT genuine roots
     @assert real(sigma_tracked) < real(sigma_direct)   # tracked is the LESS damped (dominant) one
     println()
     println("l=16, Oh=0.3: direct Newton gives sigma=$(round(sigma_direct,digits=1))" *
@@ -341,12 +340,12 @@ Lamb's formula (and this repo's current code) is exactly lambda_l=Oh(l-1)(2l+1),
 omega_l^2=l(l-1)(l+2) -- the Oh -> 0 limit derived below.
 """)
 
+# sigma_i = q_i^2*Oh -- keep COMPLEX (underdamped: q1,q2 are a conjugate
+# pair, so sigma1,sigma2 are too; real(q)^2 would discard Im and corrupt
+# the underdamped regime).
 function compute_lambda_omega2(Oh, l)
     q1 = dominant_root_tracked(Oh, l)
     q2 = find_second_root(Oh, l, q1)
-    # sigma_i = q_i^2*Oh -- keep COMPLEX (underdamped: q1,q2 are a conjugate
-    # pair, so sigma1,sigma2 are too; real(q)^2 would discard Im and corrupt
-    # the underdamped regime).
     s1 = q1^2 * Oh
     s2 = q2^2 * Oh
     lambda = real(s1 + s2) / 2
@@ -381,15 +380,15 @@ println("monotonically as Oh -> 0, for l=2,3,4,5,10, to <2% at Oh=0.0001.")
 println()
 println("High-Oh limit (recast from Molacek & Bush 2012's A_l, D_l via the")
 println("unit-mass rescaling above):")
+# At high Oh, A_l -> om0sq/omega_l^2 (from Section 3's own definition), so
+# D_l = omega_l^2 * lambda_l / (l^2*Oh*A_l)... but omega_l^2 and lambda_l
+# ALONE already fully determine the physics; recover D_l only to check
+# against the independently published number.
 for l in (2, 3, 4, 5, 10)
     om0sq = float(l) * (l - 1) * (l + 2)
     target_D = (l - 1) * (2l^2 + 4l + 3) / (l^2 * (2l + 1))
     _, om2_100 = compute_lambda_omega2(100.0, l)
     _, om2_1000 = compute_lambda_omega2(1000.0, l)
-    # At high Oh, A_l -> om0sq/omega_l^2 (from Section 3's own definition), so
-    # D_l = omega_l^2 * lambda_l / (l^2*Oh*A_l)... but omega_l^2 and lambda_l
-    # ALONE already fully determine the physics; recover D_l only to check
-    # against the independently published number.
     lam_1000, _ = compute_lambda_omega2(1000.0, l)
     A_1000 = om0sq / om2_1000
     D_1000 = lam_1000 * A_1000 / (l^2 * 1000.0)

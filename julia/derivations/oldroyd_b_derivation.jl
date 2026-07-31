@@ -1,4 +1,3 @@
-#!/usr/bin/env julia
 # ==============================================================================
 # Oldroyd-B Drop: Symbolic Derivation and Code-Parity Verification
 #
@@ -149,9 +148,9 @@ Oldroyd-B's polymer memory is.
 # Laplace-type result for an exponential kernel), cross-checked numerically
 # via QuadGK -- not "symbolically integrated" but independently confirmed
 # two ways nonetheless.
+# closed form: int_0^inf (1-beta_s)/lam1 * exp(-s/lam1) * exp(sigma*s) ds
+#            = (1-beta_s) / (1 - lam1*sigma)   [valid for Re(sigma) < 1/lam1]
 function kernel_exp_part_transform(lam1_val, beta_s_val, sigma_val)
-    # closed form: int_0^inf (1-beta_s)/lam1 * exp(-s/lam1) * exp(sigma*s) ds
-    #            = (1-beta_s) / (1 - lam1*sigma)   [valid for Re(sigma) < 1/lam1]
     (1 - beta_s_val) / (1 - lam1_val*sigma_val)
 end
 
@@ -202,7 +201,7 @@ determines which one ob_extension.jl actually implements, by reading the
 code and testing its behavior -- not by picking a favorite.
 """)
 
-ob_ext_lines = readlines(joinpath(@__DIR__, "..", "src", "ob_extension.jl"))
+ob_ext_lines = readlines(joinpath(dirname(pathof(DropSolver)), "ob_extension.jl"))
 println("Residual block (lines 57-69) -- ob.De1 used as a single scalar, no per-mode rescaling:")
 for line in ob_ext_lines[57:69]
     println("  ", line)
@@ -249,9 +248,9 @@ end
 # Slice the file to just the function definitions (before the first @testset)
 # so no tests run here -- only the helper functions become callable.
 let
-    src = read(joinpath(@__DIR__, "..", "test", "test_ob_eigenvalue.jl"), String)
+    src = read(joinpath(dirname(dirname(pathof(DropSolver))), "test", "test_ob_eigenvalue.jl"), String)
     idx = findfirst("@testset", src)
-    Base.include_string(Main, src[1:idx[1]-1])
+    Base.include_string(@__MODULE__, src[1:idx[1]-1])
 end
 
 Oh_test, De1_test, beta_s_test = 0.02, 0.3, 0.7
