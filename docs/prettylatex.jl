@@ -56,5 +56,9 @@ const GREEK_NAMES = [
     "theta" => "\\theta", "lambda" => "\\lambda", "mu" => "\\mu", "nu" => "\\nu",
     "xi" => "\\xi", "pi" => "\\pi", "rho" => "\\rho", "sigma" => "\\sigma", "tau" => "\\tau",
     "phi" => "\\phi", "chi" => "\\chi", "psi" => "\\psi", "omega" => "\\omega",
+    # uppercase forms (distinct LaTeX symbols, not just a case-fold of the above)
+    "Gamma" => "\\Gamma", "Delta" => "\\Delta", "Theta" => "\\Theta", "Lambda" => "\\Lambda",
+    "Xi" => "\\Xi", "Pi" => "\\Pi", "Sigma" => "\\Sigma", "Phi" => "\\Phi",
+    "Psi" => "\\Psi", "Omega" => "\\Omega",
     "Oh" => "\\mathrm{Oh}", "gammadot" => "\\dot{\\gamma}",
 ]
