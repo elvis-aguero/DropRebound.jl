@@ -52,6 +52,7 @@ makedocs(
             "Linearized Governing Equations" => "reid1960/04-linearized-equations.md",
             "The Pressure Field" => "reid1960/05-pressure-field.md",
             "The Velocity ODE" => "reid1960/06-velocity-ode.md",
+            "The Characteristic Equation" => "reid1960/08-characteristic-equation.md",
         ],
         "CAS Derivations" => derivation_pages,
         "API Reference" => "api.md",
