@@ -45,6 +45,9 @@ makedocs(
     repo = Remotes.GitHub("elvis-aguero", "DropRebound.jl"),
     pages = [
         "Home" => "index.md",
+        "Reid (1960) [pilot: hand-authored prose]" => [
+            "Introduction" => "reid1960/01-introduction.md",
+        ],
         "CAS Derivations" => derivation_pages,
         "API Reference" => "api.md",
     ],
