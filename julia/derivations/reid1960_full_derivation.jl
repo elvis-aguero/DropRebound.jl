@@ -316,22 +316,49 @@ println("(after discarding the B term for regularity at the origin).")
 # Section 2.2, which is the entire point of choosing it). Write
 # ``G(x)=U(x)/x^2``, so ``u_r \propto G(x)``.
 #
-# **A fact we cite rather than re-derive** (matching the level of the
-# companion `.tex`, which also treats this as standard poloidal-field
-# machinery, Section 2.3): for an axisymmetric poloidal field, the
-# incompressibility constraint lets you eliminate the angular
-# (``u_\theta``) part of the vector Laplacian entirely in favor of radial
-# derivatives of ``u_r``, giving
+# For an axisymmetric poloidal field, the incompressibility constraint
+# lets you eliminate the angular (``u_\theta``) part of the vector
+# Laplacian entirely in favor of radial derivatives of ``u_r``, giving
 # ```math
 # \left[\nabla^2\bm u\right]_r = \nabla^2 u_r + \frac{2}{r^2}u_r + \frac{2}{r}\frac{\partial u_r}{\partial r}.
 # ```
-# Doing full justice to *why* would mean setting up the explicit poloidal
-# stream-function representation of ``u_\theta`` -- a real vector-calculus
-# derivation, but a different one from the ODE algebra that follows, and
-# not where the risk of a silent sign error actually lives. **What we DO
-# verify** is everything downstream of this formula, since that is
-# where a subtle mistake is easy to make and easy to miss.
-#
+# We derive this from two standard, textbook spherical-coordinate operator
+# formulas (these are coordinate-system facts, not specific to this
+# problem, so we cite them the way we'd cite "the Laplacian in spherical
+# coordinates has this form" -- but everything built FROM them below is
+# checked). For an axisymmetric field with no ``\varphi``-dependence and no
+# ``u_\varphi``, the raw r-component of the vector Laplacian is
+# ```math
+# \left[\nabla^2\bm u\right]_r = \nabla^2 u_r - \frac{2}{r^2}u_r - \frac{2}{r^2}A,
+# \qquad
+# A \equiv \frac{1}{\sin\theta}\frac{\partial(\sin\theta\,u_\theta)}{\partial\theta},
+# ```
+# and incompressibility (``\nabla\cdot\bm u=0``) in the same coordinates is
+# ```math
+# \frac{1}{r^2}\frac{\partial(r^2 u_r)}{\partial r} + \frac{1}{r}A = 0.
+# ```
+# Solving the second for ``A`` gives ``A = -(2u_r + r\,\partial_r u_r)`` --
+# purely in terms of ``u_r``'s radial dependence, no explicit ``u_\theta``
+# needed. Substituting this into the raw formula should reproduce the
+# target formula above. We check this treating ``A``, ``u_r``, and
+# ``\partial_r u_r`` as independent symbols related by exactly that one
+# incompressibility identity (the same style as the ``v,v',v''`` relation
+# used for the homogeneous-solution check in Section 5) -- if it did NOT
+# collapse to zero, it would mean the two "citable" formulas above are
+# inconsistent with the target formula this whole section is built on.
+
+@variables r_var A_ang ur_r ur_r_prime Lap_ur
+raw_vec_lap_r = Lap_ur - 2 / r_var^2 * ur_r - 2 / r_var^2 * A_ang
+incompressibility_A = -(2 * ur_r + r_var * ur_r_prime)   # from (1/r^2)(r^2 u_r)' = -(1/r)*A, solved for A
+target_vec_lap_r = Lap_ur + 2 / r_var^2 * ur_r + 2 / r_var * ur_r_prime
+vec_lap_residual = simplify(substitute(raw_vec_lap_r, Dict(A_ang => incompressibility_A)) - target_vec_lap_r; expand=true)
+@assert symbolic_zero(vec_lap_residual)
+println()
+println("ASSERTION 6 OK: eliminating the raw formula's u_theta-derivative term A")
+println("via incompressibility reproduces [nabla^2 u]_r = nabla^2 u_r + 2u_r/r^2 +")
+println("(2/r) du_r/dr exactly -- the formula used throughout the rest of this")
+println("section is now derived, not merely cited.")
+
 # Substituting ``u_r=\sigma R\,G(x)\,Y_l^m`` (the ``\epsilon_0 e^{-\sigma t}``
 # prefactor cancels throughout, exactly as in the source) and using the
 # scalar Laplacian formula (Section 2.1) for ``\nabla^2 u_r``, all three
@@ -346,7 +373,7 @@ combined_operator = expand_derivatives(term_scalar_lap + term_2_over_r2 + term_2
 target_operator = expand_derivatives(Dx_(Dx_(G)) + 4 / x * Dx_(G) + (2 - l * (l + 1)) / x^2 * G)
 @assert symbolic_zero(combined_operator - target_operator)
 println()
-println("ASSERTION 6 OK: [nabla^2 u]_r, written in terms of G(x)=u_r/(sigma R Y),")
+println("ASSERTION 7 OK: [nabla^2 u]_r, written in terms of G(x)=u_r/(sigma R Y),")
 println("equals G'' + (4/x)G' + (2-l(l+1))/x^2 * G exactly -- the three pieces")
 println("(scalar Laplacian, 2u_r/r^2, 2u_r'/r) combine into a single ODE operator.")
 
@@ -366,7 +393,7 @@ lhs_full = expand_derivatives(Dx_(Dx_(Gsub)) + 4 / x * Dx_(Gsub) + (2 - l * (l +
 rhs_full = expand_derivatives((Dx_(Dx_(Usym)) - l * (l + 1) / x^2 * Usym) / x^2)
 @assert symbolic_zero(lhs_full - rhs_full)
 println()
-println("ASSERTION 7 OK: with G=U/x^2, G''+(4/x)G'+(2-l(l+1))/x^2*G equals")
+println("ASSERTION 8 OK: with G=U/x^2, G''+(4/x)G'+(2-l(l+1))/x^2*G equals")
 println("[U''-l(l+1)U/x^2]/x^2 exactly -- the substitution that turns the")
 println("momentum equation into an ODE purely in U.")
 
@@ -400,7 +427,7 @@ Up = Pi_0 * x^(l + 1)
 particular_residual = expand_derivatives(Dx_(Dx_(Up)) - l * (l + 1) / x^2 * Up + q^2 * Up - q^2 * Pi_0 * x^(l + 1))
 @assert symbolic_zero(particular_residual)
 println()
-println("ASSERTION 8 OK: U_p = Pi_0 * x^(l+1) solves Reid's Eq. 9 exactly, for")
+println("ASSERTION 9 OK: U_p = Pi_0 * x^(l+1) solves Reid's Eq. 9 exactly, for")
 println("symbolic l and q -- the l(l+1)/x^2 and q^2 pieces of the U_p''-term")
 println("cancel the corresponding pieces on the left, leaving exactly the")
 println("q^2*Pi_0*x^(l+1) forcing on the right.")
@@ -424,7 +451,7 @@ vpp_relation = -(2 / z) * vp - (1 - l * (l + 1) / z^2) * v
 homogeneous_residual = simplify(substitute(Uh_pp, Dict(vpp => vpp_relation)) - l * (l + 1) / x^2 * Uh + q^2 * Uh; expand=true)
 @assert isequal(homogeneous_residual, 0)
 println()
-println("ASSERTION 9 OK: U_h = x*v(qx) solves the homogeneous ODE U''-l(l+1)U/x^2+q^2U=0")
+println("ASSERTION 10 OK: U_h = x*v(qx) solves the homogeneous ODE U''-l(l+1)U/x^2+q^2U=0")
 println("exactly, given only that v satisfies the spherical Bessel equation at z=qx --")
 println("i.e. U_h = C*x*j_l(qx) for any constant C.")
 println()
@@ -466,7 +493,7 @@ fluid_velocity_at_1 = epsilon0 * sigma_sym * U1      # u_r at x=1, with U(1) sti
 bc1_solution = Symbolics.solve_for(surface_velocity - fluid_velocity_at_1 ~ 0, U1)
 @assert symbolic_zero(bc1_solution - (-1))
 println()
-println("ASSERTION 10 OK: equating surface velocity to fluid velocity at x=1 and")
+println("ASSERTION 11 OK: equating surface velocity to fluid velocity at x=1 and")
 println("solving for U(1) gives U(1) = -1 exactly (evaluated at x=1, the")
 println("UNDEFORMED surface -- evaluating at the true deformed surface would")
 println("only add O(epsilon^2) corrections, negligible at this linear order).")
@@ -492,7 +519,7 @@ Up = Pi_0 * x^(l + 1)
 L2_Up_target = 2 * (l - 1) * (l + 1) * Pi_0 * x^(l - 1)
 @assert symbolic_zero(L2(Up) - L2_Up_target)
 println()
-println("ASSERTION 11 OK: L2[U_p]=2(l-1)(l+1)*Pi_0*x^(l-1) exactly, for symbolic l.")
+println("ASSERTION 12 OK: L2[U_p]=2(l-1)(l+1)*Pi_0*x^(l-1) exactly, for symbolic l.")
 
 @variables v vp vpp
 z = q * x
@@ -502,7 +529,7 @@ vpp_relation = -(2 / q) * vp - (1 - l * (l + 1) / q^2) * v
 L2_Uh_target = C * (-q^2 * v + 2 * (l^2 + l - 1) * v - 2 * q * vp)
 @assert isequal(simplify(substitute(L2_Uh_at_1, Dict(vpp => vpp_relation)) - L2_Uh_target; expand=true), 0)
 println()
-println("ASSERTION 12 OK: L2[U_h]|_{x=1} = C*[-q^2*j_l(q) + 2(l^2+l-1)*j_l(q) - 2q*j_l'(q)]")
+println("ASSERTION 13 OK: L2[U_h]|_{x=1} = C*[-q^2*j_l(q) + 2(l^2+l-1)*j_l(q) - 2q*j_l'(q)]")
 println("exactly, after eliminating v'' via the spherical Bessel equation at z=q --")
 println("matching Reid's own stated coefficient, now independently re-derived.")
 println()
@@ -517,9 +544,8 @@ println("relation between C and Pi_0.")
 # ``-p_{rr} = p + \delta p - 2\mu\,\partial u_r/\partial r``, and the free-surface
 # condition is ``-p_{rr} = T_1(1/R_1+1/R_2)``.
 #
-# **Cited, not re-derived here** (standard differential geometry, matching
-# the level of the companion `.tex`): to first order in ``\epsilon``, the
-# mean curvature of the perturbed surface is
+# To first order in ``\epsilon``, the mean curvature of the perturbed
+# surface is
 # ```math
 # \frac{1}{R_1}+\frac{1}{R_2} = \frac{1}{R}\Big[2 + (l-1)(l+2)\,\epsilon\,Y_l^m\Big].
 # ```
@@ -528,6 +554,33 @@ println("relation between C and Pi_0.")
 # appears in the inviscid frequency ``\sigma_{l;0}^2`` -- both come from the
 # curvature response to a harmonic deformation, so this is a consistency
 # check worth noting, not a coincidence.
+#
+# **Where this comes from.** The starting point -- standard differential
+# geometry, citable the way "the Laplacian in spherical coordinates has
+# this form" is citable -- is the linearized mean-curvature formula for a
+# nearly-spherical surface ``r=R+\zeta(\theta,\varphi)`` with ``\zeta``
+# small:
+# ```math
+# \frac{1}{R_1}+\frac{1}{R_2} = \frac{2}{R} - \frac{1}{R^2}\Big[2\zeta + \nabla^2_{\text{angular}}\zeta\Big].
+# ```
+# What we DO verify is the algebraic collapse from there: with
+# ``\zeta=\epsilon R\,Y_l^m`` and the angular eigenvalue property from
+# Section 2.1 (``\nabla^2_{\text{angular}}Y_l^m=-l(l+1)Y_l^m``, already
+# established, not re-assumed here), this should reproduce the boxed
+# formula above exactly.
+
+@variables l_sym eps_sym R_sym Yl
+zeta = eps_sym * R_sym * Yl
+angular_lap_zeta = eps_sym * R_sym * (-l_sym * (l_sym + 1) * Yl)   # Section 2.1's eigenvalue property applied to zeta
+curvature_from_formula = 2 / R_sym - (1 / R_sym^2) * (2 * zeta + angular_lap_zeta)
+curvature_target = (1 / R_sym) * (2 + (l_sym - 1) * (l_sym + 2) * eps_sym * Yl)
+@assert symbolic_zero(simplify(curvature_from_formula - curvature_target; expand=true))
+println()
+println("ASSERTION 14 OK: substituting zeta=eps*R*Y_l^m and the angular eigenvalue")
+println("property into the linearized curvature formula reproduces")
+println("1/R1+1/R2 = (1/R)[2+(l-1)(l+2)*eps*Y_l^m] exactly, for symbolic l -- a")
+println("failing assertion here would mean either the cited curvature formula or")
+println("this section's own algebra disagrees with the stated (l-1)(l+2) result.")
 #
 # At ``O(\epsilon^0)`` the equilibrium Young-Laplace balance is automatically
 # satisfied. At ``O(\epsilon^1)``, using the pressure solution
@@ -545,7 +598,7 @@ dGdx_at_1 = substitute(expand_derivatives(Dx__(U / x^2)), Dict(x => 1))
 target_at_1 = substitute(Dx__(U) - 2 * U, Dict(x => 1))
 @assert isequal(simplify(dGdx_at_1 - target_at_1; expand=true), 0)
 println()
-println("ASSERTION 13 OK: d/dx(U/x^2)|_{x=1} = U'(1) - 2U(1) exactly.")
+println("ASSERTION 15 OK: d/dx(U/x^2)|_{x=1} = U'(1) - 2U(1) exactly.")
 println()
 println("Dividing through by rho*epsilon*Y_l^m and using mu=rho*nu, BC3 becomes")
 
@@ -587,7 +640,7 @@ rhs_rescaled = simplify(substitute(bc3_rhs, Dict(P0 => sigma^2 * R^2 * Pi_0 / l)
 rhs_in_q = simplify(substitute(rhs_rescaled, Dict(sigma => q^2 * nu / R^2)); expand=true)   # sigma = q^2*nu/R^2
 @assert symbolic_zero(rhs_in_q - q^2 * (q^2 * Pi_0 - 2 * l * Uterm))
 println()
-println("ASSERTION 14 OK: rescaling BC3 by l*R^2/nu^2 turns sigma_{l;0}^2*R^2/l")
+println("ASSERTION 16 OK: rescaling BC3 by l*R^2/nu^2 turns sigma_{l;0}^2*R^2/l")
 println("into alpha^4 = sigma_{l;0}^2*R^4/nu^2 on the left (T_1 and rho cancel),")
 println("and turns the right side into q^4*Pi_0 - 2*l*q^2*Uterm exactly, using")
 println("q^2=sigma*R^2/nu -- i.e. T_1 and rho have both cancelled, leaving a")
@@ -619,7 +672,7 @@ Pi0sol = simplify(substitute(bc_solution[2], Dict(jlp => jl * (l - q * Q) / q));
 
 @assert symbolic_zero(Csol - 2 * (l^2 - 1) / (jl * q * (2Q - q)))
 println()
-println("ASSERTION 15 OK: solving BC1+BC2 gives C = 2(l-1)(l+1) / [j_l(q)*q*(2Q-q)]")
+println("ASSERTION 17 OK: solving BC1+BC2 gives C = 2(l-1)(l+1) / [j_l(q)*q*(2Q-q)]")
 println("exactly, matching Reid's Eq. 20 (this repo's docs/reid1960_expanded-3.tex,")
 println("Eq. C_soln), now via an independent symbolic solve rather than by-hand algebra.")
 
@@ -639,7 +692,7 @@ alpha4_derived = simplify(q^2 * (q^2 * Pi0sol - 2 * l * Uprime1_minus_2U1); expa
 characteristic_eq_rhs = q^4 * ((2 * (l - 1) / q^2) * (l + (l + 1) * (q - 2 * l * Q) / (q - 2 * Q)) - 1)
 @assert symbolic_zero(alpha4_derived - characteristic_eq_rhs)
 println()
-println("ASSERTION 16 OK -- THE MAIN RESULT: substituting the boundary-condition")
+println("ASSERTION 18 OK -- THE MAIN RESULT: substituting the boundary-condition")
 println("solutions into the T1-eliminated alpha^4 relation gives EXACTLY Reid's")
 println("closed-form characteristic equation, for symbolic l and q. This is the")
 println("single equation the rest of this repo's viscous-drop physics rests on.")
@@ -691,7 +744,7 @@ characteristic_rhs_full = (2 * (l - 1) / q^2) * (l + (l + 1) * (q - 2 * l * Q) /
 characteristic_rhs_Q0 = substitute(characteristic_rhs_full, Dict(Q => 0))
 @assert symbolic_zero(characteristic_rhs_Q0 - 2 * (l - 1) * (2l + 1) / q^2)
 println()
-println("ASSERTION 17 OK: setting Q=0 in the exact characteristic equation's RHS")
+println("ASSERTION 19 OK: setting Q=0 in the exact characteristic equation's RHS")
 println("collapses the bracket [l+(l+1)(q-2lQ)/(q-2Q)] to exactly 2l+1 -- the")
 println("q->infinity idealization used throughout this section.")
 
@@ -725,7 +778,7 @@ for l_val in (2, 3, 5, 10)
     end
 end
 println()
-println("ASSERTION 18 OK: the exact quadratic's root and Lamb's leading-order")
+println("ASSERTION 20 OK: the exact quadratic's root and Lamb's leading-order")
 println("formula converge (relative gap shrinks monotonically as alpha grows,")
 println("l=2,3,5,10) -- confirming Lamb's formula IS the alpha->infinity limit")
 println("of the exact characteristic equation, not an unrelated approximation.")
@@ -791,7 +844,7 @@ for (Oh_val, l_val) in ((0.02, 2), (0.02, 3), (0.05, 2))
     @assert err < 0.05
 end
 println()
-println("ASSERTION 19 OK: a live, small-Oh solve_drop! run decays at the rate")
+println("ASSERTION 21 OK: a live, small-Oh solve_drop! run decays at the rate")
 println("Section 8's Lamb-limit derivation predicts, to <5% -- confirming this")
 println("document's physics matches the actual running production code, not")
 println("just its own internal algebra.")
