@@ -8,3 +8,5 @@ julia/outputs/figures/*
 !julia/outputs/csv/.gitkeep
 !julia/outputs/jld/.gitkeep
 !julia/outputs/figures/.gitkeep
+docs/build/
+docs/src/derivations/

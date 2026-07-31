@@ -1,6 +1,6 @@
 # DropRebound.jl
 
-Julia solver for the impact and rebound of a liquid drop on a flat substrate, with support for Newtonian, viscoelastic (Oldroyd-B), and shear-thinning (Carreau) rheology.
+Julia solver for the impact and rebound of a liquid drop on a flat substrate, with support for Newtonian, viscoelastic (Oldroyd-B), and shear-thinning (Carreau-Yasuda) rheology.
 
 <table>
 <tr>

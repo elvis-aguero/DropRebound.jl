@@ -45,7 +45,6 @@ function build_residual!(R::AbstractVector, state::DropState,
                          history::Vector{DropState}, dt::Float64,
                          cp::Int, cfg::SimConstants, ob::OBParams)
     M  = cfg.M
-    Oh = cfg.Oh
     Bo = cfg.Bo
     θv = cfg.theta_vec
     order = length(history)
@@ -70,9 +69,11 @@ function build_residual!(R::AbstractVector, state::DropState,
     # BDF form: c[end]*A^k + Σ c[j]*A^{k-order+j} - dt*Ȧ^k = 0
     R[1:M-1] .= c[end] .* A .+ sum(c[j] .* prev_A[:, j] for j in 1:order) .- dt .* Adot
 
-    # ── Block R2: BDF(Äₙ + 2Oh(n-1)(2n+1)*Ȧₙ + n(n+2)(n-1)*Aₙ + cp*n*Bₙ = 0) ──
-    D1 = @. Float64(ns) * (Float64(ns) + 2) * (Float64(ns) - 1)    # capillary
-    D2 = @. 2Oh * (Float64(ns) - 1) * (2*Float64(ns) + 1)          # viscous
+    # ── Block R2: BDF(Äₙ + 2λₙ(Oh)*Ȧₙ + ωₙ²(Oh)*Aₙ + cp*n*Bₙ = 0) ──────────
+    # λₙ, ωₙ² are Lamb's small-Oh asymptotics by default, or Reid's exact
+    # finite-Oh values when cfg.viscous == :reid (see julia/src/reid.jl).
+    D1 = cfg.drop_omega2   # restoring/frequency-squared
+    D2 = 2 .* cfg.drop_lambda   # viscous damping
 
     # For OB: replace Adot term with (β_s*Ȧₙ + Sₙ)
     if ob.De1 > 0.0 && ob.beta_s < 1.0

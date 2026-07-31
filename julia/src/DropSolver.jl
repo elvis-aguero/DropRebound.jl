@@ -4,10 +4,15 @@ using LinearAlgebra
 using Logging
 
 # Included in order of dependency
+include("reid.jl")
 include("types.jl")
 
 # Export types
 export SimConstants, OBParams, STParams, DropState, make_theta_vec, make_dt_max
+
+# Export Reid finite-Oh viscous model
+export reid_char, dominant_root, second_root, reid_lambda_omega2, drop_viscous_coeffs
+export ReidTable, build_reid_table, reid_lambda_omega2_fast, build_reid_cache
 
 # Export residual and Jacobian functions
 export pack_X, unpack_X!, build_residual!, build_jacobian
@@ -17,6 +22,10 @@ export pack_X_ob, unpack_X_ob!, build_residual_ob!, build_jacobian_ob
 
 # Export Carreau (shear-thinning) extension functions
 export build_residual_st!, build_jacobian_st
+
+# Export non-perturbative Carreau-Yasuda extension functions
+export characteristic_shear_K, STExactParams, oh_eff_all_coupled, lambda_omega2_from_oh_eff,
+       build_residual_st_exact!, build_jacobian_st_exact, OUTLIER_FACTOR
 
 # Export Newton solver
 export newton_solve!, clear_jac_cache!
@@ -40,6 +49,7 @@ include("residual.jl")
 include("jacobian.jl")
 include("ob_extension.jl")
 include("st_extension.jl")
+include("st_exact_extension.jl")
 include("newton.jl")
 include("contact.jl")
 include("timestepper.jl")
