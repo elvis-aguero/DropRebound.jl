@@ -24,8 +24,8 @@ export pack_X_ob, unpack_X_ob!, build_residual_ob!, build_jacobian_ob
 export build_residual_st!, build_jacobian_st
 
 # Export non-perturbative Carreau-Yasuda extension functions
-export characteristic_shear_K, STExactParams, oh_eff_lambda_omega2,
-       build_residual_st_exact!, build_jacobian_st_exact
+export characteristic_shear_K, STExactParams, oh_eff_all_coupled, lambda_omega2_from_oh_eff,
+       build_residual_st_exact!, build_jacobian_st_exact, OUTLIER_FACTOR
 
 # Export Newton solver
 export newton_solve!, clear_jac_cache!

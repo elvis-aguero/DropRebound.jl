@@ -37,8 +37,9 @@ const OH0      = ETA_0 / sqrt(RHO * SIGMA * R)
 const LAMBDA_C = K_CROSS / T_SIGMA        # dimensionless
 const A_SHAPE  = M_CROSS
 const EPS_ST   = (ETA_0 - ETA_INF) / ETA_0
+const ETA_INF_RATIO = ETA_INF / ETA_0     # physical floor on mu_eff/mu_0 (and hence Oh_eff/Oh0)
 
-@info "Fluid parameters" RHO T_SIGMA OH0 LAMBDA_C A_SHAPE EPS_ST
+@info "Fluid parameters" RHO T_SIGMA OH0 LAMBDA_C A_SHAPE EPS_ST ETA_INF_RATIO
 
 # ---------------------------------------------------------------------------
 # Load the CSV (semicolon-separated, comma-decimal: "0,481266206;0,818908412;0,0017")
@@ -88,7 +89,7 @@ function main(n_samples::Int, seed::Int; M::Int=12)
     idx = randperm(rng, length(EXPERIMENTS))[1:n_samples]
     sample = EXPERIMENTS[idx]
 
-    stx = STExactParams(M, OH0, LAMBDA_C, A_SHAPE, EPS_ST; viscous=:reid)
+    stx = STExactParams(M, OH0, LAMBDA_C, A_SHAPE, EPS_ST; viscous=:reid, eta_inf_ratio=ETA_INF_RATIO)
 
     cor_errs = Float64[]
     tc_errs  = Float64[]
@@ -121,4 +122,5 @@ end
 
 n_samples = length(ARGS) >= 1 ? parse(Int, ARGS[1]) : 20
 seed      = length(ARGS) >= 2 ? parse(Int, ARGS[2]) : 1
-main(n_samples, seed)
+M_arg     = length(ARGS) >= 3 ? parse(Int, ARGS[3]) : 12
+main(n_samples, seed; M=M_arg)

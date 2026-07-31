@@ -290,3 +290,247 @@ Oh_eff_l for EVERY mode now depends on EVERY mode's Adot -- the Jacobian's
 D2 block is no longer diagonal); revalidating against the 20 sampled
 experiments.
 """)
+
+# ------------------------------------------------------------------------------
+# Section 4: after wiring Sections 1-3 into julia/src/st_exact_extension.jl and
+# validating against the 20 sampled experiments, contact_time predictions
+# collapsed to near-zero for most samples (median relative error 62%, versus
+# 16.8% before this multi-mode fix). What's actually happening, found by
+# tracing a live solver run frame-by-frame at contact onset (reproduced live
+# below, not just described): the moment contact begins, the SHAPE boundary
+# condition imposes a spatial kink (a single collocation point pinned to the
+# plane) that a FINITE Legendre truncation cannot represent smoothly. Exactly
+# as with a truncated Fourier series representing a step (Gibbs phenomenon),
+# the un-representable part of that kink is not spread evenly across modes --
+# it concentrates almost entirely in the single highest RETAINED mode (l=M),
+# because that is the only place left for "everything the lower, smoother
+# modes cannot capture" to go in a finite linear expansion. This has nothing
+# to do with real fluid dynamics; it is a property of truncating ANY basis at
+# a finite order when asked to represent a non-smooth boundary condition.
+#
+# Why it broke contact_time specifically: this repo's real fluid has an
+# ASTRONOMICALLY large dimensionless lambda_c (~30507). Feeding even a tiny,
+# purely-numerical Adot_M into the multi-mode-coupled shear field of Section 3
+# manufactures an enormous (lambda_c*S)^a, crashing mu_eff/mu_0 (hence
+# Oh_eff for EVERY mode, not just mode M) toward zero from pure truncation
+# noise -- a fake, near-total loss of viscosity at the very instant contact
+# begins, before any physically resolved mode had moved at all.
+# ------------------------------------------------------------------------------
+
+println()
+println("="^78)
+println("Section 4: contact-onset truncation ringing concentrates in mode l=M")
+println("="^78)
+
+let
+    RHO = 989.4665307509346
+    OH0 = 57.371648873370795
+    LAMBDA_C = 30507.34501244818
+    A_SHAPE = 0.7430524574330837
+    EPS_ST = 0.9995574839318364
+    BO = 0.012
+    We = 0.7649
+
+    for M in (12, 16)
+        stx = STExactParams(M, OH0, LAMBDA_C, A_SHAPE, EPS_ST; viscous=:reid)
+        dt_max = make_dt_max(M)
+        theta_vec = make_theta_vec(M)
+        precomp = precompute_integrals(NaN, M)[1]
+        cfg = SimConstants(M, M + 1, OH0, BO, theta_vec, precomp, dt_max)
+        init = DropState(M)
+        init.z = 1.05
+        init.v = -sqrt(We)
+        init.dt = dt_max
+        init.cp = 0
+
+        times, states = solve_drop!(cfg, OBParams(), init; stx=stx,
+            t_end=0.15, save_every=dt_max / 4)
+        first_c = findfirst(s -> s.cp > 0, states)
+        Adot = states[first_c].Adot[2:end]
+        top_mode_val = abs(Adot[end])
+        other_modes_max = maximum(abs.(Adot[1:end-1]))
+
+        println("  M=$M: |Adot_M|=$(round(top_mode_val,sigdigits=3))" *
+                "  max|Adot_l| for l<M: $(round(other_modes_max,sigdigits=3))" *
+                "  ratio: $(round(top_mode_val/other_modes_max,sigdigits=3))x")
+        # LIVE SOLVER CROSS-CHECK (not just this script's own algebra): the
+        # single highest mode is orders of magnitude larger than every other
+        # mode at the exact frame contact first registers. A failing
+        # assertion here would mean the ringing is NOT a large-amplitude
+        # OUTLIER after all, and the fix below (Section 4b) would need a
+        # different signature to detect it by.
+        @assert top_mode_val / other_modes_max > 100
+    end
+end
+println("ASSERTION 5 OK: at contact onset, on a LIVE DropSolver run, the single")
+println("highest retained mode carries >100x the amplitude of every other mode")
+println("-- at BOTH M=12 and M=16.")
+
+# ------------------------------------------------------------------------------
+# Section 4b: a first fix (excluding roughly the top 10% of modes BY INDEX from
+# the coupling field) resolved the ringing above but broke a DIFFERENT, real
+# validation case: a live low-We run (We=0.0158, gentle impact, long slow
+# contact) showed mode M itself reaching genuine, large amplitude comparable to
+# mode 2's, not a spurious outlier -- excluding it purely because "l is close
+# to M" threw away real physics and roughly HALVED predicted CoR for that
+# sample (0.74 with dealiasing disabled entirely vs 0.21 with the index-based
+# filter, against a measured 0.82).
+#
+# Amplitude ratio ALONE (comparing a candidate against every OTHER mode, no
+# index restriction) does not fix this either: a live mid-mode case (mode 2 at
+# 1e-15 floating-point noise -- not exactly 0.0 -- alongside a genuinely large
+# mode 8) got mode 8 wrongly flagged, since a plain "other modes" comparison
+# has no way to tell "noise sitting next to real signal" from "everything
+# genuinely silent." The fix combines BOTH signals: INDEX restricts which
+# modes can even be candidates (only the truncation boundary, same ~10%
+# margin as before -- this is still the only place the ringing concentrates),
+# and AMPLITUDE decides among candidates, compared against the TRUSTED
+# (non-candidate) modes' own amplitude -- floored at RINGING_NOISE_FLOOR so a
+# fully quiescent trusted set doesn't make any nonzero candidate look
+# infinitely large.
+# ------------------------------------------------------------------------------
+
+println()
+println("="^78)
+println("Section 4b: index-restricted, trusted-amplitude outlier detection")
+println("="^78)
+
+let
+    # Case A: the ringing signature from Section 4 (M=12, contact onset) --
+    # every trusted (low/mid) mode at floating-point noise, mode M large.
+    Adot_ringing = fill(1e-15, 11)
+    Adot_ringing[end] = 0.673
+    mask_a = DropSolver._ringing_outlier_mask(Adot_ringing)
+    println("  ringing case:        mask=$mask_a (mode M excluded: $(mask_a[end]))")
+    @assert mask_a[end] == true
+    @assert all(mask_a[1:end-1] .== false)
+
+    # Case B: LIVE low-We data (We=0.0158, M=12, i=60 in the derivation's own
+    # trace) -- mode M (last entry) genuinely active, comparable to mode 2.
+    Adot_real = [-0.0159, 0.00719, -0.0137, 0.0135, -0.00666, 0.00287,
+                 -0.00241, 0.002, -0.00129, 0.000523, 0.0163]
+    mask_b = DropSolver._ringing_outlier_mask(Adot_real)
+    println("  real low-We case:    mask=$mask_b (mode M excluded: $(mask_b[end]))")
+    @assert all(mask_b .== false)
+
+    # Case C: the mid-mode failure of a pure amplitude-ratio rule -- mode 2 at
+    # noise floor (1e-15, NOT exactly 0), mode 8 (a non-candidate, trusted
+    # index) genuinely large. A rule comparing candidates against ALL other
+    # modes would (and did) wrongly flag mode 8; index-restriction keeps it
+    # out of the candidate set entirely, regardless of amplitude.
+    Adot_midmode = zeros(11)
+    Adot_midmode[1] = 1e-15
+    Adot_midmode[7] = 0.286   # l=8, a trusted (non-candidate) index at M=12
+    mask_c = DropSolver._ringing_outlier_mask(Adot_midmode)
+    println("  mid-mode case:       mask=$mask_c (mode 8, index 7, excluded: $(mask_c[7]))")
+    @assert mask_c[7] == false
+end
+println("ASSERTION 6 OK: the index-restricted, trusted-amplitude mask correctly")
+println("excludes ONLY mode M in the ringing case, keeps mode M in the real")
+println("low-We case, and keeps mode 8 in the mid-mode case -- neither index")
+println("nor amplitude ratio alone distinguishes all three; combined, they do.")
+
+println()
+println("""
+Fix: julia/src/st_exact_extension.jl's _ringing_outlier_mask restricts
+candidates to the top ~10% of modes by index (minimum 1, same truncation-
+boundary margin as before -- this is still the only place ringing
+concentrates), then excludes a candidate only if its amplitude exceeds
+OUTLIER_FACTOR=20 times the largest amplitude among the TRUSTED (non-
+candidate) modes, floored at RINGING_NOISE_FLOOR=1e-9 so a fully quiescent
+trusted set doesn't make any nonzero candidate look infinitely large. Every
+mode, including any masked-out one, still receives an Oh_eff value for its
+OWN dynamics -- the mask only controls what counts as "real" shear when
+building the field that everyone's thinning is averaged against.
+""")
+
+# ------------------------------------------------------------------------------
+# Section 5: even with dealiasing, contact_time predictions were still poor
+# (median error 29%) because several Oh_eff values traced from a live run sat
+# BELOW the fluid's own physical floor. Plain Carreau-Yasuda as coded,
+# mu_eff/mu_0 = [1+(lambda_c*gammadot)^a]^(-eps_ST), sends mu_eff/mu_0 -> 0
+# EXACTLY as gammadot -> infinity. But the real fluid's infinite-shear
+# viscosity eta_inf = 0.00373 Pa*s is not zero -- it is small compared to
+# eta_0 = 8.43 Pa*s, but finite. No real amount of shear can push this
+# fluid's viscosity, hence Oh_eff, below Oh_0 * eta_inf/eta_0 ~ 0.0254. The
+# plain formula has no such floor and can (and, traced live below, does)
+# predict Oh_eff below it -- an unphysical UNDER-estimate of viscosity/
+# damping that let the drop's contact-region deformation swing to much
+# larger amplitude than the real fluid could ever produce, eventually large
+# enough to violate the small-deformation assumption the whole linearized
+# shape-mode model rests on.
+# ------------------------------------------------------------------------------
+
+println()
+println("="^78)
+println("Section 5: the plain Carreau-Yasuda formula has no eta_inf floor")
+println("="^78)
+
+let
+    RHO = 989.4665307509346
+    OH0 = 57.371648873370795
+    LAMBDA_C = 30507.34501244818
+    A_SHAPE = 0.7430524574330837
+    EPS_ST = 0.9995574839318364
+    ETA_INF_OVER_ETA_0 = 1 - EPS_ST   # = eta_inf/eta_0 under this fluid's Cross-model mapping
+    BO = 0.012
+    We = 0.7649
+    M = 12
+    physical_floor = OH0 * ETA_INF_OVER_ETA_0
+
+    stx_no_floor = STExactParams(M, OH0, LAMBDA_C, A_SHAPE, EPS_ST; viscous=:reid)
+    dt_max = make_dt_max(M)
+    theta_vec = make_theta_vec(M)
+    precomp = precompute_integrals(NaN, M)[1]
+    cfg = SimConstants(M, M + 1, OH0, BO, theta_vec, precomp, dt_max)
+    init = DropState(M)
+    init.z = 1.05
+    init.v = -sqrt(We)
+    init.dt = dt_max
+    init.cp = 0
+
+    # LIVE SOLVER CROSS-CHECK: run the real solver a short way past contact
+    # onset and check whether the floor-less Oh_eff dips below the physical
+    # floor at any saved frame -- not asserted from algebra alone.
+    times, states = solve_drop!(cfg, OBParams(), init; stx=stx_no_floor,
+        t_end=0.25, save_every=dt_max / 4)
+    min_oh_eff_no_floor = Inf
+    for s in states
+        Adot_vec = s.Adot[2:end]
+        any(x -> x != 0.0, Adot_vec) || continue
+        oh = oh_eff_all_coupled(stx_no_floor, OH0, Adot_vec)
+        min_oh_eff_no_floor = min(min_oh_eff_no_floor, minimum(oh))
+    end
+    println("  physical floor Oh0*eta_inf/eta_0 = $(round(physical_floor,digits=4))")
+    println("  min Oh_eff observed WITHOUT the floor term: $(round(min_oh_eff_no_floor,digits=4))")
+    # A failing assertion here would mean the floor-less formula never
+    # actually violates the physical floor in this regime after all, and
+    # this fix would be unnecessary/premature.
+    @assert min_oh_eff_no_floor < physical_floor
+
+    stx_floor = STExactParams(M, OH0, LAMBDA_C, A_SHAPE, EPS_ST;
+        viscous=:reid, eta_inf_ratio=ETA_INF_OVER_ETA_0)
+    min_oh_eff_floor = Inf
+    for s in states   # same states -> same Adot trajectory, only the formula changes
+        Adot_vec = s.Adot[2:end]
+        any(x -> x != 0.0, Adot_vec) || continue
+        oh = oh_eff_all_coupled(stx_floor, OH0, Adot_vec)
+        min_oh_eff_floor = min(min_oh_eff_floor, minimum(oh))
+    end
+    println("  min Oh_eff observed WITH the floor term:    $(round(min_oh_eff_floor,digits=4))")
+    @assert min_oh_eff_floor >= physical_floor - 1e-9
+end
+println("ASSERTION 7 OK: without eta_inf_ratio, a LIVE solver run drives Oh_eff")
+println("below the fluid's own physical minimum; with it, Oh_eff never does --")
+println("both checked against the same recorded Adot trajectory, isolating the")
+println("formula change from any difference in the resulting dynamics.")
+
+println()
+println("""
+Fix: mu_eff/mu_0 = eta_inf_ratio + (1-eta_inf_ratio)*[1+(lambda_c*gammadot)^a]^(-eps_ST),
+the complete Cross-model form (reduces to the plain formula when
+eta_inf_ratio=0, the default -- every existing caller is unaffected). For the
+real validation fluid, eta_inf_ratio = eta_inf/eta_0 = 1-eps_ST ~ 4.4e-4,
+giving a physical floor Oh_eff >= Oh_0*eta_inf/eta_0 ~ 0.0254 that the plain
+formula could (and did) drop below.
+""")
