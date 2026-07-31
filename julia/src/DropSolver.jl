@@ -23,6 +23,10 @@ export pack_X_ob, unpack_X_ob!, build_residual_ob!, build_jacobian_ob
 # Export Carreau (shear-thinning) extension functions
 export build_residual_st!, build_jacobian_st
 
+# Export non-perturbative Carreau-Yasuda extension functions
+export characteristic_shear_K, STExactParams, oh_eff_lambda_omega2,
+       build_residual_st_exact!, build_jacobian_st_exact
+
 # Export Newton solver
 export newton_solve!, clear_jac_cache!
 
@@ -45,6 +49,7 @@ include("residual.jl")
 include("jacobian.jl")
 include("ob_extension.jl")
 include("st_extension.jl")
+include("st_exact_extension.jl")
 include("newton.jl")
 include("contact.jl")
 include("timestepper.jl")
