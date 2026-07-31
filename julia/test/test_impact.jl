@@ -46,6 +46,34 @@ end
     @test cps[end] == 0             # drop is airborne at t=15 (lifted off)
 end
 
+@testset "Drop impact: solve_drop! dispatches to build_residual_st_exact! via stx" begin
+    # Regression: solve_drop!'s stx keyword must actually route through
+    # build_residual_st_exact!/build_jacobian_st_exact (julia/src/st_exact_extension.jl),
+    # not silently fall back to the Newtonian path.
+    M = 6; Oh0 = 0.3; Bo = 0.02
+    dt_max    = make_dt_max(M)
+    theta_vec = make_theta_vec(M)
+    precomp   = precompute_integrals(NaN, M)[1]
+    cfg       = SimConstants(M, M+1, Oh0, Bo, theta_vec, precomp, dt_max)
+    stx       = STExactParams(M, Oh0, 5.0, 1.5, 0.5; viscous=:lamb)
+
+    init = DropState(M)
+    init.z = 1.05; init.v = -0.5; init.dt = dt_max; init.cp = 0
+
+    times, states = solve_drop!(cfg, OBParams(), deepcopy(init); stx=stx, t_end=8.0, save_every=0.05)
+
+    @test all(isfinite(s.z)    for s in states)
+    @test all(isfinite(s.A[2]) for s in states)
+    @test any(s.cp > 0 for s in states)
+
+    # Same run with shear-thinning "turned off" (lambda_c=0 -> Oh_eff==Oh0
+    # identically) must reduce to the plain Newtonian trajectory.
+    stx_off = STExactParams(M, Oh0, 0.0, 1.5, 0.5; viscous=:lamb)
+    _, states_off = solve_drop!(cfg, OBParams(), deepcopy(init); stx=stx_off, t_end=8.0, save_every=0.05)
+    _, states_N   = solve_drop!(cfg, OBParams(), deepcopy(init); t_end=8.0, save_every=0.05)
+    @test [s.z for s in states_off] ≈ [s.z for s in states_N] rtol=1e-6
+end
+
 @testset "Drop impact: OB vs Newtonian differ during contact" begin
     dt_max    = make_dt_max(_IMP_M)
     theta_vec = make_theta_vec(_IMP_M)
