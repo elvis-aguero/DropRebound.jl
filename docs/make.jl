@@ -24,6 +24,7 @@ end
 makedocs(
     sitename = "DropRebound.jl",
     modules = [DropSolver],
+    repo = Remotes.GitHub("elvis-aguero", "DropRebound.jl"),
     pages = [
         "Home" => "index.md",
         "CAS Derivations" => derivation_pages,
@@ -33,5 +34,12 @@ makedocs(
         prettyurls = get(ENV, "CI", "false") == "true",
         inventory_version = "0.1.0",
         edit_link = "main",
+        canonical = "https://elvis-aguero.github.io/DropRebound.jl",
     ),
+)
+
+deploydocs(
+    repo = "github.com/elvis-aguero/DropRebound.jl.git",
+    devbranch = "main",
+    push_preview = true,
 )

@@ -43,6 +43,10 @@ jobs:
 
   docs:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+      statuses: write
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
@@ -51,5 +55,7 @@ jobs:
       - uses: julia-actions/cache@v2
       - name: Instantiate docs environment
         run: julia --project=docs -e 'using Pkg; Pkg.instantiate()'
-      - name: Build docs (Literate.jl + Documenter.jl)
+      - name: Build and deploy docs (Literate.jl + Documenter.jl)
         run: julia --project=docs docs/make.jl
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
