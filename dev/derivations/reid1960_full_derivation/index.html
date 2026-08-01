@@ -202,7 +202,69 @@ println(&quot;only add O(epsilon^2) corrections, negligible at this linear order
 ASSERTION 11 OK: equating surface velocity to fluid velocity at x=1 and
 solving for U(1) gives U(1) = -1 exactly (evaluated at x=1, the
 UNDEFORMED surface -- evaluating at the true deformed surface would
-only add O(epsilon^2) corrections, negligible at this linear order).</code></pre><h3 id="BC2:-Tangential-stress-condition"><a class="docs-heading-anchor" href="#BC2:-Tangential-stress-condition">BC2: Tangential stress condition</a><a id="BC2:-Tangential-stress-condition-1"></a><a class="docs-heading-anchor-permalink" href="#BC2:-Tangential-stress-condition" title="Permalink"></a></h3><p>At a free surface (no exterior viscous fluid), the tangential viscous stress must vanish. Using the stream-function representation of a poloidal field to eliminate <span>$u_\theta$</span> (the same kind of standard poloidal-field fact cited in Section 4), this reduces to a single operator condition on <span>$U$</span> at <span>$x=1$</span>:</p><p class="math-container">\[\mathcal{L}_2[U] \equiv \left[\frac{d^2}{dx^2} - \frac{2}{x}\frac{d}{dx} + \frac{l(l+1)}{x^2}\right]U = 0 \qquad\text{at } x=1.\]</p><p><strong>What we verify</strong>, rather than cite, is evaluating this operator on the general solution from Section 5.</p><pre><code class="language-julia hljs">@variables x l q Pi_0 C
+only add O(epsilon^2) corrections, negligible at this linear order).</code></pre><h3 id="BC2:-Tangential-stress-condition"><a class="docs-heading-anchor" href="#BC2:-Tangential-stress-condition">BC2: Tangential stress condition</a><a id="BC2:-Tangential-stress-condition-1"></a><a class="docs-heading-anchor-permalink" href="#BC2:-Tangential-stress-condition" title="Permalink"></a></h3><p>At a free surface (no exterior viscous fluid), the tangential viscous stress must vanish:</p><p class="math-container">\[\tau_{r\theta} = \mu\left[r\frac{\partial}{\partial r}\!\left(\frac{u_\theta}{r}\right) + \frac{1}{r}\frac{\partial u_r}{\partial\theta}\right] = 0 \qquad \text{at } x=1.\]</p><p>This needs <span>$u_\theta$</span>, which hasn&#39;t shown up until now. <strong>Derived from scratch below, not cited:</strong> for an axisymmetric poloidal field, the standard (citable, textbook) Stokes stream function <span>$\psi(r,\theta)$</span> gives <span>$u_r=(1/(r^2\sin\theta))\,\partial\psi/\partial\theta$</span> and <span>$u_\theta=-(1/(r\sin\theta))\,\partial\psi/\partial r$</span>. Writing <span>$u_r=f(r)P_l(\cos\theta)$</span> and integrating in <span>$\theta$</span> (using the standard Legendre recurrence <span>$(2l+1)P_l=P_{l+1}&#39;-P_{l-1}&#39;$</span>, checked below at concrete <span>$l$</span> – Reid&#39;s own paper would cite this the same way) gives</p><p class="math-container">\[u_\theta = \frac{g(r)}{\sin\theta}\Big[P_{l+1}(\cos\theta)-P_{l-1}(\cos\theta)\Big], \qquad g(r)\equiv\frac{2f(r)+rf&#39;(r)}{2l+1}.\]</p><p>Substituting both into <span>$\tau_{r\theta}$</span> and using a SECOND standard recurrence, <span>$(2l+1)(1-x^2)P_l&#39;(x)=l(l+1)[P_{l-1}(x)-P_{l+1}(x)]$</span> (also checked below), every term collapses onto the single common angular factor <span>$\sin\theta\,P_l&#39;(\cos\theta)$</span> – exactly the shape a genuine tangential-stress condition should have – times a purely radial coefficient. Setting that coefficient to zero at <span>$r=R$</span> turns out to be <strong>exactly</strong> <span>$\mathcal{L}_2[U]=0$</span>:</p><p class="math-container">\[\mathcal{L}_2[U] \equiv \left[\frac{d^2}{dx^2} - \frac{2}{x}\frac{d}{dx} + \frac{l(l+1)}{x^2}\right]U = 0 \qquad\text{at } x=1,\]</p><p>closing the loop on what was previously just cited. A failing assertion in this subsection would mean either the two Legendre recurrences below are misremembered, or the stream-function ansatz doesn&#39;t actually produce a pure tangential-stress condition proportional to <span>$\mathcal{L}_2[U]$</span> – i.e. the very operator BC2 has been built on would itself be wrong.</p><pre><code class="language-julia hljs">@variables x_leg2
+Dxleg2 = Differential(x_leg2)
+for l_val in (2, 3, 4, 5)
+    Pl_a, Plp1_a, Plm1_a = legendre_P(l_val, x_leg2), legendre_P(l_val + 1, x_leg2), legendre_P(l_val - 1, x_leg2)
+    @assert symbolic_zero((2l_val + 1) * Pl_a - expand_derivatives(Dxleg2(Plp1_a) - Dxleg2(Plm1_a)))
+end
+println()
+println(&quot;ASSERTION 12 OK: (2l+1)P_l = P_(l+1)&#39; - P_(l-1)&#39; exactly, for l=2,3,4,5 --&quot;)
+println(&quot;the integration identity behind u_theta&#39;s stream-function derivation.&quot;)
+
+for l_val in (2, 3, 4, 5)
+    Pl_b, Plp1_b, Plm1_b = legendre_P(l_val, x_leg2), legendre_P(l_val + 1, x_leg2), legendre_P(l_val - 1, x_leg2)
+    lhs_b = expand_derivatives((2l_val + 1) * (1 - x_leg2^2) * Dxleg2(Pl_b))
+    @assert symbolic_zero(lhs_b - l_val * (l_val + 1) * (Plm1_b - Plp1_b))
+end
+println()
+println(&quot;ASSERTION 13 OK: (2l+1)(1-x^2)P_l&#39; = l(l+1)[P_(l-1)-P_(l+1)] exactly, for&quot;)
+println(&quot;l=2,3,4,5 -- turns u_theta&#39;s angular factor into the same&quot;)
+println(&quot;sin(theta)*P_l&#39;(cos theta) shape as u_r&#39;s theta-derivative.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+ASSERTION 12 OK: (2l+1)P_l = P_(l+1)&#39; - P_(l-1)&#39; exactly, for l=2,3,4,5 --
+the integration identity behind u_theta&#39;s stream-function derivation.
+
+ASSERTION 13 OK: (2l+1)(1-x^2)P_l&#39; = l(l+1)[P_(l-1)-P_(l+1)] exactly, for
+l=2,3,4,5 -- turns u_theta&#39;s angular factor into the same
+sin(theta)*P_l&#39;(cos theta) shape as u_r&#39;s theta-derivative.</code></pre><p>Build tau<em>r</em>theta/mu directly (concrete l, abstract radial function f(r)) and check that tau<em>r</em>theta=0 at r=R is EQUIVALENT to R^2 f&#39;&#39;(R) + 2R f&#39;(R) + [l(l+1)-2] f(R) = 0 – by substituting that conjectured relation (as a relation among f(R), f&#39;(R), f&#39;&#39;(R) treated as independent symbols, the same style as v,vp,vpp elsewhere in this script) and confirming tau<em>r</em>theta then vanishes IDENTICALLY in theta, not just at one angle.</p><pre><code class="language-julia hljs">@variables r_var theta_sym2 R_sym F0 F1 F2 Ffun(..)
+Dr_ = Differential(r_var)
+Dth_ = Differential(theta_sym2)
+
+for l_val in (2, 3, 4, 5, 6)
+    f = Ffun(r_var)
+    g = (2 * f + r_var * Dr_(f)) / (2 * l_val + 1)
+    Pl_th, Plp1_th, Plm1_th = legendre_P(l_val, cos(theta_sym2)), legendre_P(l_val + 1, cos(theta_sym2)), legendre_P(l_val - 1, cos(theta_sym2))
+    u_r_ = f * Pl_th
+    u_theta_ = (g / sin(theta_sym2)) * (Plp1_th - Plm1_th)
+    tau_over_mu = expand_derivatives(r_var * Dr_(u_theta_ / r_var) + (1 / r_var) * Dth_(u_r_))
+    at_R = substitute(tau_over_mu, Dict(Dr_(Dr_(f)) =&gt; F2, Dr_(f) =&gt; F1, f =&gt; F0))
+    at_R = substitute(at_R, Dict(r_var =&gt; R_sym))
+    F2_conjectured = -(2 * R_sym * F1 + (l_val * (l_val + 1) - 2) * F0) / R_sym^2
+    @assert symbolic_zero(substitute(at_R, Dict(F2 =&gt; F2_conjectured)))
+end
+println()
+println(&quot;ASSERTION 14 OK: tau_r_theta = 0 at r=R (for l=2,...,6) holds if and only&quot;)
+println(&quot;if R^2 f&#39;&#39;(R) + 2R f&#39;(R) + [l(l+1)-2] f(R) = 0 -- BC2 IS this scalar&quot;)
+println(&quot;condition on the radial profile f(r), not merely asserted to be.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+ASSERTION 14 OK: tau_r_theta = 0 at r=R (for l=2,...,6) holds if and only
+if R^2 f&#39;&#39;(R) + 2R f&#39;(R) + [l(l+1)-2] f(R) = 0 -- BC2 IS this scalar
+condition on the radial profile f(r), not merely asserted to be.</code></pre><p>Translate f(r)&#39;s condition into U(x): f(r)=kappa<em>G(r/R) for some overall constant kappa (which cancels, since the condition above is LINEAR and HOMOGENEOUS in f, f&#39;, f&#39;&#39;), and G(x)=U(x)/x^2 (Section 4). The chain rule gives f(R)=kappa</em>G(1), f&#39;(R)=kappa<em>G&#39;(1)/R, f&#39;&#39;(R)=kappa</em>G&#39;&#39;(1)/R^2, so R^2f&#39;&#39;+2Rf&#39;+[l(l+1)-2]f=0 at r=R becomes (dividing by kappa, R cancelling) the SAME scalar relation, now in G: G&#39;&#39;(1)+2G&#39;(1)+[l(l+1)-2]G(1)=0. We check this final substitution turns into exactly L2[U]=0.</p><pre><code class="language-julia hljs">@variables xx l q Pi_0 C U0 U1 U2 Ufun2(..)
+Dxx = Differential(xx)
+Gexpr = Ufun2(xx) / xx^2
+stepU(e) = substitute(e, Dict(Dxx(Dxx(Ufun2(xx))) =&gt; U2, Dxx(Ufun2(xx)) =&gt; U1, Ufun2(xx) =&gt; U0))
+G0 = simplify(stepU(substitute(Gexpr, Dict(xx =&gt; 1))); expand=true)
+G1 = simplify(substitute(stepU(expand_derivatives(Dxx(Gexpr))), Dict(xx =&gt; 1)); expand=true)
+G2 = simplify(substitute(stepU(expand_derivatives(Dxx(Dxx(Gexpr)))), Dict(xx =&gt; 1)); expand=true)
+G_condition = G2 + 2 * G1 + (l * (l + 1) - 2) * G0
+L2_target = U2 - 2 * U1 + l * (l + 1) * U0
+@assert symbolic_zero(G_condition - L2_target)
+println()
+println(&quot;ASSERTION 15 OK: substituting G=U/x^2 into the f-language condition above&quot;)
+println(&quot;reproduces EXACTLY L2[U]|_{x=1}=U&#39;&#39;(1)-2U&#39;(1)+l(l+1)U(1), for symbolic l --&quot;)
+println(&quot;BC2&#39;s operator, previously cited, is now derived end to end: stream&quot;)
+println(&quot;function -&gt; tau_r_theta=0 -&gt; f-ODE -&gt; G-ODE -&gt; L2[U]=0.&quot;)
+
+x = xx
 Dx_ = Differential(x)
 L2(U) = expand_derivatives(Dx_(Dx_(U)) - 2 / x * Dx_(U) + l * (l + 1) / x^2 * U)
 
@@ -210,7 +272,7 @@ Up = Pi_0 * x^(l + 1)
 L2_Up_target = 2 * (l - 1) * (l + 1) * Pi_0 * x^(l - 1)
 @assert symbolic_zero(L2(Up) - L2_Up_target)
 println()
-println(&quot;ASSERTION 12 OK: L2[U_p]=2(l-1)(l+1)*Pi_0*x^(l-1) exactly, for symbolic l.&quot;)
+println(&quot;ASSERTION 16 OK: L2[U_p]=2(l-1)(l+1)*Pi_0*x^(l-1) exactly, for symbolic l.&quot;)
 
 @variables v vp vpp
 z = q * x
@@ -220,15 +282,20 @@ vpp_relation = -(2 / q) * vp - (1 - l * (l + 1) / q^2) * v
 L2_Uh_target = C * (-q^2 * v + 2 * (l^2 + l - 1) * v - 2 * q * vp)
 @assert isequal(simplify(substitute(L2_Uh_at_1, Dict(vpp =&gt; vpp_relation)) - L2_Uh_target; expand=true), 0)
 println()
-println(&quot;ASSERTION 13 OK: L2[U_h]|_{x=1} = C*[-q^2*j_l(q) + 2(l^2+l-1)*j_l(q) - 2q*j_l&#39;(q)]&quot;)
+println(&quot;ASSERTION 17 OK: L2[U_h]|_{x=1} = C*[-q^2*j_l(q) + 2(l^2+l-1)*j_l(q) - 2q*j_l&#39;(q)]&quot;)
 println(&quot;exactly, after eliminating v&#39;&#39; via the spherical Bessel equation at z=q --&quot;)
 println(&quot;matching Reid&#39;s own stated coefficient, now independently re-derived.&quot;)
 println()
 println(&quot;Setting the sum L2[U_h]|_{x=1} + L2[U_p]|_{x=1} = 0 (BC2) gives one linear&quot;)
 println(&quot;relation between C and Pi_0.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 12 OK: L2[U_p]=2(l-1)(l+1)*Pi_0*x^(l-1) exactly, for symbolic l.
+ASSERTION 15 OK: substituting G=U/x^2 into the f-language condition above
+reproduces EXACTLY L2[U]|_{x=1}=U&#39;&#39;(1)-2U&#39;(1)+l(l+1)U(1), for symbolic l --
+BC2&#39;s operator, previously cited, is now derived end to end: stream
+function -&gt; tau_r_theta=0 -&gt; f-ODE -&gt; G-ODE -&gt; L2[U]=0.
 
-ASSERTION 13 OK: L2[U_h]|_{x=1} = C*[-q^2*j_l(q) + 2(l^2+l-1)*j_l(q) - 2q*j_l&#39;(q)]
+ASSERTION 16 OK: L2[U_p]=2(l-1)(l+1)*Pi_0*x^(l-1) exactly, for symbolic l.
+
+ASSERTION 17 OK: L2[U_h]|_{x=1} = C*[-q^2*j_l(q) + 2(l^2+l-1)*j_l(q) - 2q*j_l&#39;(q)]
 exactly, after eliminating v&#39;&#39; via the spherical Bessel equation at z=q --
 matching Reid&#39;s own stated coefficient, now independently re-derived.
 
@@ -240,12 +307,12 @@ curvature_from_formula = 2 / R_sym - (1 / R_sym^2) * (2 * zeta + angular_lap_zet
 curvature_target = (1 / R_sym) * (2 + (l_sym - 1) * (l_sym + 2) * eps_sym * Yl)
 @assert symbolic_zero(simplify(curvature_from_formula - curvature_target; expand=true))
 println()
-println(&quot;ASSERTION 14 OK: substituting zeta=eps*R*Y_l^m and the angular eigenvalue&quot;)
+println(&quot;ASSERTION 18 OK: substituting zeta=eps*R*Y_l^m and the angular eigenvalue&quot;)
 println(&quot;property into the linearized curvature formula reproduces&quot;)
 println(&quot;1/R1+1/R2 = (1/R)[2+(l-1)(l+2)*eps*Y_l^m] exactly, for symbolic l -- a&quot;)
 println(&quot;failing assertion here would mean either the cited curvature formula or&quot;)
 println(&quot;this section&#39;s own algebra disagrees with the stated (l-1)(l+2) result.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 14 OK: substituting zeta=eps*R*Y_l^m and the angular eigenvalue
+ASSERTION 18 OK: substituting zeta=eps*R*Y_l^m and the angular eigenvalue
 property into the linearized curvature formula reproduces
 1/R1+1/R2 = (1/R)[2+(l-1)(l+2)*eps*Y_l^m] exactly, for symbolic l -- a
 failing assertion here would mean either the cited curvature formula or
@@ -256,10 +323,10 @@ dGdx_at_1 = substitute(expand_derivatives(Dx__(U / x^2)), Dict(x =&gt; 1))
 target_at_1 = substitute(Dx__(U) - 2 * U, Dict(x =&gt; 1))
 @assert isequal(simplify(dGdx_at_1 - target_at_1; expand=true), 0)
 println()
-println(&quot;ASSERTION 15 OK: d/dx(U/x^2)|_{x=1} = U&#39;(1) - 2U(1) exactly.&quot;)
+println(&quot;ASSERTION 19 OK: d/dx(U/x^2)|_{x=1} = U&#39;(1) - 2U(1) exactly.&quot;)
 println()
 println(&quot;Dividing through by rho*epsilon*Y_l^m and using mu=rho*nu, BC3 becomes&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 15 OK: d/dx(U/x^2)|_{x=1} = U&#39;(1) - 2U(1) exactly.
+ASSERTION 19 OK: d/dx(U/x^2)|_{x=1} = U&#39;(1) - 2U(1) exactly.
 
 Dividing through by rho*epsilon*Y_l^m and using mu=rho*nu, BC3 becomes</code></pre><p class="math-container">\[\begin{equation}
 \frac{\mathrm{T}_{1} ~ \left( 2 + l \right) ~ \left( -1 + l \right)}{R ~ \rho}
@@ -278,12 +345,12 @@ rhs_rescaled = simplify(substitute(bc3_rhs, Dict(P0 =&gt; sigma^2 * R^2 * Pi_0 /
 rhs_in_q = simplify(substitute(rhs_rescaled, Dict(sigma =&gt; q^2 * nu / R^2)); expand=true)   # sigma = q^2*nu/R^2
 @assert symbolic_zero(rhs_in_q - q^2 * (q^2 * Pi_0 - 2 * l * Uterm))
 println()
-println(&quot;ASSERTION 16 OK: rescaling BC3 by l*R^2/nu^2 turns sigma_{l;0}^2*R^2/l&quot;)
+println(&quot;ASSERTION 20 OK: rescaling BC3 by l*R^2/nu^2 turns sigma_{l;0}^2*R^2/l&quot;)
 println(&quot;into alpha^4 = sigma_{l;0}^2*R^4/nu^2 on the left (T_1 and rho cancel),&quot;)
 println(&quot;and turns the right side into q^4*Pi_0 - 2*l*q^2*Uterm exactly, using&quot;)
 println(&quot;q^2=sigma*R^2/nu -- i.e. T_1 and rho have both cancelled, leaving a&quot;)
 println(&quot;problem purely in the dimensionless (alpha,q):&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 16 OK: rescaling BC3 by l*R^2/nu^2 turns sigma_{l;0}^2*R^2/l
+ASSERTION 20 OK: rescaling BC3 by l*R^2/nu^2 turns sigma_{l;0}^2*R^2/l
 into alpha^4 = sigma_{l;0}^2*R^4/nu^2 on the left (T_1 and rho cancel),
 and turns the right side into q^4*Pi_0 - 2*l*q^2*Uterm exactly, using
 q^2=sigma*R^2/nu -- i.e. T_1 and rho have both cancelled, leaving a
@@ -299,10 +366,10 @@ Pi0sol = simplify(substitute(bc_solution[2], Dict(jlp =&gt; jl * (l - q * Q) / q
 
 @assert symbolic_zero(Csol - 2 * (l^2 - 1) / (jl * q * (2Q - q)))
 println()
-println(&quot;ASSERTION 17 OK: solving BC1+BC2 gives C = 2(l-1)(l+1) / [j_l(q)*q*(2Q-q)]&quot;)
+println(&quot;ASSERTION 21 OK: solving BC1+BC2 gives C = 2(l-1)(l+1) / [j_l(q)*q*(2Q-q)]&quot;)
 println(&quot;exactly, matching Reid&#39;s Eq. 20 (this repo&#39;s docs/reid1960_expanded-3.tex,&quot;)
 println(&quot;Eq. C_soln), now via an independent symbolic solve rather than by-hand algebra.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 17 OK: solving BC1+BC2 gives C = 2(l-1)(l+1) / [j_l(q)*q*(2Q-q)]
+ASSERTION 21 OK: solving BC1+BC2 gives C = 2(l-1)(l+1) / [j_l(q)*q*(2Q-q)]
 exactly, matching Reid&#39;s Eq. 20 (this repo&#39;s docs/reid1960_expanded-3.tex,
 Eq. C_soln), now via an independent symbolic solve rather than by-hand algebra.</code></pre><p>Finally: substitute C, Pi_0 into <span>$U&#39;(1)-2U(1)$</span> (using <span>$U(1)=-1$</span> from BC1), then into the <span>$\alpha^4$</span> relation above. This is the single largest algebraic reduction in the whole derivation – the <span>$.tex$</span> calls the by-hand version of this step &quot;lengthy&quot; and does not show every intermediate line. Symbolics does not get tired.</p><p>NOTE: two SEPARATE substitute passes, not one combined dict – C/Pi_0&#39;s own raw solutions still contain jlp, and a single-pass substitute does not recursively re-process values it has just substituted in.</p><pre><code class="language-julia hljs">Uprime1_minus_2U1 = substitute(C * (jl + q * jlp) + Pi_0 * (l + 1) + 2, Dict(C =&gt; bc_solution[1], Pi_0 =&gt; bc_solution[2]))
 Uprime1_minus_2U1 = simplify(substitute(Uprime1_minus_2U1, Dict(jlp =&gt; jl * (l - q * Q) / q)); expand=true)
@@ -311,7 +378,7 @@ alpha4_derived = simplify(q^2 * (q^2 * Pi0sol - 2 * l * Uprime1_minus_2U1); expa
 characteristic_eq_rhs = q^4 * ((2 * (l - 1) / q^2) * (l + (l + 1) * (q - 2 * l * Q) / (q - 2 * Q)) - 1)
 @assert symbolic_zero(alpha4_derived - characteristic_eq_rhs)
 println()
-println(&quot;ASSERTION 18 OK -- THE MAIN RESULT: substituting the boundary-condition&quot;)
+println(&quot;ASSERTION 22 OK -- THE MAIN RESULT: substituting the boundary-condition&quot;)
 println(&quot;solutions into the T1-eliminated alpha^4 relation gives EXACTLY Reid&#39;s&quot;)
 println(&quot;closed-form characteristic equation, for symbolic l and q. This is the&quot;)
 println(&quot;single equation the rest of this repo&#39;s viscous-drop physics rests on.&quot;)
@@ -323,7 +390,7 @@ derivation -- the oscillation frequency, the damping rate, whether a drop
 of a given size and viscosity oscillates or just squashes back down --
 is now known to follow from exactly this one equation:
 &quot;&quot;&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 18 OK -- THE MAIN RESULT: substituting the boundary-condition
+ASSERTION 22 OK -- THE MAIN RESULT: substituting the boundary-condition
 solutions into the T1-eliminated alpha^4 relation gives EXACTLY Reid&#39;s
 closed-form characteristic equation, for symbolic l and q. This is the
 single equation the rest of this repo&#39;s viscous-drop physics rests on.
@@ -334,16 +401,16 @@ of a given size and viscosity oscillates or just squashes back down --
 is now known to follow from exactly this one equation:</code></pre><p class="math-container">\[\frac{\alpha^4}{q^4} + 1 = \begin{equation}
 \frac{2 ~ \left( l + \frac{\left( q - 2 ~ Q ~ l \right) ~ \left( 1 + l \right)}{ - 2 ~ Q + q} \right) ~ \left( -1 + l \right)}{q^{2}}
 \end{equation}
-\]</p><p>where <span>$q^2=\sigma R^2/\nu$</span>, <span>$\alpha^2=\sigma_{l;0}R^2/\nu$</span>, and <span>$Q_{l+1/2}(q)=j_{l+1}(q)/j_l(q)$</span>.</p><p>A failing <code>ASSERTION 16</code> would mean either this script&#39;s own algebra has a bug, or that <code>docs/reid1960_expanded-3.tex</code>&#39;s transcription of Reid (1960)&#39;s Eq. 19 has an error that this independent CAS re-derivation caught – worth knowing either way, since every damping/frequency number this repo computes ultimately traces back to this one equation.</p><hr/><h2 id="Section-8:-The-small-viscosity-(Lamb)-limit"><a class="docs-heading-anchor" href="#Section-8:-The-small-viscosity-(Lamb)-limit">Section 8: The small-viscosity (Lamb) limit</a><a id="Section-8:-The-small-viscosity-(Lamb)-limit-1"></a><a class="docs-heading-anchor-permalink" href="#Section-8:-The-small-viscosity-(Lamb)-limit" title="Permalink"></a></h2><hr/><p>The exact characteristic equation is transcendental – it has infinitely many roots, found numerically in practice (that numerical machinery, and the finite-viscosity coefficients this repo&#39;s solver actually uses, are the subject of the companion <code>reid_finite_oh_derivation.jl</code>). But there is one important limit we CAN get in closed form: low viscosity, <span>$q\to\infty$</span>.</p><p><strong>Cited, not re-derived here</strong> (standard large-argument Bessel asymptotics, matching the level of the companion <code>.tex</code>): as <span>$q\to\infty$</span>, <span>$Q_{l+1/2}(q)/q\to 0$</span> between the poles of <span>$Q_{l+1/2}$</span>. Setting <span>$Q\to 0$</span> in the exact characteristic equation (an idealization of that limit) collapses the bracket on the right to exactly <span>$l+(l+1)=2l+1$</span>:</p><pre><code class="language-julia hljs">@variables l q alpha Q
+\]</p><p>where <span>$q^2=\sigma R^2/\nu$</span>, <span>$\alpha^2=\sigma_{l;0}R^2/\nu$</span>, and <span>$Q_{l+1/2}(q)=j_{l+1}(q)/j_l(q)$</span>.</p><p>A failing <code>ASSERTION 22</code> would mean either this script&#39;s own algebra has a bug, or that <code>docs/reid1960_expanded-3.tex</code>&#39;s transcription of Reid (1960)&#39;s Eq. 19 has an error that this independent CAS re-derivation caught – worth knowing either way, since every damping/frequency number this repo computes ultimately traces back to this one equation.</p><hr/><h2 id="Section-8:-The-small-viscosity-(Lamb)-limit"><a class="docs-heading-anchor" href="#Section-8:-The-small-viscosity-(Lamb)-limit">Section 8: The small-viscosity (Lamb) limit</a><a id="Section-8:-The-small-viscosity-(Lamb)-limit-1"></a><a class="docs-heading-anchor-permalink" href="#Section-8:-The-small-viscosity-(Lamb)-limit" title="Permalink"></a></h2><hr/><p>The exact characteristic equation is transcendental – it has infinitely many roots, found numerically in practice (that numerical machinery, and the finite-viscosity coefficients this repo&#39;s solver actually uses, are the subject of the companion <code>reid_finite_oh_derivation.jl</code>). But there is one important limit we CAN get in closed form: low viscosity, <span>$q\to\infty$</span>.</p><p><strong>Cited, not re-derived here</strong> (standard large-argument Bessel asymptotics, matching the level of the companion <code>.tex</code>): as <span>$q\to\infty$</span>, <span>$Q_{l+1/2}(q)/q\to 0$</span> between the poles of <span>$Q_{l+1/2}$</span>. Setting <span>$Q\to 0$</span> in the exact characteristic equation (an idealization of that limit) collapses the bracket on the right to exactly <span>$l+(l+1)=2l+1$</span>:</p><pre><code class="language-julia hljs">@variables l q alpha Q
 characteristic_lhs = alpha^4 / q^4 + 1
 characteristic_rhs_full = (2 * (l - 1) / q^2) * (l + (l + 1) * (q - 2 * l * Q) / (q - 2 * Q))
 characteristic_rhs_Q0 = substitute(characteristic_rhs_full, Dict(Q =&gt; 0))
 @assert symbolic_zero(characteristic_rhs_Q0 - 2 * (l - 1) * (2l + 1) / q^2)
 println()
-println(&quot;ASSERTION 19 OK: setting Q=0 in the exact characteristic equation&#39;s RHS&quot;)
+println(&quot;ASSERTION 23 OK: setting Q=0 in the exact characteristic equation&#39;s RHS&quot;)
 println(&quot;collapses the bracket [l+(l+1)(q-2lQ)/(q-2Q)] to exactly 2l+1 -- the&quot;)
 println(&quot;q-&gt;infinity idealization used throughout this section.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 19 OK: setting Q=0 in the exact characteristic equation&#39;s RHS
+ASSERTION 23 OK: setting Q=0 in the exact characteristic equation&#39;s RHS
 collapses the bracket [l+(l+1)(q-2lQ)/(q-2Q)] to exactly 2l+1 -- the
 q-&gt;infinity idealization used throughout this section.</code></pre><p>Multiplying through by <span>$q^4$</span> turns this into a genuine QUADRATIC in <span>$q^2$</span>:</p><p class="math-container">\[q^4 - 2(l-1)(2l+1)\,q^2 + \alpha^4 = 0.\]</p><p>Solved by the quadratic formula, <span>$q^2 = (l-1)(2l+1) \pm \sqrt{(l-1)^2(2l+1)^2-\alpha^4}$</span>. For <span>$\alpha \gg 1$</span> (the low-viscosity regime this limit describes), the <span>$\alpha^4$</span> term dominates under the square root, giving <span>$q^2 \approx (l-1)(2l+1) \pm i\alpha^2$</span> to leading order – and since <span>$\sigma = q^2\nu/R^2$</span> and <span>$\alpha^2\nu/R^2=\sigma_{l;0}$</span> by definition, this is exactly <strong>Lamb&#39;s classical result</strong>:</p><p class="math-container">\[\sigma_{l;\nu} = (l-1)(2l+1)\,\frac{\nu}{R^2} \pm i\,\sigma_{l;0}.\]</p><p>We check this quantitatively rather than just asymptotically: the relative error between the EXACT quadratic root and Lamb&#39;s leading-order formula should shrink as <span>$\alpha\to\infty$</span>.</p><pre><code class="language-julia hljs">for l_val in (2, 3, 5, 10)
     prev_err = Inf
@@ -356,7 +423,7 @@ q-&gt;infinity idealization used throughout this section.</code></pre><p>Multipl
     end
 end
 println()
-println(&quot;ASSERTION 20 OK: the exact quadratic&#39;s root and Lamb&#39;s leading-order&quot;)
+println(&quot;ASSERTION 24 OK: the exact quadratic&#39;s root and Lamb&#39;s leading-order&quot;)
 println(&quot;formula converge (relative gap shrinks monotonically as alpha grows,&quot;)
 println(&quot;l=2,3,5,10) -- confirming Lamb&#39;s formula IS the alpha-&gt;infinity limit&quot;)
 println(&quot;of the exact characteristic equation, not an unrelated approximation.&quot;)
@@ -380,7 +447,7 @@ machinery that solves this transcendental equation robustly at finite Oh,
 the (lambda_l(Oh), omega_l^2(Oh)) parametrization actually wired into
 `julia/src/reid.jl`, and a live cross-check against the running solver.
 &quot;&quot;&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
-ASSERTION 20 OK: the exact quadratic&#39;s root and Lamb&#39;s leading-order
+ASSERTION 24 OK: the exact quadratic&#39;s root and Lamb&#39;s leading-order
 formula converge (relative gap shrinks monotonically as alpha grows,
 l=2,3,5,10) -- confirming Lamb&#39;s formula IS the alpha-&gt;infinity limit
 of the exact characteristic equation, not an unrelated approximation.
@@ -430,7 +497,7 @@ for (Oh_val, l_val) in ((0.02, 2), (0.02, 3), (0.05, 2))
     @assert err &lt; 0.05
 end
 println()
-println(&quot;ASSERTION 21 OK: a live, small-Oh solve_drop! run decays at the rate&quot;)
+println(&quot;ASSERTION 25 OK: a live, small-Oh solve_drop! run decays at the rate&quot;)
 println(&quot;Section 8&#39;s Lamb-limit derivation predicts, to &lt;5% -- confirming this&quot;)
 println(&quot;document&#39;s physics matches the actual running production code, not&quot;)
 println(&quot;just its own internal algebra.&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Info: solve_drop! starting
@@ -470,7 +537,7 @@ println(&quot;just its own internal algebra.&quot;)</code></pre><pre class="docu
 └   saved_frames = 242
   Oh=0.05 l=2: gamma_lamb(Section 8)=0.25  gamma_sim(live solve_drop!)=0.25333  rel_err=0.0133
 
-ASSERTION 21 OK: a live, small-Oh solve_drop! run decays at the rate
+ASSERTION 25 OK: a live, small-Oh solve_drop! run decays at the rate
 Section 8&#39;s Lamb-limit derivation predicts, to &lt;5% -- confirming this
 document&#39;s physics matches the actual running production code, not
-just its own internal algebra.</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../reid1960/10-molacek-bush-summary/">« Molaček &amp; Bush Connection + Summary</a><a class="docs-footer-nextpage" href="../reid_finite_oh_derivation/">Part 2 – Finite-Oh damping and frequency (production wiring) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Saturday 1 August 2026 00:15">Saturday 1 August 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+just its own internal algebra.</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../reid1960/10-molacek-bush-summary/">« Molaček &amp; Bush Connection + Summary</a><a class="docs-footer-nextpage" href="../reid_finite_oh_derivation/">Part 2 – Finite-Oh damping and frequency (production wiring) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Saturday 1 August 2026 00:20">Saturday 1 August 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
