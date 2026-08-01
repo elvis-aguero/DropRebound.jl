@@ -52,6 +52,7 @@ makedocs(
             "Linearized Governing Equations" => "reid1960/04-linearized-equations.md",
             "The Pressure Field" => "reid1960/05-pressure-field.md",
             "The Velocity ODE" => "reid1960/06-velocity-ode.md",
+            "Boundary Conditions" => "reid1960/07-boundary-conditions.md",
             "The Characteristic Equation" => "reid1960/08-characteristic-equation.md",
             "Structure of the Solutions" => "reid1960/09-structure-of-solutions.md",
             "Molaček & Bush Connection + Summary" => "reid1960/10-molacek-bush-summary.md",
