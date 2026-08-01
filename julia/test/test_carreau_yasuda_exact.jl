@@ -40,6 +40,91 @@ using DropSolver
         @test J_X ≈ J_N atol=1e-12
     end
 
+    @testset "lambda_c=0 on the PRODUCTION (:reid) path -> reduces to build_residual!/build_jacobian" begin
+        # `viscous=:reid` is the DEFAULT for STExactParams and what
+        # julia/scripts/validate_shear_thinning.jl actually runs, so the
+        # Newtonian-limit guarantee has to hold THERE, not just on :lamb.
+        # With lambda_c=0 the Carreau-Yasuda ratio
+        # mu_eff/mu_0 = [1+(lambda_c*S)^a]^(-eps_ST) is identically 1 at every
+        # quadrature point regardless of how much the drop is shearing, so
+        # Oh_eff_l == Oh0 for every mode and the whole shear-thinning wrapper
+        # must add NOTHING.
+        #
+        # "Nothing" is measured against the matching Newtonian baseline: the
+        # comparison is only meaningful when SimConstants is ALSO built with
+        # viscous=:reid. build_residual_st_exact! overwrites the entire R2
+        # block with lambda/omega2 taken from stx (Reid at Oh_eff), so a
+        # cfg built with the default viscous=:lamb would be compared against
+        # Lamb's small-Oh asymptotics -- a genuinely DIFFERENT physical model,
+        # not a numerical discrepancy. The final two @tests below assert that
+        # the :lamb baseline is in fact rejected at these very tolerances, so
+        # the tolerances cannot be silently satisfied by the wrong baseline.
+        M = 4
+        Oh0 = 0.05
+        Bo = 1e-12
+        theta_vec = collect(range(pi, 0; length=M+1))
+        precomp = precompute_integrals(NaN, M)[1]
+        dt = 0.005
+        cfg_reid = SimConstants(M, M + 1, Oh0, Bo, theta_vec, precomp, dt; viscous=:reid)
+        cfg_lamb = SimConstants(M, M + 1, Oh0, Bo, theta_vec, precomp, dt)   # WRONG baseline, asserted so below
+        ob = OBParams()
+
+        stx = STExactParams(M, Oh0, 0.0, 2.0, 0.5; viscous=:reid)  # lambda_c=0 -> a,eps_ST irrelevant
+
+        # Oh_eff is identically Oh0 -- to floating point, not merely closely --
+        # for a quiescent drop, a single mode, several coupled modes, and an
+        # absurdly violent shear field alike. A failure here means thinning is
+        # leaking in through a fluid that by construction cannot thin.
+        for Adot_vec in (zeros(M - 1), [0.3, 0.0, 0.0], [0.3, -0.2, 0.6], [1e5, -2e5, 3e5])
+            @test all(x -> isapprox(x, Oh0; rtol=1e-14), oh_eff_all_coupled(stx, Oh0, Adot_vec))
+        end
+
+        # Localize the ONLY remaining source of disagreement before comparing
+        # residuals: stx's :reid path interpolates a 150-point ReidTable in
+        # log(Oh), whereas SimConstants' :reid path solves Reid's
+        # characteristic equation exactly at Oh0. Even at Oh_eff == Oh0 these
+        # differ by the table's linear-interpolation error -- measured 2.6e-4
+        # relative in lambda and 2.0e-5 in omega^2, which is what sets the
+        # residual/Jacobian tolerances below. This is a real (small, known)
+        # inexactness of the production path, not an artifact of the test.
+        lam_x, om2_x = lambda_omega2_from_oh_eff(stx, fill(Oh0, M - 1))
+        @test lam_x ≈ cfg_reid.drop_lambda rtol=1e-3
+        @test om2_x ≈ cfg_reid.drop_omega2 rtol=1e-3
+
+        # A state with BOTH nonzero A and nonzero Adot, so the residual
+        # exercises the restoring (D1*A) and damping (D2*Adot) terms -- with
+        # Adot==0 the damping coefficient would never enter the residual at all.
+        s0 = DropState(M)
+        s0.A[2] = 0.05
+        s0.A[3] = -0.02
+        s0.Adot[2] = 0.3
+        s0.Adot[4] = -0.15
+        s0.z = 1.0
+        s0.v = -0.2
+        s0.dt = dt
+        history = [deepcopy(s0)]
+
+        R_N = zeros(3M + 1)
+        build_residual!(R_N, s0, history, dt, 0, cfg_reid, ob)
+        R_X = zeros(3M + 1)
+        build_residual_st_exact!(R_X, s0, history, dt, 0, cfg_reid, ob, stx)
+        @test R_X ≈ R_N atol=1e-6   # measured gap 3.4e-7, all of it ReidTable interpolation
+
+        J_N = build_jacobian(s0, history, dt, 0, cfg_reid, ob)
+        J_X = build_jacobian_st_exact(s0, history, dt, 0, cfg_reid, ob, stx)
+        @test J_X ≈ J_N atol=1e-4   # measured gap 7.1e-6, same origin
+
+        # The tolerances above are NOT vacuous: against the Lamb-coefficient
+        # SimConstants they are violated by ~1000x (residual gap 4.0e-4,
+        # Jacobian gap 1.4e-2), i.e. these tests would catch the wrapper
+        # silently falling back to Lamb damping on the :reid path.
+        R_lamb = zeros(3M + 1)
+        build_residual!(R_lamb, s0, history, dt, 0, cfg_lamb, ob)
+        J_lamb = build_jacobian(s0, history, dt, 0, cfg_lamb, ob)
+        @test !isapprox(R_X, R_lamb; atol=1e-6)
+        @test !isapprox(J_X, J_lamb; atol=1e-4)
+    end
+
     @testset "Jacobian matches finite differences (:lamb)" begin
         M = 4
         Oh0 = 0.3
@@ -86,6 +171,80 @@ using DropSolver
             J_fd[:, j] .= (Rp .- R0) ./ h
         end
         @test J_analytic ≈ J_fd rtol=1e-4 atol=1e-6
+    end
+
+    @testset "Jacobian matches finite differences (:reid, the production path)" begin
+        # Same check as above, but on the DEFAULT/production viscous model and
+        # with lambda_c != 0, so the shear-thinning machinery is genuinely
+        # engaged: the lagged Adot below drives Oh_eff_l down to ~0.65-0.70 of
+        # Oh0 (verified: not a disguised Newtonian run), and lambda/omega^2 come
+        # from the cached ReidTable rather than Lamb's closed form.
+        #
+        # This one can and should be held to a MUCH tighter tolerance than the
+        # :lamb case above. build_residual_st_exact! evaluates Oh_eff at the
+        # LAGGED history velocity (history[end].Adot), never at the state being
+        # solved for, so D1 and D2 are frozen constants within a Newton step and
+        # the analytical Jacobian is exact, not an approximation: the only gap
+        # left is the O(h) truncation error of the one-sided difference itself.
+        # Measured worst-entry gap 8.2e-11 on entries of order 1 -- so rtol=1e-6
+        # still leaves four orders of headroom over FD noise while being 1e4x
+        # tighter than a "reasonable" default. A failure here would mean either
+        # the lagging convention was broken (Oh_eff started depending on the
+        # current unknowns, making the diagonal-only Jacobian wrong) or the
+        # residual and Jacobian stopped using the same D1/D2 -- both of which
+        # cost Newton its quadratic convergence. Verified discriminating: the
+        # plain Newtonian build_jacobian fails this same check by 2.5e-2.
+        M = 4
+        Oh0 = 0.3
+        Bo = 1e-6
+        theta_vec = collect(range(pi, 0; length=M+1))
+        precomp = precompute_integrals(NaN, M)[1]
+        cfg = SimConstants(M, M + 1, Oh0, Bo, theta_vec, precomp, 0.01; viscous=:reid)
+        ob = OBParams()
+        stx = STExactParams(M, Oh0, 5.0, 1.5, 0.3; viscous=:reid)
+
+        s_prev = DropState(M)
+        s_prev.Adot[2] = 0.2
+        s_prev.Adot[4] = -0.08   # a second active mode, so the coupling is live
+        s_prev.z = 1.0
+        s_prev.dt = 0.01
+        history = [s_prev]
+        dt = 0.01
+        cp = 0
+
+        # Guard the premise: if this ever stopped thinning, the FD check would
+        # silently degenerate into the Newtonian test above.
+        Oh_eff = oh_eff_all_coupled(stx, Oh0, s_prev.Adot[2:end])
+        @test all(x -> x < 0.9 * Oh0, Oh_eff)
+
+        s_curr = DropState(M)
+        s_curr.A[2] = 0.04
+        s_curr.Adot[2] = 0.18
+        s_curr.z = 1.02
+        s_curr.v = -0.1
+        s_curr.B .= 0.01
+
+        X0 = pack_X(s_curr, M)
+        function R!(buf, Xv)
+            s = deepcopy(s_curr)
+            unpack_X!(s, Xv, M)
+            build_residual_st_exact!(buf, s, history, dt, cp, cfg, ob, stx)
+        end
+        n = length(X0)
+        R0 = zeros(n)
+        R!(R0, X0)
+        J_analytic = build_jacobian_st_exact(s_curr, history, dt, cp, cfg, ob, stx)
+
+        J_fd = zeros(n, n)
+        h = 1e-6
+        for j in 1:n
+            Xp = copy(X0)
+            Xp[j] += h
+            Rp = zeros(n)
+            R!(Rp, Xp)
+            J_fd[:, j] .= (Rp .- R0) ./ h
+        end
+        @test J_analytic ≈ J_fd rtol=1e-6 atol=1e-8
     end
 
     @testset "STExactParams(:reid) construction" begin

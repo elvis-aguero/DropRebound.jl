@@ -26,6 +26,7 @@ const READING_ORDER = [
     "cross_fluid_derivation.jl" => "Part 6 -- Cross-model fluids",
     "carreau_yasuda_derivation.jl" => "Part 7 -- Carreau-Yasuda, weakly-nonlinear (legacy, superseded by Part 5)",
     "carreauYasuda_firstprinciples_derivation.jl" => "Part 8 -- Carreau-Yasuda, why amplitude perturbation theory fails",
+    "generalized_newtonian_hierarchy_derivation.jl" => "Part 9 -- Shear-thinning drops: a hierarchy of models, from the exact problem down",
 ]
 
 all_scripts = Set(filter(f -> endswith(f, ".jl"), readdir(DERIVATIONS_SRC)))
@@ -46,23 +47,11 @@ makedocs(
     repo = Remotes.GitHub("elvis-aguero", "DropRebound.jl"),
     pages = [
         "Home" => "index.md",
-        "Reid (1960) [pilot: hand-authored prose]" => [
-            "Introduction" => "reid1960/01-introduction.md",
-            "Mathematical Preliminaries" => "reid1960/02-preliminaries.md",
-            "Problem Setup" => "reid1960/03-problem-setup.md",
-            "Linearized Governing Equations" => "reid1960/04-linearized-equations.md",
-            "The Pressure Field" => "reid1960/05-pressure-field.md",
-            "The Velocity ODE" => "reid1960/06-velocity-ode.md",
-            "Boundary Conditions" => "reid1960/07-boundary-conditions.md",
-            "The Characteristic Equation" => "reid1960/08-characteristic-equation.md",
-            "Structure of the Solutions" => "reid1960/09-structure-of-solutions.md",
-            "Molaček & Bush Connection + Summary" => "reid1960/10-molacek-bush-summary.md",
-        ],
-        "Carreau-Yasuda [pilot: hand-authored prose]" => [
-            "Why Amplitude Perturbation Theory Fails" => "carreau_yasuda_fp/01-why-perturbation-fails.md",
-            "What Survives" => "carreau_yasuda_fp/02-what-survives.md",
-        ],
-        "CAS Derivations" => derivation_pages,
+        ## The hand-authored `reid1960/` and `carreau_yasuda_fp/` chapters have been
+        ## removed: they restated, in a second voice, physics that the derivation
+        ## scripts already derive. A single source of truth per topic -- the script,
+        ## which is simultaneously the CI test and the rendered chapter.
+        "Derivations" => derivation_pages,
         "API Reference" => "api.md",
     ],
     format = Documenter.HTML(
