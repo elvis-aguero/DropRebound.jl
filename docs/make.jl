@@ -25,6 +25,7 @@ const READING_ORDER = [
     "carreau_yasuda_multimode_derivation.jl" => "Part 5 -- Carreau-Yasuda, multi-mode coupling (current model)",
     "cross_fluid_derivation.jl" => "Part 6 -- Cross-model fluids",
     "carreau_yasuda_derivation.jl" => "Part 7 -- Carreau-Yasuda, weakly-nonlinear (legacy, superseded by Part 5)",
+    "carreauYasuda_firstprinciples_derivation.jl" => "Part 8 -- Carreau-Yasuda, why amplitude perturbation theory fails",
 ]
 
 all_scripts = Set(filter(f -> endswith(f, ".jl"), readdir(DERIVATIONS_SRC)))

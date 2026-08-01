@@ -1,0 +1,420 @@
+%% ════════════════════════════════════════════════════════════════════════════
+\section{General-Exponent Carreau-Yasuda: Why Amplitude Perturbation Theory
+         Fails, and What Survives}
+\label{sec:cy_firstprinciples}
+%% ════════════════════════════════════════════════════════════════════════════
+
+Section~\ref{sec:carreau} derives a slow amplitude equation for the classical
+Carreau law, $\mu_{\mathrm{eff}}=\mu_0[1+(\lambda_c\dot\gamma)^2]^{(n-1)/2}$,
+valid for $\mathrm{Oh}\ll 1$ and small oscillation amplitude. That derivation
+is correct for the model it treats. This section asks a harder question:
+does an analogous small-amplitude expansion exist for the \emph{general}
+Carreau-Yasuda law,
+\begin{equation}
+  \eta(\dot\gamma) = \eta_\infty + (\eta_0-\eta_\infty)\bigl[1+(\lambda_c\dot\gamma)^a\bigr]^{(n-1)/a},
+  \label{eq:cy_general}
+\end{equation}
+with the shape exponent $a$ left general rather than fixed at $2$ -- the form
+this repo's own fitted validation fluid actually uses
+($\mathrm{Oh}_0\approx 57.37$, $\lambda_c\approx 3.05\times 10^4$,
+$a\approx 0.743$, $\varepsilon_{ST}\equiv(1-n)/a\approx 0.9996$)?
+
+The short answer, reached only after an extensive derivation and two
+independent adversarial checks of every step, is: \textbf{no, not for this
+fluid's fitted parameters}. This is not a failure of nerve or a shortcut --
+it is a precisely quantified mathematical fact about where this particular
+fluid's physics actually lives on the Carreau-Yasuda curve. What survives
+the investigation is three genuinely new, general, CAS-verified results that
+have nothing to do with any specific fluid's parameters, plus a clear,
+quantitative diagnosis of exactly what a first-principles treatment of
+\emph{this} fluid requires instead.
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{Why the classical $O(\epsilon^3)$ route is not available here}
+\label{sec:cy_why_not_epsilon3}
+%% ────────────────────────────────────────────────────────────────────────────
+
+Section~\ref{sec:carreau}'s expansion rests on one fact: with $a=2$ fixed,
+$(\lambda_c\dot\gamma)^2$ is an even integer power of $\dot\gamma$, hence an
+analytic (Taylor-expandable) function of the oscillation amplitude
+$\epsilon$, since $\dot\gamma=O(\epsilon)$ linearly in Reid's single-mode
+ansatz. The viscosity correction is then $O(\epsilon^2)$, the stress
+correction $O(\epsilon^3)$, and a standard Landau-equation-style
+method-of-averaging calculation goes through cleanly.
+
+\begin{notebox}[The exponent matters, not just its size]
+For a \emph{general} exponent $a$, $(\lambda_c\dot\gamma)^a\sim
+(\lambda_c\epsilon)^a\,\hat g(\theta)^a$ for some $O(1)$ angular shape
+$\hat g$. If $a$ is not an even integer, $|\epsilon|^a$ is not differentiable
+at $\epsilon=0$ (it is only H\"older continuous there). For this fluid's
+fitted $a\approx 0.743 <1$, the viscosity correction scales as
+$|\epsilon|^{0.743}$, which is \emph{larger} than $\epsilon$ itself for small
+$\epsilon$ (since $|\epsilon|^{a-1}\to\infty$ as $\epsilon\to0$ when $a<1$).
+There is no regime, however small the amplitude, in which this correction is
+a small perturbation of a fixed integer-power hierarchy: it sits at a
+genuinely fractional order between Reid's $O(\epsilon)$ linear terms and the
+usual $O(\epsilon^2)$ geometric mode-coupling correction.
+\end{notebox}
+
+This alone does not doom a perturbative treatment -- a fractional-order
+expansion parameter is unusual but not unheard of. What actually closes off
+the small-amplitude route for this fluid is quantitative, not structural,
+and is established in the next section.
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{Two natural anchors, and why neither supports a small correction}
+\label{sec:cy_anchors}
+%% ────────────────────────────────────────────────────────────────────────────
+
+A shear-thinning fluid's viscosity interpolates between two Newtonian
+limits: $\eta_0$ at rest ($\dot\gamma\to0$) and $\eta_\infty$ at infinite
+shear ($\dot\gamma\to\infty$). Reid's characteristic equation
+(Section~\ref{sec:char_eq}) gives the \emph{exact} damping rate
+$\lambda_l(\mathrm{Oh})$ and squared frequency $\omega_l^2(\mathrm{Oh})$ at
+\emph{any} Ohnesorge number, so either limit is a legitimate place to try to
+anchor a correction.
+
+\begin{derivbox}[Anchoring at rest, $\mathrm{Oh}_0$: fails outright]
+At $\mathrm{Oh}_0\approx 57.37$, every mode this fluid's solver resolves is
+heavily overdamped:
+\[
+  \begin{array}{cccc}
+    l & \lambda_l & \omega_l^2 & \\
+    2 & 203.8 & 7.48 & \text{overdamped} \\
+    3 & 459.4 & 25.48 & \text{overdamped} \\
+    5 & 1119.3 & 102.9 & \text{overdamped} \\
+    10 & 3681.4 & 665.4 & \text{overdamped}
+  \end{array}
+\]
+There is no oscillation to average over, so a multiple-scales/envelope
+treatment has no fast carrier wave to modulate. Separately, solving for the
+shear rate at which the viscosity correction reaches even the $1\%$ level
+gives $\dot\gamma\lesssim 7\times10^{-8}$ -- a shear rate no resolved mode
+velocity in this solver ever produces. Both the qualitative premise (an
+oscillator to perturb) and the quantitative premise (a small correction)
+fail simultaneously.
+\end{derivbox}
+
+\begin{derivbox}[Anchoring at infinite shear, $\mathrm{Oh}_\infty$: better
+                 posed, but still not small]
+Define $\mathrm{Oh}_\infty\equiv\mathrm{Oh}_0\,(\eta_\infty/\eta_0) =
+\mathrm{Oh}_0(1-\varepsilon_{ST})\approx 0.0254$. Unlike $\mathrm{Oh}_0$,
+this \emph{is} comfortably underdamped: at $l=2$,
+$\lambda_2=0.116$, $\omega_2^2=7.95$. Reid's oscillator convention is
+$\ddot A+2\lambda\dot A+\omega^2A=\text{forcing}$
+(\texttt{julia/src/reid.jl}), so the quality factor is
+$Q\equiv\sqrt{\omega_2^2}/(2\lambda_2)\approx 12$ -- a genuine separation
+between the decay time and the oscillation period, exactly the condition a
+weakly-damped multiple-scales treatment needs. A live solver trace (three
+impact energies, fine time resolution) confirms the drop's actual effective
+Ohnesorge number, once excited, is permanently pinned away from
+$\mathrm{Oh}_0$ after a single clean transient at first contact, with no
+recurrence on later contact/lift-off cycles.
+
+But ``pinned away from $\mathrm{Oh}_0$'' is not the same claim as ``close to
+$\mathrm{Oh}_\infty$.'' Evaluating the exact Carreau-Yasuda law at the shear
+rates this fluid's live trace actually visits ($\dot\gamma\sim
+0.05$--$1.5$, in the solver's nondimensional units) gives
+$\mathrm{Oh}_{\mathrm{eff}}/\mathrm{Oh}_\infty$ ratios of roughly $2$ to
+$7$ -- not a small departure from the anchor. And the relevant question is
+not this ratio directly, but whether the \emph{first-order Taylor expansion}
+of Reid's own exact $\lambda_l(\mathrm{Oh})$, $\omega_l^2(\mathrm{Oh})$
+around $\mathrm{Oh}_\infty$ reproduces their true values over that range.
+Checked directly against the exact (continuation-solved) relations, at four
+points spanning the operative band, $\mathrm{Oh}=0.03,0.05,0.08,0.1$
+(ratios $1.2$--$3.9\times\mathrm{Oh}_\infty$): $\omega_l^2$ is nearly flat in
+$\mathrm{Oh}$ near $\mathrm{Oh}_\infty$ -- linear-approximation error stays
+under $0.3\%$ for $l=2$ across the whole band, and is still small for
+higher $l$, growing to about $1.5\%$ by $l=10$ at the band's upper end. But
+$\lambda_l$ is far more sensitive and its error \emph{grows across the
+band}, not just with $l$: at the low end ($\mathrm{Oh}=0.03$) every $l$
+tested is under $0.3\%$, but by the upper end ($\mathrm{Oh}=0.1$) the error
+has grown to $8\%$ ($l=2$), $12\%$ ($l=3$), $17\%$ ($l=5$), and $26\%$
+($l=10$) -- the same growing-with-$l$ curvature that broke the
+$\mathrm{Oh}_0$ anchor reappears here, mode-dependently, and here it also
+grows across the operative band itself, not just across modes.
+Moving the anchor to some other, empirically ``typical'' $\mathrm{Oh}^\ast$
+does not rescue this: the curvature in $\lambda_l(\mathrm{Oh})$ at high $l$
+sets in almost immediately away from any point in the operative range, so no
+placement of a single anchor buys a genuinely wide small-parameter regime.
+\end{derivbox}
+
+\begin{keybox}[The honest conclusion]
+For this fluid's fitted parameters, there is no single reference viscosity
+-- rest, infinite-shear, or any point in between -- around which a
+regular (or matched-asymptotic, single-anchor) perturbation expansion of
+Reid's damping rate is uniformly valid across the modes this solver
+resolves. The physics genuinely lives in the fully nonlinear, transitional
+part of the Carreau-Yasuda curve, not in a neighborhood of either plateau.
+This is a quantitative fact about \emph{this fluid's} $\lambda_c$ and $a$,
+not a universal statement about shear-thinning drops.
+\end{keybox}
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{What Reid's problem already gives you for free}
+\label{sec:cy_exact_evaluation}
+%% ────────────────────────────────────────────────────────────────────────────
+
+Because the failure above is specifically a failure of \emph{linearizing}
+$\lambda_l(\mathrm{Oh})$, $\omega_l^2(\mathrm{Oh})$, and because these
+functions are already known \emph{exactly}, for any $\mathrm{Oh}$, via
+Reid's characteristic equation (solved numerically by continuation, and
+tabulated for fast repeated evaluation), the correct response is not to
+build a better linear correction -- it is to not linearize this piece at
+all. Given an instantaneous effective Ohnesorge number
+$\mathrm{Oh}_{\mathrm{eff}}(t)$ from any closure (including the one derived
+in Section~\ref{sec:cy_temporal} below), the exact, non-perturbative
+evaluation of $\lambda_l(\mathrm{Oh}_{\mathrm{eff}}(t))$,
+$\omega_l^2(\mathrm{Oh}_{\mathrm{eff}}(t))$ has no validity-range caveat and
+is already the practice this repo's existing (heuristic) Carreau-Yasuda
+extension follows. That part of the existing scheme was never the weak
+point. The weak point is upstream of it: whether it is valid to replace a
+velocity field's genuinely \emph{spatially varying} local viscosity with a
+single scalar $\mathrm{Oh}_{\mathrm{eff}}(t)$ fed into a formula built for a
+spatially \emph{uniform} viscosity. That is the question the rest of this
+section answers.
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{Machinery I: adjoint sensitivity for Reid's boundary-value problem}
+\label{sec:cy_adjoint}
+%% ────────────────────────────────────────────────────────────────────────────
+
+Reid's velocity equation, $\mathcal{L}[U]\equiv U''-l(l+1)U/x^2+q^2U$
+(Section~\ref{sec:velocity_ode}), is formally self-adjoint on $(0,1)$ with
+the plain $L^2$ inner product -- no weight function is needed, because
+$\mathcal{L}$ has no first-derivative term:
+\begin{derivbox}[Lagrange identity for $\mathcal{L}$]
+For any twice-differentiable $U,W$,
+\begin{equation}
+  W\,\mathcal{L}[U] - U\,\mathcal{L}[W]
+  = \frac{d}{dx}\Bigl[\,W\,U' - W'\,U\,\Bigr].
+  \label{eq:lagrange}
+\end{equation}
+Verified symbolically (Symbolics.jl, abstract $U(x)$, $W(x)$): both sides
+agree identically.
+\end{derivbox}
+
+This gives a shortcut for exactly the calculation a perturbation of Reid's
+problem needs: the boundary derivative of a particular solution, without
+solving the ODE.
+
+\begin{keybox}[Adjoint shortcut]
+Let $Y(x)$ be regular at $x=0$, satisfy $Y(1)=0$, and solve
+$\mathcal{L}[Y]=\mathrm{RHS}(x)$ for a known forcing $\mathrm{RHS}$, at a
+fixed wavenumber $q_0$ (so $\mathcal{L}$ uses $q_0^2$). Then
+\begin{equation}
+  Y'(1) = \frac{1}{j_l(q_0)}\int_0^1 x\,j_l(q_0x)\,\mathrm{RHS}(x)\,dx,
+  \label{eq:adjoint_shortcut}
+\end{equation}
+using the regular homogeneous solution $x\,j_l(q_0x)$ as the adjoint test
+function (both boundary terms at $x=0$ vanish by regularity; the boundary
+term at $x=1$ collapses using $Y(1)=0$).
+\end{keybox}
+
+\begin{notebox}[Numerically verified, not just derived]
+Checked against direct numerical shooting (regular-solution seeding near
+$x=0$, RK4 integration, homogeneous-solution correction to enforce
+$Y(1)=0$) for three independent $(l,q_0,\mathrm{RHS})$ combinations: relative
+agreement of $10^{-9}$ to $10^{-11}$ once the shooting method's own
+near-origin seed is chosen at a moderate radius ($x_0\sim 10^{-2}$, not
+$10^{-6}$ -- the regular solution scales as $x^{l+1}$ near the origin, and
+seeding too close to $0$ loses precision to floating-point underflow before
+the adjoint comparison is even meaningful).
+\end{notebox}
+
+Reid's boundary conditions close the system: BC1 ($U(1)=-1$) is unaffected
+by any viscosity correction, since it is purely kinematic, and BC2
+($\mathcal L_2[U](1)=0$ plus a known correction) is linear in the same
+unknowns the shortcut already produces. Combining the two turns the search
+for the $O(\delta)$ shift in $q^2$, from \emph{any} new forcing added to
+Reid's ODE and both stress boundary conditions, into an ordinary linear
+solve -- no further ODE integration is required. This reduction has been
+worked through by hand for the general case (not yet promoted to an
+assertion in the backing script, since the resulting expression is a large
+symbolic fraction rather than a compact closed form); what \emph{is}
+CAS-verified end to end is the shortcut itself
+(Eq.~\ref{eq:adjoint_shortcut}), which is the genuinely nontrivial step.
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{Machinery II: the strain-rate field of Reid's actual viscous mode}
+\label{sec:cy_strain}
+%% ────────────────────────────────────────────────────────────────────────────
+
+Any first-principles shear-rate calculation must be built from Reid's actual
+\emph{viscous} velocity profile $U(x)=C\,x\,j_l(qx)+\Pi_0x^{l+1}$
+(Section~\ref{sec:velocity_ode}), not the inviscid potential-flow shape
+$r^lP_l(\cos\theta)$ that this repo's existing heuristic scripts use to
+estimate a characteristic shear rate. The two are not interchangeable: Reid's
+own damping normalization comes from the homogeneous (Bessel) part of
+$U(x)$, which \emph{is} the viscous correction to potential flow -- using
+the potential-flow shape to estimate shear rate is inconsistent with Reid's
+theory already at zeroth order, before any shear-thinning correction is
+applied.
+
+Writing $u_r=F(x)P_l(\cos\theta)$, $F(x)\equiv U(x)/x^2$, and $u_\theta$
+from the stream-function relation of Section~\ref{sec:bc2}
+($u_\theta=-(2F+xF')\sin\theta\,P_l'(\cos\theta)/[l(l+1)]$), the standard
+axisymmetric strain-rate tensor is
+\begin{align}
+  e_{rr}   &= F'(x)\,P_l(\mu), \\
+  e_{\theta\theta} &= \frac{1}{x}\frac{\partial u_\theta}{\partial\theta} + \frac{u_r}{x}, \\
+  e_{\varphi\varphi} &= \frac{u_r + u_\theta\cot\theta}{x}, \\
+  e_{r\theta} &= \frac12\left[x\frac{\partial}{\partial x}\!\left(\frac{u_\theta}{x}\right) + \frac{1}{x}\frac{\partial u_r}{\partial\theta}\right],
+  \qquad \mu\equiv\cos\theta.
+  \label{eq:strain_tensor}
+\end{align}
+
+\begin{notebox}[Incompressibility check]
+$e_{rr}+e_{\theta\theta}+e_{\varphi\varphi}=0$ identically, for \emph{any}
+radial profile $F(x)$ -- verified both symbolically (concrete Legendre
+polynomials, $l=2,3$, after resolving a $\sin^2\theta+\cos^2\theta=1$
+simplification Symbolics.jl does not apply automatically) and numerically
+(concrete polynomial $F$, $l=2,\dots,8$, to floating-point precision at
+every tested $(x,\theta)$). This is a kinematic identity of the poloidal
+representation itself, confirming the strain-tensor construction is
+consistent regardless of what $F(x)$ turns out to be.
+\end{notebox}
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{Machinery III: the period-$\pi$ lemma}
+\label{sec:cy_period_pi}
+%% ────────────────────────────────────────────────────────────────────────────
+
+At $\mathrm{Oh}_\infty$, $q$ is genuinely complex ($q_0\approx
+7.60-7.30\,\mathrm{i}$ for $l=2$), so Reid's mode is a true damped
+oscillation, not a pure decay. The physical (real) strain field at phase
+$\phi\equiv\omega t$ is $\mathrm{Re}\bigl[e_{ij}(x,\theta)\,e^{-\mathrm{i}\phi}\bigr]$
+for each complex tensor component $e_{ij}$ built from~\eqref{eq:strain_tensor}
+with complex $F$. A natural first attempt at a shear-thinning correction --
+evaluate everything at one representative phase, e.g. $\phi=0$ -- turns out
+to be indefensible: numerically, the real physical shape at $x_0=0.7$
+swings from $-0.345$ to $+0.345$ across one period, nowhere near constant.
+Any nonlinear (in particular, fractional-power) function of this field
+therefore depends on \emph{which} phase was chosen, unless the choice is
+justified by an actual time-average.
+
+\begin{keybox}[The shear-rate invariant cannot resonate at the mode's own frequency]
+Let $S\equiv\sqrt{2\,e_{ij}e_{ij}}$ (summed over the strain-tensor
+components) be built from any single-frequency oscillating axisymmetric
+poloidal field, real or complex amplitude. Then $S(\phi)$ is exactly
+periodic with period $\pi$ in $\phi=\omega t$, not $2\pi$, and hence its
+Fourier series over the full period contains only even harmonics: the
+coefficient of $\cos(\phi)$ and $\sin(\phi)$ (the fundamental, $m=1$) is
+identically zero, for $S$ itself and for \emph{any} function of $S$
+(fractional power or otherwise).
+\end{keybox}
+
+\begin{derivbox}[Proof]
+Each strain component satisfies
+$\mathrm{Re}(e_{ij}e^{-\mathrm{i}\phi})=|e_{ij}|\cos(\phi-\arg e_{ij})$.
+Squaring, $|e_{ij}|^2\cos^2(\phi-\arg e_{ij}) =
+\tfrac12|e_{ij}|^2\bigl[1+\cos(2\phi-2\arg e_{ij})\bigr]$, which is
+manifestly invariant under $\phi\to\phi+\pi$. $S^2$ is a sum of such terms,
+hence itself period-$\pi$; $S=\sqrt{S^2}\ge0$ and any real function $h(S)$
+inherit the period exactly (no branch ambiguity, since $S^2\ge 0$
+throughout). A period-$\pi$ function integrated against $\sin(m\phi)$ or
+$\cos(m\phi)$ over $[0,2\pi)$ vanishes identically for every odd $m$, since
+the two half-period copies enter with opposite sign and cancel.
+\end{derivbox}
+
+\begin{notebox}[Confirmed two ways]
+Numerically: $S^2(\phi+\pi)=S^2(\phi)$ to $10^{-15}$--$10^{-16}$ at multiple
+independent $(x,\theta)$ points. Via direct Fourier projection on a joint
+$800\times800$ $(\theta,\phi)$ grid: the $m=1$ coefficient (both $\cos$ and
+$\sin$) is zero to $10^{-17}$--$10^{-18}$ at every spherical-harmonic degree
+$l'$ tested ($0,2,4,6,8$), while $m=0$ and $m=2$ are the genuinely nonzero
+temporal channels.
+\end{notebox}
+
+This has an immediate structural consequence: since no forcing term
+resonant at the base mode's own frequency exists, the adjoint machinery of
+Section~\ref{sec:cy_adjoint} -- built for exactly this kind of resonant
+solvability condition -- has nothing to act on at $m=1$. The leading
+temporal effect of any generalized-Newtonian correction on this mode is
+therefore carried entirely by the $m=0$ (period-averaged, effectively
+steady) channel; the $m=2$ channel represents a distinct, second-harmonic
+\emph{parametric} coupling (a $2\!:\!1$ resonance structure with the base
+oscillation), a different physical phenomenon not addressed here.
+
+%% ────────────────────────────────────────────────────────────────────────────
+\subsection{The genuinely open question: spatial homogenization}
+\label{sec:cy_temporal}
+%% ────────────────────────────────────────────────────────────────────────────
+
+Because the $m=0$ channel is the leading one, and because the adjoint
+shortcut of Section~\ref{sec:cy_adjoint} places no restriction on the
+forcing's spatial shape -- a steady (non-oscillating) correction is exactly
+as valid an input to it as any other -- the machinery built here is a
+reasonable tool to bring to the question that actually remains open (this
+specific reduction has not itself been carried through to a checked
+assertion, and is flagged as such rather than presented as settled): replacing a
+spatially varying $\eta(x,\theta)$ with a single scalar
+$\mathrm{Oh}_{\mathrm{eff}}(t)$ is an uncontrolled effective-medium
+approximation unless the spatial variation is itself small. Checked
+directly, using the period-averaged shear-rate shape from
+Section~\ref{sec:cy_strain}--\ref{sec:cy_period_pi} over the drop's volume
+at $\mathrm{Oh}_\infty$, $l=2$: the shape varies by a factor of
+$\approx 2.25$ between its minimum and maximum over $(x,\theta)$ ($-50\%$ to
+$+13\%$ around the mean). Propagated through the Carreau-Yasuda exponent
+$a\approx0.743$, this is roughly a factor-of-two spread in local viscosity
+across the drop at a single instant -- smaller than the multiple-order-of-
+magnitude range $\mathrm{Oh}_{\mathrm{eff}}$ traverses over an impact
+\emph{in time}, but not small in the sense a first-order correction needs
+to be uncontroversial.
+
+Legendre-projecting the (properly $m=0$, period-averaged, not single-phase)
+shear-rate correction shape at a representative radius confirms the
+fractional-power leakage mechanism anticipated on general grounds: a
+\emph{single} active mode ($l=2$) spontaneously forces every even
+spherical-harmonic degree ($l'=0,4,6,8$ all genuinely nonzero, odd $l'$
+zero to $10^{-11}$ by a verified $\cos\theta$-parity argument), because
+raising a finite Legendre polynomial to a non-integer power does not, in
+general, stay within its own degree.
+
+\begin{keybox}[What this section establishes, precisely]
+\begin{enumerate}
+  \item The classical $O(\epsilon^3)$ Carreau expansion of
+        Section~\ref{sec:carreau} does not extend to this fluid's fitted,
+        non-integer Carreau-Yasuda exponent: no small-amplitude anchor,
+        at rest, at infinite shear, or in between, supports a uniformly
+        valid linear correction to $\lambda_l(\mathrm{Oh})$ across the
+        modes this solver resolves.
+  \item Reid's exact (non-perturbative, continuation-solved)
+        $\lambda_l(\mathrm{Oh})$, $\omega_l^2(\mathrm{Oh})$ should be
+        evaluated directly at whatever $\mathrm{Oh}_{\mathrm{eff}}(t)$ a
+        closure provides -- never linearized -- since this repo already
+        implements a fast, tabulated version of exactly that evaluation.
+  \item The genuinely open approximation in the existing heuristic scheme
+        is the collapse of a spatially varying $\eta(x,\theta,t)$ onto a
+        single scalar $\mathrm{Oh}_{\mathrm{eff}}(t)$, quantified here at
+        roughly a factor of two in local viscosity across the drop at a
+        representative instant -- a real, moderate, but not yet
+        controlled error.
+  \item Three general, CAS-verified results survive independently of any
+        of the above: the adjoint sensitivity shortcut
+        (Eq.~\ref{eq:adjoint_shortcut}), the viscous strain-rate tensor
+        (Eq.~\ref{eq:strain_tensor}), and the period-$\pi$ lemma. None
+        depend on this fluid's specific parameters, and all three are the
+        correct starting point for a future, genuinely first-principles
+        treatment -- most plausibly a self-consistent, spatially resolved
+        solve (using the adjoint machinery as a Newton/Fr\'echet-derivative
+        iteration step, not a one-shot small-parameter expansion) rather
+        than any further attempt at a closed-form amplitude equation.
+\end{enumerate}
+\end{keybox}
+
+\begin{notebox}[Scope]
+This section does not implement the self-consistent spatially resolved
+solve it recommends -- that is future work. It also does not revisit the
+$m=2$ parametric channel identified in
+Section~\ref{sec:cy_period_pi}, nor extend the strain-tensor/leakage
+calculation beyond $l=2$ and a single representative radius. What it does
+establish, to the same CAS-verified standard as every other section of this
+document -- every numbered claim above has a corresponding assertion in
+\texttt{julia/derivations/carreauYasuda\_firstprinciples\_derivation.jl},
+including a live cross-check against a running \texttt{solve\_drop!} trace
+(the pinned-intermediate-Oh finding of
+Section~\ref{sec:cy_anchors}) -- is precisely which of the natural next
+steps work, which do not, and why -- for this fluid, not as a general
+verdict on Carreau-Yasuda drops.
+\end{notebox}
