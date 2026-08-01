@@ -29,11 +29,9 @@
 #
 # What follows establishes that map, generalizes the secular-averaging
 # factor to any real exponent, works out the order counting of the damping
-# correction, and then *runs* the recipe -- a standalone prototype
-# residual/Jacobian/time-integration built on DropSolver's own
-# `newton_solve!` -- for ``m\in\{0.5,1,2,3\}``, to show that it is
-# dynamically well behaved and not merely algebraically consistent. No file
-# in `julia/src/` is modified.
+# correction, and then integrates the recipe numerically for
+# ``m\in\{0.5,1,2,3\}``, to show that it is dynamically stable and not merely
+# algebraically consistent.
 #
 # ## Notation
 #
@@ -236,9 +234,9 @@ println("ASSERTION 4 OK: C(2) = 3/4, matching the Carreau-Yasuda secular factor"
 #
 # Two checks support this. The force law is differentiated numerically and
 # compared against ``-(m+2)|\dot b|^m\dot b`` for
-# ``m\in\{0.5,1,1.5,2,3\}``. Separately, the relative correction ``a^{m}`` is
-# evaluated down to ``a=10^{-100}`` for ``m`` as small as ``0.1``, and
-# required to be strictly decreasing and to fall below ``10^{-6}``.
+# ``m\in\{0.5,1,1.5,2,3\}``. Separately, the relative correction ``a^{m}``,
+# evaluated down to ``a=10^{-100}`` for ``m`` as small as ``0.1``, decreases
+# strictly with amplitude and falls below ``10^{-6}``.
 
 function check_force_order(m_val; x0=0.37, h=1e-6)                            #src
     f(xv) = -abs(xv)^(m_val + 2)                                              #src
@@ -340,13 +338,13 @@ println("ASSERTION 8 OK: We^(1/2) scaling confirmed on the real solver (<10% spr
 
 # ## 6. The recipe, running
 #
-# Algebraic consistency is not the same as a scheme that integrates stably.
-# The prototype below generalizes `julia/src/st_extension.jl`'s exact pattern
-# -- a lagged, explicit shear-rate-dependent multiplier on the damping block,
-# which keeps the Jacobian structure (and its caching) intact -- replacing
-# the fixed quadratic ``\dot A^2`` with ``|\dot A|^{m}`` and the closed-form
-# ``\Gamma_l`` with the numerically tabulated ``\Gamma_l^{(m)}``. It is built
-# on DropSolver's own `newton_solve!`; nothing in `julia/src/` is modified.
+# Algebraic consistency is not the same as a scheme that integrates stably,
+# so the recipe is integrated numerically for ``m\in\{0.5,1,2,3\}``. The
+# closure is the one the Carreau-Yasuda model already uses -- a lagged,
+# explicit shear-rate-dependent multiplier on the damping term -- with the
+# fixed quadratic ``\dot A^2`` replaced by ``|\dot A|^{m}`` and the
+# closed-form ``\Gamma_l`` replaced by the numerically tabulated
+# ``\Gamma_l^{(m)}``.
 #
 # Run at ``\mathrm{Oh}=0.05``, ``\Delta=0.02``, ``K=0.02``, over six periods
 # of the ``l=2`` mode, the fitted decay rate stays close to the Newtonian one
@@ -475,15 +473,15 @@ println("ASSERTION 9 OK: bounded, finite, sensible decay for every m in {0.5,1,2
 # \varepsilon_{ST} = \frac{\mu_0-\mu_\infty}{\mu_0}\cdot\frac{1-n}{a},
 # ```
 #
-# -- and call `julia/src/st_extension.jl` directly. (With ``n=1-m`` and
+# -- and use the existing Carreau-Yasuda model directly. (With ``n=1-m`` and
 # ``a=m`` the factor ``(1-n)/a`` is 1, so ``\varepsilon_{ST}=\Delta``, the
 # map of §2.) The only genuinely new ingredient a non-``2`` exponent needs is
 # the tabulated ``\Gamma_l^{(m)}``, computed by the same construction as
 # ``\Gamma_l^{(a)}``, and the ``C(m)`` factor above.
 #
-# **Scope.** The prototype above is a single-mode, fixed-step integration
-# used to demonstrate stability, not a validation against experimental data.
+# **Scope.** The run above is a single-mode, fixed-step integration used to
+# demonstrate stability, not a validation against experimental data.
 # And the whole treatment is weakly nonlinear --
 # for a fluid whose ``(\lambda_c\dot\gamma)^a`` is not small, the
-# non-perturbative route of `carreau_yasuda_nonperturbative_derivation.jl`
-# is the applicable one, not this one.
+# non-perturbative route of "Carreau-Yasuda: Single-Mode" is the applicable
+# one, not this one.

@@ -3,9 +3,10 @@ Physical and numerical parameters for one simulation run.
 
 `viscous`, `drop_lambda`, `drop_omega2` select and precompute the per-mode
 damping/frequency coefficients used by `build_residual!`/`build_jacobian!`
-(see `julia/src/reid.jl`): `:lamb` (default) is the classical small-Oh
-asymptotic formula this package has always used; `:reid` is the exact
-finite-Oh result from Reid (1960)'s characteristic equation. `drop_lambda[k]`,
+(see `drop_viscous_coeffs`): `:lamb` (default) is Lamb's classical small-Oh
+asymptotic formula; `:reid` is the exact finite-Oh result from Reid (1960)'s
+characteristic equation. The two agree as Oh → 0 and diverge as Oh and the
+mode number grow. `drop_lambda[k]`,
 `drop_omega2[k]` correspond to mode `l=k+1` (length M-1, matching
 `A[2:end]`/`Adot[2:end]` indexing).
 """
@@ -39,16 +40,18 @@ OBParams() = OBParams(0.0, 1.0)   # Newtonian default
 """
 Carreau-Yasuda shear-thinning parameters. Set eps_ST=0 for Newtonian.
 
-`a` is the Carreau-Yasuda shape exponent (a=2 recovers standard Carreau
-exactly — see julia/derivations/carreau_yasuda_derivation.jl §1-§2). The
-3-argument constructor defaults a=2.0 for backward compatibility with
-existing Carreau call sites; nothing about their behavior changes.
+`a` is the Carreau-Yasuda shape exponent; `a = 2` recovers the standard
+Carreau model exactly, and is what the 3-argument constructor supplies.
+
+These parameters drive the first-order-in-`eps_ST` closure
+(`build_residual_st!`), which is valid only while `eps_ST` is small. Use
+`STExactParams` otherwise.
 """
 struct STParams
     eps_ST   :: Float64             # (1-n)/a ≥ 0 (a=2: (1-n)/2, standard Carreau); zero = Newtonian
     lambda_c :: Float64             # relaxation time (non-dimensional)
-    Gamma    :: Vector{Float64}     # Γ_l^(a) for modes 2..M (length M-1)
-                                    # Compute from julia/derivations/carreau_yasuda_derivation.jl
+    Gamma    :: Vector{Float64}     # Γ_l^(a) for modes 2..M (length M-1); the
+                                    # per-mode shear-rate geometry factors
     a        :: Float64             # Carreau-Yasuda shape exponent (2.0 = standard Carreau)
 end
 

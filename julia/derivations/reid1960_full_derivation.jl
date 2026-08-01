@@ -37,7 +37,7 @@
 # - **Lamb (1881)** -- the *small*-viscosity correction,
 #   ``\sigma_{l;\nu} = (l-1)(2l+1)\nu/R^2 \pm i\,\sigma_{l;0}``. This is the
 #   formula the production timestepper implements (Section 8), and the one
-#   the companion `reid_finite_oh_derivation.jl` generalizes.
+#   the companion page *Finite-Ohnesorge Coefficients* generalizes.
 # - **Chandrasekhar (1959)** -- the full, arbitrary-viscosity solution, but
 #   for a *self-gravitating* liquid globe rather than a surface-tension-held
 #   drop.
@@ -53,7 +53,7 @@
 #
 # Downstream, Reid's equation is what Molaček & Bush (2012) compress into
 # their per-mode coefficients ``A_m`` and ``D_m`` -- see Section 10 for that
-# mapping, and `reid_finite_oh_derivation.jl` for the parametrization
+# mapping, and *Finite-Ohnesorge Coefficients* for the parametrization
 # DropSolver uses.
 #
 # ## Notation
@@ -78,13 +78,6 @@
 # | ``j_l(z)`` | spherical Bessel function of the first kind, order ``l`` |
 # | ``Q_{l+1/2}(q) = j_{l+1}(q)/j_l(q) = J_{l+3/2}(q)/J_{l+1/2}(q)`` | the one Bessel-function combination the whole problem reduces to |
 #
-# ## How this page is verified
-#
-# The algebraic steps below are each confirmed by a Symbolics.jl assertion
-# that runs whenever this page is built. The assertions themselves are not
-# shown, to keep the argument readable; where one covers a step, the text
-# says what the step is and what it would mean for it to fail.
-
 using Symbolics            #src
 using SpecialFunctions     #src
 using DropSolver           #src
@@ -434,11 +427,8 @@ radial_laplace_residual = expand_derivatives(Dx_(Dx_(f_pressure)) + 2 / x * Dx_(
 # Solving the second for ``A`` gives ``A = -(2u_r + r\,\partial_r u_r)`` --
 # purely in terms of ``u_r``'s radial dependence, no explicit ``u_\theta``
 # needed. Substituting this into the raw formula reproduces the target
-# formula above exactly. The check treats ``A``, ``u_r``, and
-# ``\partial_r u_r`` as independent symbols related by that one
-# incompressibility identity; were it not to collapse to zero, the two cited
-# formulas would be inconsistent with the target formula this section is
-# built on.
+# formula above exactly, treating ``A``, ``u_r``, and ``\partial_r u_r`` as
+# independent symbols related only by that one incompressibility identity.
 
 @variables r_var A_ang ur_r ur_r_prime Lap_ur                                                                            #src
 raw_vec_lap_r = Lap_ur - 2 / r_var^2 * ur_r - 2 / r_var^2 * A_ang                                                        #src
@@ -603,11 +593,9 @@ bc1_solution = Symbolics.solve_for(surface_velocity - fluid_velocity_at_1 ~ 0, U
 # so BC2, usually quoted in this operator form, follows from the
 # stream-function representation directly.
 #
-# Both Legendre recurrences are checked for ``l=2,3,4,5`` against the
-# Bonnet-built polynomials of Section 2.1. Were the ``\tau_{r\theta}`` check
-# that follows to fail, the stream-function ansatz would not produce a pure
-# tangential-stress condition proportional to ``\mathcal{L}_2[U]``, and the
-# operator BC2 rests on would itself be wrong.
+# Both Legendre recurrences hold for ``l=2,3,4,5`` against the Bonnet-built
+# polynomials of Section 2.1, so the stream-function ansatz does produce a
+# pure tangential-stress condition proportional to ``\mathcal{L}_2[U]``.
 
 @variables x_leg2                                                                                                  #src
 Dxleg2 = Differential(x_leg2)                                                                                      #src
@@ -622,17 +610,15 @@ for l_val in (2, 3, 4, 5)                                                       
     @assert symbolic_zero(lhs_b - l_val * (l_val + 1) * (Plm1_b - Plp1_b))                                          #src
 end                                                                                                                #src
 
-# The ``\tau_{r\theta}`` step itself is checked by building
-# ``\tau_{r\theta}/\mu`` directly (concrete ``l``, abstract radial function
-# ``f(r)``) and confirming that ``\tau_{r\theta}=0`` at ``r=R`` is
-# equivalent to
+# Building ``\tau_{r\theta}/\mu`` directly from the stream function (concrete
+# ``l``, abstract radial function ``f(r)``) makes the collapse explicit:
+# ``\tau_{r\theta}=0`` at ``r=R`` is equivalent to
 # ```math
 # R^2 f''(R) + 2R f'(R) + \big[l(l+1)-2\big] f(R) = 0,
 # ```
-# by substituting that conjectured relation (as a relation among ``f(R)``,
-# ``f'(R)``, ``f''(R)`` treated as independent symbols) and confirming
-# ``\tau_{r\theta}`` then vanishes identically in ``\theta``, not just at
-# one angle. It does, for ``l=2,\dots,6``.
+# and imposing that single relation among ``f(R)``, ``f'(R)``, ``f''(R)``
+# makes ``\tau_{r\theta}`` vanish identically in ``\theta``, not merely at one
+# angle -- for ``l=2,\dots,6``.
 
 @variables r_var theta_sym2 R_sym F0 F1 F2 Ffun(..)                                                                                                        #src
 Dr_ = Differential(r_var)                                                                                                                                  #src
@@ -764,14 +750,10 @@ target_at_1 = substitute(Dx__(U) - 2 * U, Dict(x => 1))                         
 # Dividing through by ``\rho\epsilon Y_l^m`` and using ``\mu=\rho\nu``, BC3
 # becomes
 
-#md # ```@eval
-#md # using Symbolics, Markdown
-#md # @variables l T_1 rho R nu sigma P_0
-#md # @variables Uprime1 U1
-#md # lhs = (l-1)*(l+2)*T_1/(rho*R)
-#md # rhs = P_0 - 2*nu*sigma*(Uprime1 - 2*U1)
-#md # Markdown.parse("```math\n" * Main.pretty_latex(lhs) * " = " * Main.pretty_latex(rhs) * "\n```")
-#md # ```
+# ```math
+# \frac{(l-1)(l+2)\,T_1}{\rho R}
+#   \;=\; P_0 - 2\nu\sigma\bigl[\,U'(1) - 2U(1)\,\bigr],
+# ```
 #
 # the only equation containing the surface tension ``T_1`` explicitly.
 # Reid's key move, next, is to rescale so that ``T_1`` (and ``\rho``) drop
@@ -903,7 +885,7 @@ characteristic_eq_rhs = q^4 * ((2 * (l - 1) / q^2) * (l + (l + 1) * (q - 2 * l *
 #     meaning decay, so the *smallest* positive real part is the dominant,
 #     slowest-decaying mode. This is the opposite of ordinary stability
 #     analysis, where one hunts for the most-positive growth rate. Reversing
-#     it selects the wrong root; `reid_finite_oh_derivation.jl` shows what
+#     it selects the wrong root; *Finite-Ohnesorge Coefficients* shows what
 #     that looks like numerically.
 #
 # ### Two regimes: oscillatory and aperiodic
@@ -918,12 +900,24 @@ characteristic_eq_rhs = q^4 * ((2 * (l - 1) / q^2) * (l + (l + 1) * (q - 2 * l *
 #   are real and positive -- two aperiodic decaying modes, overdamped, no
 #   oscillation at all.
 #
+# ![Root locus of the two dominant roots as viscosity increases: a complex
+# conjugate pair sweeps in from the imaginary axis, meets on the real axis at
+# a critical Ohnesorge number, and splits into two real
+# roots.](../assets/reid_root_locus.png)
+#
+# *The two dominant roots in the complex ``\sigma`` plane, for ``l=2``, as
+# ``\mathrm{Oh}`` increases along each branch. At low viscosity they are a
+# conjugate pair close to ``\pm i\sigma_0`` -- almost pure oscillation. As
+# viscosity rises the pair migrates right and inward, meets the real axis at
+# the critical point, and separates into a fast-decaying root and a slow
+# creeping one.*
+#
 # The transition happens at a critical ``\alpha^2``, determined numerically
 # by Chandrasekhar. For ``l=2`` it sits at ``\sigma_{2;0}R^2/\nu = 3.69``
 # with ``\sigma_{2;\nu}/\sigma_{2;0} = 0.968`` at the transition. Since
 # ``\alpha^2 = \sqrt{l(l-1)(l+2)}/\mathrm{Oh}``, that is a critical
 # Ohnesorge number ``\mathrm{Oh}_c = \sqrt{8}/3.69 \approx 0.766`` for
-# ``l=2``. The companion `reid_finite_oh_derivation.jl` recovers both of
+# ``l=2``. The companion page *Finite-Ohnesorge Coefficients* recovers both of
 # Chandrasekhar's numbers to three digits from DropSolver's own root finder.
 #
 # !!! note "What the critical point means for water"
@@ -936,10 +930,7 @@ characteristic_eq_rhs = q^4 * ((2 * (l - 1) / q^2) * (l + (l + 1) * (q - 2 * l *
 #     (``\mathrm{Oh}\sim10^{-3}`` at millimetric scale), and the aperiodic
 #     regime is reachable only with a genuinely viscous fluid -- such as the
 #     ``\mathrm{Oh}_0\sim57`` shear-thinning fluid that motivates
-#     `reid_finite_oh_derivation.jl`. (A figure of
-#     ``R_c \approx 0.23\;\mathrm{mm}`` circulates for this conversion; it
-#     is four orders of magnitude off. The underlying ``3.69`` and ``0.968``
-#     are sound.)
+#     *Finite-Ohnesorge Coefficients*.
 
 # ## Section 9: The small-viscosity (Lamb) limit
 #
@@ -995,11 +986,11 @@ end                                                                             
 
 # ### Cross-check against the running solver
 #
-# Everything above is algebra; this part compares it against numbers.
-# `julia/src/timestepper.jl` implements Lamb's formula directly
-# (`D1[l]=l(l-1)(l+2)`, `D2[l]=2*Oh*(l-1)*(2l+1)`) for the small-Oh regime,
-# so a small-Oh `solve_drop!` run should decay at the rate
-# ``\mathrm{Oh}\,(l-1)(2l+1)``.
+# Everything above is algebra; this part compares it against numbers. In the
+# small-Oh regime the solver takes its per-mode restoring and damping
+# coefficients straight from Lamb -- ``\omega_l^2=l(l-1)(l+2)`` and
+# ``2\lambda_l=2\,\mathrm{Oh}\,(l-1)(2l+1)`` -- so a small-Oh run should decay
+# at the rate ``\mathrm{Oh}\,(l-1)(2l+1)``.
 #
 # The measurement itself is just the slope of the log-amplitude between the
 # first and last saved frame:
@@ -1080,7 +1071,7 @@ end                                                                             
 # timescales far shorter than ``R^2/\nu``, well separated from the impact
 # timescale.
 #
-# Steps 2 and 3 are exactly what `reid_finite_oh_derivation.jl` carries out,
+# Steps 2 and 3 are exactly what *Finite-Ohnesorge Coefficients* carries out,
 # in a slightly different (and, for the solver, more convenient) gauge.
 #
 # ### Summary of key equations
@@ -1123,11 +1114,11 @@ end                                                                             
 # equation, not Lamb's asymptotic approximation to it, is the physically
 # correct starting point for any drop whose Ohnesorge number isn't small --
 # which includes every shear-thinning fluid the Carreau-Yasuda
-# extension was built to handle (see `carreau_yasuda_multimode_derivation.jl`),
+# extension was built to handle (see *Carreau-Yasuda: Multi-Mode*),
 # since shear-thinning can swing the effective Ohnesorge number across
 # orders of magnitude within a single impact.
 #
-# See `reid_finite_oh_derivation.jl` for what comes next: the numerical
+# See *Finite-Ohnesorge Coefficients* for what comes next: the numerical
 # machinery that solves this transcendental equation robustly at finite Oh,
 # the ``(\lambda_l(\mathrm{Oh}), \omega_l^2(\mathrm{Oh}))`` parametrization
 # wired into `julia/src/reid.jl`, and a live cross-check against

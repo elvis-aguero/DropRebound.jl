@@ -64,6 +64,15 @@ function symbolic_zero(expr)                                                  #s
     is_symbolic_zero || is_numeric_zero                                       #src
 end                                                                           #src
 
+# ![Flow curve of the validation fluid on log-log axes: viscosity falls by
+# about two and a half orders of magnitude between the rest plateau and the
+# infinite-shear floor, and the shear rates reached during an impact fall in
+# the steep transition between them.](../assets/cy_flow_curve.png)
+#
+# *The measured flow curve, with the band of shear rates an impact actually
+# produces. The fluid is sampled in the middle of the thinning transition,
+# far from either plateau -- which is the root of everything below.*
+#
 # ## 1. The exponent, not just its size, is the problem
 #
 # The classical route works because ``a=2`` is an *even integer*. The
@@ -307,7 +316,7 @@ println("ASSERTION 5 OK: a live We=0.7649 run pins Oh_eff/Oh_inf in [1.82, 2.87]
 # how the closure produces a single scalar ``\mathrm{Oh}_{\mathrm{eff}}`` in
 # the first place. The rest of this page builds the tools that question needs.
 
-# ## 6. Machinery I: adjoint sensitivity for Reid's boundary-value problem
+# ## 6. Adjoint sensitivity: the boundary derivative without solving the ODE
 #
 # Reid's velocity operator
 #
@@ -351,11 +360,9 @@ adjoint_shortcut_Yprime1(l, q0, RHS) =
 # \;}
 # ```
 #
-# and it is checked against direct numerical shooting -- regular-solution
-# seeding near ``x=0``, RK4 integration, homogeneous-solution correction to
-# enforce ``Y(1)=0`` -- for three independent ``(l,q_0,\mathrm{RHS})``
-# combinations spanning different modes and different ``\mathrm{Oh}``
-# regimes. Agreement is better than ``10^{-6}`` relative error in every case.
+# and it reproduces direct integration of the ODE to better than ``10^{-6}``
+# relative error, for three independent ``(l,q_0,\mathrm{RHS})`` combinations
+# spanning different modes and different ``\mathrm{Oh}`` regimes.
 #
 # Combined with Reid's BC1 (``U(1)=-1``, which is purely kinematic and so
 # unaffected by any viscosity correction) and BC2, this reduces the search
@@ -404,7 +411,7 @@ for (l_val, q0_val, rhs) in [(2, 2.6656, x -> x^2),                           #s
 end                                                                           #src
 println("ASSERTION 7 OK: the adjoint shortcut matches direct RK4 shooting to <1e-6, three cases") #src
 
-# ## 7. Machinery II: the strain-rate field of Reid's actual viscous mode
+# ## 7. The strain-rate field of Reid's actual viscous mode
 #
 # Any first-principles shear-rate calculation must use Reid's actual
 # **viscous** velocity profile
@@ -439,9 +446,8 @@ println("ASSERTION 7 OK: the adjoint shortcut matches direct RK4 shooting to <1e
 # ``e_{rr}+e_{\theta\theta}+e_{\varphi\varphi}=0``, is verified to
 # floating-point precision for ``l=2,\dots,8`` and for *any* radial profile
 # ``F(x)`` -- it is a kinematic identity of the poloidal representation, so
-# it confirms the construction itself before any Carreau-Yasuda physics
-# enters. A failure would mean the assembled tensor is not the strain rate of
-# any incompressible flow.
+# the assembled tensor is the strain rate of a genuinely incompressible flow
+# before any Carreau-Yasuda physics enters.
 
 function legendre_P(l::Int, xv)                                               #src
     l == 0 && return one(xv)                                                  #src
@@ -480,7 +486,7 @@ let Ff = Ffun(x), Dx_ = Differential(x), Dth_ = Differential(theta), Dmu_ = Diff
 end                                                                           #src
 println("ASSERTION 8 OK: incompressibility of the viscous-mode strain tensor holds for l=2..8, any F(x)") #src
 
-# ## 8. Machinery III: the period-``\pi`` lemma
+# ## 8. The period-``\pi`` lemma
 #
 # At ``\mathrm{Oh}_\infty`` Reid's root ``q`` is genuinely complex -- a true
 # damped oscillation, not a pure decay -- so the physical strain field at

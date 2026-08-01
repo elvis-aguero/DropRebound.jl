@@ -4,6 +4,12 @@ using DropSolver
 
 include(joinpath(@__DIR__, "prettylatex.jl"))
 
+# Figures are generated before the pages are rendered, so that the plotting
+# code stays out of the documentation and the pages can reference the results
+# with ordinary Markdown image syntax.
+include(joinpath(@__DIR__, "figures.jl"))
+build_all()
+
 const DERIVATIONS_SRC = joinpath(@__DIR__, "..", "julia", "derivations")
 const DERIVATIONS_OUT = joinpath(@__DIR__, "src", "derivations")
 

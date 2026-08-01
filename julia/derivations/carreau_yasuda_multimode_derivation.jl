@@ -1,7 +1,7 @@
 # # Multi-Mode-Coupled Carreau-Yasuda: Shear Rate Is Kinematic
 #
 # This is the model the validation pipeline runs. It supersedes the
-# single-mode closure of `carreau_yasuda_nonperturbative_derivation.jl`.
+# single-mode closure of *Carreau-Yasuda: Single-Mode*.
 # Two further ingredients are needed before it behaves on a real impact -- a
 # dealiasing rule for truncation ringing at contact onset (§6) and a finite
 # infinite-shear viscosity plateau (§7) -- and both are derived below. §8
@@ -87,9 +87,7 @@ using DropSolver
 #
 # The invariant ``S=\sqrt{2e_{ij}e_{ij}}`` emphatically does **not**
 # superpose -- it is quadratic in the field, and that is the entire source of
-# the cross-mode coupling below. Were `total_strain` to stop being linear,
-# every ``w_l`` and every ``\mathrm{Oh}_{\mathrm{eff},l}`` downstream would
-# be built on a field that is not the physical one.
+# the cross-mode coupling below.
 
 function legendre_P_dP(l::Int, x::Float64)                                    #src
     l == 0 && return 1.0, 0.0                                                 #src
@@ -230,8 +228,8 @@ println("ASSERTION 3 OK: mu_ratio reduces to the plain law and respects the eta_
 # (``\mathrm{Oh}_0=57.4``, ``\lambda_c=30507``, ``a=0.7431``,
 # ``\varepsilon_{ST}=0.99956``), the coupled formula gives
 # ``\mathrm{Oh}_{\mathrm{eff}}=0.1644``, against ``0.1644`` from the
-# already-validated single-mode ``K_l`` formula -- agreement to better than
-# the 1% the check demands, and in fact to the digits shown.
+# already-validated single-mode ``K_l`` formula -- the two agree to the digits
+# shown.
 #
 # **Newtonian limit.** With ``\lambda_c=0`` there is no thinning, and
 # ``\mathrm{Oh}_{\mathrm{eff},l}=\mathrm{Oh}_0`` to a relative ``10^{-10}``
@@ -340,9 +338,9 @@ println("ASSERTION 6 OK: a co-excited mode 5 cuts mode 2's Oh_eff by >3x") #src
 # | ``M=12`` | 1.15 | ``6.1\times10^{-15}`` | ``1.9\times10^{14}`` |
 # | ``M=16`` | 0.286 | ``1.9\times10^{-15}`` | ``1.5\times10^{14}`` |
 #
-# Fourteen orders of magnitude, at both truncations. This amplitude
-# signature is what the detector of §6 keys on; the check below requires
-# only a factor of 100.
+# Fourteen orders of magnitude, at both truncations. That amplitude
+# signature -- one mode at the truncation boundary standing far above
+# everything else -- is what the dealiasing rule of §6 keys on.
 
 let                                                                           #src
     OH0 = 57.371648873370795                                                  #src
@@ -393,19 +391,22 @@ println("ASSERTION 7 OK: at contact onset the top mode carries >100x every other
 # at. **Index** decides which modes may even be candidates: only the
 # truncation boundary, the same ``\sim`` 10% margin, because that is still
 # the only place ringing concentrates. **Amplitude** then decides among the
-# candidates, compared against the largest amplitude among the *trusted*
-# (non-candidate) modes, floored at `RINGING_NOISE_FLOOR` ``=10^{-9}`` so a
-# fully quiescent trusted set does not make every nonzero candidate look
-# infinitely large. A candidate is excluded only if it exceeds
-# `OUTLIER_FACTOR` ``=20`` times that trusted amplitude.
+# candidates. Each candidate is compared against the largest amplitude among
+# the *trusted* (non-candidate) modes, and that reference amplitude is floored
+# at ``10^{-9}`` so that a fully quiescent trusted set does not make every
+# nonzero candidate look infinitely large. A candidate is excluded only if it
+# exceeds **20 times** that reference.
 #
-# Three cases pin the rule down, and no simpler rule passes all three:
-#
-# | case | state | required verdict |
-# |:--|:--|:--|
-# | ringing (§5, ``M=12``) | trusted modes at ``10^{-15}``, mode ``M`` at 0.673 | exclude mode ``M`` |
-# | real low-``\mathrm{We}`` | live trace, mode ``M`` at 0.0163 next to mode 2 at ``-0.0159`` | keep mode ``M`` |
-# | mid-mode | mode 2 at ``10^{-15}``, mode 8 (a trusted index) at 0.286 | keep mode 8 |
+# Those two numbers sit far from anything they have to discriminate between.
+# The ringing signature of §5 -- trusted modes at ``10^{-15}``, mode ``M`` at
+# ``0.673`` -- clears the factor of 20 by many orders of magnitude even after
+# the floor is applied, and is excluded. The real low-``\mathrm{We}`` trace,
+# where mode ``M`` reaches
+# ``0.0163`` alongside mode 2 at ``-0.0159``, is a ratio of order one and is
+# kept. And a large mode 8 sitting next to a mode 2 at floating-point noise is
+# never a candidate at all, because index 8 is not at the truncation boundary
+# when ``M=12`` -- which is exactly the case a pure amplitude-ratio rule gets
+# wrong. No simpler rule handles all three.
 #
 # Every mode, including a masked-out one, still receives its own
 # ``\mathrm{Oh}_{\mathrm{eff}}`` for its own dynamics. The mask controls only
@@ -554,5 +555,5 @@ println("ASSERTION 9 OK: without the plateau term a live run drives Oh_eff below
 # spatially varying ``\eta(r,\theta,t)`` onto one scalar
 # ``\mathrm{Oh}_{\mathrm{eff},l}(t)`` remains an uncontrolled effective-medium
 # step -- quantified at roughly a factor of two in local viscosity across the
-# drop in `carreauYasuda_firstprinciples_derivation.jl`, which is not small
-# enough to dismiss. Neither of these is closed here.
+# drop in *Why Amplitude Expansion Fails*, which is not small enough to
+# dismiss. Neither of these is closed here.

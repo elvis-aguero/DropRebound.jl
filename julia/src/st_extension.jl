@@ -7,11 +7,12 @@ Calls build_residual! for the Newtonian part, then corrects the R2 block:
   R2[k] -= dt * D2[k] * Ȧ_curr[k] * ε_ST * shear_pow_lag
 
 where shear_pow_lag = Σ_k Gamma_eff[k] * |Ȧ_prev[k]|^a is lagged (history[end]).
-`st.a` is the Carreau-Yasuda shape exponent (a=2 recovers the original,
-always-quadratic Carreau correction exactly — see
-julia/derivations/carreau_yasuda_derivation.jl §7, ASSERTION 17 for the
-exact reduction).
+`st.a` is the Carreau-Yasuda shape exponent; a=2 reduces this exactly to the
+quadratic Carreau correction.
 When st.eps_ST == 0 the result is identical to build_residual!.
+
+This is a first-order expansion in `eps_ST` and is valid only while `eps_ST` is
+small; see `build_residual_st_exact!` for the non-perturbative closure.
 """
 function build_residual_st!(R::AbstractVector, state::DropState,
                              history::Vector{DropState}, dt::Float64,

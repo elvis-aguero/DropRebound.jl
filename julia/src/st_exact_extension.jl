@@ -4,11 +4,11 @@ Derivation: `julia/derivations/carreau_yasuda_nonperturbative_derivation.jl`
 (single-mode groundwork) and `julia/derivations/carreau_yasuda_multimode_derivation.jl`
 (the coupling this file actually implements).
 
-Unlike `st_extension.jl` (Taylor-expands Carreau-Yasuda to first order in
-`eps_ST` -- invalid once `eps_ST` is not small, the case for the real
-validation fluid this was built for, `eps_ST ~ 0.9996`) and an earlier
-version of this file (which computed each mode's effective Oh from that
-mode's OWN velocity alone), this computes an effective Ohnesorge number per
+Two simpler routes are wrong here. `st_extension.jl` Taylor-expands
+Carreau-Yasuda to first order in `eps_ST`, which is invalid once `eps_ST` is
+not small -- the validation fluid this was built for has `eps_ST ~ 0.9996`.
+Computing each mode's effective Oh from that mode's OWN velocity alone is also
+wrong. This file instead computes an effective Ohnesorge number per
 mode from the TRUE, fully-superposed local shear-rate field of every
 currently active mode -- shear rate is a kinematic field quantity, so a
 mode excited by contact still contributes to the shear (and hence thinning)
@@ -40,7 +40,7 @@ end
 Strain-rate tensor components for mode `l`'s own potential-flow field, per
 unit `Adot_l` and per unit `r^(l-2)` (the r-dependence is a single power per
 mode, applied separately when building the full multi-mode field). See
-`julia/derivations/carreau_yasuda_multimode_derivation.jl` Section 1.
+the "Carreau-Yasuda: Multi-Mode" derivation, Section 1.
 """
 function _strain_basis(l::Int, x::Float64)
     X, Xp = _legendre_P_dP(l, x)
@@ -57,10 +57,9 @@ end
 Geometric constant relating mode `l`'s OWN characteristic (volume-RMS) shear
 rate to its velocity amplitude in ISOLATION (`gammadot_char_l =
 characteristic_shear_K(l) * abs(Adot_l)`), from mode `l`'s single-mode
-potential-flow field. Used only as a diagnostic / cross-check that the
-multi-mode-coupled `oh_eff_all_coupled` correctly reduces to this simpler
-result when just one mode is active (see `julia/test/test_carreau_yasuda_exact.jl`)
--- NOT used in `build_residual_st_exact!`/`build_jacobian_st_exact`, which
+potential-flow field. This is a diagnostic: it is the value the multi-mode
+coupled `oh_eff_all_coupled` must reduce to when only one mode is active.
+`build_residual_st_exact!`/`build_jacobian_st_exact` never call it — they
 always use the full coupling.
 """
 function characteristic_shear_K(l::Int)
@@ -87,15 +86,13 @@ Non-perturbative, multi-mode-coupled Carreau-Yasuda shear-thinning parameters.
   `mu_eff/mu_0 = eta_inf_ratio + (1-eta_inf_ratio)*[1+(lambda_c*gammadot)^a]^(-eps_ST)`,
   EXACT -- no Taylor expansion).
 - `eta_inf_ratio`: `eta_inf/eta_0`, the fluid's infinite-shear viscosity
-  floor relative to its zero-shear viscosity. Defaults to `0.0` (the plain
-  Carreau-Yasuda law, `mu_eff/mu_0 -> 0` as `gammadot -> infinity`), matching
-  every existing caller. For a REAL Cross-model fluid this ratio is not
-  exactly zero (`eta_inf` is always finite, if small), and omitting it lets
-  `Oh_eff` drop below the physical minimum the fluid could ever reach --
-  confirmed against a live solver run (`julia/derivations/carreau_yasuda_multimode_derivation.jl`
-  Section 5): at `We=0.7649` on the real validation fluid, `Oh_eff` was
-  observed at 0.0074 and 0.0044, both BELOW the true floor
-  `Oh0*eta_inf/eta_0 ~ 0.0254`, before this parameter existed.
+  floor relative to its zero-shear viscosity. Defaults to `0.0`, the plain
+  Carreau-Yasuda law, in which `mu_eff/mu_0 -> 0` as `gammadot -> infinity`.
+  For a REAL Cross-model fluid the ratio is not exactly zero (`eta_inf` is
+  always finite, if small), and leaving it at zero lets `Oh_eff` fall below
+  `Oh0*eta_inf/eta_0`, the lowest Ohnesorge number the fluid can physically
+  reach at any shear rate. On the validation fluid at `We = 0.7649` that floor
+  is ~0.0254, and the unfloored model reached `Oh_eff` of 0.0074 and 0.0044.
 - `r_nodes,r_wts,x_nodes,x_wts`: Gauss-Legendre quadrature for the volume
   integral (`r in [0,1]`, `x=cos(theta) in [-1,1]`).
 - `e_rr,e_thth,e_phph,e_rth`: precomputed, STATE-INDEPENDENT strain-rate
@@ -177,40 +174,45 @@ function STExactParams(M::Int, Oh0::Float64, lambda_c::Float64, a::Float64,
 end
 
 """
-    _ringing_outlier_mask(Adot_vec; candidate_fraction=0.1, factor=OUTLIER_FACTOR) -> BitVector
-
-`true` at index `k` means mode `k` (`l=k+1`) is excluded from the coupled
-local shear field built by `oh_eff_all_coupled` -- see that function's
-docstring and `julia/derivations/carreau_yasuda_multimode_derivation.jl`
-Section 4/4b for the two live cases this was tuned against.
-
-Two signals are combined, because neither alone works:
-- INDEX restricts which modes can even be CANDIDATES for exclusion, to
-  roughly the top `candidate_fraction` (minimum 1) nearest the truncation
-  boundary -- the only place a finite Legendre expansion's un-representable
-  "leftover" from a non-smooth boundary condition (the contact-onset kink)
-  can concentrate. Amplitude ratio ALONE cannot make this restriction: a
-  candidate's amplitude must be compared against something, and comparing
-  against ALL other modes (including other high, possibly-also-large modes)
-  breaks the moment one of those "other" modes is itself just floating-point
-  noise (~1e-15, not exactly 0.0) sitting next to a genuinely large,
-  low-index mode -- an amplitude-only version of this check flagged real
-  mid-mode physics (l=8) as ringing purely because a NEARBY low mode
-  happened to be noise-floor instead of exactly zero.
-- AMPLITUDE decides whether a candidate is ACTUALLY ringing: it is excluded
-  only if its magnitude exceeds `factor` times the largest magnitude among
-  the TRUSTED (non-candidate, low/mid-index) modes, floored at
-  `RINGING_NOISE_FLOOR` so a fully quiescent trusted set (~1e-15, real
-  floating-point noise from steps that haven't yet moved) doesn't make
-  every nonzero candidate look infinitely large. This is what correctly
-  distinguishes the empirically observed ringing (a single top mode at
-  ~1e-1 while EVERY trusted mode sits at ~1e-15) from genuine higher-mode
-  physics (a live low-We run where mode M reached ~0.0163, comparable to
-  mode 2's ~0.0159 -- neither noise, so mode M is correctly kept).
+How much larger than every trusted (low- and mid-index) mode a top-of-spectrum
+mode's velocity must be before it is treated as truncation ringing and dropped
+from the coupled shear field (value: 20). Ringing is the un-representable
+leftover of a non-smooth boundary condition — the contact-onset kink — in a
+finite Legendre expansion; counting it as real shear would thin the fluid on a
+signal that is a discretization artifact, not motion.
 """
 const OUTLIER_FACTOR = 20.0
+
+# Floor on the trusted-mode reference amplitude, so a fully quiescent trusted
+# set (~1e-15 of real floating-point noise, from steps that have not yet moved)
+# does not make every nonzero candidate look infinitely large by comparison.
 const RINGING_NOISE_FLOOR = 1e-9
 
+# _ringing_outlier_mask: `true` at index k means mode k (l=k+1) is excluded from
+# the coupled local shear field built by oh_eff_all_coupled.
+#
+# Two signals are combined, because neither alone works:
+#
+# - INDEX restricts which modes can even be CANDIDATES for exclusion, to roughly
+#   the top `candidate_fraction` (minimum 1) nearest the truncation boundary --
+#   the only place the un-representable leftover can concentrate. Amplitude ratio
+#   ALONE cannot make this restriction: a candidate's amplitude must be compared
+#   against something, and comparing against ALL other modes (including other
+#   high, possibly-also-large ones) breaks the moment one of those "other" modes
+#   is itself just floating-point noise (~1e-15, not exactly 0.0) sitting next to
+#   a genuinely large low-index mode. An amplitude-only version of this check
+#   flagged real mid-mode physics (l=8) as ringing purely because a nearby low
+#   mode happened to be at the noise floor instead of exactly zero.
+#
+# - AMPLITUDE decides whether a candidate is ACTUALLY ringing: excluded only if
+#   its magnitude exceeds `factor` times the largest magnitude among the trusted
+#   modes, floored at RINGING_NOISE_FLOOR. This distinguishes observed ringing (a
+#   single top mode at ~1e-1 while every trusted mode sits at ~1e-15) from
+#   genuine higher-mode physics (a low-We run where mode M reached ~0.0163,
+#   comparable to mode 2's ~0.0159 -- neither is noise, so mode M is kept).
+#
+# The two cases this was tuned against are in
+# julia/derivations/carreau_yasuda_multimode_derivation.jl, Sections 4 and 4b.
 function _ringing_outlier_mask(Adot_vec::AbstractVector{Float64};
     candidate_fraction::Float64=0.1, factor::Float64=OUTLIER_FACTOR)
     nl = length(Adot_vec)
@@ -240,7 +242,7 @@ flagged by `_ringing_outlier_mask` (not mode `l` alone), weighted by mode
 `l`'s own sensitivity `dS^2/dAdot_l` to that field. Every mode (including any
 masked-out one) still receives an `Oh_eff` value -- the mask only controls
 what counts as "real" shear when building the field itself.
-See `julia/derivations/carreau_yasuda_multimode_derivation.jl` Section 3.
+See the "Carreau-Yasuda: Multi-Mode" derivation, Section 3.
 """
 function oh_eff_all_coupled(stx::STExactParams, Oh0::Float64, Adot_vec::AbstractVector{Float64})
     nl = length(Adot_vec)

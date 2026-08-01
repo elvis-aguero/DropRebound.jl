@@ -36,7 +36,10 @@ math itself still can't drift from what's being asserted against; only how
 its variable names are typeset changes.
 """
 function pretty_latex(expr)
-    s = latexify(expr)
+    # `env=:raw` returns bare LaTeX. Latexify's default wraps the result in an
+    # equation environment, which nests inside the ```math fences these
+    # derivations use and renders as broken output.
+    s = latexify(expr; env=:raw)
     for (ascii, cmd) in GREEK_NAMES
         sub_pat = Regex(raw"\\mathtt\{" * ascii * raw"\\_([a-zA-Z0-9]+)\}")
         s = _apply(s, sub_pat, m -> cmd * "_{" * m[1] * "}")
@@ -47,6 +50,13 @@ function pretty_latex(expr)
     # unstyled typewriter, still readable, no information lost)
     fallback_pat = Regex(raw"\\mathtt\{([a-zA-Z]+)\\_([a-zA-Z0-9]+)\}")
     s = _apply(s, fallback_pat, m -> "\\mathrm{" * m[1] * "}_{" * m[2] * "}")
+    # a bare name with no subscript, e.g. \mathtt{Uprime1}: split a trailing
+    # digit run into a subscript and set the rest upright, so it reads as
+    # mathematics rather than as a code identifier
+    bare_name_pat = Regex(raw"\\mathtt\{([a-zA-Z]+)([0-9]*)\}")
+    s = _apply(s, bare_name_pat,
+               m -> isempty(m[2]) ? "\\mathrm{" * m[1] * "}" :
+                                    "\\mathrm{" * m[1] * "}_{" * m[2] * "}")
     s
 end
 

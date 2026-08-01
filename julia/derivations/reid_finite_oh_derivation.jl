@@ -1,6 +1,6 @@
 # # Finite-Oh Damping and Frequency
 #
-# The companion page, `reid1960_full_derivation.jl`, ends with an exact
+# The companion page, "The Viscous Drop: Reid (1960)", ends with an exact
 # transcendental characteristic equation for a viscous drop. This page turns
 # that equation into two numbers per mode that a timestepper can actually
 # use: a damping rate ``\lambda_l(\mathrm{Oh})`` and a squared frequency
@@ -26,14 +26,12 @@
 # coefficients derived here are the ones the `:reid` viscous model
 # evaluates.
 #
-# ## Prior art
+# ## Three ingredients
 #
-# The numerical choices below follow the sister package
-# `elvis-aguero/SpectralKM.jl` (a fully spectral kinematic-match model for
-# droplet-bath impact by the same group), which carries a `:reid` viscous
-# model in production (`src/reid.jl`, with `DEFAULT_VISCOUS = :reid` in
-# `src/types.jl`). Three ingredients come from there, credited again at
-# point of use below:
+# Getting these coefficients out of Reid's equation reliably rests on three
+# choices, worth stating before the algebra starts. (The numerical approach
+# follows the sister package SpectralKM.jl, a fully spectral kinematic-match
+# model for droplet-bath impact.)
 #
 # 1. **A downward Bessel-ratio recurrence** that never evaluates a Bessel
 #    function directly. Evaluating ``j_l`` and ``j_{l+1}`` separately and
@@ -47,8 +45,9 @@
 # 3. **The parametrization itself.** Molaček & Bush (2012) carry a per-mode
 #    *inertia* coefficient ``A_l(\mathrm{Oh})`` alongside a rescaled damping
 #    ``D_l(\mathrm{Oh})``, keeping the restoring term fixed at the inviscid
-#    ``l(l-1)(l+2)``. SpectralKM.jl instead keeps unit inertia and lets both
-#    the damping and the frequency-squared term vary with ``\mathrm{Oh}``:
+#    ``l(l-1)(l+2)``. The form used here instead keeps unit inertia and lets
+#    both the damping and the frequency-squared term vary with
+#    ``\mathrm{Oh}``:
 #    ```math
 #    \ddot A_l + 2\lambda_l(\mathrm{Oh})\,\dot A_l + \omega_l^2(\mathrm{Oh})\,A_l = \text{forcing}.
 #    ```
@@ -82,6 +81,16 @@
 
 using DropSolver   #src
 
+# ![Damping rate against Ohnesorge number for three modes, comparing Lamb's
+# small-viscosity formula with Reid's exact result; the two coincide at low
+# Ohnesorge number and separate as it grows, earlier for higher
+# mode number.](../assets/reid_vs_lamb.png)
+#
+# *Lamb's formula (dashed) against Reid's exact damping rate (solid). They
+# agree in the small-viscosity limit and diverge as ``\mathrm{Oh}`` grows --
+# and the divergence sets in earlier for higher ``l``, which is why a solver
+# resolving many modes cannot rely on the asymptotic form.*
+#
 # ## Section 1: Evaluating Reid's characteristic equation robustly
 #
 # The equation itself is
@@ -97,8 +106,8 @@ using DropSolver   #src
 # Evaluating ``j_{l+1}(q)`` and ``j_l(q)`` separately and dividing is a trap:
 # at small ``\mathrm{Oh}``, ``q\sim\sqrt{\sigma/\mathrm{Oh}}`` has large
 # ``|\mathrm{Im}\,q|``, and both functions overflow long before their *ratio*
-# -- which stays ``O(1)`` -- does. The fix, ported from SpectralKM.jl's
-# `src/reid.jl`, is a downward recurrence that computes the ratio directly.
+# -- which stays ``O(1)`` -- does. The fix is a downward recurrence that
+# computes the ratio directly.
 # It follows from the standard three-term spherical Bessel recurrence
 # ``j_{l-1}+j_{l+1} = \frac{2l+1}{q}j_l``, divided through by ``j_l`` and
 # inverted.
@@ -202,8 +211,8 @@ function dominant_root_direct(Oh, l)
     imag(q) > 0 ? conj(q) : q
 end
 
-# The reliable method is *continuation* in ``\mathrm{Oh}`` (technique ported
-# from SpectralKM.jl's `reid_root_tracked`): start at an ``\mathrm{Oh}``
+# The reliable method is *continuation* in ``\mathrm{Oh}``: start at an
+# ``\mathrm{Oh}``
 # small enough that Lamb's guess is genuinely asymptotic, then walk
 # geometrically up to the target, seeding each step's Newton solve with the
 # previous step's converged root. This is what makes the result trustworthy
@@ -230,8 +239,7 @@ end
 
 # ### Where the direct solve picks the wrong branch
 #
-# At ``l=16``, ``\mathrm{Oh}=0.3`` (SpectralKM.jl's documented example,
-# reproduced independently here) the direct Newton solve returns
+# At ``l=16``, ``\mathrm{Oh}=0.3`` the direct Newton solve returns
 # ``\sigma \approx 425.6``, purely real. Continuation returns
 # ``\sigma \approx 49.2 - 10.5i``. Both are genuine roots -- each satisfies
 # the characteristic equation to better than ``10^{-8}``, so this is not a
@@ -366,9 +374,9 @@ end
 # | 5 | 139.972 | 139.9991 | 140 |
 # | 10 | 1079.574 | 1079.986 | 1080 |
 #
-# The error is required to shrink between the two
-# ``\mathrm{Oh}`` values (for both ``\lambda_l`` and ``\omega_l^2``) and to
-# fall below 2% at ``\mathrm{Oh}=10^{-4}``.
+# The error shrinks between the two ``\mathrm{Oh}`` values for both
+# ``\lambda_l`` and ``\omega_l^2``, and is under 2% at
+# ``\mathrm{Oh}=10^{-4}``.
 
 for l in (2, 3, 4, 5, 10)                                            #src
     target_om2 = float(l) * (l - 1) * (l + 2)                        #src
@@ -430,13 +438,12 @@ end                                                                  #src
 
 # ### 3.3 Nothing jumps at the critical Oh
 #
-# The underdamped and overdamped branches are computed by different code
-# paths (`find_second_root` takes the conjugate in one case and runs a fresh
-# Newton solve in the other), so it is worth confirming that the
-# coefficients they produce agree where the two regimes meet. Sweeping
-# ``l=2`` across ``\mathrm{Oh}\in[0.3,1.3]`` in 40 steps, the largest
-# single-step change in either coefficient is ``0.079`` -- no discontinuity
-# at the oscillatory/overdamped transition.
+# On one side of the critical ``\mathrm{Oh}`` the two eigenvalues are a
+# complex-conjugate pair; on the other they are two unrelated real numbers.
+# The coefficients built from them are nevertheless continuous across the
+# transition: sweeping ``l=2`` across ``\mathrm{Oh}\in[0.3,1.3]`` in 40
+# steps, the largest single-step change in either ``\lambda_2`` or
+# ``\omega_2^2`` is ``0.079``, with no jump where the two regimes meet.
 
 Oh_span = vcat(range(0.3, 1.3; length=41))                                                                 #src
 prev_lam, prev_om2 = compute_lambda_omega2(Oh_span[1], 2)                                                  #src

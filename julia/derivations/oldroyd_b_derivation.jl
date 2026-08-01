@@ -1,4 +1,4 @@
-# # Oldroyd-B Drops: From the Constitutive Law to the Code That Runs
+# # Oldroyd-B Drops
 #
 # This page derives the linearised Oldroyd-B (viscoelastic) drop problem from
 # its constitutive law, checking each result both symbolically and against
@@ -7,11 +7,10 @@
 # The route is short. The constitutive law becomes a complex,
 # frequency-dependent viscosity (§1), which enters Reid's Newtonian problem
 # through a single modified wavenumber (§2). §3 derives the time-domain
-# auxiliary variable ``S_n`` that `julia/src/ob_extension.jl` integrates and
-# identifies it as the minimal state-space realization of the same memory
-# kernel. §4 fixes the meaning of the ``De_1`` parameter as the solver
-# implements it, and §5-§6 cover the discretized Jacobian and the live
-# eigenvalues.
+# auxiliary variable ``S_n`` the solver integrates and identifies it as the
+# minimal state-space realization of the same memory kernel. §4 fixes the
+# meaning of the ``De_1`` parameter, and §5 compares the whole construction
+# against eigenvalues measured from the running solver.
 #
 # ## Notation
 #
@@ -24,7 +23,7 @@
 # | ``\lambda_2=\beta_s\lambda_1`` | retardation time |
 # | ``\beta_s=\mu_s/\mu`` | solvent viscosity fraction |
 # | ``De_1=\lambda_1/\tau_{\mathrm{cap}}``, ``De_2=\beta_s De_1`` | Deborah numbers, mode-independent (§4) |
-# | ``S_n`` | the polymer-stress auxiliary variable the Julia code integrates (`DropState.S`) |
+# | ``S_n`` | the polymer-stress auxiliary variable the solver integrates |
 
 using Symbolics
 using QuadGK
@@ -59,10 +58,17 @@ end                                                                           #s
 # except that the viscosity ``\mu`` is replaced by a complex,
 # frequency-dependent ``\mu_{\mathrm{eff}}(\sigma)``. Solving the
 # constitutive law directly gives
+#
+# ```math
+# \mu_{\mathrm{eff}}(\sigma) \;=\;
+#   \mu\,\frac{1-\lambda_2\sigma}{1-\lambda_1\sigma},
+# ```
+#
+# with ``\lambda_1`` the relaxation time and ``\lambda_2`` the retardation
+# time.
 
-@variables mu_sym lam1 lam2 sigma_sym beta_s_sym De1_sym De2_sym q2_sym alpha2_sym
-
-mu_eff = mu_sym * (1 - lam2 * sigma_sym) / (1 - lam1 * sigma_sym)
+@variables mu_sym lam1 lam2 sigma_sym beta_s_sym De1_sym De2_sym q2_sym alpha2_sym  #src
+mu_eff = mu_sym * (1 - lam2 * sigma_sym) / (1 - lam1 * sigma_sym)  #src
 
 # Three limits have to come out right, and do:
 #
@@ -136,8 +142,8 @@ println("ASSERTION 7b OK: the denominator vanishes at the retardation pole q^2 =
 
 # ## 3. Why the auxiliary variable ``S_n`` is the right one
 #
-# `julia/src/ob_extension.jl` does not integrate ``\mu_{\mathrm{eff}}
-# (\sigma)`` directly -- ``\sigma`` is a frequency and the solver works in
+# The solver does not integrate ``\mu_{\mathrm{eff}}(\sigma)`` directly --
+# ``\sigma`` is a frequency and the solver works in
 # the time domain. Instead it carries one extra state variable per mode,
 # satisfying a plain first-order ODE,
 #
@@ -210,35 +216,20 @@ println("ASSERTION 9 OK: beta_s*Adot + S has transfer function mu_eff(sigma)/mu,
 # Two definitions of ``De_1`` are in circulation for this problem:
 # ``\lambda_1/\tau_{\mathrm{cap}}``, a single fluid property shared by every
 # mode, and ``\lambda_1\sigma_{l;0}``, which is ``l``-dependent. They are
-# different quantities, so it is worth establishing which one `OBParams.De1`
-# denotes.
+# different quantities, so it is worth establishing which one this solver's
+# ``De_1`` denotes.
 #
 # §3 supplies the structural evidence: the transfer function balances only
 # because ``De_1`` substitutes directly for ``\lambda_1``, with no
-# ``\sigma_{l;0}(l)`` factor. The source agrees. In the residual, `ob.De1`
-# enters as a plain scalar with no per-mode rescaling:
+# ``\sigma_{l;0}(l)`` factor. The discretized equations agree -- ``De_1``
+# enters them as a plain scalar, carrying no mode index and no per-mode
+# rescaling.
 #
-# ```julia
-# R[3M+2:4M] .= (c[end] + dt/ob.De1) .* S .+
-#               sum(c[j] .* prev_S[:, j] for j in 1:order) .-
-#               dt * (1 - ob.beta_s) / ob.De1 .* Adot
-# ```
+# A behavioural test confirms the reading. Holding ``De_1=0.3`` and
+# ``\beta_s=0.7`` fixed while exciting two different modes, and comparing
+# each free-decay run against its *own* mode's characteristic-equation root:
 #
-# and likewise in the Jacobian:
-#
-# ```julia
-# J[3M+2:4M, Nm+1:2Nm]  .= -dt * (1 - ob.beta_s) / ob.De1 * I(Nm)
-# J[3M+2:4M, 2Nm+1:3Nm] .= (ak + dt / ob.De1) * I(Nm)
-# ```
-#
-# Neither line carries an ``l`` anywhere.
-#
-# A behavioural test confirms the reading. Running the same
-# `OBParams(De1=0.3, beta_s=0.7)` while exciting two different modes through
-# `solve_drop!`, and comparing each against its *own* mode's
-# characteristic-equation root:
-#
-# | mode | characteristic-equation decay | live `solve_drop!` decay | error |
+# | mode | characteristic-equation decay | live solver decay | error |
 # |:--|:--|:--|:--|
 # | ``l=2`` | 0.09151 | 0.08876 | 3.0% |
 # | ``l=5`` | 0.7645 | 0.7381 | 3.5% |
@@ -305,33 +296,13 @@ let Oh_test = 0.02, De1_test = 0.3, beta_s_test = 0.7                         #s
 end                                                                           #src
 println("ASSERTION 10 OK: one mode-independent De1 reproduces both the l=2 and l=5 roots") #src
 
-# ## 5. Code parity for the discretized Jacobian
-#
-# §3 derived the *continuous* ODE for ``S_n``. The solver discretizes it with
-# BDF and builds an analytical Jacobian from that discretization, so the
-# discretized coefficients are worth deriving independently and comparing
-# against the source.
-#
-# With BDF1, the residual is ``R_S=S_k-S_{k-1}-\Delta t\,f_S`` where
-# ``f_S=[(1-\beta_s)\dot A_k-S_k]/De_1``, so
-#
-# ```math
-# \frac{\partial R_S}{\partial S_k} = 1+\frac{\Delta t}{De_1},
-# \qquad
-# \frac{\partial R_S}{\partial \dot A_k} = -\frac{\Delta t(1-\beta_s)}{De_1},
-# ```
-#
-# which are exactly the `(ak + dt/De1)` and `-dt*(1-beta_s)/De1` entries the
-# code writes, with ``a_k=1`` for BDF1.
-#
-# On BDF2: the code takes ``a_k`` = `c[end]` straight from
-# `bdf_coefficients`, and the derivation above never used a BDF1-specific
-# value beyond ``a_k=1``, so it generalizes without being redone. On the
-# damping block: `D2_diag = 2*Oh*(n-1)*(2n+1)` is literally the same formula
-# as the pure-Newtonian ``D_2``, which confirms that Oldroyd-B *redistributes*
-# the existing damping between ``\beta_s\dot A`` and ``S`` rather than
-# introducing a second independent coefficient.
-
+## Internal code-parity check, kept out of the rendered page.  §3 derived    #src
+## the *continuous* ODE for S_n; the solver discretizes it with BDF and      #src
+## builds an analytical Jacobian from that discretization.  With BDF1 the    #src
+## residual is R_S = S_k - S_{k-1} - dt*f_S, f_S = [(1-beta_s)*Adot_k -      #src
+## S_k]/De1, whose two partial derivatives are asserted below to match the   #src
+## coefficients the solver writes into its Jacobian.  A failure here means   #src
+## the discretization and the continuous ODE have drifted apart.            #src
 @variables S_k S_km1 Adot_k dt_sym De1_c beta_s_c ak_sym                      #src
 f_S = ((1 - beta_s_c) * Adot_k - S_k) / De1_c                                 #src
 R_S = expand(S_k - S_km1 - dt_sym * f_S)                                      #src
@@ -340,7 +311,7 @@ println("ASSERTION 11 OK: dR_S/dS matches the code's (ak + dt/De1), ak=1 for BDF
 @assert numerically_equal(Symbolics.derivative(R_S, Adot_k), -dt_sym * (1 - beta_s_c) / De1_c) #src
 println("ASSERTION 12 OK: dR_S/dAdot matches the code's -dt*(1-beta_s)/De1")   #src
 
-# ## 6. Live cross-check against the running solver
+# ## 5. Live cross-check against the running solver
 #
 # The last step runs `solve_drop!` at three parameter points and compares the
 # measured free-decay rate against the characteristic-equation root:

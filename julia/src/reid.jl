@@ -123,7 +123,7 @@ is genuinely accurate, then walk geometrically up to the target, seeding each
 step's Newton solve with the previous step's converged root. A single
 Lamb-seeded Newton solve at the target Oh is NOT reliable in general -- it can
 converge to a more strongly damped, non-dominant root once Oh grows (confirmed
-at l=16, Oh=0.3 in `julia/derivations/reid_finite_oh_derivation.jl`).
+at l=16, Oh=0.3 in the "Finite-Ohnesorge Coefficients" derivation).
 
 The number of steps is chosen ADAPTIVELY so each step's Oh ratio stays below
 `max_step_ratio`, rather than a fixed step count. A fixed count gives a
@@ -154,7 +154,7 @@ Underdamped (`q1` complex): the true conjugate pair, no separate search.
 Overdamped (`q1` real): a genuinely separate, much smaller real root (a
 "creep" mode) -- NOT obtainable by continuing `conj(q1)`'s branch through the
 critical Oh, which collapses onto the same root as `q1` instead (see the
-derivation script's Section 2). Found from an analytic small-q asymptotic
+"Finite-Ohnesorge Coefficients" derivation, Section 2). Found from an analytic small-q asymptotic
 guess (derived by substituting the small-argument ratio `Q(q) ~ q/(2l+3)` into
 `reid_char` and balancing its two singular terms), refined by Newton.
 """
@@ -173,7 +173,7 @@ end
 Exact finite-Oh coefficients of the unit-mass oscillator whose eigenvalues are
 Reid's own two dominant roots, via Vieta's formulas:
 `lambda = (sigma_1+sigma_2)/2`, `omega2 = sigma_1*sigma_2`
-(`sigma_i = q_i^2*Oh`, this package's existing time-unit convention). `resid`
+(`sigma_i = q_i^2*Oh`, this package's time-unit convention). `resid`
 is the achieved characteristic-equation residual at the dominant root, for the
 caller to assert on.
 """
@@ -195,9 +195,9 @@ Per-mode damping and squared frequency for modes `l = 2..M`, returned as
 length-`(M-1)` vectors indexed the same way as `A[2:end]`/`Adot[2:end]`
 throughout this package (`lambda[k]`, `omega2[k]` correspond to mode `l=k+1`).
 
-- `model = :lamb` -- `lambda_l = Oh*(l-1)*(2l+1)`, `omega_l^2 = l*(l-1)*(l+2)`.
-  Bit-for-bit identical to what `build_residual!`/`build_jacobian!` have always
-  computed inline.
+- `model = :lamb` -- Lamb's small-Ohnesorge asymptotics,
+  `lambda_l = Oh*(l-1)*(2l+1)`, `omega_l^2 = l*(l-1)*(l+2)`; the exact `Oh -> 0`
+  limit of the `:reid` result, with error growing in both `Oh` and `l`.
 - `model = :reid` -- exact roots of Reid's characteristic equation. Falls back
   to Lamb for any mode whose root fails to converge (residual >= 1e-6),
   warning which modes and why, rather than silently using a wrong coefficient.

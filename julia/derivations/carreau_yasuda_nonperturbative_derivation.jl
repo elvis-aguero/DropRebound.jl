@@ -48,8 +48,8 @@
 # Two limitations carry through this page. True cross-mode coupling is not
 # included: the characteristic shear rate uses only mode ``l``'s own velocity
 # field, the same simplification the perturbative code makes through its
-# per-mode ``\Gamma_l^{(a)}``, and the one
-# `carreau_yasuda_multimode_derivation.jl` removes. And the coefficients
+# per-mode ``\Gamma_l^{(a)}``, and the one *Carreau-Yasuda: Multi-Mode*
+# removes. And the coefficients
 # derived here are free-decay coefficients, so substituting them into the
 # forced, contact-coupled ODE is an additional approximation -- one shared
 # with the `:reid` viscous model generally.
@@ -78,10 +78,9 @@ using DropSolver
 # e_{r\theta}=-(l-1)\sin\theta\,X'.
 # ```
 #
-# The first three sum to zero identically -- incompressibility -- confirmed
-# numerically at ``l=2,3,5,8`` and several ``x``, to within ``10^{-10}``.
-# Were that to fail, the field would not be divergence-free, and no shear
-# rate derived from it would describe an incompressible flow.
+# The first three sum to zero identically -- the field is divergence-free,
+# confirmed numerically at ``l=2,3,5,8`` and several ``x`` to within
+# ``10^{-10}``.
 
 function legendre_P_dP(l::Int, x::Float64)                                    #src
     l == 0 && return 1.0, 0.0                                                 #src
@@ -251,8 +250,9 @@ Oh_eff(Oh0, lambda_c, a, eps_ST, gammadot_char) =
 # ``[1+X]^{-\varepsilon_{ST}}`` to first order in ``\varepsilon_{ST}`` and
 # then linearizing again in ``X=(\lambda_c\dot\gamma)^a`` gives exactly the
 # ``1-\varepsilon_{ST}(\lambda_c\dot\gamma_{\mathrm{char},l})^a`` factor
-# already multiplying ``D_2`` in `st_extension.jl`, with that file's per-mode
-# geometric factor `Gamma_eff` playing the role of ``K_l^a``. Driving
+# already multiplying the damping coefficient in `julia/src/st_extension.jl`,
+# with that file's per-mode geometric factor playing the role of ``K_l^a``.
+# Driving
 # ``\varepsilon_{ST}`` through ``10^{-2},10^{-3},10^{-4}`` at fixed modest
 # shear, the gap shrinks monotonically and falls below ``10^{-6}``.
 #
@@ -299,11 +299,10 @@ println("ASSERTION 4 OK: perturbative multiplier goes negative; exact ratio stay
 
 # ## 4. Feeding ``\mathrm{Oh}_{\mathrm{eff},l}`` through Reid's exact relations
 #
-# Both `julia/src/timestepper.jl`'s ``D_1[l]`` (restoring) and ``D_2[l]``
-# (damping) must be replaced by
-# ``\lambda_l(\mathrm{Oh}_{\mathrm{eff},l})`` and
-# ``\omega_l^2(\mathrm{Oh}_{\mathrm{eff},l})`` from `reid_lambda_omega2` --
-# not ``D_2`` alone, the way a damping-only correction would.
+# Both of mode ``l``'s coefficients -- the restoring ``\omega_l^2`` and the
+# damping ``\lambda_l`` -- must be re-evaluated at
+# ``\mathrm{Oh}_{\mathrm{eff},l}`` through Reid's exact relations, not the
+# damping alone the way a damping-only correction would.
 #
 # The size of that difference at this fluid's rest ``\mathrm{Oh}_0=57.4``:
 #
@@ -400,15 +399,10 @@ println("ASSERTION 6 OK: free oscillation at the real fluid's parameters stays b
 # whole range, and reproduces the perturbative factor exactly in the
 # double-small-parameter limit where that factor is valid.
 #
-# The corresponding residual and Jacobian live in
-# `julia/src/st_exact_extension.jl` -- a separate code path from
-# `st_extension.jl`'s, because the ODE structure now needs ``D_1`` to vary
-# and not only ``D_2``. Since ``\mathrm{Oh}_{\mathrm{eff},l}`` changes every
-# step, `reid_lambda_omega2`'s continuation solve is too slow to call
-# directly; the implementation interpolates a per-mode table built once
-# (`build_reid_table`), with `:lamb` at the exact
-# ``\mathrm{Oh}_{\mathrm{eff},l}`` as the cheaper alternative.
+# Because ``\mathrm{Oh}_{\mathrm{eff},l}`` changes at every step, Reid's exact
+# relations are evaluated from a per-mode table precomputed once rather than
+# from a fresh continuation solve.
 #
-# The single-mode restriction is itself the subject of
-# `carreau_yasuda_multimode_derivation.jl`, which supersedes this page's
-# closure while keeping everything above it intact.
+# The single-mode restriction is itself the subject of *Carreau-Yasuda:
+# Multi-Mode*, which supersedes this page's closure while keeping everything
+# above it intact.

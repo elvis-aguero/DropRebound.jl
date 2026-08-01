@@ -43,17 +43,13 @@
 # far off the diagonal the mode-coupling matrix reaches. Its dimension is
 # always ``M``.
 #
-# A failing assertion below means the chain has a broken link: either the
-# algebra here is wrong, or a step that was claimed to be exact is not.
+# Some results below are established symbolically, for arbitrary ``l``; others
+# only by evaluation at a spread of concrete points, which is strong numerical
+# evidence rather than a proof. The text says which is which.
 
 using Symbolics, QuadGK, SpecialFunctions, DropSolver  #src
 using Printf  #src
 
-# Helper reused throughout: try to prove an expression is identically zero
-# symbolically, and if the CAS cannot finish the simplification, fall back
-# to evaluating it at a spread of concrete points. Where the fallback is
-# taken, the result is strong numerical evidence rather than a proof, and
-# the text says so.
 function symbolic_zero(expr, vars; npts::Int=12, tol::Float64=1e-10)  #src
     s = Symbolics.simplify(Symbolics.expand(expr))  #src
     if s isa Number && iszero(s)  #src
@@ -109,7 +105,7 @@ println("="^78)  #src
 # ### The one identity that shapes the whole problem
 #
 # For a **constant** viscosity the divergence of the stress collapses to
-# ``\mu\nabla^2\bm u``, which is what makes Reid's problem separable. For a
+# ``\eta\nabla^2\bm u``, which is what makes Reid's problem separable. For a
 # variable viscosity it does not. Expanding the divergence of a product,
 #
 # ```math
@@ -300,8 +296,8 @@ end  #src
 #
 # For each mode, Reid's radial velocity amplitude is ``F(x)=U(x)/x^2`` with
 # ``U(x)=C\,x\,j_l(qx)+\Pi_0 x^{l+1}``, and the strain components follow
-# from the poloidal representation. Those are derived in
-# `reid1960_full_derivation.jl`; we use them below without re-deriving.
+# from the poloidal representation. Those are derived in *The Viscous Drop:
+# Reid (1960)*; we use them below without re-deriving.
 
 # ## Step 4 (L4) -- the full coupled system
 #
@@ -359,6 +355,15 @@ end  #src
 # angular spectrum is confined to ``l'\le L_\eta``, then ``\mathcal D`` is a
 # banded ``M\times M`` matrix of half-bandwidth ``L_\eta``, and applying it
 # costs ``O(M L_\eta)`` rather than ``O(M^2)``. With ``M=90`` and
+# ![Three mode-coupling matrices: a diagonal one when viscosity is constant, a
+# banded one when viscosity varies slowly, and a fully dense one when it varies
+# sharply.](../assets/coupling_structure.png)
+#
+# *What the viscosity's angular structure does to the mode-coupling matrix.
+# Constant viscosity leaves it diagonal and every mode independent; slow
+# variation couples neighbours into a band; sharp variation couples everything.
+# Step 6 measures which of these the real fluid produces.*
+#
 # ``L_\eta=6`` that is nearly as cheap as diagonal.
 
 let  #src
@@ -684,7 +689,7 @@ end  #src
 #   everywhere, this forces ``e_{r\theta}=0`` *regardless of whether ``\eta``
 #   is constant*. **Unchanged**, and so is the whole
 #   ``\tau_{r\theta}=0\Rightarrow\mathcal L_2[U]=0`` reduction already derived
-#   in `reid1960_full_derivation.jl`.
+#   in *The Viscous Drop: Reid (1960)*.
 # * **BC3 (normal stress)** carries ``\eta`` multiplicatively, so it becomes
 #   the *surface* value ``\eta_s=\eta(\dot\gamma|_{r=R})``. Same form, one
 #   state-dependent coefficient.
@@ -770,12 +775,6 @@ end  #src
 # is a linear two-point boundary-value eigenproblem: no longer Bessel, but
 # entirely standard, and `julia/src/reid.jl`'s continuation machinery already
 # knows how to track eigenvalue branches through one.
-#
-# A note on method: `Symbolics.build_function` does not terminate in any
-# useful time on these expression trees. Substituting concrete values
-# *first* collapses the tree to something trivial; the only wrinkle is that
-# `substitute` does not fold transcendentals, so the result needs
-# `toexpr` + `eval` to become a number.
 
 @variables rr tt qq hh1 hh2  #src
 let  #src
