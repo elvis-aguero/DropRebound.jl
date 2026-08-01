@@ -58,6 +58,10 @@ makedocs(
             "Structure of the Solutions" => "reid1960/09-structure-of-solutions.md",
             "Molaček & Bush Connection + Summary" => "reid1960/10-molacek-bush-summary.md",
         ],
+        "Carreau-Yasuda [pilot: hand-authored prose]" => [
+            "Why Amplitude Perturbation Theory Fails" => "carreau_yasuda_fp/01-why-perturbation-fails.md",
+            "What Survives" => "carreau_yasuda_fp/02-what-survives.md",
+        ],
         "CAS Derivations" => derivation_pages,
         "API Reference" => "api.md",
     ],
