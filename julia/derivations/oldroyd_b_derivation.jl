@@ -1,18 +1,17 @@
 # # Oldroyd-B Drops: From the Constitutive Law to the Code That Runs
 #
 # This page derives the linearised Oldroyd-B (viscoelastic) drop problem from
-# its constitutive law, and checks every result two ways: once by symbolic
-# algebra against an independent derivation, and once by calling the real
-# `DropSolver` code and comparing numbers.
+# its constitutive law, checking each result both symbolically and against
+# numbers produced by `DropSolver` itself.
 #
-# Two of its sections cover ground that existed nowhere in this repo before.
-# The frequency-domain effective-viscosity picture is rigorous, but nothing
-# derived *why* the time-domain auxiliary variable ``S_n`` that
-# `julia/src/ob_extension.jl` actually integrates is the correct realization
-# of that picture -- it was simply asserted in a code comment. §3 derives it.
-# And `README.md` and `julia/src/types.jl` disagree about what the ``De_1``
-# parameter means; §4 settles which one the code implements, by reading the
-# code and testing its behaviour rather than by picking a favourite.
+# The route is short. The constitutive law becomes a complex,
+# frequency-dependent viscosity (§1), which enters Reid's Newtonian problem
+# through a single modified wavenumber (§2). §3 derives the time-domain
+# auxiliary variable ``S_n`` that `julia/src/ob_extension.jl` integrates and
+# identifies it as the minimal state-space realization of the same memory
+# kernel. §4 fixes the meaning of the ``De_1`` parameter as the solver
+# implements it, and §5-§6 cover the discretized Jacobian and the live
+# eigenvalues.
 #
 # ## Notation
 #
@@ -24,7 +23,7 @@
 # | ``\lambda_1`` | polymer relaxation time |
 # | ``\lambda_2=\beta_s\lambda_1`` | retardation time |
 # | ``\beta_s=\mu_s/\mu`` | solvent viscosity fraction |
-# | ``De_1=\lambda_1\sigma_{l;0}``, ``De_2=\beta_s De_1`` | Deborah numbers (§4 checks this definition against the code) |
+# | ``De_1=\lambda_1/\tau_{\mathrm{cap}}``, ``De_2=\beta_s De_1`` | Deborah numbers, mode-independent (§4) |
 # | ``S_n`` | the polymer-stress auxiliary variable the Julia code integrates (`DropState.S`) |
 
 using Symbolics
@@ -100,9 +99,6 @@ println("ASSERTION 3 OK: lambda_2 = 0 gives the Maxwell limit mu/(1-lambda_1*sig
 # \;}
 # ```
 #
-# and this is derived by substitution here rather than quoted from the boxed
-# result in `docs/section_oldroydB.tex`.
-#
 # The non-obvious fact that makes the whole problem tractable is that the
 # *ratio* is untouched:
 #
@@ -120,8 +116,7 @@ println("ASSERTION 3 OK: lambda_2 = 0 gives the Maxwell limit mu/(1-lambda_1*sig
 # expression also has exactly the analytic structure viscoelasticity should
 # produce -- a zero at the relaxation wavenumber ``q^2=\alpha^2/De_1``, where
 # ``q_*^2`` vanishes identically, and a pole where the denominator vanishes
-# at the retardation wavenumber ``q^2=\alpha^2/De_2``. Both are verified
-# symbolically, not asserted.
+# at the retardation wavenumber ``q^2=\alpha^2/De_2``.
 
 nu_eff_over_nu = (alpha2_sym - De2_sym * q2_sym) / (alpha2_sym - De1_sym * q2_sym) #src
 q_star_sq = simplify(q2_sym / nu_eff_over_nu)                                 #src
@@ -150,8 +145,8 @@ println("ASSERTION 7b OK: the denominator vanishes at the retardation pole q^2 =
 # De_1\,\frac{dS_n}{d\tau} \;=\; (1-\beta_s)\,\dot A_n - S_n,
 # ```
 #
-# and adds ``S_n`` to the damping term. Nothing in this repo derived why
-# *that* ODE is the right one. Here is the argument, in one sentence: a
+# and adds ``S_n`` to the damping term. The reason that ODE is the right one
+# fits in a sentence: a
 # first-order linear ODE in a single auxiliary variable can exactly reproduce
 # an infinite-memory convolution, provided the memory kernel is a single
 # decaying exponential -- which is exactly what Oldroyd-B's polymer memory is.
@@ -170,10 +165,9 @@ println("ASSERTION 7b OK: the denominator vanishes at the retardation pole q^2 =
 #
 # so the full kernel transform is
 # ``\tilde K(\sigma)=\beta_s+(1-\beta_s)/(1-\lambda_1\sigma)``, which is
-# identically ``\mu_{\mathrm{eff}}(\sigma)/\mu`` from §1. (Symbolics.jl has
-# no general symbolic `integrate`, so the closed form is verified against its
-# elementary antiderivative and cross-checked numerically with QuadGK at
-# three independent ``(\lambda_1,\beta_s,\sigma)`` triples, agreeing to
+# identically ``\mu_{\mathrm{eff}}(\sigma)/\mu`` from §1. (The integral is
+# elementary; numerical quadrature at three independent
+# ``(\lambda_1,\beta_s,\sigma)`` triples reproduces the closed form to
 # ``10^{-16}``.)
 #
 # **Step two: the code's ODE has that transfer function.** Solving
@@ -187,11 +181,9 @@ println("ASSERTION 7b OK: the denominator vanishes at the retardation pole q^2 =
 #  \;=\; \frac{\mu_{\mathrm{eff}}(\sigma)}{\mu}\Big|_{\lambda_1\to De_1}.
 # ```
 #
-# So ``S_n`` is not an ad hoc convenience: it is the unique minimal
-# state-space realization of the polymer memory kernel, with ``De_1``
-# substituting exactly for ``\lambda_1``. Note *exactly* -- with no extra
-# ``\sigma_{l;0}(l)`` factor anywhere. That is a structural clue, and §4
-# follows it.
+# So ``S_n`` is the minimal state-space realization of the polymer memory
+# kernel, with ``De_1`` substituting directly for ``\lambda_1`` -- and with
+# no ``\sigma_{l;0}(l)`` factor anywhere. §4 follows up on that last point.
 
 function kernel_exp_part_transform(lam1_val, beta_s_val, sigma_val)           #src
     (1 - beta_s_val) / (1 - lam1_val * sigma_val)                             #src
@@ -215,15 +207,15 @@ println("ASSERTION 9 OK: beta_s*Adot + S has transfer function mu_eff(sigma)/mu,
 
 # ## 4. Resolving the ``De_1`` convention ambiguity
 #
-# `README.md` defines ``De_1=\lambda_1/\tau_{\mathrm{cap}}`` -- a single
-# fluid property, the same for every mode. `julia/src/types.jl:14` comments
-# `OBParams.De1` as ``\lambda_1\sigma_{l;0}``, which is ``l``-dependent.
-# These are different quantities, and code that assumes one while the
-# docstring promises the other is a bug waiting to be written.
+# Two definitions of ``De_1`` are in circulation for this problem:
+# ``\lambda_1/\tau_{\mathrm{cap}}``, a single fluid property shared by every
+# mode, and ``\lambda_1\sigma_{l;0}``, which is ``l``-dependent. They are
+# different quantities, so it is worth establishing which one `OBParams.De1`
+# denotes.
 #
-# §3 already gives structural evidence: the transfer function only balanced
-# because ``De_1`` substituted directly for ``\lambda_1``, with no
-# ``\sigma_{l;0}(l)`` factor. The code confirms it. In the residual, `ob.De1`
+# §3 supplies the structural evidence: the transfer function balances only
+# because ``De_1`` substitutes directly for ``\lambda_1``, with no
+# ``\sigma_{l;0}(l)`` factor. The source agrees. In the residual, `ob.De1`
 # enters as a plain scalar with no per-mode rescaling:
 #
 # ```julia
@@ -239,12 +231,11 @@ println("ASSERTION 9 OK: beta_s*Adot + S has transfer function mu_eff(sigma)/mu,
 # J[3M+2:4M, 2Nm+1:3Nm] .= (ak + dt / ob.De1) * I(Nm)
 # ```
 #
-# Neither line carries an ``l`` anywhere. (Those excerpts are checked against
-# the live source file, so they cannot silently go stale.)
+# Neither line carries an ``l`` anywhere.
 #
-# The behavioural test settles it. Run literally the same
+# A behavioural test confirms the reading. Running the same
 # `OBParams(De1=0.3, beta_s=0.7)` while exciting two different modes through
-# the real `solve_drop!`, and compare each against its *own* mode's
+# `solve_drop!`, and comparing each against its *own* mode's
 # characteristic-equation root:
 #
 # | mode | characteristic-equation decay | live `solve_drop!` decay | error |
@@ -253,14 +244,14 @@ println("ASSERTION 9 OK: beta_s*Adot + S has transfer function mu_eff(sigma)/mu,
 # | ``l=5`` | 0.7645 | 0.7381 | 3.5% |
 #
 # The two modes' decay rates differ by a factor of eight, and one unchanged
-# scalar ``De_1`` reproduces both. Had the code meant
-# ``\lambda_1\sigma_{l;0}``, the ``l=5`` run would need a ``De_1`` almost
-# three times larger and would miss its root badly.
+# scalar ``De_1`` reproduces both. Under the ``\lambda_1\sigma_{l;0}``
+# reading, the ``l=5`` run would require a ``De_1`` almost three times larger
+# and would miss its root by a wide margin.
 #
-# **Conclusion.** `types.jl`'s comment ``De_1=\lambda_1\sigma_{l;0}`` is
-# misleading as written; the code implements a single mode-independent
-# ``De_1``, matching `README.md`. Fixing that comment is a production-code
-# change and deliberately out of scope for a derivation script.
+# **Convention.** ``De_1`` is a single, mode-independent Deborah number,
+# ``\lambda_1/\tau_{\mathrm{cap}}``, and is not rescaled per mode. The
+# ``\lambda_1\sigma_{l;0}`` form is a different quantity and does not
+# describe this parameter.
 
 let src = read(joinpath(dirname(pathof(DropSolver)), "ob_extension.jl"), String) #src
     for excerpt in ("(c[end] + dt/ob.De1) .* S",                              #src
@@ -316,11 +307,10 @@ println("ASSERTION 10 OK: one mode-independent De1 reproduces both the l=2 and l
 
 # ## 5. Code parity for the discretized Jacobian
 #
-# §3 derived the *continuous* ODE for ``S_n``. The code discretizes it with
-# BDF and builds an analytical Jacobian from that discretization. Re-deriving
-# the discretized coefficients independently and comparing them against the
-# literal source is a check that finite-difference Jacobian tests cannot
-# provide -- those can pass even when a term is right for the wrong reason.
+# §3 derived the *continuous* ODE for ``S_n``. The solver discretizes it with
+# BDF and builds an analytical Jacobian from that discretization, so the
+# discretized coefficients are worth deriving independently and comparing
+# against the source.
 #
 # With BDF1, the residual is ``R_S=S_k-S_{k-1}-\Delta t\,f_S`` where
 # ``f_S=[(1-\beta_s)\dot A_k-S_k]/De_1``, so
@@ -352,9 +342,8 @@ println("ASSERTION 12 OK: dR_S/dAdot matches the code's -dt*(1-beta_s)/De1")   #
 
 # ## 6. Live cross-check against the running solver
 #
-# Everything above is algebra or a single spot-check. The last step runs the
-# actual `solve_drop!` at three points that `julia/test/test_ob_eigenvalue.jl`
-# already validates, against the characteristic-equation root:
+# The last step runs `solve_drop!` at three parameter points and compares the
+# measured free-decay rate against the characteristic-equation root:
 #
 # | ``\mathrm{Oh}`` | ``De_1`` | ``\beta_s`` | exact ``\gamma`` | live ``\gamma`` | error |
 # |:--|:--|:--|:--|:--|:--|
@@ -362,19 +351,16 @@ println("ASSERTION 12 OK: dR_S/dAdot matches the code's -dt*(1-beta_s)/De1")   #
 # | 0.03 | 0.5 | 0.8 | 0.13291 | 0.13088 | 1.5% |
 # | 0.05 | 0.3 | 0.7 | 0.21870 | 0.22505 | 2.9% |
 #
-# All three land inside the 5% tolerance that test suite already holds itself
-# to.
+# All three agree to within 5%.
 #
 # The Newtonian limit is the other end of the same check. Taking
 # ``De_1\to0`` at ``\mathrm{Oh}=0.05``, the eigenvalue converges on the
 # Newtonian ``\gamma_N=0.21873``, staying within 0.6% at ``De_1=0.3, 0.1,
-# 0.01``. It is worth being precise about what that does and does not show:
-# the approach is *not* monotone in ``De_1`` (the relative error reads
+# 0.01``. The approach is not monotone in ``De_1`` (the relative error reads
 # ``1.7\times10^{-4}``, ``5.4\times10^{-3}``, ``7.7\times10^{-4}``), because
 # viscoelasticity shifts the root in a direction that itself depends on
-# ``\beta_s``. What is established is that the Newtonian eigenvalue is
-# recovered to within a fraction of a percent as the memory time vanishes,
-# which is the physically required statement.
+# ``\beta_s``. What the limit establishes is that the Newtonian eigenvalue is
+# recovered to within a fraction of a percent as the memory time vanishes.
 
 let points = [(0.02, 0.3, 0.7), (0.03, 0.5, 0.8), (0.05, 0.3, 0.7)]           #src
     for (Oh_v, De1_v, beta_s_v) in points                                     #src
@@ -393,13 +379,10 @@ let gamma_N = real(find_ob_eigenvalue(0.05, 0.0, 1.0, 2))                     #s
 end                                                                           #src
 println("ASSERTION 14 OK: De1 -> 0 recovers the Newtonian eigenvalue to <1%")  #src
 
-# ## Two loose ends, both outside the physics
+# ## Scope
 #
-# Neither of these affects production physics, and neither is fixed here:
-#
-# 1. `julia/src/types.jl:14`'s ``De_1`` comment is stale -- see §4.
-# 2. Carried over from the earlier Python version of this script:
-#    `test_ob_eigenvalue.jl`'s `run_ob_sim` hardcodes mode ``l=2`` regardless
-#    of its own `l` keyword. This page therefore avoids that helper for
-#    ``l\neq2`` checks and uses its own driver, which excites `init.A[l]`
-#    correctly.
+# Everything above is linear theory: the ansatz ``e^{-\sigma t}`` and the
+# single-mode reduction both presume small deformation, and the
+# characteristic-equation comparisons are free-decay ones. Contact forcing,
+# mode-to-mode coupling, and the finite-amplitude behaviour of the polymer
+# stress lie outside what this page establishes.

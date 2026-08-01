@@ -1,6 +1,6 @@
 # # Non-Perturbative Carreau-Yasuda: Exact Effective-Oh from Instantaneous Shear
 #
-# ## What is broken
+# ## Where the perturbative correction runs out
 #
 # `julia/src/st_extension.jl` builds its shear-thinning damping correction by
 # Taylor-expanding the Carreau-Yasuda viscosity law to **first order in**
@@ -13,16 +13,17 @@
 # ```
 #
 # That requires ``\varepsilon_{ST}\ll1`` *and* ``(\lambda_c\dot\gamma)^a``
-# not too large. Neither holds for the real shear-thinning validation fluid
-# shared for this repo: ``\varepsilon_{ST}\approx0.9996`` -- not small at
-# all -- and the dimensionless ``\lambda_c\approx3.05\times10^{4}``, so
+# not too large. Neither holds for the shear-thinning fluid used for
+# validation here: ``\varepsilon_{ST}\approx0.9996`` -- not small at all --
+# and the dimensionless ``\lambda_c\approx3.05\times10^{4}``, so
 # ``(\lambda_c\dot\gamma)^a`` exceeds 1 for essentially any nonzero
-# deformation rate the solver will ever see.
+# deformation rate the solver will see.
 #
-# The failure is not quantitative drift. The factor ``1-\varepsilon_{ST}
-# (\lambda_c\dot\gamma)^{a}`` has no floor once ``\varepsilon_{ST}\approx1``:
-# it goes **negative**, which means the damping term injects energy. §3 shows
-# it is already negative at the smallest shear rate worth testing.
+# The breakdown is qualitative rather than a loss of accuracy. The factor
+# ``1-\varepsilon_{ST}(\lambda_c\dot\gamma)^{a}`` has no floor once
+# ``\varepsilon_{ST}\approx1``: it goes **negative**, which means the damping
+# term injects energy. §3 shows it is already negative at the smallest shear
+# rate worth testing.
 #
 # ## What replaces it
 #
@@ -32,8 +33,7 @@
 # convenient approximation: Carreau-Yasuda has no relaxation time, so
 # viscosity is an algebraic function of the instantaneous local shear rate
 # rather than a memory kernel. There is nothing to average over -- which is
-# precisely what the old perturbative derivation's phase-averaging step was
-# doing.
+# what the perturbative derivation's phase-averaging step was doing.
 #
 # Both the damping ``\lambda_l`` and the restoring frequency
 # ``\omega_l^2`` must then be re-evaluated at
@@ -45,16 +45,14 @@
 #
 # ## Scope
 #
-# Explicitly out of scope, as documented limitations rather than oversights:
-# true cross-mode coupling (the characteristic shear rate here uses only mode
-# ``l``'s own velocity field, matching what the existing perturbative code
-# already does through its per-mode ``\Gamma_l^{(a)}`` -- this is not a new
-# simplification, and it is what
-# `carreau_yasuda_multimode_derivation.jl` goes on to remove); and the
-# free-decay-versus-forced-response caveat already noted in
-# `julia/src/reid.jl`, since substituting these coefficients into the forced,
-# contact-coupled ODE is an additional approximation common to `:reid`
-# already.
+# Two limitations carry through this page. True cross-mode coupling is not
+# included: the characteristic shear rate uses only mode ``l``'s own velocity
+# field, the same simplification the perturbative code makes through its
+# per-mode ``\Gamma_l^{(a)}``, and the one
+# `carreau_yasuda_multimode_derivation.jl` removes. And the coefficients
+# derived here are free-decay coefficients, so substituting them into the
+# forced, contact-coupled ODE is an additional approximation -- one shared
+# with the `:reid` viscous model generally.
 
 using DropSolver
 
@@ -65,9 +63,8 @@ using DropSolver
 # flow ``\phi=r^{l}P_l(x)\Phi_l`` with ``x=\cos\theta`` and
 # ``\Phi_l=\dot A_l/l``, which is what reproduces
 # ``u_r(1,\theta)=\dot A_l P_l(\cos\theta)``. This is the same inviscid
-# mode-shape simplification already used throughout
-# `carreau_yasuda_derivation.jl`'s ``\Gamma_l^{(a)}`` machinery, not a new
-# approximation.
+# mode-shape simplification the perturbative ``\Gamma_l^{(a)}`` machinery
+# uses, not a new approximation.
 #
 # The standard axisymmetric spherical strain-rate formulas, after using
 # Legendre's equation ``(1-x^2)P_l''-2xP_l'+l(l+1)P_l=0`` to eliminate
@@ -81,14 +78,10 @@ using DropSolver
 # e_{r\theta}=-(l-1)\sin\theta\,X'.
 # ```
 #
-# The first three sum to zero identically -- incompressibility -- which is
-# confirmed numerically at ``l=2,3,5,8`` and several ``x``, to within
-# ``10^{-10}``. (Numerically rather than symbolically: Symbolics.jl's
-# simplifier is not reliable enough here to trust `simplify(...) == 0`, a
-# caveat noted throughout this repo's derivation scripts.) A failure would
-# mean the field being used is not divergence-free, i.e. not a physical
-# incompressible flow at all, and every shear rate derived from it would be
-# meaningless.
+# The first three sum to zero identically -- incompressibility -- confirmed
+# numerically at ``l=2,3,5,8`` and several ``x``, to within ``10^{-10}``.
+# Were that to fail, the field would not be divergence-free, and no shear
+# rate derived from it would describe an incompressible flow.
 
 function legendre_P_dP(l::Int, x::Float64)                                    #src
     l == 0 && return 1.0, 0.0                                                 #src
@@ -158,17 +151,12 @@ println("ASSERTION 1 OK: incompressibility holds for l=2,3,5,8 to <1e-10")     #
 # \boxed{\;K_l^2 \;=\; \frac{6(l-1)}{l}\;}
 # ```
 #
-# which is checked against the polynomial integration for every ``l`` from 2
-# to 40. It is a satisfying shape: ``K_l^2`` rises monotonically and
-# saturates at 6, so higher modes shear the fluid somewhat harder per unit
-# surface velocity but not without bound, and ``K_1=0`` -- the ``l=1``
-# translation mode, which deforms nothing, produces no shear. Both entries
-# in that sentence are properties a correct geometric factor must have.
-#
-# The individual rationals are asserted as literals too, so any change to the
-# strain field, the integration, or the normalization shifts one of them and
-# fails the build. They were also cross-checked against independent QuadGK
-# numerical integration during development, agreeing to machine precision.
+# which matches the polynomial integration for every ``l`` from 2 to 40. The
+# shape is the expected one: ``K_l^2`` rises monotonically and saturates at
+# 6, so higher modes shear the fluid somewhat harder per unit surface
+# velocity but not without bound, and ``K_1=0`` -- the ``l=1`` translation
+# mode, which deforms nothing, produces no shear. Independent numerical
+# quadrature reproduces the same values to machine precision.
 
 ## Polynomial arithmetic on Vector{Rational{BigInt}}: coeffs[i] multiplies x^(i-1). #src
 _padd(a, b) = begin                                                           #src
@@ -248,7 +236,7 @@ println("ASSERTION 2 OK: K_l^2 = 6(l-1)/l exactly, for l=2..40")               #
 
 K_l(l::Int) = sqrt(Float64(K_l_squared_exact(l)))                             #src
 
-# ## 3. ``\mathrm{Oh}_{\mathrm{eff},l}(t)``, and why the old formula is not merely inaccurate
+# ## 3. ``\mathrm{Oh}_{\mathrm{eff},l}(t)``, and the sign of the perturbative factor
 #
 # The replacement is the exact law, untruncated:
 
@@ -259,7 +247,7 @@ Oh_eff(Oh0, lambda_c, a, eps_ST, gammadot_char) =
 # ``\varepsilon_{ST}=(1-n)/a`` per `julia/src/types.jl`'s `STParams`
 # docstring.
 #
-# **The old code is a special case, not a different model.** Taylor-expanding
+# **The perturbative factor is a special case, not a different model.** Taylor-expanding
 # ``[1+X]^{-\varepsilon_{ST}}`` to first order in ``\varepsilon_{ST}`` and
 # then linearizing again in ``X=(\lambda_c\dot\gamma)^a`` gives exactly the
 # ``1-\varepsilon_{ST}(\lambda_c\dot\gamma_{\mathrm{char},l})^a`` factor
@@ -268,7 +256,7 @@ Oh_eff(Oh0, lambda_c, a, eps_ST, gammadot_char) =
 # ``\varepsilon_{ST}`` through ``10^{-2},10^{-3},10^{-4}`` at fixed modest
 # shear, the gap shrinks monotonically and falls below ``10^{-6}``.
 #
-# **For the actual fluid, the old formula is not close.** At
+# **For this fluid, the two are not close.** At
 # ``\mathrm{Oh}_0=57.4``, ``\lambda_c=30507``, ``a=0.7431``,
 # ``\varepsilon_{ST}=0.99956``:
 #
@@ -283,7 +271,8 @@ Oh_eff(Oh0, lambda_c, a, eps_ST, gammadot_char) =
 # stays in ``(0,1]`` for every shear rate tested out to ``10^3``, and does so
 # by construction: ``[1+(\lambda_c\dot\gamma)^a]^{-\varepsilon_{ST}}`` is
 # strictly between 0 and 1 for any positive ``\varepsilon_{ST},\lambda_c,a,
-# \dot\gamma``. This is a sign fix, not a refinement.
+# \dot\gamma``. The difference between the two rows is one of sign, not of
+# accuracy.
 
 let Oh0 = 1.0, lambda_c = 0.3, a = 2.0                                        #src
     prev_err = Inf                                                            #src
@@ -316,8 +305,7 @@ println("ASSERTION 4 OK: perturbative multiplier goes negative; exact ratio stay
 # ``\omega_l^2(\mathrm{Oh}_{\mathrm{eff},l})`` from `reid_lambda_omega2` --
 # not ``D_2`` alone, the way a damping-only correction would.
 #
-# How much this matters is not a matter of opinion. At this fluid's rest
-# ``\mathrm{Oh}_0=57.4``:
+# The size of that difference at this fluid's rest ``\mathrm{Oh}_0=57.4``:
 #
 # | ``l`` | ``\omega_l^2`` exact | inviscid ``l(l-1)(l+2)`` | deviation |
 # |:--|:--|:--|:--|
@@ -353,9 +341,9 @@ println("ASSERTION 5 OK: omega_l^2 deviates from the inviscid value by 6.5% (l=2
 # every step, and integrating semi-implicitly over six nominal periods.
 #
 # Starting from ``A_2=0.05``, the amplitude never exceeds its initial value
-# and ends at ``3.9\times10^{-4}`` -- bounded, monotone in the sense that
-# matters, and finite throughout. The perturbative scheme at these same
-# parameters is injecting energy at every step.
+# and ends at ``3.9\times10^{-4}``: bounded, finite throughout, and decaying
+# overall -- which is what the negative perturbative multiplier at these
+# parameters cannot deliver.
 
 function run_exact_st_oscillation(Oh0, lambda_c, a, eps_ST, l; M=l, A_init=0.05, #src
     t_end_periods=6.0, Bo=1e-6, viscous=:lamb)                                #src
@@ -398,7 +386,7 @@ let Oh0 = 57.4, lambda_c = 30507.0, a = 0.7431, eps_ST = 0.99956, l = 2       #s
 end                                                                           #src
 println("ASSERTION 6 OK: free oscillation at the real fluid's parameters stays bounded and decays") #src
 
-# ## Summary, and what is still owed
+# ## Summary and scope
 #
 # Mode ``l``'s viscosity becomes ``\mathrm{Oh}_{\mathrm{eff},l}(t)``,
 # evaluated from that mode's own instantaneous shear rate ``K_l|\dot A_l(t)|``
@@ -406,24 +394,20 @@ println("ASSERTION 6 OK: free oscillation at the real fluid's parameters stays b
 # untruncated Carreau-Yasuda law. Evaluating at the instantaneous state is
 # exact rather than approximate because this constitutive law has no memory.
 # That ``\mathrm{Oh}_{\mathrm{eff},l}(t)`` then replaces *both* the damping
-# and the restoring coefficient through Reid's exact relations. For the real
-# validation fluid the old perturbative correction is already unphysical at
-# the smallest shear rates tested; the exact replacement stays bounded and
-# sensible across the whole range, and reproduces the old formula exactly in
-# the double-small-parameter limit where it was valid.
+# and the restoring coefficient through Reid's exact relations. For the
+# validation fluid the perturbative correction is already unphysical at the
+# smallest shear rates tested; the untruncated law stays bounded across the
+# whole range, and reproduces the perturbative factor exactly in the
+# double-small-parameter limit where that factor is valid.
 #
-# Not done here, and deliberately left to follow rather than precede review
-# of this derivation: a residual/Jacobian extension implementing it (a
-# genuinely different code path from `st_extension.jl`'s, since the ODE
-# structure itself now needs ``D_1`` to vary, not only ``D_2``); the
-# performance question for `:reid` at production scale, where
-# ``\mathrm{Oh}_{\mathrm{eff},l}`` changes every step so
-# `reid_lambda_omega2`'s continuation solve would run far more often than
-# `SimConstants`' one-time precomputation (`:lamb` at the exact
-# ``\mathrm{Oh}_{\mathrm{eff},l}`` is the cheap option available immediately,
-# with a precomputed interpolation table the likely path to a fast `:reid`);
-# and the validation against sampled experimental rows this was all in
-# service of.
+# The corresponding residual and Jacobian live in
+# `julia/src/st_exact_extension.jl` -- a separate code path from
+# `st_extension.jl`'s, because the ODE structure now needs ``D_1`` to vary
+# and not only ``D_2``. Since ``\mathrm{Oh}_{\mathrm{eff},l}`` changes every
+# step, `reid_lambda_omega2`'s continuation solve is too slow to call
+# directly; the implementation interpolates a per-mode table built once
+# (`build_reid_table`), with `:lamb` at the exact
+# ``\mathrm{Oh}_{\mathrm{eff},l}`` as the cheaper alternative.
 #
 # The single-mode restriction is itself the subject of
 # `carreau_yasuda_multimode_derivation.jl`, which supersedes this page's

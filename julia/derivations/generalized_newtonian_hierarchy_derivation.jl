@@ -12,15 +12,10 @@
 # 3. how you would undo it if you later decide you need to.
 #
 # The point of the chain is that you can stop wherever you like and know
-# exactly what you are standing on. The model this repo currently
+# exactly what you are standing on. The model DropSolver currently
 # implements sits near the bottom; a reader who wants something more
-# faithful can walk back up and see precisely which rung to climb to.
-#
-# **Why this file exists.** Earlier attempts in this repo went astray by
-# making several of these simplifications at once, silently, and then
-# defending the result with checks that could not fail. Writing the chain
-# out makes each choice visible and each error estimate a number rather
-# than an adjective.
+# faithful can walk back up and see precisely which rung to climb to. Each
+# rung's error is quoted as a number wherever one has been measured.
 #
 # ## Notation
 #
@@ -41,7 +36,7 @@
 # | ``l'`` | degree index of the **viscosity field's own** Legendre series |
 # | ``L_\eta`` | highest ``l'`` retained -- the *bandwidth* of the coupling |
 #
-# A note on one symbol that has caused confusion in this repo: ``l'`` is
+# A note on one symbol that is easy to misread: ``l'`` is
 # **not** a mode of the drop's shape. The shape expansion runs
 # ``l=2\ldots M`` with ``M`` of order 50--90. ``l'`` indexes the angular
 # structure of the *viscosity*, and as shown in Step 5 it controls only how
@@ -56,8 +51,9 @@ using Printf  #src
 
 # Helper reused throughout: try to prove an expression is identically zero
 # symbolically, and if the CAS cannot finish the simplification, fall back
-# to evaluating it at a spread of concrete points. The fallback is honest --
-# it demotes a proof to strong evidence, and we say so where it is used.
+# to evaluating it at a spread of concrete points. Where the fallback is
+# taken, the result is strong numerical evidence rather than a proof, and
+# the text says so.
 function symbolic_zero(expr, vars; npts::Int=12, tol::Float64=1e-10)  #src
     s = Symbolics.simplify(Symbolics.expand(expr))  #src
     if s isa Number && iszero(s)  #src
@@ -173,10 +169,9 @@ end  #src
 # is entirely independent of the rheology question and can be revisited
 # separately.
 #
-# ### The trap in this step
+# ### Linearising the kinematics does not linearise the rheology
 #
-# This is the single most important warning in the file, because an earlier
-# generation of this work fell into it.
+# This is the most consequential distinction in the whole chain.
 #
 # Linearising the **kinematics** does *not* linearise the **rheology**.
 # The strain rate is ``O(\epsilon)``, so ``\dot\gamma=\epsilon\,\hat{\dot\gamma}``,
@@ -431,23 +426,23 @@ end  #src
 #   integer.
 #
 # For a genuinely shear-thinning fluid ``n<1``, so ``p<0`` and the second
-# condition **never** holds. The honest conclusion:
+# condition never holds. The conclusion:
 #
 # > For no real shear-thinning fluid is ``\eta`` exactly polynomial. The
 # > coupling matrix is never *exactly* banded, and ``L_\eta`` is always an
 # > empirical truncation with a measurable error -- never an exact one.
 #
-# This also corrects a piece of folklore in this repo. The classical
-# ``a=2`` theory does **not** close because ``a=2`` makes ``\eta``
-# polynomial -- it does not. It closes because that theory additionally
-# *truncates* ``(1+X)^p\approx 1+pX`` at first order, and ``X`` alone is
-# polynomial when ``a=2``. The finiteness comes from the perturbative
-# truncation, and ``a=2`` merely keeps the truncated object polynomial.
+# It is worth being precise about why the classical ``a=2`` theory closes.
+# Not because ``a=2`` makes ``\eta`` polynomial -- it does not -- but because
+# that theory additionally *truncates* ``(1+X)^p\approx 1+pX`` at first
+# order, and ``X`` alone is polynomial when ``a=2``. The finiteness comes
+# from the perturbative truncation, and ``a=2`` merely keeps the truncated
+# object polynomial.
 #
 # ### The exception that matters: ``p=-1``
 #
 # There is one value of ``p`` that is special without being a non-negative
-# integer, and it is the one your fluid actually has. If ``p=-1``, i.e.
+# integer, and it is the one the validation fluid has. If ``p=-1``, i.e.
 # ``n=1-a``, then
 #
 # ```math
@@ -496,8 +491,8 @@ end  #src
 # **Assumption.** How ``\eta``'s time dependence is reduced.
 #
 # ``\eta`` depends on ``t`` through ``\dot\gamma(t)``, which oscillates with
-# the mode. Three inequivalent choices, and this repo's production code
-# silently takes the first:
+# the mode. Three inequivalent choices are available, and the production code
+# takes the first:
 #
 # | choice | what it keeps | status |
 # |:--|:--|:--|
@@ -584,10 +579,10 @@ end  #src
 # **What it drops.** Coupling between modes further apart than ``L_\eta``.
 # The matrix becomes banded; cost falls from ``O(M^2)`` to ``O(M L_\eta)``.
 #
-# **Error.** Exactly the discarded coupling -- a measurable number, not an
-# adjective. It has now been measured, and the answer kills this rung.
+# **Error.** Exactly the discarded coupling, which can be measured directly.
+# It has been, and the measurement rules this rung out.
 #
-# ### Measurement, and a warning about the wrong error norm
+# ### Measurement, and the choice of error norm
 #
 # The natural-looking metric, "what fraction of ``\sum_{l'}|\eta_{l'}|^2``
 # lies below ``L_\eta``", says ``L_\eta=2\ldots5`` suffices everywhere. That
@@ -633,14 +628,14 @@ end  #src
 # set is dense.
 #
 # **Caveat.** Coefficients beyond ``l'=140`` were not measured, so every
-# entry above is a *lower* bound on the discarded coupling. This measurement
-# is reported, not re-executed in CI -- it costs ~30 minutes and depends on a
-# separate high-``l`` eigenfunction evaluator validated to
-# ``5\times10^{-15}`` on Reid's tangential-stress boundary condition.
+# entry above is a *lower* bound on the discarded coupling. The measurement
+# is quoted here rather than recomputed: it takes roughly 30 minutes and
+# relies on a separate high-``l`` eigenfunction evaluator, itself checked to
+# ``5\times10^{-15}`` against Reid's tangential-stress boundary condition.
 #
 # **How to undo it.** Raise ``L_\eta``. The structure does not change -- only
-# the bandwidth. But since ``L_\eta\gtrsim M`` is required, the honest move
-# is to skip this rung entirely and either take L4 dense or drop to A7.
+# the bandwidth. But since ``L_\eta\gtrsim M`` is required, the practical
+# move is to skip this rung entirely and either take L4 dense or drop to A7.
 
 # ## Step 7 (A7) -- keep only ``l'=0``: a spherically symmetric viscosity
 #
@@ -650,7 +645,7 @@ end  #src
 # **Why this rung is special.** A spherically symmetric ``\eta`` commutes
 # with the angular Laplacian. Every mode **decouples again**:
 # ``G^{0}_{l l''}=\delta_{l l''}``, the matrices return to diagonal, and the
-# entire architecture of this repo -- one independent oscillator per mode --
+# entire architecture of the solver -- one independent oscillator per mode --
 # is recovered intact.
 #
 # What you give up is *only* the closed form. The radial equation now has an
@@ -667,15 +662,15 @@ end  #src
 #     *comparable to or larger than its mean*. Discarding all of it is a
 #     **leading-order** modeling error, not a perturbative one.
 #
-#     This corrects an earlier estimate in this repo. A measurement using a
-#     *single* active ``l=2`` mode found the viscosity varying by only
-#     ``1.1``--``1.2\times`` across the drop, and concluded that spatial
-#     homogenization was a ``\sim10\%`` effect. That is right for one mode
-#     and wrong for a real state: with a dozen modes beating, the nodal
-#     collapse described in Step 6 makes ``\eta`` span ``100\times``. Any
+#     Measured with a *single* active ``l=2`` mode the picture looks far
+#     milder: the viscosity then varies by only ``1.1``--``1.2\times`` across
+#     the drop, which would make spatial homogenization a ``\sim10\%``
+#     effect. That estimate holds for one mode and not for a realistic state:
+#     with a dozen modes beating, the nodal collapse described in Step 6
+#     makes ``\eta`` span ``100\times``. Any
 #     scalar-``\mathrm{Oh}_{\mathrm{eff}}`` model inherits this error.
 #
-# **A7 is the cheapest defensible rung, not an accurate one.** It keeps honest
+# **A7 is the cheapest defensible rung, not an accurate one.** It keeps the
 # radial structure at zero coupling cost.
 #
 # ### What Reid still gives you for free here
@@ -694,7 +689,7 @@ end  #src
 #   the *surface* value ``\eta_s=\eta(\dot\gamma|_{r=R})``. Same form, one
 #   state-dependent coefficient.
 #
-# So the honest scope of "adapt Reid for a shear-thinning fluid" is: **one
+# So the full scope of "adapt Reid for a shear-thinning fluid" is: **one
 # extra term in the momentum equation, one coefficient in BC3, and nothing
 # else.**
 
@@ -776,11 +771,11 @@ end  #src
 # entirely standard, and `julia/src/reid.jl`'s continuation machinery already
 # knows how to track eigenvalue branches through one.
 #
-# A note on method, since it cost real time: `Symbolics.build_function` on
-# these expression trees does not terminate in any useful time. Substituting
-# concrete values *first* collapses the tree to something trivial; the only
-# wrinkle is that `substitute` does not fold transcendentals, so the result
-# needs `toexpr` + `eval` to become a number.
+# A note on method: `Symbolics.build_function` does not terminate in any
+# useful time on these expression trees. Substituting concrete values
+# *first* collapses the tree to something trivial; the only wrinkle is that
+# `substitute` does not fold transcendentals, so the result needs
+# `toexpr` + `eval` to become a number.
 
 @variables rr tt qq hh1 hh2  #src
 let  #src
@@ -856,11 +851,14 @@ end  #src
 #    ``(1+X)\eta=(1+X)\eta_\infty+\Delta\eta`` -- linear in ``\eta``, linear
 #    in ``X``, no outer fractional power. Symbolic manipulation becomes
 #    tractable in a way it is not for general ``p``.
-# 2. It is how this repo's validation fluid is *actually characterised*
-#    (`scripts/validate_shear_thinning.jl` fits ``\eta_0,\eta_\infty,K,m``
-#    and only then converts). Deriving Cross directly removes that
-#    conversion -- which is worth doing on its own merits, since the
-#    conversion currently mis-assigns a parameter (see the assertion below).
+# 2. It is how the validation fluid is *actually characterised*: the fitting
+#    script obtains ``\eta_0,\eta_\infty,K,m`` and only then converts to
+#    Carreau-Yasuda parameters. Deriving Cross directly removes that
+#    conversion, and with it a genuine trap -- under the Cross mapping the
+#    Carreau-Yasuda exponent ``(1-n)/a`` is *exactly* 1, which is easy to
+#    confuse with the thinning amplitude
+#    ``\Delta=(\eta_0-\eta_\infty)/\eta_0``. The two coincide only when
+#    ``\Delta\approx1``, as it happens to for this fluid.
 #
 # What Cross does **not** buy: ``X=(K\dot\gamma)^m`` still carries a
 # fractional power of the *field* when ``m`` is not an even integer, so the
@@ -901,10 +899,11 @@ end  #src
 
 # ## Step 10 -- the Newtonian floor, and a live cross-check
 #
-# The bottom of the chain must reproduce what this repo already trusts. Two
-# checks against the *running solver*, not against this file's own algebra:
-# Reid's exact finite-Ohnesorge coefficients must emerge when the viscosity
-# stops depending on the flow, and they must reduce to Lamb as ``Oh\to0``.
+# The bottom of the chain must reproduce the Newtonian result the solver
+# already implements. Two checks against the *running solver*, rather than
+# against this page's own algebra: Reid's exact finite-Ohnesorge coefficients
+# must emerge when the viscosity stops depending on the flow, and they must
+# reduce to Lamb as ``\mathrm{Oh}\to0``.
 #
 # | ``\mathrm{Oh}`` | ``|\lambda_{\rm Reid}-\lambda_{\rm Lamb}|/\lambda_{\rm Lamb}`` |
 # |:--|--:|
@@ -916,8 +915,8 @@ end  #src
 # fixed ``\mathrm{Oh}``, so the meaningful statement is that the discrepancy
 # falls monotonically and reaches ``0.5\%``. At a working
 # ``\mathrm{Oh}=0.05`` the live solver returns
-# ``\lambda_2=0.2187`` against Lamb's ``0.2500`` -- a ``13\%`` difference, which
-# is why this repo uses Reid's exact relation rather than the closed form.
+# ``\lambda_2=0.2187`` against Lamb's ``0.2500`` -- a ``13\%`` difference,
+# which is what the `:reid` viscous model exists to remove.
 
 let  #src
     println("\nSTEP 10: the Newtonian floor, checked against the running solver")  #src
@@ -982,17 +981,15 @@ end  #src
 # angular structure that is *comparable to or larger than* the mean
 # viscosity. It is the cheapest defensible rung, not an accurate one.
 #
-# **The uncomfortable conclusion.** Between L4 (dense) and A7
-# (leading-order error) there is no cheap-and-accurate rung. Any model
-# built on a single scalar ``\mathrm{Oh}_{\mathrm{eff}}`` per mode -- which
-# is every shear-thinning model this repo has implemented so far -- sits
-# below A7 and therefore inherits at least its error. The honest options
-# are to take L4 dense and pay for it, or to quote A7's error rather than
-# assume it away.
+# **The conclusion.** Between L4 (dense) and A7 (leading-order error) there
+# is no cheap-and-accurate rung. Any model built on a single scalar
+# ``\mathrm{Oh}_{\mathrm{eff}}`` per mode -- which is every shear-thinning
+# model implemented here so far -- sits below A7 and therefore inherits at
+# least its error. The available options are to take L4 dense and pay for
+# it, or to quote A7's error alongside the result.
 #
-# **Still open.** Whether L4 is actually affordable at ``M\sim50`` (the
-# Gaunt coefficients are geometry and precompute once; only the radial
-# integrals of ``\eta_{l'}`` change per step); the stability cost of
-# discarding the ``m=2`` parametric channel; and the variable-``\eta``
-# radial operator itself, which is the content of A7 and is derived in the
-# next section to be added here.
+# **Still open.** Whether L4 is affordable at ``M\sim50`` (the Gaunt
+# coefficients are geometry and precompute once; only the radial integrals
+# of ``\eta_{l'}`` change per step); the stability cost of discarding the
+# ``m=2`` parametric channel; and the eigenvalue problem for the
+# variable-``\eta`` radial operator of A7.

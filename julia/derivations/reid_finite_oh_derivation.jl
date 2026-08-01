@@ -9,68 +9,61 @@
 #
 # ## Why this page exists
 #
-# This repo's production code (`julia/src/timestepper.jl`,
-# `build_residual!`/`build_jacobian!`) implements ONLY Lamb's classical
-# result -- `D1[l]=l(l-1)(l+2)`, `D2[l]=2*Oh*(l-1)*(2l+1)` -- for every mode
-# ``l``; `julia/test/test_ob_eigenvalue.jl` says as much in its own comment,
-# calling them "the Lamb approximation coefficients". Lamb's formula is the
-# *leading-order-in-Oh* asymptotic reduction of Reid's exact equation
-# (derived in Section 9 of the companion page), and its error grows with
-# BOTH ``\mathrm{Oh}`` and ``l`` -- so this is not only a large-viscosity
-# problem.
+# DropSolver's default viscous model, `:lamb`, uses the classical
+# coefficients ``\omega_l^2 = l(l-1)(l+2)`` and
+# ``2\lambda_l = 2\,\mathrm{Oh}\,(l-1)(2l+1)`` for every mode ``l``. Lamb's
+# formula is the leading-order-in-``\mathrm{Oh}`` asymptotic reduction of
+# Reid's exact equation (Section 9 of the companion page), and its error
+# grows with both ``\mathrm{Oh}`` and ``l``, so its domain of validity is
+# narrower than "low viscosity" alone would suggest.
 #
-# Concretely: a real shear-thinning fluid shared for this repo's validation
-# dataset has a REST-state Ohnesorge number ``\mathrm{Oh}_0 \approx 57``
-# (from the given ``\eta_0=8.43\,\mathrm{Pa\,s}``, ``\mathrm{Bo}=0.012``,
+# Concretely: the shear-thinning fluid used for DropSolver's validation
+# dataset has a rest-state Ohnesorge number ``\mathrm{Oh}_0 \approx 57``
+# (from ``\eta_0=8.43\,\mathrm{Pa\,s}``, ``\mathrm{Bo}=0.012``,
 # ``R=0.3\,\mathrm{mm}``, ``\sigma=72.8\,\mathrm{mN/m}``) and a fully-thinned
 # ``\mathrm{Oh}_\infty \approx 0.025`` -- a ``\sim2260\times`` swing that
-# spends most of its time deep in the regime Lamb's formula was never meant
-# to cover.
+# spends most of its time outside the range Lamb's formula covers. The
+# coefficients derived here are the ones the `:reid` viscous model
+# evaluates.
 #
-# ## What was borrowed, and from where
+# ## Prior art
 #
-# This derivation, and the choice of what to replace Lamb's coefficients
-# WITH, leans heavily on a sister repository, `elvis-aguero/SpectralKM.jl`
-# (a fully spectral kinematic-match model for droplet-bath impact by the
-# same group), which already carries a battle-tested `:reid` viscous model
-# in production (`src/reid.jl`, and `DEFAULT_VISCOUS = :reid` in
-# `src/types.jl`). Three concrete things were ported or learned from it,
-# credited again at point of use below:
+# The numerical choices below follow the sister package
+# `elvis-aguero/SpectralKM.jl` (a fully spectral kinematic-match model for
+# droplet-bath impact by the same group), which carries a `:reid` viscous
+# model in production (`src/reid.jl`, with `DEFAULT_VISCOUS = :reid` in
+# `src/types.jl`). Three ingredients come from there, credited again at
+# point of use below:
 #
 # 1. **A downward Bessel-ratio recurrence** that never evaluates a Bessel
-#    function directly. An earlier version of this script used
-#    `SpecialFunctions.besselj` directly and threw `AmosException: overflow`
-#    at ``l=16``, ``\mathrm{Oh}=0.3`` -- a perfectly reasonable ``(l,
-#    \mathrm{Oh})`` pair, not an edge case.
+#    function directly. Evaluating ``j_l`` and ``j_{l+1}`` separately and
+#    dividing overflows at ordinary parameter values -- ``l=16``,
+#    ``\mathrm{Oh}=0.3`` is already enough -- even though the ratio itself
+#    stays ``O(1)``.
 # 2. **Continuation in Oh** for the dominant root. A single Newton solve
-#    from Lamb's asymptotic guess (this script's original approach) can
-#    converge to the WRONG root once ``\mathrm{Oh}`` grows -- confirmed
-#    below by reproducing SpectralKM.jl's own documented example.
-# 3. **The parametrization itself.** This script's first version followed
-#    Molaček & Bush (2012) and added a per-mode INERTIA coefficient
-#    ``A_l(\mathrm{Oh})`` alongside a rescaled damping ``D_l(\mathrm{Oh})``,
-#    keeping the restoring term fixed at the inviscid ``l(l-1)(l+2)``.
-#    SpectralKM.jl instead keeps unit inertia and lets BOTH the damping and
-#    the frequency-squared term vary with ``\mathrm{Oh}``:
+#    from Lamb's asymptotic guess converges to a different, subdominant root
+#    once ``\mathrm{Oh}`` grows; Section 1 shows this at ``l=16``,
+#    ``\mathrm{Oh}=0.3``.
+# 3. **The parametrization itself.** Molaček & Bush (2012) carry a per-mode
+#    *inertia* coefficient ``A_l(\mathrm{Oh})`` alongside a rescaled damping
+#    ``D_l(\mathrm{Oh})``, keeping the restoring term fixed at the inviscid
+#    ``l(l-1)(l+2)``. SpectralKM.jl instead keeps unit inertia and lets both
+#    the damping and the frequency-squared term vary with ``\mathrm{Oh}``:
 #    ```math
 #    \ddot A_l + 2\lambda_l(\mathrm{Oh})\,\dot A_l + \omega_l^2(\mathrm{Oh})\,A_l = \text{forcing}.
 #    ```
-#    This is mathematically equivalent to the ``A_l``/``D_l`` form for FREE
-#    decay (same two roots, just an overall rescaling of the ODE) but is the
-#    simpler gauge, requires no new inertia term in
-#    `julia/src/timestepper.jl` at all, and is the one already carrying real
-#    simulations in the sister repo -- so it is what this script derives and
-#    what should be wired into production. See the note at the end of
-#    Section 3 on why the two are NOT obviously equivalent once contact
-#    forcing (``B_l``) enters -- an open question this script does not
-#    resolve.
+#    The two are equivalent for *free* decay -- same pair of roots, differing
+#    by an overall rescaling of the ODE -- but the unit-mass form needs no
+#    additional inertia term in the timestepper, and it is the one derived
+#    here. The note at the end of Section 3 covers why the equivalence is
+#    not automatic once contact forcing (``B_l``) enters.
 #
 # ## What this derives
 #
 # Reid's characteristic equation has, for each ``l`` and each
 # ``\mathrm{Oh}``, a pair of dominant eigenvalues ``\sigma_1(\mathrm{Oh})``,
 # ``\sigma_2(\mathrm{Oh})``: complex conjugates below the critical
-# ``\mathrm{Oh}`` (damped oscillation), two DISTINCT real values above it
+# ``\mathrm{Oh}`` (damped oscillation), two distinct real values above it
 # (aperiodic "fast" and "slow" decay). Vieta's formulas on that pair give
 # ```math
 # \lambda_l = \frac{\sigma_1+\sigma_2}{2}, \qquad \omega_l^2 = \sigma_1\sigma_2,
@@ -79,14 +72,13 @@
 # Reid's own pair. Section 3 verifies these against Molaček & Bush's
 # independently-published closed-form limits, with no free parameters.
 #
-# !!! warning "A trap worth knowing about before you read Section 2"
-#     The "second root" -- needed once the mode is overdamped -- is NOT
+# !!! warning "The second root needs its own search"
+#     The second root -- needed once the mode is overdamped -- cannot be
 #     obtained by continuing the complex-conjugate pair through the critical
-#     ``\mathrm{Oh}``. Numerically, doing that makes BOTH branches converge
-#     onto the SAME real root as ``\mathrm{Oh}`` grows, which silently gives
-#     a wrong, degenerate answer. The correct second root is a genuinely
-#     separate, much smaller real root (a "creep" mode) found by an
-#     independent search. Section 2 reproduces the failure deliberately.
+#     ``\mathrm{Oh}``. Doing that makes both branches converge onto the same
+#     real root as ``\mathrm{Oh}`` grows, giving a degenerate pair with no
+#     warning. The correct second root is a separate, much smaller real root
+#     (a "creep" mode) found by an independent search. Section 2 shows both.
 
 using DropSolver   #src
 
@@ -104,7 +96,7 @@ using DropSolver   #src
 #
 # Evaluating ``j_{l+1}(q)`` and ``j_l(q)`` separately and dividing is a trap:
 # at small ``\mathrm{Oh}``, ``q\sim\sqrt{\sigma/\mathrm{Oh}}`` has large
-# ``|\mathrm{Im}\,q|``, and both functions overflow long before their RATIO
+# ``|\mathrm{Im}\,q|``, and both functions overflow long before their *ratio*
 # -- which stays ``O(1)`` -- does. The fix, ported from SpectralKM.jl's
 # `src/reid.jl`, is a downward recurrence that computes the ratio directly.
 # It follows from the standard three-term spherical Bessel recurrence
@@ -115,11 +107,10 @@ using DropSolver   #src
     sph_bessel_ratio(l, q) -> Complex
 
 `Q_l(q) = j_{l+1}(q)/j_l(q)` by downward recurrence. The recurrence length
-`pad` is capped defensively: its working length scales with `abs(q)`, so an
-ill-behaved caller passing a huge `|q|` (e.g. a Newton step that overshot
-before step-capping was added) would otherwise turn into a silent
-multi-minute hang rather than a fast, inaccurate answer that a residual
-check downstream can reject.
+`pad` grows with `abs(q)` and is capped: a caller passing a very large `|q|`
+(an overshooting Newton step, say) would otherwise spend minutes in this
+loop instead of returning quickly with an inaccurate value that a downstream
+residual check can reject.
 """
 function sph_bessel_ratio(l::Integer, q::Number)
     pad = min(max(60, l ÷ 2 + ceil(Int, abs(q))), 5000)
@@ -153,11 +144,10 @@ end
 #
 # The solver is a damped, step-capped Newton iteration with backtracking:
 # each step is capped at a fraction of ``|q|`` and halved until the residual
-# decreases. An UNDAMPED Newton step can overshoot into an argument where
-# `sph_bessel_ratio`'s downward recurrence needs an enormous number of terms
-# to converge -- which is not an exception but a silent multi-minute hang,
-# confirmed during development. That is why the plain Newton iteration this
-# script started with was replaced.
+# decreases. An undamped Newton step can overshoot into an argument where
+# `sph_bessel_ratio`'s downward recurrence needs an enormous number of terms;
+# that surfaces not as an exception but as an evaluation that takes minutes,
+# which is what the step cap and backtracking are there to prevent.
 
 function safe_eval(f, q)                                    #src
     try                                                     #src
@@ -199,9 +189,9 @@ function newton_complex(f, q0; maxiter=300, tol=1e-13, step_cap_frac=0.5)   #src
 end                                                                        #src
 
 # Seeded with Lamb's small-Oh asymptotic guess, that Newton solve gives a
-# root directly. It is correct for small ``\mathrm{Oh}`` and NOT reliable in
-# general -- we keep it anyway, both as the seed for the reliable method and
-# as the foil that demonstrates why the reliable method is needed:
+# root directly. It is correct at small ``\mathrm{Oh}`` and unreliable beyond
+# that, and is kept both as the seed for the continuation method below and as
+# the comparison that shows why continuation is needed:
 
 function dominant_root_direct(Oh, l)
     sigma0 = sqrt(l * (l - 1) * (l + 2))
@@ -212,7 +202,7 @@ function dominant_root_direct(Oh, l)
     imag(q) > 0 ? conj(q) : q
 end
 
-# The reliable method is CONTINUATION in ``\mathrm{Oh}`` (technique ported
+# The reliable method is *continuation* in ``\mathrm{Oh}`` (technique ported
 # from SpectralKM.jl's `reid_root_tracked`): start at an ``\mathrm{Oh}``
 # small enough that Lamb's guess is genuinely asymptotic, then walk
 # geometrically up to the target, seeding each step's Newton solve with the
@@ -229,18 +219,18 @@ function dominant_root_tracked(Oh, l; oh_start=1e-4, nsteps=24)
 end
 
 # The tracked root satisfies ``\text{reid\_char}=0`` to better than
-# ``10^{-10}`` across all three regimes for ``l=2`` -- underdamped
+# ``10^{-10}`` across all three regimes for ``l=2``: underdamped
 # (``\mathrm{Oh}=0.05``), near-critical (``\mathrm{Oh}=1.85``), and deeply
-# overdamped (``\mathrm{Oh}=57.4``, the rest-state value of this repo's
-# validation fluid). Hidden assertions hold it there.
+# overdamped (``\mathrm{Oh}=57.4``, the rest-state value of the validation
+# fluid).
 
 @assert abs(reid_char(dominant_root_tracked(0.05, 2), 0.05, 2)) < 1e-10   #src
 @assert abs(reid_char(dominant_root_tracked(1.85, 2), 1.85, 2)) < 1e-10   #src
 @assert abs(reid_char(dominant_root_tracked(57.4, 2), 57.4, 2)) < 1e-10   #src
 
-# ### The wrong-branch failure, reproduced deliberately
+# ### Where the direct solve picks the wrong branch
 #
-# At ``l=16``, ``\mathrm{Oh}=0.3`` (SpectralKM.jl's own documented example,
+# At ``l=16``, ``\mathrm{Oh}=0.3`` (SpectralKM.jl's documented example,
 # reproduced independently here) the direct Newton solve returns
 # ``\sigma \approx 425.6``, purely real. Continuation returns
 # ``\sigma \approx 49.2 - 10.5i``. Both are genuine roots -- each satisfies
@@ -250,18 +240,15 @@ end
 # page, smaller real part means slower decay means dominant: continuation
 # finds the physical root, the direct solve does not.
 #
-# There is a subtlety here that a real-axis scan of `reid_char` turned up,
-# and it is worth stating because it kills the obvious sanity check. Lamb's
-# OWN coefficient at this point, ``\mathrm{Oh}(l-1)(2l+1) = 148.5``, exceeds
-# ``\omega_{l;0}=\sqrt{l(l-1)(l+2)} = 65.7``, which per Lamb's own
-# (approximate) oscillator would mean overdamping. That does NOT mean Reid's
-# EXACT equation is overdamped here too -- and verifiably it is not, since
-# the dominant pair is still complex. Reid's theory can remain genuinely
+# One subtlety rules out the obvious sanity check. Lamb's coefficient at this
+# point, ``\mathrm{Oh}(l-1)(2l+1) = 148.5``, exceeds
+# ``\omega_{l;0}=\sqrt{l(l-1)(l+2)} = 65.7``, which in Lamb's approximate
+# oscillator would mean overdamping. Reid's exact equation is not overdamped
+# here: the dominant pair is still complex. Reid's theory can remain
 # underdamped at a point where Lamb's cruder model has already crossed into
-# spurious overdamping. So the right test is not "close to Lamb's
-# coefficient" (known, per SpectralKM's own measured table, to be a poor
-# approximation here) but "continuation finds a genuinely less damped root
-# than the direct solve does". That is what the assertions below check.
+# spurious overdamping, so agreement with Lamb's coefficient is not a valid
+# test in this regime. The test used instead is that continuation finds a
+# less damped root than the direct solve does.
 
 let l = 16, Oh = 0.3                                                          #src
     q_direct = dominant_root_direct(Oh, l)                                    #src
@@ -305,19 +292,19 @@ function find_second_root(Oh, l, q1)
     newton_complex(qv -> reid_char(qv, Oh, l), complex(q0); maxiter=200, tol=1e-13)
 end
 
-# ### Why the obvious alternative silently fails
+# ### Why continuing both branches does not work
 #
 # The tempting shortcut is to track ``q_1`` and a naive ``q_2``, initialized
 # as ``\overline{q_1}`` at a safely underdamped ``\mathrm{Oh}``, and continue
-# BOTH through the critical point using each step's own result as the next
-# Newton guess. Doing exactly that for ``l=2`` from ``\mathrm{Oh}=0.5`` up to
-# ``57.4``, the two branches collapse onto the *same* root,
-# ``q = 2.66556``, agreeing to one part in ``10^6``. Meanwhile the correct
-# second root at that ``\mathrm{Oh}``, found by `find_second_root`'s
-# independent analytic guess, is ``q = 0.017875`` -- two orders of magnitude
-# away, and not what the continuation found. The failure is silent: nothing
-# in the continuation reports trouble, and a degenerate pair still produces
-# perfectly plausible-looking ``\lambda_l`` and ``\omega_l^2``.
+# both through the critical point using each step's own result as the next
+# Newton guess. Doing that for ``l=2`` from ``\mathrm{Oh}=0.5`` up to
+# ``57.4``, the two branches collapse onto the *same* root, ``q = 2.66556``,
+# agreeing to one part in ``10^6``. The correct second root at that
+# ``\mathrm{Oh}``, found from `find_second_root`'s independent analytic
+# guess, is ``q = 0.017875`` -- two orders of magnitude away. Nothing in the
+# continuation reports trouble, and a degenerate pair still produces
+# plausible-looking ``\lambda_l`` and ``\omega_l^2``, so the two roots must
+# be sought separately.
 
 let l = 2                                                          #src
     Oh_seq = vcat(0.5:0.05:0.9, 1.0:1.0:10.0, 20.0, 57.4)          #src
@@ -340,22 +327,20 @@ end                                                                #src
 # \ddot A_l + 2\lambda_l\dot A_l + \omega_l^2 A_l = 0,
 # ```
 # whose characteristic equation is ``x^2 - 2\lambda_l x + \omega_l^2 = 0``.
-# Demanding that its roots BE Reid's own ``\sigma_1,\sigma_2`` (with
-# ``\sigma_i = q_i^2\,\mathrm{Oh}``, this repo's existing ``q^2\mathrm{Oh}``
-# time-unit convention -- see `carreau_yasuda_derivation.jl`), Vieta's
-# formulas immediately give
+# Requiring its roots to be Reid's own ``\sigma_1,\sigma_2`` (with
+# ``\sigma_i = q_i^2\,\mathrm{Oh}``, the ``q^2\mathrm{Oh}`` time-unit
+# convention used throughout DropSolver), Vieta's formulas immediately give
 # ```math
 # \lambda_l = \frac{\sigma_1+\sigma_2}{2}, \qquad \omega_l^2 = \sigma_1\sigma_2.
 # ```
-# That is the whole construction. Lamb's formula -- and this repo's current
-# production code -- is exactly ``\lambda_l = \mathrm{Oh}(l-1)(2l+1)``,
-# ``\omega_l^2 = l(l-1)(l+2)``, which Section 3.1 confirms is the
-# ``\mathrm{Oh}\to0`` limit of this.
+# That is the whole construction. Lamb's formula -- the `:lamb` model -- is
+# ``\lambda_l = \mathrm{Oh}(l-1)(2l+1)``, ``\omega_l^2 = l(l-1)(l+2)``, which
+# Section 3.1 confirms is the ``\mathrm{Oh}\to0`` limit of this.
 #
-# The ``\sigma_i`` are kept COMPLEX throughout: in the underdamped regime
+# The ``\sigma_i`` are kept complex throughout: in the underdamped regime
 # ``q_1,q_2`` are a conjugate pair, so ``\sigma_1,\sigma_2`` are too, and
 # taking ``\mathrm{Re}(q)^2`` instead would discard the imaginary part and
-# corrupt exactly the regime we care most about.
+# corrupt the oscillatory regime.
 
 function compute_lambda_omega2(Oh, l)
     q1 = dominant_root_tracked(Oh, l)
@@ -381,7 +366,7 @@ end
 # | 5 | 139.972 | 139.9991 | 140 |
 # | 10 | 1079.574 | 1079.986 | 1080 |
 #
-# Hidden assertions require the error to shrink between the two
+# The error is required to shrink between the two
 # ``\mathrm{Oh}`` values (for both ``\lambda_l`` and ``\omega_l^2``) and to
 # fall below 2% at ``\mathrm{Oh}=10^{-4}``.
 
@@ -428,9 +413,8 @@ end                                                                  #src
 # | 5 | 1.061818 | 1.061818 |
 # | 10 | 1.041429 | 1.041429 |
 #
-# There is no fitting anywhere in this comparison, which is what makes it
-# worth something: it confirms the two parametrizations carry the same
-# physics for free decay.
+# The comparison involves no fitted parameters, so it confirms that the two
+# parametrizations carry the same physics for free decay.
 
 for l in (2, 3, 4, 5, 10)                                            #src
     om0sq = float(l) * (l - 1) * (l + 2)                             #src
@@ -477,7 +461,7 @@ end                                                                             
 # ``\alpha^2 = \sqrt{l(l-1)(l+2)}/\mathrm{Oh}``, that is
 # ``\alpha^2 = \sqrt{8}/0.7665 = 3.690``, and the damping-to-inviscid-frequency
 # ratio there is ``\lambda_2/\omega_{2;0} = 0.9674``. Chandrasekhar's two
-# numbers, recovered to three digits from this repo's own root finder.
+# numbers, recovered to three digits from the root finder above.
 #
 # The practical reading: for ``l=2``, oscillation survives up to
 # ``\mathrm{Oh}\approx0.77`` and everything above that is aperiodic creep.
@@ -485,7 +469,7 @@ end                                                                             
 # ``\mathrm{Oh}_0\approx57`` at rest -- a factor of 74 into the aperiodic
 # regime -- and thins to ``\mathrm{Oh}_\infty\approx0.025``, deep in the
 # oscillatory one. A single impact therefore crosses this transition, which
-# is precisely why a Lamb-only damping coefficient is not good enough here.
+# is why the Lamb coefficients alone are not sufficient for this fluid.
 
 let l = 2                                                                                     #src
     om0 = sqrt(l * (l - 1) * (l + 2))                                                         #src
@@ -502,33 +486,29 @@ let l = 2                                                                       
     @assert abs(lam_c / om0 - 0.968) < 0.002   # Chandrasekhar's sigma_{2;nu}/sigma_{2;0}     #src
 end                                                                                           #src
 
-# ### An open question this page does NOT resolve
+# ### Domain of validity: free decay
 #
 # Substituting exact eigenvalues into a second-order oscillator is exact for
-# FREE decay only. Under forcing (this repo's ``l B_l`` contact-pressure
-# term), the true system carries memory from the full discarded viscous
-# spectrum, which neither this parametrization nor Molaček & Bush's
-# ``A_l``/``D_l`` form captures exactly -- and the two need NOT agree once
-# forcing is added, since an overall equation rescaling that leaves
-# free-decay roots invariant does NOT leave a forcing term's relative weight
-# invariant. This page derives and verifies the FREE-decay coefficients
-# only. The forced-response question belongs to the production-wiring step
-# that follows, and should be checked against a live simulation once wired
-# in, as SpectralKM.jl's `types.jl` does for its own `:reid` default. (The
-# same caveat appears verbatim in that repo's `reid.jl` header, so it is a
-# known open problem, not an oversight here.)
+# *free* decay only. Under forcing (the ``l B_l`` contact-pressure term), the
+# true system carries memory from the full discarded viscous spectrum, which
+# neither this parametrization nor Molaček & Bush's ``A_l``/``D_l`` form
+# captures exactly; nor do the two forms then agree with each other, since an
+# overall rescaling of the equation leaves the free-decay roots invariant but
+# not a forcing term's relative weight. The coefficients derived here are
+# free-decay coefficients, and the forced response is an open question for
+# both parametrizations.
 
 # ## Section 4: Live cross-check against the running DropSolver
 #
-# The production code today implements ONLY Lamb's asymptotic formula
-# ``\lambda_{\text{Lamb}} = (l-1)(2l+1)\mathrm{Oh}`` -- not Reid's exact
-# eigenvalue, which differs from it by an ``O(\mathrm{Oh})`` correction even
-# at ``\mathrm{Oh}`` as small as ``0.02`` (a ``\sim7\%`` gap, per the numbers
-# below). So the honest live check is two separate claims, not one.
+# The runs below use the default `:lamb` coefficients,
+# ``\lambda_{\text{Lamb}} = (l-1)(2l+1)\mathrm{Oh}``, which differ from
+# Reid's exact eigenvalue by an ``O(\mathrm{Oh})`` correction even at
+# ``\mathrm{Oh}`` as small as ``0.02`` (a ``\sim7\%`` gap, per the numbers
+# below). The cross-check therefore splits into two separate claims.
 #
-# ### (a) Does the running solver actually compute Lamb's formula?
+# ### (a) The solver reproduces Lamb's formula
 #
-# Exciting a single mode and measuring its free-decay rate from a real
+# Exciting a single mode and measuring its free-decay rate from a
 # `solve_drop!` run:
 #
 # | ``\mathrm{Oh}`` | ``l`` | Lamb ``\gamma`` | measured ``\gamma`` | relative error |
@@ -537,9 +517,8 @@ end                                                                             
 # | 0.02 | 3 | 0.28000 | 0.28528 | 1.9% |
 # | 0.05 | 2 | 0.25000 | 0.25333 | 1.3% |
 #
-# Under 5% throughout, held there by a hidden assertion. This confirms the
-# description above of what the running code does (Lamb-only, no finite-Oh
-# correction) is accurate today.
+# Under 5% throughout: with `viscous=:lamb`, the measured decay rate is the
+# Lamb rate, with no finite-Oh correction.
 
 function extract_decay_freq(times, A2)                                              #src
     gamma = -log(abs(A2[end]) / abs(A2[1])) / (times[end] - times[1])                #src
@@ -573,11 +552,11 @@ for (Oh, l) in ((0.02, 2), (0.02, 3), (0.05, 2))                                
     @assert err_gamma < 0.05                                                          #src
 end                                                                                  #src
 
-# ### (b) Does this page's own exact eigenvalue converge to that same value?
+# ### (b) The exact eigenvalue converges to that same value
 #
-# The complementary claim: Lamb's formula must be the ``\mathrm{Oh}\to0``
-# limit of ``\lambda_l`` as computed here -- not merely something numerically
-# nearby. For ``l=2`` the gap closes monotonically, and roughly linearly in
+# The complementary claim: Lamb's formula is the ``\mathrm{Oh}\to0`` limit of
+# ``\lambda_l`` as computed here, not merely something numerically nearby.
+# For ``l=2`` the gap closes monotonically, and roughly linearly in
 # ``\mathrm{Oh}``, which is the expected order of the correction:
 #
 # | ``\mathrm{Oh}`` | ``\lambda_2`` (Reid, exact) | ``\gamma_{\text{Lamb}}`` | relative gap |
@@ -587,9 +566,9 @@ end                                                                             
 # | 0.005 | 0.024097 | 0.025000 | 3.6% |
 # | 0.001 | 0.004920 | 0.005000 | 1.6% |
 #
-# Note how large that gap still is at ``\mathrm{Oh}=0.05`` -- 12.5%, for a
-# drop most people would call low-viscosity. This is the concrete cost of
-# the Lamb approximation, and the reason this page exists.
+# The gap is still 12.5% at ``\mathrm{Oh}=0.05``, a drop most would call
+# low-viscosity. That is the cost of the Lamb approximation at the upper end
+# of its nominal range.
 
 let l = 2                                                                           #src
     gamma_lamb_fn(Oh) = (l - 1) * (2l + 1) * Oh                                      #src
@@ -604,29 +583,19 @@ end                                                                             
 
 # ## Summary
 #
-# In plain terms: this repo's damping formula is only the low-viscosity
-# limit of a more general, exact result. This page derived that exact result
-# -- ``\lambda_l(\mathrm{Oh})``, ``\omega_l^2(\mathrm{Oh})``, in the
-# unit-mass parametrization already validated in production in the sister
-# repo SpectralKM.jl -- directly from Reid's own characteristic equation,
-# verified it against Molaček & Bush's independently-published limits with
-# no fitting, recovered Chandrasekhar's 1959 critical point to three digits,
-# and confirmed the current production solver already matches it in the
-# regime it was designed for.
+# Lamb's damping formula is the low-viscosity limit of a more general, exact
+# result. This page derived that result -- ``\lambda_l(\mathrm{Oh})``,
+# ``\omega_l^2(\mathrm{Oh})``, in the unit-mass parametrization -- directly
+# from Reid's characteristic equation, checked it against Molaček & Bush's
+# independently-published limits with no fitting, recovered Chandrasekhar's
+# 1959 critical point to three digits, and confirmed that the solver's
+# default `:lamb` coefficients agree with it in the regime they were
+# designed for. These are the coefficients returned by
+# `drop_viscous_coeffs(M, Oh, :reid)`.
 #
-# A failing assertion above would mean one of: Reid's characteristic
-# equation was mis-transcribed; the two dominant roots were mis-identified
-# (Section 1's wrong-branch reproduction and Section 2's continuation trap
-# are the two known ways to get this wrong); or the current production code
-# no longer matches its own documented Lamb-limit behavior. Any of those is
-# a physically real regression, not a cosmetic one.
-#
-# **Not yet done**, deliberately out of scope here: wiring
-# ``\lambda_l(\mathrm{Oh})``, ``\omega_l^2(\mathrm{Oh})`` into
-# `julia/src/timestepper.jl`'s residual and Jacobian in place of the
-# hardcoded Lamb formulas (behind a `:lamb`/`:reid` switch mirroring
-# SpectralKM.jl's own API, defaulting to `:lamb` to preserve all existing
-# test behavior), and replacing `julia/src/st_extension.jl`'s perturbative
-# Carreau-Yasuda correction with a non-perturbative
-# ``\mathrm{Oh}_{\text{eff}}(t)`` computed per mode from the local shear
-# rate fed through this machinery.
+# **Scope.** Everything here concerns free decay of a single mode. The two
+# known ways to get the eigenvalues wrong -- taking the direct Newton solve's
+# branch (Section 1) and continuing both branches through the critical
+# ``\mathrm{Oh}`` (Section 2) -- are documented above because both fail
+# silently, returning plausible numbers. The forced, contact-coupled response
+# is discussed at the end of Section 3 and is not settled here.

@@ -4,23 +4,20 @@
 # Reid's theory gives the exact Newtonian damping rate
 # ``\lambda_l(\mathrm{Oh})`` and squared frequency
 # ``\omega_l^2(\mathrm{Oh})`` at any Ohnesorge number.
-# `carreau_yasuda_derivation.jl` builds a small-amplitude, Landau-style
-# correction on top of that theory for the *classical* Carreau law, whose
-# shape exponent is fixed at ``a=2``. This page asks the harder question:
-# does an analogous correction exist for the *general* Carreau-Yasuda law
-# this repo's own fitted validation fluid actually uses, with
-# ``a\approx0.743`` rather than 2?
+# The classical treatment builds a small-amplitude, Landau-style correction
+# on top of that theory for the *classical* Carreau law, whose shape exponent
+# is fixed at ``a=2``. This page asks the harder question: does an analogous
+# correction exist for the *general* Carreau-Yasuda law that the fitted
+# validation fluid uses, with ``a\approx0.743`` rather than 2?
 #
-# The answer, reached only after an extensive derivation and two independent
-# adversarial re-checks, is **no -- not for this fluid's fitted parameters**.
-# That is not a shortcut or a failure of nerve. It is a precisely quantified
-# fact about where this fluid's physics sits on the Carreau-Yasuda curve, and
-# every number below is what makes it a fact rather than an opinion.
+# For this fluid's fitted parameters, no. That is a quantitative statement
+# about where this fluid sits on the Carreau-Yasuda curve rather than a
+# general one about shear-thinning drops, and §2-§4 give the numbers behind
+# it.
 #
-# The negative result is not the whole story. Three general results survive
-# it (§6-§8), none of which depends on any fluid's specific parameters, and
-# all three are exactly the tools a future, genuinely first-principles
-# treatment would need.
+# The negative result is not the whole story. Three general results (§6-§8)
+# hold independently of it and of any fluid's specific parameters, and all
+# three are tools a first-principles treatment would need.
 #
 # ## Notation
 #
@@ -112,7 +109,7 @@ println("ASSERTION 1 OK: |eps|^a/|eps| grows without bound as eps->0 for a<1")  
 # Reid's characteristic equation gives the exact
 # ``\lambda_l(\mathrm{Oh})``, ``\omega_l^2(\mathrm{Oh})`` at either, so both
 # are legitimate places to anchor a correction. The rest anchor fails first,
-# and for a blunt reason. At ``\mathrm{Oh}_0\approx57.37``, every mode this
+# for a simple reason. At ``\mathrm{Oh}_0\approx57.37``, every mode this
 # solver resolves is heavily overdamped:
 #
 # | ``l`` | ``\lambda_l`` | ``\omega_l^2`` | ``\lambda_l^2`` | |
@@ -127,7 +124,7 @@ println("ASSERTION 1 OK: |eps|^a/|eps| grows without bound as eps->0 for a<1")  
 # multiple-scales or envelope treatment needs a fast carrier wave to
 # modulate, and at ``\mathrm{Oh}_0`` there is none.
 #
-# Separately, and independently fatal: the shear rate at which the viscosity
+# Separately: the shear rate at which the viscosity
 # correction reaches even the 1% level for this fluid is
 # ``\dot\gamma\approx6.8\times10^{-8}``, far below any resolved mode
 # velocity. So an expansion anchored at rest would be expanding about a state
@@ -287,7 +284,7 @@ let                                                                           #s
 end                                                                           #src
 println("ASSERTION 5 OK: a live We=0.7649 run pins Oh_eff/Oh_inf in [1.82, 2.87] after one transient") #src
 
-# ## 5. The honest conclusion, and what follows from it
+# ## 5. Conclusion, and what follows from it
 #
 # For this fluid's fitted parameters there is no single reference viscosity
 # -- rest, infinite shear, or anywhere between -- about which a regular
@@ -304,7 +301,7 @@ println("ASSERTION 5 OK: a live We=0.7649 run pins Oh_eff/Oh_inf in [1.82, 2.87]
 # correct response is not to build a better linear correction: it is not to
 # linearize that piece at all -- to evaluate the exact relations directly at
 # whatever effective Ohnesorge number a closure provides, which is exactly
-# what this repo's existing Carreau-Yasuda extension already does.
+# what DropSolver's Carreau-Yasuda extension does.
 #
 # That part was never the weak point. The weak point is upstream of it, in
 # how the closure produces a single scalar ``\mathrm{Oh}_{\mathrm{eff}}`` in
@@ -417,7 +414,7 @@ println("ASSERTION 7 OK: the adjoint shortcut matches direct RK4 shooting to <1e
 # ```
 #
 # not the inviscid potential-flow shape ``r^lP_l(\cos\theta)`` that the
-# existing heuristic Carreau-Yasuda scripts use. The two are not
+# closures of the preceding pages use. The two are not
 # interchangeable, and the reason is structural rather than a matter of
 # accuracy: Reid's own damping normalization comes from the homogeneous
 # (Bessel) part of ``U(x)``, which *is* the viscous correction to potential
@@ -490,8 +487,8 @@ println("ASSERTION 8 OK: incompressibility of the viscous-mode strain tensor hol
 # phase ``\phi=\omega t`` is ``\mathrm{Re}[e_{ij}(x,\theta)e^{-i\phi}]``.
 #
 # The natural first attempt at a shear-thinning correction is to evaluate
-# everything at "one representative oscillation phase". That turns out to be
-# indefensible: the real physical shape at a representative radius swings by
+# everything at "one representative oscillation phase". That cannot be
+# justified: the physical shape at a representative radius swings by
 # roughly the same magnitude in both directions across one period, nowhere
 # near constant. Any nonlinear function of this field -- and a fractional
 # power is emphatically nonlinear -- depends on which phase was picked,
@@ -526,7 +523,7 @@ println("ASSERTION 8 OK: incompressibility of the viscous-mode strain tensor hol
 # both ``\cos`` and ``\sin`` -- is zero to better than ``10^{-10}`` relative
 # to the ``m=0`` channel, at every ``\theta`` tested.
 #
-# **The consequence is immediate and it is a negative one.** Since no forcing
+# **The consequence.** Since no forcing
 # resonant at the base mode's own frequency exists, the adjoint machinery of
 # §6 -- built for exactly this kind of resonant solvability condition -- has
 # nothing to act on at ``m=1``. The leading temporal effect of any
@@ -656,10 +653,9 @@ println("ASSERTION 11 OK: a single l=2 mode leaks onto every even l', and onto n
 #
 # That is smaller than the multiple-order-of-magnitude range
 # ``\mathrm{Oh}_{\mathrm{eff}}`` traverses over an impact *in time* -- so the
-# scalar approximation is not absurd. But a factor of nearly two is not
-# small enough to treat as an uncontrolled-but-negligible simplification
-# either. It is real, moderate, and not yet controlled, and it is the honest
-# answer to the question the closure has been silently assuming away.
+# scalar approximation is not unreasonable. But a factor of nearly two is
+# not small enough to treat as negligible either: the spatial variation is
+# real, moderate, and not yet controlled.
 
 let vals = Float64[]                                                          #src
     for xv in range(0.15, 0.98; length=12), th in range(0.1, pi - 0.1; length=12) #src
@@ -685,9 +681,9 @@ println("ASSERTION 12 OK: spatial spread in local viscosity across the drop is a
 # 2. Reid's exact ``\lambda_l(\mathrm{Oh})``, ``\omega_l^2(\mathrm{Oh})``
 #    should therefore be evaluated *directly* at whatever
 #    ``\mathrm{Oh}_{\mathrm{eff}}(t)`` a closure provides, and never
-#    linearized -- which is what this repo already implements, via a fast
+#    linearized -- which DropSolver implements, via a fast
 #    tabulated version of exactly that evaluation.
-# 3. The genuinely open approximation in the existing heuristic scheme is the
+# 3. The genuinely open approximation in the current scheme is the
 #    collapse of a spatially varying ``\eta(x,\theta,t)`` onto a single
 #    scalar ``\mathrm{Oh}_{\mathrm{eff}}(t)``. It is quantified here at
 #    roughly a factor of two in local viscosity across the drop at a

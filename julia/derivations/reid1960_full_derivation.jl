@@ -2,9 +2,9 @@
 #
 # A from-scratch, CAS-verified derivation of W. H. Reid's (1960) exact
 # characteristic equation for the free oscillations of a viscous liquid
-# drop -- the physics underneath every rheology model in this repo. Every
-# other derivation here (Oldroyd-B, Carreau-Yasuda) is a correction ON TOP
-# of what's derived below; this page is what a reader should read first.
+# drop -- the physics underneath every rheology model in DropSolver. The
+# other derivations here (Oldroyd-B, Carreau-Yasuda) are corrections on top
+# of what follows, so this page is the one to read first.
 #
 # **What problem are we solving?** Take a small liquid drop (water in air,
 # say) that has been slightly deformed from its equilibrium spherical
@@ -36,9 +36,8 @@
 #   ``\sigma_{l;0}`` (Section 1 below).
 # - **Lamb (1881)** -- the *small*-viscosity correction,
 #   ``\sigma_{l;\nu} = (l-1)(2l+1)\nu/R^2 \pm i\,\sigma_{l;0}``. This is the
-#   formula this repo's production timestepper still implements today
-#   (Section 8), and the one the companion `reid_finite_oh_derivation.jl`
-#   exists to replace.
+#   formula the production timestepper implements (Section 8), and the one
+#   the companion `reid_finite_oh_derivation.jl` generalizes.
 # - **Chandrasekhar (1959)** -- the full, arbitrary-viscosity solution, but
 #   for a *self-gravitating* liquid globe rather than a surface-tension-held
 #   drop.
@@ -54,8 +53,8 @@
 #
 # Downstream, Reid's equation is what Molaček & Bush (2012) compress into
 # their per-mode coefficients ``A_m`` and ``D_m`` -- see Section 10 for that
-# mapping, and `reid_finite_oh_derivation.jl` for the version of those
-# coefficients this repo actually intends to use.
+# mapping, and `reid_finite_oh_derivation.jl` for the parametrization
+# DropSolver uses.
 #
 # ## Notation
 #
@@ -81,25 +80,10 @@
 #
 # ## How this page is verified
 #
-# Every claim below that *can* be checked mechanically is checked
-# mechanically, by a Symbolics.jl assertion running in CI alongside this
-# text. Those checks are deliberately not shown -- they are the page's test
-# suite, not its argument -- but they are not decorative either: if any one
-# of them fails, this page does not build.
-#
-# The workhorse behind them is a helper, `symbolic_zero`, that decides
-# whether an expression is algebraically zero. It has to confirm this two
-# separate ways -- symbolic simplification *and* numeric evaluation at
-# several concrete points for every free variable -- because Symbolics.jl's
-# `simplify` does not always collapse an algebraically-zero expression to
-# the literal `0`, and either check alone can occasionally miss a genuine
-# non-cancellation.
-#
-# A failing assertion anywhere below means one of two things: either this
-# script's own algebra has a bug (fix the derivation), or a genuine
-# transcription error crept into `docs/reid1960_expanded-3.tex` (Reid 1960)
-# that this script's independent CAS re-derivation caught -- either way,
-# something needs fixing before trusting the physics.
+# The algebraic steps below are each confirmed by a Symbolics.jl assertion
+# that runs whenever this page is built. The assertions themselves are not
+# shown, to keep the argument readable; where one covers a step, the text
+# says what the step is and what it would mean for it to fail.
 
 using Symbolics            #src
 using SpecialFunctions     #src
@@ -150,7 +134,7 @@ end                                                                             
 # and the characteristic equation this page builds toward is independent of
 # the choice.
 #
-# In the total ABSENCE of viscosity, Rayleigh and Lamb's classical result
+# In the complete absence of viscosity, Rayleigh and Lamb's classical result
 # gives the oscillation frequency of a spherical-harmonic mode of order
 # ``l`` as
 # ```math
@@ -169,9 +153,9 @@ end                                                                             
 # ``[T_1/(\rho R^3)] = [\mathrm{N/m}]\,/\,[\mathrm{kg\,m^{-3}}\cdot\mathrm{m^3}]
 # = [\mathrm{kg\,s^{-2}}]/[\mathrm{kg}] = [\mathrm{s^{-2}}]`` -- consistent.
 # Second, the ``l=1`` mode is a rigid translation of the whole drop, which
-# has NO restoring force (translating a sphere changes neither its shape nor
+# has no restoring force (translating a sphere changes neither its shape nor
 # its surface energy), so ``\sigma_{1;0}^2`` must vanish identically. It
-# does, for symbolic ``l``, and a hidden assertion holds it to that.
+# does.
 
 @variables l_sym T1 rho R                                                #src
 sigma_l0_sq = l_sym * (l_sym - 1) * (l_sym + 2) * T1 / (rho * R^3)       #src
@@ -184,9 +168,8 @@ sigma_l0_sq = l_sym * (l_sym - 1) * (l_sym + 2) * T1 / (rho * R^3)       #src
 # divergence-free vector fields -- is what lets the whole velocity field be
 # described by one scalar function. None of the three is specific to viscous
 # flow; they would show up in any spherically-symmetric wave or diffusion
-# problem. We isolate them here, deriving the parts that are easy to get
-# wrong and checking the standard, citable parts numerically, so that both
-# halves are actually verified rather than merely quoted.
+# problem. They are isolated here, with the parts that are easy to get wrong
+# derived in full and the standard, citable parts checked numerically.
 #
 # ### 2.1 Spherical harmonics are eigenfunctions of the angular Laplacian
 #
@@ -230,16 +213,15 @@ Q_x = c0 + c1 * x_leg + c2 * x_leg^2 + c3 * x_leg^3                             
 legendre_op_generic = substitute(expand_derivatives(Dxleg((1 - x_leg^2) * Dxleg(Q_x))), Dict(x_leg => cos(theta_sym)))  #src
 @assert symbolic_zero(angular_lap_generic - legendre_op_generic)                                                      #src
 
-# Fact (ii) needs the Legendre polynomials themselves. We build them from
+# Fact (ii) needs the Legendre polynomials themselves. They are built from
 # Bonnet's three-term recursion ``(n+1)P_{n+1}(x)=(2n+1)xP_n(x)-nP_{n-1}(x)``
-# -- the same construction used throughout this repo's other derivation
-# scripts -- and confirm they satisfy Legendre's equation
+# -- the same construction used in the other derivations here -- and confirmed
+# to satisfy Legendre's equation
 # ``(1-x^2)P_l'' - 2xP_l' + l(l+1)P_l = 0`` at several concrete ``l``.
-# (Concrete ``l`` because Symbolics.jl differentiates a polynomial of
-# concrete degree just fine but has no notion of a symbolic-degree
-# polynomial; this is a limitation of how the check is coded, not of the
-# physics.) This one definition is worth seeing, since the recursion is
-# quoted by name several more times below:
+# (Concrete ``l``, because a CAS differentiates a polynomial of concrete
+# degree readily but has no notion of a symbolic-degree polynomial.) This one
+# definition is worth seeing, since the recursion is quoted by name several
+# more times below:
 
 function legendre_P(l::Int, x)
     l == 0 && return one(x)
@@ -258,10 +240,8 @@ for l_val in (2, 3, 4, 5)                                                       
     @assert symbolic_zero(legendre_eq_lhs)                                                                                           #src
 end                                                                                                                                  #src
 
-# Both halves check out (for ``l=2,3,4,5``), so ``P_l(\cos\theta)`` is
-# genuinely an eigenfunction of the angular Laplacian with eigenvalue
-# ``-l(l+1)`` -- Eq. (2) of the companion `.tex`, now independently
-# re-derived rather than only cited.
+# Both halves check out (for ``l=2,3,4,5``), so ``P_l(\cos\theta)`` is an
+# eigenfunction of the angular Laplacian with eigenvalue ``-l(l+1)``.
 #
 # ### 2.2 The spherical Bessel substitution
 #
@@ -289,10 +269,7 @@ end                                                                             
 # ``x\to qx``), whose regular solution is ``v=j_l`` by definition. Working
 # the chain rule, ``U'=v+xv'`` and ``U''=2v'+xv''``, so substituting gives
 # ``x\left[v''+\frac{2}{x}v'+v-\frac{l(l+1)}{x^2}v\right]``, which is
-# ``x`` times the spherical Bessel equation exactly. This is a genuinely
-# mechanical check, and exactly the kind of step where a sign error is easy
-# to make and easy to miss by eye, so it is done symbolically below rather
-# than trusted.
+# ``x`` times the spherical Bessel equation exactly.
 #
 # This identity is also *why* the velocity scaling ``u_r \propto U(x)/x^2``
 # is chosen the way it is in Section 4: it is what makes ``x\,j_l(qx)`` the
@@ -365,8 +342,8 @@ sph_bessel_eq = expand_derivatives(x_sub * (Dxs(Dxs(v)) + 2 / x_sub * Dxs(v) + (
 # the origin. Writing ``\delta p/\rho = \epsilon\,f(r)\,Y_l^m``, the scalar
 # Laplacian formula from Section 2.1 turns this into the radial ODE
 # ``f'' + (2/r)f' - l(l+1)f/r^2 = 0``, whose general solution is
-# ``f = Ar^l + Br^{-(l+1)}`` -- verified below for symbolic ``l``, not
-# assumed. Regularity at ``r=0`` requires ``B=0``, so with ``x=r/R``,
+# ``f = Ar^l + Br^{-(l+1)}`` for symbolic ``l``. Regularity at ``r=0``
+# requires ``B=0``, so with ``x=r/R``,
 # ```math
 # \frac{\delta p}{\rho} = \epsilon\, P_0\, x^l\, Y_l^m,
 # ```
@@ -379,7 +356,7 @@ f_pressure = A * x^l + B * x^(-(l + 1))                                         
 radial_laplace_residual = expand_derivatives(Dx_(Dx_(f_pressure)) + 2 / x * Dx_(f_pressure) - l * (l + 1) / x^2 * f_pressure)  #src
 @assert symbolic_zero(radial_laplace_residual)                                                                        #src
 
-# The pressure GRADIENT is a poloidal, divergence-free field with angular
+# The pressure *gradient* is a poloidal, divergence-free field with angular
 # structure ``Y_l^m``, so by Section 2.3 it is entirely determined by a
 # single scalar function ``\Pi(x)`` through its radial component. Reid's
 # defining relation for that scalar is
@@ -442,7 +419,7 @@ radial_laplace_residual = expand_derivatives(Dx_(Dx_(f_pressure)) + 2 / x * Dx_(
 # We derive this from two standard, textbook spherical-coordinate operator
 # formulas (these are coordinate-system facts, not specific to this
 # problem, so we cite them the way we'd cite "the Laplacian in spherical
-# coordinates has this form" -- but everything built FROM them below is
+# coordinates has this form" -- but everything built from them below is
 # checked). For an axisymmetric field with no ``\varphi``-dependence and no
 # ``u_\varphi``, the raw r-component of the vector Laplacian is
 # ```math
@@ -457,11 +434,11 @@ radial_laplace_residual = expand_derivatives(Dx_(Dx_(f_pressure)) + 2 / x * Dx_(
 # Solving the second for ``A`` gives ``A = -(2u_r + r\,\partial_r u_r)`` --
 # purely in terms of ``u_r``'s radial dependence, no explicit ``u_\theta``
 # needed. Substituting this into the raw formula reproduces the target
-# formula above exactly. The check below treats ``A``, ``u_r``, and
-# ``\partial_r u_r`` as independent symbols related by exactly that one
-# incompressibility identity; if it did NOT collapse to zero, it would mean
-# the two "citable" formulas above are inconsistent with the target formula
-# this whole section is built on.
+# formula above exactly. The check treats ``A``, ``u_r``, and
+# ``\partial_r u_r`` as independent symbols related by that one
+# incompressibility identity; were it not to collapse to zero, the two cited
+# formulas would be inconsistent with the target formula this section is
+# built on.
 
 @variables r_var A_ang ur_r ur_r_prime Lap_ur                                                                            #src
 raw_vec_lap_r = Lap_ur - 2 / r_var^2 * ur_r - 2 / r_var^2 * A_ang                                                        #src
@@ -520,7 +497,7 @@ rhs_full = expand_derivatives((Dx_(Dx_(Usym)) - l * (l + 1) / x^2 * Usym) / x^2)
 
 # ## Section 5: Solving the ODE
 #
-# Reid's Eq. 9 is a linear, second-order, INHOMOGENEOUS ODE. Its general
+# Reid's Eq. 9 is a linear, second-order, inhomogeneous ODE. Its general
 # solution is a particular solution (matching the ``x^{l+1}`` forcing) plus
 # the general solution of the homogeneous equation.
 #
@@ -554,10 +531,10 @@ vpp_relation = -(2 / z) * vp - (1 - l * (l + 1) / z^2) * v                      
 homogeneous_residual = simplify(substitute(Uh_pp, Dict(vpp => vpp_relation)) - l * (l + 1) / x^2 * Uh + q^2 * Uh; expand=true)           #src
 @assert isequal(homogeneous_residual, 0)                                                                                                #src
 
-# The OTHER homogeneous solution -- built from the second-kind spherical
+# The other homogeneous solution -- built from the second-kind spherical
 # Bessel function ``n_l``, which diverges as ``z\to0`` -- is discarded on
 # regularity grounds, the same argument as the pressure field's ``B``-term
-# in Section 3. The GENERAL solution is therefore
+# in Section 3. The general solution is therefore
 
 #md # ```@eval
 #md # using Symbolics, Markdown
@@ -577,7 +554,7 @@ homogeneous_residual = simplify(substitute(Uh_pp, Dict(vpp => vpp_relation)) - l
 #
 # ### BC1: Kinematic condition
 #
-# The fluid at the surface must move WITH the surface -- the surface isn't
+# The fluid at the surface must move *with* the surface -- the surface isn't
 # a permeable membrane. The surface itself moves at
 # ``\partial r/\partial t|_{\text{surface}} = -\sigma R\epsilon_0 e^{-\sigma t}Y_l^m``
 # (differentiating the surface ansatz directly), while the fluid's radial
@@ -587,7 +564,7 @@ homogeneous_residual = simplify(substitute(Uh_pp, Dict(vpp => vpp_relation)) - l
 # ```math
 # U(1) = -1.
 # ```
-# The condition is imposed at ``x=1``, the UNDEFORMED surface: evaluating
+# The condition is imposed at ``x=1``, the undeformed surface: evaluating
 # it at the true deformed surface ``r=R[1+\epsilon Y_l^m]`` would only add
 # ``O(\epsilon^2)`` corrections, negligible at this linear order.
 
@@ -604,9 +581,8 @@ bc1_solution = Symbolics.solve_for(surface_velocity - fluid_velocity_at_1 ~ 0, U
 # ```math
 # \tau_{r\theta} = \mu\left[r\frac{\partial}{\partial r}\!\left(\frac{u_\theta}{r}\right) + \frac{1}{r}\frac{\partial u_r}{\partial\theta}\right] = 0 \qquad \text{at } x=1.
 # ```
-# This needs ``u_\theta``, which hasn't shown up until now. **Derived from
-# scratch below, not cited:** for an axisymmetric poloidal field, the
-# standard (citable, textbook) Stokes stream function ``\psi(r,\theta)``
+# This needs ``u_\theta``, which hasn't shown up until now. For an
+# axisymmetric poloidal field, the standard Stokes stream function ``\psi(r,\theta)``
 # gives ``u_r=(1/(r^2\sin\theta))\,\partial\psi/\partial\theta`` and
 # ``u_\theta=-(1/(r\sin\theta))\,\partial\psi/\partial r``. Writing
 # ``u_r=f(r)P_l(\cos\theta)`` and integrating in ``\theta`` (using the
@@ -614,7 +590,7 @@ bc1_solution = Symbolics.solve_for(surface_velocity - fluid_velocity_at_1 ~ 0, U
 # ```math
 # u_\theta = \frac{g(r)}{\sin\theta}\Big[P_{l+1}(\cos\theta)-P_{l-1}(\cos\theta)\Big], \qquad g(r)\equiv\frac{2f(r)+rf'(r)}{2l+1}.
 # ```
-# Substituting both into ``\tau_{r\theta}`` and using a SECOND standard
+# Substituting both into ``\tau_{r\theta}`` and using a second standard
 # recurrence, ``(2l+1)(1-x^2)P_l'(x)=l(l+1)[P_{l-1}(x)-P_{l+1}(x)]``, every
 # term collapses onto the single common angular factor
 # ``\sin\theta\,P_l'(\cos\theta)`` -- exactly the shape a genuine
@@ -624,16 +600,14 @@ bc1_solution = Symbolics.solve_for(surface_velocity - fluid_velocity_at_1 ~ 0, U
 # ```math
 # \mathcal{L}_2[U] \equiv \left[\frac{d^2}{dx^2} - \frac{2}{x}\frac{d}{dx} + \frac{l(l+1)}{x^2}\right]U = 0 \qquad\text{at } x=1,
 # ```
-# closing the loop on what was previously just cited.
+# so BC2, usually quoted in this operator form, follows from the
+# stream-function representation directly.
 #
 # Both Legendre recurrences are checked for ``l=2,3,4,5`` against the
-# Bonnet-built polynomials of Section 2.1 -- Reid's own paper would cite
-# them rather than verify them. A failure there would mean one of the two
-# recurrences is misremembered; a failure in the ``\tau_{r\theta}`` check
-# that follows would mean the stream-function ansatz does not actually
-# produce a pure tangential-stress condition proportional to
-# ``\mathcal{L}_2[U]`` -- i.e. the very operator BC2 has been built on
-# would itself be wrong.
+# Bonnet-built polynomials of Section 2.1. Were the ``\tau_{r\theta}`` check
+# that follows to fail, the stream-function ansatz would not produce a pure
+# tangential-stress condition proportional to ``\mathcal{L}_2[U]``, and the
+# operator BC2 rests on would itself be wrong.
 
 @variables x_leg2                                                                                                  #src
 Dxleg2 = Differential(x_leg2)                                                                                      #src
@@ -651,13 +625,13 @@ end                                                                             
 # The ``\tau_{r\theta}`` step itself is checked by building
 # ``\tau_{r\theta}/\mu`` directly (concrete ``l``, abstract radial function
 # ``f(r)``) and confirming that ``\tau_{r\theta}=0`` at ``r=R`` is
-# EQUIVALENT to
+# equivalent to
 # ```math
 # R^2 f''(R) + 2R f'(R) + \big[l(l+1)-2\big] f(R) = 0,
 # ```
 # by substituting that conjectured relation (as a relation among ``f(R)``,
 # ``f'(R)``, ``f''(R)`` treated as independent symbols) and confirming
-# ``\tau_{r\theta}`` then vanishes IDENTICALLY in ``\theta``, not just at
+# ``\tau_{r\theta}`` then vanishes identically in ``\theta``, not just at
 # one angle. It does, for ``l=2,\dots,6``.
 
 @variables r_var theta_sym2 R_sym F0 F1 F2 Ffun(..)                                                                                                        #src
@@ -678,14 +652,14 @@ end                                                                             
 
 # Finally, translate ``f(r)``'s condition into ``U(x)``. Write
 # ``f(r)=\kappa\,G(r/R)`` for some overall constant ``\kappa`` (which
-# cancels, since the condition above is LINEAR and HOMOGENEOUS in ``f, f',
+# cancels, since the condition above is linear and homogeneous in ``f, f',
 # f''``), with ``G(x)=U(x)/x^2`` from Section 4. The chain rule gives
 # ``f(R)=\kappa G(1)``, ``f'(R)=\kappa G'(1)/R``, ``f''(R)=\kappa G''(1)/R^2``,
 # so the condition becomes ``G''(1)+2G'(1)+[l(l+1)-2]G(1)=0``, which in turn
 # is exactly ``\mathcal{L}_2[U]|_{x=1}=U''(1)-2U'(1)+l(l+1)U(1)=0`` for
-# symbolic ``l``. BC2's operator, previously cited, is now derived end to
-# end: stream function ``\to`` ``\tau_{r\theta}=0`` ``\to`` the ``f``-ODE
-# ``\to`` the ``G``-ODE ``\to`` ``\mathcal{L}_2[U]=0``.
+# symbolic ``l``. BC2's operator is thus derived end to end: stream function
+# ``\to`` ``\tau_{r\theta}=0`` ``\to`` the ``f``-ODE ``\to`` the ``G``-ODE
+# ``\to`` ``\mathcal{L}_2[U]=0``.
 
 @variables xx l q Pi_0 C U0 U1 U2 Ufun2(..)                                                                        #src
 Dxx = Differential(xx)                                                                                             #src
@@ -739,23 +713,21 @@ L2_Uh_target = C * (-q^2 * v + 2 * (l^2 + l - 1) * v - 2 * q * vp)              
 # \frac{1}{R_1}+\frac{1}{R_2} = \frac{1}{R}\Big[2 + (l-1)(l+2)\,\epsilon\,Y_l^m\Big].
 # ```
 # The ``2/R`` piece is just the equilibrium curvature (Young-Laplace,
-# Section 1); the ``(l-1)(l+2)`` factor is the SAME combination that
+# Section 1); the ``(l-1)(l+2)`` factor is the same combination that
 # appears in the inviscid frequency ``\sigma_{l;0}^2`` -- both come from the
 # curvature response to a harmonic deformation, so this is a consistency
 # check worth noting, not a coincidence.
 #
-# **Where this comes from.** The starting point -- standard differential
-# geometry, citable the way "the Laplacian in spherical coordinates has
-# this form" is citable -- is the linearized mean-curvature formula for a
-# nearly-spherical surface ``r=R+\zeta(\theta,\varphi)`` with ``\zeta``
-# small:
+# **Where this comes from.** The starting point is the standard linearized
+# mean-curvature formula of differential geometry, for a nearly-spherical
+# surface ``r=R+\zeta(\theta,\varphi)`` with ``\zeta`` small:
 # ```math
 # \frac{1}{R_1}+\frac{1}{R_2} = \frac{2}{R} - \frac{1}{R^2}\Big[2\zeta + \Delta_\Omega\zeta\Big].
 # ```
 #
 # !!! note "A dimensional subtlety in that formula"
 #     ``\Delta_\Omega`` here is the Laplace-Beltrami operator on the *unit*
-#     sphere, which is dimensionless. It is NOT the same object as Section
+#     sphere, which is dimensionless. It is not the same object as Section
 #     2.1's ``\nabla^2_{\text{angular}}``, which carries a ``1/r^2`` because
 #     it is the angular piece of the full three-dimensional Laplacian. The
 #     two agree on the only property used here -- both have eigenvalue
@@ -763,12 +735,9 @@ L2_Uh_target = C * (-q^2 * v + 2 * (l^2 + l - 1) * v - 2 * q * vp)              
 #     ``R^2``, and the ``1/R^2`` prefactor above is where that factor has
 #     already been accounted for.
 #
-# What we DO verify is the algebraic collapse from there: with
-# ``\zeta=\epsilon R\,Y_l^m`` and the angular eigenvalue property from
-# Section 2.1 (already established, not re-assumed here), this reproduces
-# the boxed formula above exactly, for symbolic ``l``. A failing assertion
-# here would mean either the cited curvature formula or this section's own
-# algebra disagrees with the stated ``(l-1)(l+2)`` result.
+# The algebraic collapse from there is immediate: with
+# ``\zeta=\epsilon R\,Y_l^m`` and the angular eigenvalue property of Section
+# 2.1, this reproduces the boxed formula above exactly, for symbolic ``l``.
 
 @variables l_sym eps_sym R_sym Yl                                                                                     #src
 zeta = eps_sym * R_sym * Yl                                                                                           #src
@@ -849,16 +818,13 @@ rhs_in_q = simplify(substitute(rhs_rescaled, Dict(sigma => q^2 * nu / R^2)); exp
 #
 # BC1 (``U(1)=C j_l(q)+\Pi_0=-1``) and BC2 (Section 6, evaluated on the
 # general solution) are two linear equations in the two unknowns
-# ``C,\Pi_0``. Solve them exactly (symbolically, not by hand-substitution,
-# to remove any risk of an algebra slip), then use the Bessel recurrence
+# ``C,\Pi_0``. Solving them and then using the Bessel recurrence
 # ``qj_l'/j_l = l-qQ_{l+1/2}(q)`` from Section 2.2 to eliminate ``j_l'`` in
-# favor of ``Q_{l+1/2}(q)``. The result is
+# favor of ``Q_{l+1/2}(q)`` gives
 # ```math
 # C = \frac{2(l-1)(l+1)}{j_l(q)\,q\,\bigl(2Q_{l+1/2}(q)-q\bigr)},
 # ```
-# matching Reid's Eq. 20 (this repo's `docs/reid1960_expanded-3.tex`,
-# Eq. `C_soln`), now via an independent symbolic solve rather than by-hand
-# algebra.
+# which is Reid's Eq. 20.
 
 @variables jl jlp Q C                                                                             #src
 bc1_eq = C * jl + Pi_0 ~ -1                                                                       #src
@@ -869,16 +835,14 @@ Pi0sol = simplify(substitute(bc_solution[2], Dict(jlp => jl * (l - q * Q) / q));
 @assert symbolic_zero(Csol - 2 * (l^2 - 1) / (jl * q * (2Q - q)))                                  #src
 
 # Finally: substitute ``C, \Pi_0`` into ``U'(1)-2U(1)`` (using ``U(1)=-1``
-# from BC1), then into the ``\alpha^4`` relation above. This is the single
-# largest algebraic reduction in the whole derivation -- the source `.tex`
-# calls the by-hand version of this step "lengthy" and does not show every
-# intermediate line. Here it is not skipped, only carried out by machine
-# instead of by hand. Symbolics does not get tired.
+# from BC1), then into the ``\alpha^4`` relation above. This is the largest
+# algebraic reduction in the derivation, and it is carried out symbolically
+# here rather than by hand.
 #
 # In plain terms: every physically meaningful outcome of this whole
 # derivation -- the oscillation frequency, the damping rate, whether a drop
 # of a given size and viscosity oscillates or just squashes back down --
-# is now known to follow from exactly this one equation:
+# follows from exactly this one equation:
 
 #md # ```@eval
 #md # using Symbolics, Markdown
@@ -898,12 +862,8 @@ alpha4_derived = simplify(q^2 * (q^2 * Pi0sol - 2 * l * Uprime1_minus_2U1); expa
 characteristic_eq_rhs = q^4 * ((2 * (l - 1) / q^2) * (l + (l + 1) * (q - 2 * l * Q) / (q - 2 * Q)) - 1)                                            #src
 @assert symbolic_zero(alpha4_derived - characteristic_eq_rhs)                                                                                      #src
 
-# This is the derivation's main result, and it is pinned by an assertion:
-# a failure would mean either this script's own algebra has a bug, or that
-# `docs/reid1960_expanded-3.tex`'s transcription of Reid (1960)'s Eq. 19 has
-# an error that this independent CAS re-derivation caught -- worth knowing
-# either way, since every damping and frequency number this repo computes
-# ultimately traces back to this one equation.
+# This is Reid (1960)'s Eq. 19, and it is the derivation's main result: every
+# damping rate and frequency DropSolver computes traces back to it.
 #
 # !!! note "Universality"
 #     This equation is identical to Chandrasekhar's characteristic equation
@@ -940,11 +900,11 @@ characteristic_eq_rhs = q^4 * ((2 * (l - 1) / q^2) * (l + (l + 1) * (q - 2 * l *
 #
 # !!! warning "The sign convention inverts the usual instinct"
 #     Here ``\epsilon\sim e^{-\sigma t}`` with ``\mathrm{Re}(\sigma)>0``
-#     meaning decay, so the SMALLEST positive real part is the dominant,
+#     meaning decay, so the *smallest* positive real part is the dominant,
 #     slowest-decaying mode. This is the opposite of ordinary stability
-#     analysis, where one hunts for the most-positive growth rate. Getting
-#     this backwards picks the wrong root -- a failure mode the companion
-#     `reid_finite_oh_derivation.jl` reproduces deliberately.
+#     analysis, where one hunts for the most-positive growth rate. Reversing
+#     it selects the wrong root; `reid_finite_oh_derivation.jl` shows what
+#     that looks like numerically.
 #
 # ### Two regimes: oscillatory and aperiodic
 #
@@ -964,36 +924,32 @@ characteristic_eq_rhs = q^4 * ((2 * (l - 1) / q^2) * (l + (l + 1) * (q - 2 * l *
 # ``\alpha^2 = \sqrt{l(l-1)(l+2)}/\mathrm{Oh}``, that is a critical
 # Ohnesorge number ``\mathrm{Oh}_c = \sqrt{8}/3.69 \approx 0.766`` for
 # ``l=2``. The companion `reid_finite_oh_derivation.jl` recovers both of
-# Chandrasekhar's numbers to three digits from this repo's own root finder,
-# rather than taking them on trust.
+# Chandrasekhar's numbers to three digits from DropSolver's own root finder.
 #
-# !!! danger "A number in the source `.tex` that does not survive this check"
-#     `docs/reid1960_expanded-3.tex` converts that critical point into a
-#     critical *radius* for water in air (``T_1=74\;\mathrm{dyn/cm}``,
-#     ``\nu=0.01\;\mathrm{cm^2/s}``) and reports
-#     ``R_c \approx 0.23\;\mathrm{mm}``. That is wrong by four orders of
-#     magnitude. Substituting those constants into
-#     ``\alpha^2=\sigma_{2;0}R^2/\nu=3.69`` gives ``R_c \approx 23\,\mathrm{nm}``
-#     -- far below the continuum limit. The physically meaningful reading is
-#     the opposite of what the ``0.23\;\mathrm{mm}`` figure suggests: water
-#     drops at any observable size are deeply *underdamped*
+# !!! note "What the critical point means for water"
+#     Converting the critical point into a critical *radius* is a useful
+#     sanity check on scale. For water in air (``T_1=74\;\mathrm{dyn/cm}``,
+#     ``\nu=0.01\;\mathrm{cm^2/s}``), substituting into
+#     ``\alpha^2=\sigma_{2;0}R^2/\nu=3.69`` gives
+#     ``R_c \approx 23\,\mathrm{nm}``, far below the continuum limit. Water
+#     drops at any observable size are therefore deeply *underdamped*
 #     (``\mathrm{Oh}\sim10^{-3}`` at millimetric scale), and the aperiodic
 #     regime is reachable only with a genuinely viscous fluid -- such as the
 #     ``\mathrm{Oh}_0\sim57`` shear-thinning fluid that motivates
-#     `reid_finite_oh_derivation.jl`. The ``3.69`` and ``0.968`` figures are
-#     sound; only the radius conversion is not.
+#     `reid_finite_oh_derivation.jl`. (A figure of
+#     ``R_c \approx 0.23\;\mathrm{mm}`` circulates for this conversion; it
+#     is four orders of magnitude off. The underlying ``3.69`` and ``0.968``
+#     are sound.)
 
 # ## Section 9: The small-viscosity (Lamb) limit
 #
-# There is one limit we can get in closed form: low viscosity,
-# ``q\to\infty``.
+# One limit is available in closed form: low viscosity, ``q\to\infty``.
 #
-# **Cited, not re-derived here** (standard large-argument Bessel
-# asymptotics, matching the level of the companion `.tex`): as
-# ``q\to\infty``, ``Q_{l+1/2}(q)/q\to 0`` between the poles of
-# ``Q_{l+1/2}``. What we DO verify is what setting ``Q\to0`` does to the
-# characteristic equation itself -- the bracket on the right collapses to
-# exactly ``l+(l+1)=2l+1``, for symbolic ``l``:
+# Standard large-argument Bessel asymptotics, taken here as given, put
+# ``Q_{l+1/2}(q)/q\to 0`` between the poles of ``Q_{l+1/2}`` as
+# ``q\to\infty``. Setting ``Q\to0`` collapses the bracket on the right of
+# the characteristic equation to exactly ``l+(l+1)=2l+1``, for symbolic
+# ``l``:
 # ```math
 # \frac{\alpha^4}{q^4} + 1 = \frac{2(l-1)(2l+1)}{q^2}.
 # ```
@@ -1004,7 +960,7 @@ characteristic_rhs_full = (2 * (l - 1) / q^2) * (l + (l + 1) * (q - 2 * l * Q) /
 characteristic_rhs_Q0 = substitute(characteristic_rhs_full, Dict(Q => 0))                       #src
 @assert symbolic_zero(characteristic_rhs_Q0 - 2 * (l - 1) * (2l + 1) / q^2)                      #src
 
-# Multiplying through by ``q^4`` turns this into a genuine QUADRATIC in
+# Multiplying through by ``q^4`` turns this into a quadratic in
 # ``q^2``:
 # ```math
 # q^4 - 2(l-1)(2l+1)\,q^2 + \alpha^4 = 0.
@@ -1039,11 +995,10 @@ end                                                                             
 
 # ### Cross-check against the running solver
 #
-# Everything above is algebra. This part checks it against actual numbers.
-# `julia/src/timestepper.jl`'s production code implements exactly Lamb's
-# formula (`D1[l]=l(l-1)(l+2)`, `D2[l]=2*Oh*(l-1)*(2l+1)`) for the small-Oh
-# regime, so if this section's derivation of that formula is right, a real
-# small-Oh `solve_drop!` run should decay at the rate
+# Everything above is algebra; this part compares it against numbers.
+# `julia/src/timestepper.jl` implements Lamb's formula directly
+# (`D1[l]=l(l-1)(l+2)`, `D2[l]=2*Oh*(l-1)*(2l+1)`) for the small-Oh regime,
+# so a small-Oh `solve_drop!` run should decay at the rate
 # ``\mathrm{Oh}\,(l-1)(2l+1)``.
 #
 # The measurement itself is just the slope of the log-amplitude between the
@@ -1052,7 +1007,7 @@ end                                                                             
 extract_decay_rate(times, A_l) = -log(abs(A_l[end]) / abs(A_l[1])) / (times[end] - times[1])
 nothing # hide
 
-# Running the real solver on a single excited mode and comparing:
+# Running the solver on a single excited mode and comparing:
 #
 # | ``\mathrm{Oh}`` | ``l`` | Lamb ``\gamma`` | measured ``\gamma`` | relative error |
 # |--:|--:|--:|--:|--:|
@@ -1060,9 +1015,8 @@ nothing # hide
 # | 0.02 | 3 | 0.280 | 0.2853 | 1.9% |
 # | 0.05 | 2 | 0.250 | 0.2533 | 1.3% |
 #
-# Agreement to better than 5% in every case, held there by a hidden
-# assertion. This document's physics matches the code that actually runs,
-# not just its own internal algebra.
+# Agreement is better than 5% in every case, so the theory on this page and
+# the code that runs agree in the regime where both apply.
 
 for (Oh_val, l_val) in ((0.02, 2), (0.02, 3), (0.05, 2))                                       #src
     gamma_lamb = (l_val - 1) * (2l_val + 1) * Oh_val                                           #src
@@ -1084,7 +1038,7 @@ for (Oh_val, l_val) in ((0.02, 2), (0.02, 3), (0.05, 2))                        
     @assert err < 0.05                                                                         #src
 end                                                                                            #src
 
-# ## Section 10: What this buys the rest of the repo
+# ## Section 10: How this is used downstream
 #
 # ### Connection to Molaček & Bush (2012)
 #
@@ -1127,7 +1081,7 @@ end                                                                             
 # timescale.
 #
 # Steps 2 and 3 are exactly what `reid_finite_oh_derivation.jl` carries out,
-# in a slightly different (and, for this repo, more convenient) gauge.
+# in a slightly different (and, for the solver, more convenient) gauge.
 #
 # ### Summary of key equations
 #
@@ -1142,7 +1096,7 @@ end                                                                             
 #
 # ### What survives a change of rheology, and what does not
 #
-# This matters because every other derivation in this repo starts by
+# This matters because every other derivation here starts by
 # modifying this one, and it is easy to modify too little.
 #
 # **Rheology-agnostic** -- depends only on incompressibility and geometry,
@@ -1156,7 +1110,7 @@ end                                                                             
 # assume a constant ``\mu`` multiplying a linear strain rate
 # (``\tau_{r\theta}=\mu[\cdots]`` and ``-2\mu\,\partial u_r/\partial r``
 # respectively). A shear-thinning or viscoelastic model changes the momentum
-# equation AND both stress boundary conditions -- Oldroyd-B and
+# equation and both stress boundary conditions -- Oldroyd-B and
 # Carreau-Yasuda each have to redo that work, not merely swap a coefficient.
 #
 # ### Where to go next
@@ -1168,13 +1122,13 @@ end                                                                             
 # classical small-viscosity formula in the appropriate limit. That exact
 # equation, not Lamb's asymptotic approximation to it, is the physically
 # correct starting point for any drop whose Ohnesorge number isn't small --
-# which includes every shear-thinning fluid this repo's Carreau-Yasuda
+# which includes every shear-thinning fluid the Carreau-Yasuda
 # extension was built to handle (see `carreau_yasuda_multimode_derivation.jl`),
-# since shear-thinning can swing the EFFECTIVE Ohnesorge number across
+# since shear-thinning can swing the effective Ohnesorge number across
 # orders of magnitude within a single impact.
 #
 # See `reid_finite_oh_derivation.jl` for what comes next: the numerical
 # machinery that solves this transcendental equation robustly at finite Oh,
 # the ``(\lambda_l(\mathrm{Oh}), \omega_l^2(\mathrm{Oh}))`` parametrization
-# actually wired into `julia/src/reid.jl`, and a live cross-check against
+# wired into `julia/src/reid.jl`, and a live cross-check against
 # the running solver.

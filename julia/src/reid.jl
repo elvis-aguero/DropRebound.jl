@@ -21,9 +21,8 @@ dominant eigenvalues of Reid's own characteristic equation.
 spherical Bessel recurrence `j_{l-1}+j_{l+1} = ((2l+1)/q) j_l`, divided by `j_l`
 and inverted. Never evaluates a Bessel function directly -- evaluating
 `j_l(q)` itself overflows at small Oh, where `q = sqrt(sigma/Oh)` has large
-`|Im(q)|`, while the RATIO stays O(1). (Confirmed during development: a direct
-`besselj`-based ratio threw an overflow exception at l=16, Oh=0.3, a perfectly
-ordinary parameter pair.)
+`|Im(q)|`, while the ratio stays O(1). A direct `besselj`-based ratio overflows
+at ordinary parameters -- for example l=16, Oh=0.3.
 """
 function sph_bessel_ratio(l::Integer, q::Number)
     # Capped defensively: the recurrence's working length scales with abs(q),
@@ -73,9 +72,8 @@ Damped, step-capped Newton with backtracking: each step is capped at a
 fraction of `|q|` and halved until the residual decreases. An UNDAMPED Newton
 step can overshoot into an argument where `sph_bessel_ratio`'s downward
 recurrence needs an enormous number of terms to converge (its working length
-scales with `abs(q)`), which is not an exception but a silent multi-minute
-hang -- confirmed during development. The step cap prevents `q` from ever
-reaching such an argument in the first place.
+scales with `abs(q)`), which produces no exception -- only a multi-minute hang.
+The step cap keeps `q` away from such arguments.
 """
 function _newton_complex(f, q0; maxiter=300, tol=1e-13, step_cap_frac=0.5)
     q = q0
@@ -128,16 +126,14 @@ converge to a more strongly damped, non-dominant root once Oh grows (confirmed
 at l=16, Oh=0.3 in `julia/derivations/reid_finite_oh_derivation.jl`).
 
 The number of steps is chosen ADAPTIVELY so each step's Oh ratio stays below
-`max_step_ratio`, rather than a fixed step count -- a fixed count (e.g. 24
-steps from Oh=1e-4 to a target of 1000) gives a per-step ratio too coarse to
-reliably track the dominant branch at higher l, confirmed during development:
-a fixed-24-step schedule jumps to a more strongly damped, non-dominant root
-(e.g. lambda 61483 -> 273551 between Oh=958 and Oh=1014 for l=10, both
-satisfying the characteristic equation to near machine precision -- i.e. two
-genuinely different roots, not a convergence failure) somewhere past Oh~900
-for l=10, and at correspondingly smaller Oh for higher l. A ~1.15x per-step
-ratio was verified stable (self-consistent to <15% step-to-step, generally
-much better) for l up to 40 across Oh 1e-4 to 1e4.
+`max_step_ratio`, rather than a fixed step count. A fixed count gives a
+per-step ratio too coarse to track the dominant branch at higher `l`: with 24
+steps from Oh=1e-4, the continuation jumps to a more strongly damped root past
+Oh ~ 900 for l=10, and at smaller Oh for larger `l` (for instance lambda
+61483 -> 273551 between Oh=958 and Oh=1014, both satisfying the characteristic
+equation to near machine precision -- two genuinely different roots, not a
+convergence failure). A ratio of ~1.15 is stable to within 15% step-to-step
+for `l` up to 40 across Oh 1e-4 to 1e4.
 """
 function dominant_root(Oh, l; oh_start=1e-4, max_step_ratio=1.15)
     Oh <= oh_start && return _dominant_root_direct(Oh, l)
@@ -227,8 +223,8 @@ function drop_viscous_coeffs(M::Int, Oh::Float64, model::Symbol)
     end
     if !isempty(fallback)
         @warn """
-            Reid continuation failed for some drop modes; fell back to Lamb there. Those
-            modes are NOT using the arbitrary-Oh model -- worth investigating.
+            Reid continuation failed for some drop modes; those modes fall back to
+            Lamb's small-viscosity formula and are not using the arbitrary-Oh model.
             """ modes = fallback Oh = Oh
     end
     lambda, omega2

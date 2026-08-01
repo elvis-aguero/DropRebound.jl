@@ -1,4 +1,4 @@
-# # Cross-Model Fluids: How to Make Them Work
+# # Cross-Model Fluids: A Relabelling of Carreau-Yasuda
 #
 # A Cross-model fluid is shear-thinning in the generalized-Newtonian sense:
 # its viscosity is an algebraic function of the instantaneous shear rate,
@@ -12,9 +12,8 @@
 # with ``K`` a timescale and ``m>0`` a thinning exponent (real shear-thinning
 # polymer solutions are usually characterised in the range
 # ``m\approx0.5\text{--}1.5``). The question this page answers is whether
-# such a fluid fits the architecture this repo already has -- a linearized
-# spectral solver plus a weakly-nonlinear damping correction -- the way
-# Carreau-Yasuda does.
+# such a fluid fits DropSolver's architecture -- a linearized spectral solver
+# plus a weakly-nonlinear damping correction -- the way Carreau-Yasuda does.
 #
 # The answer is yes, and in a stronger sense than "it can be made to fit":
 # **Cross is not a separate model at all.** Once the leading small-shear
@@ -29,12 +28,12 @@
 # ```
 #
 # What follows establishes that map, generalizes the secular-averaging
-# factor to any real exponent, settles an order-counting question that an
-# earlier attempt at this same generalization got wrong, and then *runs* the
-# recipe -- a standalone prototype residual/Jacobian/time-integration built
-# on this repo's own `newton_solve!` -- for ``m\in\{0.5,1,2,3\}``, to show
-# the recipe is dynamically well behaved and not merely algebraically
-# consistent. No file in `julia/src/` is touched.
+# factor to any real exponent, works out the order counting of the damping
+# correction, and then *runs* the recipe -- a standalone prototype
+# residual/Jacobian/time-integration built on DropSolver's own
+# `newton_solve!` -- for ``m\in\{0.5,1,2,3\}``, to show that it is
+# dynamically well behaved and not merely algebraically consistent. No file
+# in `julia/src/` is modified.
 #
 # ## Notation
 #
@@ -93,18 +92,16 @@ end                                                                           #s
 # in ``\epsilon``. Both requirements together hold only when ``m`` is an even
 # integer.
 #
-# The check below is not a restatement of that label: it estimates
-# derivatives of ``|\epsilon|^{m}`` at ``\epsilon=0`` by central finite
-# differences of orders 1 through 4, at two step sizes a hundred-fold apart
-# (``h=10^{-2}`` and ``h=10^{-4}``), and asks whether the estimates settle.
-# At ``m=2`` and ``m=4`` they are identical to fifteen digits -- the function
-# is literally the monomial ``\epsilon^{m}``, whose derivatives are ``m!``
-# and then zero. At ``m=0.5,\,1,\,1.5,\,3`` the largest estimate grows by
-# factors of ``10^{2}`` to ``10^{7}`` as the step shrinks, which is what a
-# singular derivative at the origin looks like numerically. There is no
-# ambiguous middle case. A failure here would mean a non-even-integer
-# exponent secretly *is* smooth at zero, and the reason Carreau-Yasuda pins
-# ``a=2`` for its analytic case would evaporate.
+# Numerically the split is sharp. Estimating derivatives of
+# ``|\epsilon|^{m}`` at ``\epsilon=0`` by central finite differences of
+# orders 1 through 4, at two step sizes a hundred-fold apart (``h=10^{-2}``
+# and ``h=10^{-4}``): at ``m=2`` and ``m=4`` the estimates agree to fifteen
+# digits, the function being the monomial ``\epsilon^{m}`` whose derivatives
+# are ``m!`` and then zero. At ``m=0.5,\,1,\,1.5,\,3`` the largest estimate
+# grows by factors of ``10^{2}`` to ``10^{7}`` as the step shrinks -- the
+# numerical signature of a singular derivative at the origin. There is no
+# ambiguous middle case, and this is why the analytic branch of
+# Carreau-Yasuda pins ``a=2``.
 
 function fd_derivative_estimates(m_val, h; kmax=4)                            #src
     f(e) = abs(e)^m_val                                                       #src
@@ -146,14 +143,13 @@ println("ASSERTION 1 OK: |eps|^m is smooth at eps=0 only for even-integer m")  #
 #
 # Both are ``-(\text{coefficient})\times(\text{timescale}\times\text{shear
 # rate})^2``. Substituting ``\Delta\to(1-n)/2`` and ``K\to\lambda_c`` turns
-# the first into the second identically -- verified symbolically, and at
-# several concrete parameter points, below. Cross at ``m=2`` is therefore
-# not a new model to implement; it is the existing one under a rename.
+# the first into the second identically. Cross at ``m=2`` is therefore not a
+# new model to implement; it is the existing one under a rename.
 #
 # Note the factor of two: the map is ``\Delta\leftrightarrow(1-n)/2``, not
 # ``\Delta\leftrightarrow(1-n)``. More generally, at ``m=a`` the map is
-# ``\Delta\leftrightarrow(1-n)/a``, i.e. ``\Delta`` is precisely this repo's
-# ``\varepsilon_{ST}``. Getting that factor wrong would rescale every
+# ``\Delta\leftrightarrow(1-n)/a``, i.e. ``\Delta`` is precisely the
+# solver's ``\varepsilon_{ST}``. A factor error here would rescale every
 # shear-thinning prediction by ``a/2``.
 
 @variables mu0_sym muinf_sym K_sym eps_sym m_shape ghat_sym                   #src
@@ -180,18 +176,17 @@ println("ASSERTION 2 OK: Cross(m) == Carreau-Yasuda(a=m) under Delta<->(1-n)/a, 
 
 # ## 3. A closed form for the secular-averaging factor at any real exponent
 #
-# `carreau_yasuda_derivation.jl` §8 derived the factor by which one period of
-# oscillation averages the nonlinear damping term,
+# Averaging the nonlinear damping term over one period of oscillation
+# produces the Wallis factor
 #
 # ```math
 # C(a) \;=\; \frac{2}{\sqrt\pi}\,
 #   \frac{\Gamma\!\left(\frac{a+3}{2}\right)}{\Gamma\!\left(\frac{a+4}{2}\right)},
 # ```
 #
-# and that factor depends only on the *exponent of the damping
-# nonlinearity*, not on which constitutive law produced it. It therefore
-# carries over to Cross's ``m`` unchanged, and is reused here rather than
-# re-derived:
+# which depends only on the *exponent of the damping nonlinearity*, not on
+# which constitutive law produced it. It therefore carries over to Cross's
+# ``m`` unchanged:
 
 C_of_m(m_val) = (2 / sqrt(pi)) * gamma((m_val + 3) / 2) / gamma((m_val + 4) / 2)
 
@@ -203,9 +198,8 @@ C_of_m(m_val) = (2 / sqrt(pi)) * gamma((m_val + 3) / 2) / gamma((m_val + 4) / 2)
 # |:--|:--|:--|:--|:--|:--|:--|
 # | ``C(m)`` | 0.9153 | 0.8488 | 0.7949 | 0.7500 | 0.6791 | 0.6250 |
 #
-# The entry at ``m=2`` is the one that has to come out right: ``C(2)=3/4``
-# exactly, the secular factor the Carreau-only derivation obtained from
-# ``\langle\sin^4\rangle=3/8``. It does.
+# At ``m=2`` this gives ``C(2)=3/4`` exactly, the secular factor the
+# classical Carreau treatment obtains from ``\langle\sin^4\rangle=3/8``.
 
 mismatches1 = Float64[]                                                       #src
 for m_val in (0.5, 1.0, 1.5, 2.0, 3.0, 4.0)                                   #src
@@ -233,22 +227,18 @@ println("ASSERTION 4 OK: C(2) = 3/4, matching the Carreau-Yasuda secular factor"
 # therefore ``\propto|\dot b|^{m}``, so at oscillation amplitude ``a`` it
 # scales as ``a^{m}``.
 #
-# This is worth stating loudly because an earlier, unrelated attempt at this
-# same Cross generalization wrote ``a^{m-1}`` here. The difference is not
-# cosmetic: at the physically common ``m<1``, ``a^{m-1}\to\infty`` as
-# ``a\to0``, which would make the correction *diverge* in the small-amplitude
-# limit and the whole scheme ill-posed. With the correct ``a^{m}``, the
-# correction vanishes as ``a\to0`` for **every** ``m>0``, with no exceptions
-# and no special cases -- so the scheme is well posed for any physically
-# meaningful thinning exponent.
+# The exponent is worth pinning down, because the neighbouring choice
+# ``a^{m-1}`` behaves qualitatively differently: at the physically common
+# ``m<1`` it diverges as ``a\to0``, which would make the correction unbounded
+# in the small-amplitude limit and the scheme ill posed. With ``a^{m}`` the
+# correction vanishes as ``a\to0`` for every ``m>0``, so the scheme is well
+# posed for any physically meaningful thinning exponent.
 #
-# Two independent checks stand behind those two sentences. The force law is
-# differentiated numerically and compared against ``-(m+2)|\dot b|^m\dot b``
-# for ``m\in\{0.5,1,1.5,2,3\}``. Separately, the relative correction
-# ``a^{m}`` is evaluated down to ``a=10^{-100}`` for ``m`` as small as
-# ``0.1`` and required to be strictly decreasing and to fall below
-# ``10^{-6}`` -- a test the incorrect ``a^{m-1}`` scaling fails outright at
-# every ``m<1``, which is exactly the bug it is there to catch.
+# Two checks support this. The force law is differentiated numerically and
+# compared against ``-(m+2)|\dot b|^m\dot b`` for
+# ``m\in\{0.5,1,1.5,2,3\}``. Separately, the relative correction ``a^{m}`` is
+# evaluated down to ``a=10^{-100}`` for ``m`` as small as ``0.1``, and
+# required to be strictly decreasing and to fall below ``10^{-6}``.
 
 function check_force_order(m_val; x0=0.37, h=1e-6)                            #src
     f(xv) = -abs(xv)^(m_val + 2)                                              #src
@@ -280,9 +270,8 @@ println("ASSERTION 6 OK: relative correction a^m -> 0 monotonically for every m>
 # The geometric integral ``\Gamma_l^{(m)}`` that multiplies this correction is
 # built from ``\dot\gamma^{m+2}`` by exactly the construction Carreau-Yasuda
 # uses for ``\Gamma_l^{(a)}`` -- same integrand, same normalization, only the
-# exponent renamed. It is reused rather than re-derived, and at ``m=2`` both
-# routes give the same ``\Gamma_2`` (cross-verified in
-# `carreau_yasuda_derivation.jl`).
+# exponent renamed -- and at ``m=2`` the two routes give the same
+# ``\Gamma_2``.
 
 # ## 5. Connecting to impact: the Gabbard energy argument
 #
@@ -299,9 +288,9 @@ println("ASSERTION 6 OK: relative correction a^m -> 0 monotonically for every m>
 # A_2 \;=\; \sqrt{\tfrac{5}{12}\,\mathrm{We}} .
 # ```
 #
-# That result is re-derived here from the two energies rather than quoted,
-# and then tested against this repo's own Newtonian `solve_drop!` across a
-# decade of Weber number:
+# That result follows from the two energies directly, and can be tested
+# against DropSolver's Newtonian `solve_drop!` across a decade of Weber
+# number:
 #
 # | ``\mathrm{We}`` | 0.001 | 0.005 | 0.01 | 0.02 |
 # |:--|:--|:--|:--|:--|
@@ -309,12 +298,11 @@ println("ASSERTION 6 OK: relative correction a^m -> 0 monotonically for every m>
 # | ``\sqrt{5\mathrm{We}/12}`` | 0.02041 | 0.04564 | 0.06455 | 0.09129 |
 # | ratio | 0.859 | 0.851 | 0.857 | 0.861 |
 #
-# The ratio is constant to ``1.1\%`` over the decade, so the ``\mathrm{We}^{1/2}``
-# *scaling* is confirmed by the real solver. The ratio is not 1, and that gap
-# is reported rather than tuned away: the idealized argument puts all the
-# impact energy into a single mode, while the solver lets some of it leak
-# into higher ``l``. A scaling result is what the argument can support, and a
-# scaling result is what it delivers.
+# The ratio is constant to ``1.1\%`` over the decade, which confirms the
+# ``\mathrm{We}^{1/2}`` *scaling* against the solver. The prefactor is not 1:
+# the idealized argument puts all of the impact energy into a single mode,
+# while the solver lets some of it leak into higher ``l``. The argument
+# therefore supports the scaling, not the absolute amplitude.
 
 @variables We_sym rho_sym R_sym V_sym A2_sym sigma_st_sym                     #src
 E_V = (2 // 3) * pi * rho_sym * R_sym^3 * V_sym^2                             #src
@@ -358,8 +346,7 @@ println("ASSERTION 8 OK: We^(1/2) scaling confirmed on the real solver (<10% spr
 # which keeps the Jacobian structure (and its caching) intact -- replacing
 # the fixed quadratic ``\dot A^2`` with ``|\dot A|^{m}`` and the closed-form
 # ``\Gamma_l`` with the numerically tabulated ``\Gamma_l^{(m)}``. It is built
-# on this repo's own `newton_solve!`, and it is a prototype: nothing in
-# `julia/src/` is modified.
+# on DropSolver's own `newton_solve!`; nothing in `julia/src/` is modified.
 #
 # Run at ``\mathrm{Oh}=0.05``, ``\Delta=0.02``, ``K=0.02``, over six periods
 # of the ``l=2`` mode, the fitted decay rate stays close to the Newtonian one
@@ -371,9 +358,9 @@ println("ASSERTION 8 OK: We^(1/2) scaling confirmed on the real solver (<10% spr
 # | ``\gamma/\gamma_{\mathrm{Newt}}`` | 0.904 | 1.009 | 1.026 | 1.027 |
 #
 # Every amplitude history is finite, and every ratio lands inside a
-# bounded-correction band. The ``m=0.5`` column is the one to look at: that
-# is the case the incorrect ``a^{m-1}`` order counting of §4 predicted would
-# diverge, and it does not.
+# bounded-correction band. The ``m=0.5`` column is the demanding one: it is
+# the smallest exponent tested, where §4's amplitude scaling ``a^{m}`` is
+# weakest, and the integration stays bounded there too.
 
 function Gamma2_m_inviscid(m_val)
     H(th) = 3 * cos(th)^4 + 11 * cos(th)^2 + 13     # the exact l=2 angular shape
@@ -494,9 +481,9 @@ println("ASSERTION 9 OK: bounded, finite, sensible decay for every m in {0.5,1,2
 # the tabulated ``\Gamma_l^{(m)}``, computed by the same construction as
 # ``\Gamma_l^{(a)}``, and the ``C(m)`` factor above.
 #
-# What is *not* established here: this page's prototype is a single-mode,
-# fixed-step integration used to demonstrate stability, not a validation
-# against experimental data. And the whole treatment is weakly nonlinear --
+# **Scope.** The prototype above is a single-mode, fixed-step integration
+# used to demonstrate stability, not a validation against experimental data.
+# And the whole treatment is weakly nonlinear --
 # for a fluid whose ``(\lambda_c\dot\gamma)^a`` is not small, the
 # non-perturbative route of `carreau_yasuda_nonperturbative_derivation.jl`
 # is the applicable one, not this one.

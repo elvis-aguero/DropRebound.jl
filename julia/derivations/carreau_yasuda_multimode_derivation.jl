@@ -1,16 +1,17 @@
 # # Multi-Mode-Coupled Carreau-Yasuda: Shear Rate Is Kinematic
 #
-# This is the model the current validation pipeline runs. It supersedes the
-# single-mode closure of `carreau_yasuda_nonperturbative_derivation.jl`, and
-# it is presented here together with everything that went wrong when it was
-# first wired into the solver -- because two of those failures forced real
-# changes to the model, and the third is still open.
+# This is the model the validation pipeline runs. It supersedes the
+# single-mode closure of `carreau_yasuda_nonperturbative_derivation.jl`.
+# Two further ingredients are needed before it behaves on a real impact -- a
+# dealiasing rule for truncation ringing at contact onset (§6) and a finite
+# infinite-shear viscosity plateau (§7) -- and both are derived below. §8
+# reports where the model stands against the sampled experiments.
 #
-# ## The defect being fixed
+# ## What the single-mode closure misses
 #
 # The single-mode derivation computes mode ``l``'s effective viscosity from
 # mode ``l``'s own velocity alone: ``\dot\gamma_{\mathrm{char},l}=K_l|\dot
-# A_l|``. That is wrong, and not subtly. Shear rate is a *field* quantity.
+# A_l|``. That is inadequate, because shear rate is a *field* quantity.
 # At any point inside the drop, the local strain rate is the superposition of
 # every active mode's velocity field at that point, regardless of what
 # excited those modes. During contact several modes are driven at once -- not
@@ -52,9 +53,8 @@
 #
 # The weight ``w_l`` is the sensitivity of the local dissipation to mode
 # ``l``'s own motion; it is nonzero for ``k\neq l`` precisely when several
-# modes are active at once, which is the coupling the old closure was
-# missing. Taking ``|w_l|`` keeps the average well defined regardless of
-# sign.
+# modes are active at once, which is the coupling the single-mode closure
+# omits. Taking ``|w_l|`` keeps the average well defined regardless of sign.
 #
 # Two properties make this construction safe, and both are checked below.
 # It reduces exactly to the single-mode ``K_l`` result when only mode ``l``
@@ -68,7 +68,7 @@ using DropSolver
 
 # ## 1. Strain fields superpose; shear rate does not
 #
-# For the potential-flow representation this repo uses, mode ``l``'s strain
+# For the potential-flow representation used here, mode ``l``'s strain
 # components are exactly (with ``x=\cos\theta``, ``X=P_l(x)``, and the
 # trivial radial factor ``r^{l-2}`` divided out)
 #
@@ -144,7 +144,7 @@ let x = 0.4, r = 0.7                                                          #s
 end                                                                           #src
 println("ASSERTION 1 OK: two-mode total strain == term-by-term superposition") #src
 
-# ## 2. This basis's raw dissipation is not Lamb's damping -- and why that is survivable
+# ## 2. Raw dissipation of this basis is not Lamb's damping
 #
 # It is tempting to use the bulk dissipation integral of the potential-flow
 # field as an absolute damping coefficient. It does not work. Define
@@ -158,19 +158,15 @@ println("ASSERTION 1 OK: two-mode total strain == term-by-term superposition") #
 # | ratio | 1.257 | 0.598 | 0.349 | 0.229 |
 #
 # ``H(l,l)`` does grow with ``l``, but nowhere near in proportion: the ratio
-# falls by more than a factor of five across four modes. (An earlier, less
-# careful check using a coarse uniform-grid quadrature and only ``l=2``
-# wrongly suggested ``H`` was ``l``-independent; testing ``l=3,4,5``
-# explicitly is what caught it.)
+# falls by more than a factor of five across four modes.
 #
-# The physical reading is that damping of a free oscillating drop is not
+# The physical reading is that damping of a freely oscillating drop is not
 # bulk dissipation of a bare potential flow -- it is dominated by the viscous
 # correction to that flow, which this basis does not contain. So the raw
 # integral is never used on its own here. It appears only inside the ratio of
-# §0's boxed formula, where the same defective normalization sits in the
-# numerator and the denominator and cancels identically. §4's Newtonian-limit
-# check is the direct test that the cancellation is exact and not merely
-# approximate.
+# the boxed formula above, where the same normalization sits in the numerator
+# and the denominator and cancels identically. §4's Newtonian-limit check
+# tests that the cancellation is exact rather than approximate.
 
 function H_kl(k::Int, l::Int; n_x::Int=200)                                   #src
     x_nodes, x_wts = DropSolver.gauss_legendre_nodes(n_x, -1.0, 1.0)          #src
@@ -230,7 +226,7 @@ println("ASSERTION 3 OK: mu_ratio reduces to the plain law and respects the eta_
 # element included.
 #
 # **Reduction to the single-mode result.** With only ``l=2`` active at
-# ``\dot A_2=0.05``, and this repo's fitted fluid
+# ``\dot A_2=0.05``, and the fitted validation fluid
 # (``\mathrm{Oh}_0=57.4``, ``\lambda_c=30507``, ``a=0.7431``,
 # ``\varepsilon_{ST}=0.99956``), the coupled formula gives
 # ``\mathrm{Oh}_{\mathrm{eff}}=0.1644``, against ``0.1644`` from the
@@ -308,16 +304,15 @@ let Oh0 = 57.4, lambda_c = 30507.0, a = 0.7431, eps_ST = 0.99956, l = 2, Adot2 =
 end                                                                           #src
 println("ASSERTION 6 OK: a co-excited mode 5 cuts mode 2's Oh_eff by >3x") #src
 
-# ## 5. What happened on first contact with the real solver: truncation ringing
+# ## 5. Truncation ringing at contact onset
 #
-# Wiring §1-4 into `julia/src/st_exact_extension.jl` and revalidating against
-# the 20 sampled experiments made contact-time predictions *worse*, not
-# better: median relative error went from **16.8%** with the old self-only
-# closure to **62%**, with predicted contact times collapsing to near zero on
-# most samples. That is a real regression and it needed a cause, not a
-# tolerance adjustment.
+# The coupling of §1-§4, used on its own, interacts badly with the spectral
+# truncation at the instant contact begins. Against the 20 sampled
+# experiments it puts the contact-time median relative error at **62%**,
+# against **16.8%** for the self-only closure it replaces, with predicted
+# contact times collapsing to near zero on most samples.
 #
-# Tracing a live run frame by frame at contact onset found it. The moment
+# The cause is visible frame by frame at contact onset. The moment
 # contact begins, the shape boundary condition pins a single collocation
 # point to the plane -- a spatial kink. A finite Legendre truncation cannot
 # represent a kink smoothly, and the un-representable part is not spread
@@ -328,14 +323,14 @@ println("ASSERTION 6 OK: a co-excited mode 5 cuts mode 2's Oh_eff by >3x") #src
 # dynamics -- it is what truncating any basis at finite order does when asked
 # to represent a non-smooth boundary condition.
 #
-# Why it destroyed contact time specifically: this fluid's dimensionless
+# Why this hits contact time specifically: this fluid's dimensionless
 # ``\lambda_c\approx3\times10^4`` is astronomically large. Feeding even a
 # tiny, purely numerical ``\dot A_M`` into §1's superposed shear field
 # manufactures an enormous ``(\lambda_c S)^a``, which crashes
 # ``\mu_{\mathrm{eff}}/\mu_0`` -- and hence ``\mathrm{Oh}_{\mathrm{eff}}``
-# for *every* mode, not only mode ``M`` -- toward zero. A fake, near-total
-# loss of viscosity at the exact instant contact begins, before any
-# physically resolved mode has moved at all.
+# for *every* mode, not only mode ``M`` -- toward zero. The result is a
+# spurious, near-total loss of viscosity at the exact instant contact
+# begins, before any physically resolved mode has moved at all.
 #
 # On a live `solve_drop!` run at ``\mathrm{We}=0.7649`` the signature is
 # unmistakable, at the first frame contact registers:
@@ -345,10 +340,9 @@ println("ASSERTION 6 OK: a co-excited mode 5 cuts mode 2's Oh_eff by >3x") #src
 # | ``M=12`` | 1.15 | ``6.1\times10^{-15}`` | ``1.9\times10^{14}`` |
 # | ``M=16`` | 0.286 | ``1.9\times10^{-15}`` | ``1.5\times10^{14}`` |
 #
-# Fourteen orders of magnitude, at both truncations. The check below demands
-# only a factor of 100; if it ever failed, the ringing would not be a
-# large-amplitude outlier at all, and the detector of §6 would need an
-# entirely different signature to key on.
+# Fourteen orders of magnitude, at both truncations. This amplitude
+# signature is what the detector of §6 keys on; the check below requires
+# only a factor of 100.
 
 let                                                                           #src
     OH0 = 57.371648873370795                                                  #src
@@ -380,13 +374,13 @@ println("ASSERTION 7 OK: at contact onset the top mode carries >100x every other
 # ## 6. Dealiasing: neither index nor amplitude alone is enough
 #
 # The obvious fix -- drop roughly the top 10% of modes *by index* from the
-# coupling field -- removed the ringing and broke something else. On a live
-# low-``\mathrm{We}`` run (``\mathrm{We}=0.0158``: a gentle impact with a
-# long, slow contact) mode ``M`` itself reaches genuine amplitude comparable
-# to mode 2's. Excluding it purely because its index is near ``M`` throws
-# away real physics, and it roughly halved the predicted coefficient of
-# restitution for that sample: **0.21** with the index-based filter, against
-# **0.74** with dealiasing disabled entirely and a measured **0.82**.
+# coupling field -- removes the ringing at the cost of discarding real
+# physics. On a low-``\mathrm{We}`` run (``\mathrm{We}=0.0158``: a gentle
+# impact with a long, slow contact) mode ``M`` itself reaches an amplitude
+# comparable to mode 2's. Excluding it purely because its index is near
+# ``M`` roughly halves the predicted coefficient of restitution for that
+# sample: **0.21** with the index-based filter, against **0.74** with
+# dealiasing disabled entirely and a measured **0.82**.
 #
 # Amplitude ratio alone does not work either. Compare a candidate against
 # every *other* mode with no index restriction, and a live mid-mode case --
@@ -446,10 +440,11 @@ println("ASSERTION 8 OK: the index+trusted-amplitude mask gets all three cases r
 
 # ## 7. The missing physical floor on viscosity
 #
-# With dealiasing in place the contact-time median error came down from 62%
-# to **29%** -- better, but still worse than the 16.8% baseline. Tracing
-# ``\mathrm{Oh}_{\mathrm{eff}}`` on a live run showed why: several values sat
-# *below the fluid's own physical minimum*.
+# With dealiasing in place the contact-time median error falls from 62% to
+# **29%** -- better, but still above the 16.8% of the closure it replaces.
+# Part of the remaining gap has an identifiable cause: on a live run,
+# several ``\mathrm{Oh}_{\mathrm{eff}}`` values sit *below the fluid's own
+# physical minimum*.
 #
 # Plain Carreau-Yasuda as coded,
 # ``\mu_{\mathrm{eff}}/\mu_0=[1+(\lambda_c\dot\gamma)^a]^{-\varepsilon_{ST}}``,
@@ -541,17 +536,15 @@ println("ASSERTION 9 OK: without the plateau term a live run drives Oh_eff below
 # | model | contact-time median error |
 # |:--|:--|
 # | self-only single-mode closure (superseded) | **16.8%** |
-# | multi-mode coupling, as first wired in | **62%** |
+# | multi-mode coupling, without §6 and §7 | **62%** |
 # | + dealiasing + ``\eta_\infty`` plateau | **29%** |
 #
-# The multi-mode model has *not* recovered the baseline's contact-time
-# accuracy. It is better founded -- the single-mode closure is wrong about
-# the physics in a way §4's coupling table makes concrete, and each of the
-# two fixes above corrected a genuine defect rather than fitting a number --
-# but on this metric it is still nearly twice as far off as the model it
-# replaces, and that gap is unexplained. It is stated here because it is a
-# result, and burying it would make every other number on this page less
-# trustworthy.
+# The multi-mode model has *not* recovered the single-mode closure's
+# contact-time accuracy. It is better founded -- the self-only closure
+# misrepresents the physics in the way §4's coupling table makes concrete,
+# and each of the two additions above corrects a specific defect rather than
+# fitting a number -- but on this metric it remains nearly twice as far off
+# as the model it replaces, and that gap is unexplained.
 #
 # Two candidate explanations have not been separated. Contact time is
 # dominated by the contact-region dynamics, which is exactly where the
