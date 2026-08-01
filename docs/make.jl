@@ -10,35 +10,29 @@ const DERIVATIONS_OUT = joinpath(@__DIR__, "src", "derivations")
 isdir(DERIVATIONS_OUT) && rm(DERIVATIONS_OUT; recursive=true)
 mkpath(DERIVATIONS_OUT)
 
-# Explicit reading order (not alphabetical): the physics foundation first,
-# then its production-wiring continuation, then each rheology extension in
-# the order it builds on what came before. `carreau_yasuda_derivation.jl`
-# is EXPLICITLY marked legacy/superseded in its title -- see
-# `julia/derivations/carreau_yasuda_multimode_derivation.jl`'s header for
-# why (it derives `julia/src/st_extension.jl`, which the real validation
-# pipeline no longer uses).
-const READING_ORDER = [
-    "reid1960_full_derivation.jl" => "Part 1 -- Reid (1960): the viscous drop, from scratch",
-    "reid_finite_oh_derivation.jl" => "Part 2 -- Finite-Oh damping and frequency (production wiring)",
-    "oldroyd_b_derivation.jl" => "Part 3 -- Oldroyd-B viscoelasticity",
-    "carreau_yasuda_nonperturbative_derivation.jl" => "Part 4 -- Carreau-Yasuda, exact single-mode",
-    "carreau_yasuda_multimode_derivation.jl" => "Part 5 -- Carreau-Yasuda, multi-mode coupling (current model)",
-    "cross_fluid_derivation.jl" => "Part 6 -- Cross-model fluids",
-    "carreau_yasuda_derivation.jl" => "Part 7 -- Carreau-Yasuda, weakly-nonlinear (legacy, superseded by Part 5)",
-    "carreauYasuda_firstprinciples_derivation.jl" => "Part 8 -- Carreau-Yasuda, why amplitude perturbation theory fails",
-    "generalized_newtonian_hierarchy_derivation.jl" => "Part 9 -- Shear-thinning drops: a hierarchy of models, from the exact problem down",
+# Every derivation script is rendered. Titles and grouping live in `pages`
+# below, so this list only has to stay in sync with the directory -- the
+# assertion enforces that, so adding a script cannot silently skip the site.
+const DERIVATION_SCRIPTS = [
+    "reid1960_full_derivation.jl",
+    "reid_finite_oh_derivation.jl",
+    "generalized_newtonian_hierarchy_derivation.jl",
+    "carreauYasuda_firstprinciples_derivation.jl",
+    "carreau_yasuda_nonperturbative_derivation.jl",
+    "carreau_yasuda_multimode_derivation.jl",
+    "cross_fluid_derivation.jl",
+    "oldroyd_b_derivation.jl",
+    "carreau_yasuda_derivation.jl",
 ]
 
 all_scripts = Set(filter(f -> endswith(f, ".jl"), readdir(DERIVATIONS_SRC)))
-ordered_scripts = [p for p in READING_ORDER if p.first in all_scripts]
-@assert Set(first.(ordered_scripts)) == all_scripts "READING_ORDER in docs/make.jl is out of sync with julia/derivations/*.jl -- add the new/renamed script to READING_ORDER"
+@assert Set(DERIVATION_SCRIPTS) == all_scripts "DERIVATION_SCRIPTS in docs/make.jl is out of sync with julia/derivations/*.jl -- add the new/renamed script"
 
-derivation_pages = Pair{String,String}[]
-for (script, title) in ordered_scripts
-    src = joinpath(DERIVATIONS_SRC, script)
-    Literate.markdown(src, DERIVATIONS_OUT; documenter=true)
-    md_name = replace(script, ".jl" => ".md")
-    push!(derivation_pages, title => joinpath("derivations", md_name))
+# script name -> path of its rendered page, for use in `pages`
+const PAGE = Dict{String,String}()
+for script in DERIVATION_SCRIPTS
+    Literate.markdown(joinpath(DERIVATIONS_SRC, script), DERIVATIONS_OUT; documenter=true)
+    PAGE[script] = joinpath("derivations", replace(script, ".jl" => ".md"))
 end
 
 makedocs(
@@ -47,11 +41,34 @@ makedocs(
     repo = Remotes.GitHub("elvis-aguero", "DropRebound.jl"),
     pages = [
         "Home" => "index.md",
-        ## The hand-authored `reid1960/` and `carreau_yasuda_fp/` chapters have been
-        ## removed: they restated, in a second voice, physics that the derivation
-        ## scripts already derive. A single source of truth per topic -- the script,
-        ## which is simultaneously the CI test and the rendered chapter.
-        "Derivations" => derivation_pages,
+        # Grouped by the question a reader arrives with, not by filename or by
+        # the order things happened to be written. Each page is a derivation
+        # that also runs in CI, so the physics on the site is executable.
+        #
+        # (The hand-authored `reid1960/` and `carreau_yasuda_fp/` chapters were
+        # removed: they restated, in a second voice, what these scripts derive.)
+        "Newtonian Theory" => [
+            "The Viscous Drop: Reid (1960)"    => PAGE["reid1960_full_derivation.jl"],
+            "Finite-Ohnesorge Coefficients"    => PAGE["reid_finite_oh_derivation.jl"],
+        ],
+        "Shear-Thinning Fluids" => [
+            # Read in this order: the map first, then why the obvious route is
+            # closed, then the two closures that are actually implemented.
+            "A Hierarchy of Models"            => PAGE["generalized_newtonian_hierarchy_derivation.jl"],
+            "Why Amplitude Expansion Fails"    => PAGE["carreauYasuda_firstprinciples_derivation.jl"],
+            "Carreau-Yasuda: Single-Mode"      => PAGE["carreau_yasuda_nonperturbative_derivation.jl"],
+            "Carreau-Yasuda: Multi-Mode"       => PAGE["carreau_yasuda_multimode_derivation.jl"],
+            "Cross-Model Fluids"               => PAGE["cross_fluid_derivation.jl"],
+        ],
+        "Viscoelastic Fluids" => [
+            "Oldroyd-B"                        => PAGE["oldroyd_b_derivation.jl"],
+        ],
+        # Kept on the site because it still runs in CI and documents how the
+        # earlier model was built -- but quarantined, because its `Gamma_l`
+        # values are wrong (see the warning at the top of the page).
+        "Superseded" => [
+            "Weakly-Nonlinear Expansion"       => PAGE["carreau_yasuda_derivation.jl"],
+        ],
         "API Reference" => "api.md",
     ],
     format = Documenter.HTML(

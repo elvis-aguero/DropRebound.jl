@@ -1,4 +1,27 @@
-# # Weakly Nonlinear Carreau-Yasuda Drop (legacy: superseded by the multi-mode model)
+# # Weakly Nonlinear Carreau-Yasuda Drop (superseded)
+#
+# !!! danger "Every numerical ``\Gamma_l^{(a)}`` on this page is wrong"
+#     This derivation feeds Reid's **poloidal scalar** ``U(x)`` into the
+#     strain-rate builder, where the **radial velocity amplitude**
+#     ``f = U(x)/x^2`` belongs. The two differ by a factor ``x^2``.
+#     `reid1960_full_derivation.jl` states the correct relation
+#     (``u_r \propto U(x)/x^2``); this page contradicts it.
+#
+#     The error is visible physically, not just algebraically. The inviscid
+#     ``l=2`` mode is potential flow ``\phi\propto r^2P_2``, a *uniform*
+#     straining field, so ``\dot\gamma^2`` must be constant in both ``x`` and
+#     ``\theta``. Under ``f=U`` it is not; under the correct ``f=U/x^2`` it is
+#     exactly ``3``. So the angular factor
+#     ``H(\theta)=3\cos^4\theta+11\cos^2\theta+13`` derived below is an
+#     **artefact of the ``x^2`` error**, and every ``\Gamma_l^{(a)}`` built on
+#     it is invalid -- inviscid, general-``l``, and finite-``\mathrm{Oh}``
+#     alike, including ``\Gamma_2 = 1783566/385``, which is still hardcoded
+#     into `julia/test/test_carreau.jl` and `test_carreau_yasuda.jl`.
+#
+#     Under the correct field the inviscid ``\Gamma_2`` is of order ``10^2``,
+#     not ``4.6\times10^3``. The assertions on this page still pass because
+#     they check the algebra against itself and against a prior Python
+#     notebook that shared the same error.
 #
 # !!! warning "Status"
 #     This page derives `julia/src/st_extension.jl`, the *perturbative*
@@ -7,10 +30,16 @@
 #     fail outright, and the damping multiplier can go negative --
 #     see `carreau_yasuda_nonperturbative_derivation.jl` for the
 #     quantification and `carreau_yasuda_multimode_derivation.jl` for the
-#     model that replaced it. What remains valuable here is the machinery:
-#     the geometric integral ``\Gamma_l^{(a)}``, the secular factor
-#     ``C(a)``, and their finite-``\mathrm{Oh}`` versions, all of which the
-#     later work reuses.
+#     model that replaced it.
+#
+#     What survives the error above is the *machinery that does not touch the
+#     velocity field*: the secular-averaging factor
+#     ``C(a) = \tfrac{2}{\sqrt\pi}\Gamma(\tfrac{a+3}{2})/\Gamma(\tfrac{a+4}{2})``,
+#     the Wallis normalisation ``\langle|\sin|^{2p}\rangle``, the force
+#     identity ``\tfrac{d}{d\dot b}\bigl[-|\dot b|^{a+2}\bigr]=-(a+2)|\dot b|^a\dot b``,
+#     and the Reid base-flow setup. The *strain-rate expressions* are also
+#     correct as written -- only the ``f`` substituted into them is wrong, so
+#     they are reusable once ``f=U/x^2`` is supplied.
 #
 # The derivation itself: a perturbation expansion for a shear-thinning drop
 # oscillating on a flat substrate, using the Carreau-Yasuda constitutive law
