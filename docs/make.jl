@@ -13,7 +13,7 @@ mkpath(DERIVATIONS_OUT)
 # Every derivation script is rendered. Titles and grouping live in `pages`
 # below, so this list only has to stay in sync with the directory -- the
 # assertion enforces that, so adding a script cannot silently skip the site.
-const DERIVATION_SCRIPTS = [
+const PUBLISHED = [
     "reid1960_full_derivation.jl",
     "reid_finite_oh_derivation.jl",
     "generalized_newtonian_hierarchy_derivation.jl",
@@ -22,15 +22,21 @@ const DERIVATION_SCRIPTS = [
     "carreau_yasuda_multimode_derivation.jl",
     "cross_fluid_derivation.jl",
     "oldroyd_b_derivation.jl",
+]
+
+# Superseded derivations stay in the repository and keep running in CI, but are
+# not part of the documentation: they describe code paths the solver no longer
+# uses, and publishing them alongside the current theory would only mislead.
+const UNPUBLISHED = [
     "carreau_yasuda_derivation.jl",
 ]
 
 all_scripts = Set(filter(f -> endswith(f, ".jl"), readdir(DERIVATIONS_SRC)))
-@assert Set(DERIVATION_SCRIPTS) == all_scripts "DERIVATION_SCRIPTS in docs/make.jl is out of sync with julia/derivations/*.jl -- add the new/renamed script"
+@assert Set(vcat(PUBLISHED, UNPUBLISHED)) == all_scripts "docs/make.jl is out of sync with julia/derivations/*.jl -- add the new/renamed script to PUBLISHED or UNPUBLISHED"
 
 # script name -> path of its rendered page, for use in `pages`
 const PAGE = Dict{String,String}()
-for script in DERIVATION_SCRIPTS
+for script in PUBLISHED
     Literate.markdown(joinpath(DERIVATIONS_SRC, script), DERIVATIONS_OUT; documenter=true)
     PAGE[script] = joinpath("derivations", replace(script, ".jl" => ".md"))
 end
@@ -62,12 +68,6 @@ makedocs(
         ],
         "Viscoelastic Fluids" => [
             "Oldroyd-B"                        => PAGE["oldroyd_b_derivation.jl"],
-        ],
-        # Kept on the site because it still runs in CI and documents how the
-        # earlier model was built -- but quarantined, because its `Gamma_l`
-        # values are wrong (see the warning at the top of the page).
-        "Superseded" => [
-            "Weakly-Nonlinear Expansion"       => PAGE["carreau_yasuda_derivation.jl"],
         ],
         "API Reference" => "api.md",
     ],
