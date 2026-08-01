@@ -19,8 +19,17 @@ global_logger(ConsoleLogger(stderr, Logging.Warn))
 # ---------------------------------------------------------------------------
 # Fluid characterization (Cross model fit, converted to Carreau-Yasuda via
 # lambda_c=K, a=m, n=1-m -- see julia/derivations/cross_fluid_derivation.jl).
-# eps_ST = Delta*(1-n)/a = Delta (since (1-n)/a=1 identically under this
-# mapping), Delta = (eta_0-eta_inf)/eta_0.
+#
+# `eps_ST` is the Carreau-Yasuda SHAPE EXPONENT, (1-n)/a -- see the law in
+# `STExactParams`'s docstring:
+#     mu_eff/mu_0 = eta_inf_ratio + (1-eta_inf_ratio)*[1+(lambda_c*gammadot)^a]^(-eps_ST)
+# The thinning AMPLITUDE Delta=(eta_0-eta_inf)/eta_0 is already carried by the
+# separate `(1-eta_inf_ratio)` factor, so it must NOT also be folded into the
+# exponent. This script previously passed `Delta` here, conflating the two;
+# harmless only because Delta ~ 0.9996 for this particular fluid, but for a
+# fluid with Delta = 0.5 the exponent would have been wrong by a factor of two.
+# Derived rather than hardcoded so the next fluid inherits the fix. See
+# `julia/derivations/generalized_newtonian_hierarchy_derivation.jl` Step 9.
 # ---------------------------------------------------------------------------
 const ETA_INF = 0.0037320997942061666   # Pa s
 const ETA_0   = 8.433817577956766       # Pa s
@@ -36,8 +45,11 @@ const T_SIGMA  = sqrt(RHO * R^3 / SIGMA)
 const OH0      = ETA_0 / sqrt(RHO * SIGMA * R)
 const LAMBDA_C = K_CROSS / T_SIGMA        # dimensionless
 const A_SHAPE  = M_CROSS
-const EPS_ST   = (ETA_0 - ETA_INF) / ETA_0
+const N_CY     = 1 - M_CROSS              # Cross -> CY power-law index
+const EPS_ST   = (1 - N_CY) / A_SHAPE     # == 1.0 exactly under this mapping
 const ETA_INF_RATIO = ETA_INF / ETA_0     # physical floor on mu_eff/mu_0 (and hence Oh_eff/Oh0)
+
+@assert isapprox(EPS_ST, 1.0; atol=1e-12) "Cross->CY mapping must give exponent 1"
 
 @info "Fluid parameters" RHO T_SIGMA OH0 LAMBDA_C A_SHAPE EPS_ST ETA_INF_RATIO
 
@@ -70,7 +82,12 @@ function predict(We::Float64, M::Int, stx::STExactParams)
     dt_max    = make_dt_max(M)
     theta_vec = make_theta_vec(M)
     precomp   = precompute_integrals(NaN, M)[1]
-    cfg       = SimConstants(M, M + 1, OH0, BO, theta_vec, precomp, dt_max)
+    ## `viscous=:reid` to match the `stx` built in main(). These coefficients are
+    ## dead on the shear-thinning path (build_residual_st_exact! overwrites every
+    ## entry that reads them), but leaving the default `:lamb` here is a latent
+    ## trap: anything later added to the residual that reads cfg.drop_lambda
+    ## outside the R2 block would silently mix Lamb and Reid coefficients.
+    cfg       = SimConstants(M, M + 1, OH0, BO, theta_vec, precomp, dt_max; viscous=:reid)
 
     init = DropState(M)
     init.z = 1.05
