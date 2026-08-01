@@ -54,6 +54,7 @@ makedocs(
             "The Velocity ODE" => "reid1960/06-velocity-ode.md",
             "The Characteristic Equation" => "reid1960/08-characteristic-equation.md",
             "Structure of the Solutions" => "reid1960/09-structure-of-solutions.md",
+            "Molaček & Bush Connection + Summary" => "reid1960/10-molacek-bush-summary.md",
         ],
         "CAS Derivations" => derivation_pages,
         "API Reference" => "api.md",
