@@ -501,17 +501,113 @@ println("only add O(epsilon^2) corrections, negligible at this linear order).")
 # ### BC2: Tangential stress condition
 #
 # At a free surface (no exterior viscous fluid), the tangential viscous
-# stress must vanish. Using the stream-function representation of a
-# poloidal field to eliminate ``u_\theta`` (the same kind of standard
-# poloidal-field fact cited in Section 4), this reduces to a single
-# operator condition on ``U`` at ``x=1``:
+# stress must vanish:
 # ```math
-# \mathcal{L}_2[U] \equiv \left[\frac{d^2}{dx^2} - \frac{2}{x}\frac{d}{dx} + \frac{l(l+1)}{x^2}\right]U = 0 \qquad\text{at } x=1.
+# \tau_{r\theta} = \mu\left[r\frac{\partial}{\partial r}\!\left(\frac{u_\theta}{r}\right) + \frac{1}{r}\frac{\partial u_r}{\partial\theta}\right] = 0 \qquad \text{at } x=1.
 # ```
-# **What we verify**, rather than cite, is evaluating this operator on the
-# general solution from Section 5.
+# This needs ``u_\theta``, which hasn't shown up until now. **Derived from
+# scratch below, not cited:** for an axisymmetric poloidal field, the
+# standard (citable, textbook) Stokes stream function ``\psi(r,\theta)``
+# gives ``u_r=(1/(r^2\sin\theta))\,\partial\psi/\partial\theta`` and
+# ``u_\theta=-(1/(r\sin\theta))\,\partial\psi/\partial r``. Writing
+# ``u_r=f(r)P_l(\cos\theta)`` and integrating in ``\theta`` (using the
+# standard Legendre recurrence ``(2l+1)P_l=P_{l+1}'-P_{l-1}'``, checked
+# below at concrete ``l`` -- Reid's own paper would cite this the same
+# way) gives
+# ```math
+# u_\theta = \frac{g(r)}{\sin\theta}\Big[P_{l+1}(\cos\theta)-P_{l-1}(\cos\theta)\Big], \qquad g(r)\equiv\frac{2f(r)+rf'(r)}{2l+1}.
+# ```
+# Substituting both into ``\tau_{r\theta}`` and using a SECOND standard
+# recurrence, ``(2l+1)(1-x^2)P_l'(x)=l(l+1)[P_{l-1}(x)-P_{l+1}(x)]`` (also
+# checked below), every term collapses onto the single common angular
+# factor ``\sin\theta\,P_l'(\cos\theta)`` -- exactly the shape a genuine
+# tangential-stress condition should have -- times a purely radial
+# coefficient. Setting that coefficient to zero at ``r=R`` turns out to be
+# **exactly** ``\mathcal{L}_2[U]=0``:
+# ```math
+# \mathcal{L}_2[U] \equiv \left[\frac{d^2}{dx^2} - \frac{2}{x}\frac{d}{dx} + \frac{l(l+1)}{x^2}\right]U = 0 \qquad\text{at } x=1,
+# ```
+# closing the loop on what was previously just cited. A failing assertion
+# in this subsection would mean either the two Legendre recurrences below
+# are misremembered, or the stream-function ansatz doesn't actually
+# produce a pure tangential-stress condition proportional to
+# ``\mathcal{L}_2[U]`` -- i.e. the very operator BC2 has been built on
+# would itself be wrong.
 
-@variables x l q Pi_0 C
+@variables x_leg2
+Dxleg2 = Differential(x_leg2)
+for l_val in (2, 3, 4, 5)
+    Pl_a, Plp1_a, Plm1_a = legendre_P(l_val, x_leg2), legendre_P(l_val + 1, x_leg2), legendre_P(l_val - 1, x_leg2)
+    @assert symbolic_zero((2l_val + 1) * Pl_a - expand_derivatives(Dxleg2(Plp1_a) - Dxleg2(Plm1_a)))
+end
+println()
+println("ASSERTION 12 OK: (2l+1)P_l = P_(l+1)' - P_(l-1)' exactly, for l=2,3,4,5 --")
+println("the integration identity behind u_theta's stream-function derivation.")
+
+for l_val in (2, 3, 4, 5)
+    Pl_b, Plp1_b, Plm1_b = legendre_P(l_val, x_leg2), legendre_P(l_val + 1, x_leg2), legendre_P(l_val - 1, x_leg2)
+    lhs_b = expand_derivatives((2l_val + 1) * (1 - x_leg2^2) * Dxleg2(Pl_b))
+    @assert symbolic_zero(lhs_b - l_val * (l_val + 1) * (Plm1_b - Plp1_b))
+end
+println()
+println("ASSERTION 13 OK: (2l+1)(1-x^2)P_l' = l(l+1)[P_(l-1)-P_(l+1)] exactly, for")
+println("l=2,3,4,5 -- turns u_theta's angular factor into the same")
+println("sin(theta)*P_l'(cos theta) shape as u_r's theta-derivative.")
+
+# Build tau_r_theta/mu directly (concrete l, abstract radial function
+# f(r)) and check that tau_r_theta=0 at r=R is EQUIVALENT to
+# R^2 f''(R) + 2R f'(R) + [l(l+1)-2] f(R) = 0 -- by substituting that
+# conjectured relation (as a relation among f(R), f'(R), f''(R) treated as
+# independent symbols, the same style as v,vp,vpp elsewhere in this
+# script) and confirming tau_r_theta then vanishes IDENTICALLY in theta,
+# not just at one angle.
+
+@variables r_var theta_sym2 R_sym F0 F1 F2 Ffun(..)
+Dr_ = Differential(r_var)
+Dth_ = Differential(theta_sym2)
+
+for l_val in (2, 3, 4, 5, 6)
+    f = Ffun(r_var)
+    g = (2 * f + r_var * Dr_(f)) / (2 * l_val + 1)
+    Pl_th, Plp1_th, Plm1_th = legendre_P(l_val, cos(theta_sym2)), legendre_P(l_val + 1, cos(theta_sym2)), legendre_P(l_val - 1, cos(theta_sym2))
+    u_r_ = f * Pl_th
+    u_theta_ = (g / sin(theta_sym2)) * (Plp1_th - Plm1_th)
+    tau_over_mu = expand_derivatives(r_var * Dr_(u_theta_ / r_var) + (1 / r_var) * Dth_(u_r_))
+    at_R = substitute(tau_over_mu, Dict(Dr_(Dr_(f)) => F2, Dr_(f) => F1, f => F0))
+    at_R = substitute(at_R, Dict(r_var => R_sym))
+    F2_conjectured = -(2 * R_sym * F1 + (l_val * (l_val + 1) - 2) * F0) / R_sym^2
+    @assert symbolic_zero(substitute(at_R, Dict(F2 => F2_conjectured)))
+end
+println()
+println("ASSERTION 14 OK: tau_r_theta = 0 at r=R (for l=2,...,6) holds if and only")
+println("if R^2 f''(R) + 2R f'(R) + [l(l+1)-2] f(R) = 0 -- BC2 IS this scalar")
+println("condition on the radial profile f(r), not merely asserted to be.")
+
+# Translate f(r)'s condition into U(x): f(r)=kappa*G(r/R) for some overall
+# constant kappa (which cancels, since the condition above is LINEAR and
+# HOMOGENEOUS in f, f', f''), and G(x)=U(x)/x^2 (Section 4). The chain
+# rule gives f(R)=kappa*G(1), f'(R)=kappa*G'(1)/R, f''(R)=kappa*G''(1)/R^2,
+# so R^2f''+2Rf'+[l(l+1)-2]f=0 at r=R becomes (dividing by kappa, R
+# cancelling) the SAME scalar relation, now in G: G''(1)+2G'(1)+[l(l+1)-2]G(1)=0.
+# We check this final substitution turns into exactly L2[U]=0.
+
+@variables xx l q Pi_0 C U0 U1 U2 Ufun2(..)
+Dxx = Differential(xx)
+Gexpr = Ufun2(xx) / xx^2
+stepU(e) = substitute(e, Dict(Dxx(Dxx(Ufun2(xx))) => U2, Dxx(Ufun2(xx)) => U1, Ufun2(xx) => U0))
+G0 = simplify(stepU(substitute(Gexpr, Dict(xx => 1))); expand=true)
+G1 = simplify(substitute(stepU(expand_derivatives(Dxx(Gexpr))), Dict(xx => 1)); expand=true)
+G2 = simplify(substitute(stepU(expand_derivatives(Dxx(Dxx(Gexpr)))), Dict(xx => 1)); expand=true)
+G_condition = G2 + 2 * G1 + (l * (l + 1) - 2) * G0
+L2_target = U2 - 2 * U1 + l * (l + 1) * U0
+@assert symbolic_zero(G_condition - L2_target)
+println()
+println("ASSERTION 15 OK: substituting G=U/x^2 into the f-language condition above")
+println("reproduces EXACTLY L2[U]|_{x=1}=U''(1)-2U'(1)+l(l+1)U(1), for symbolic l --")
+println("BC2's operator, previously cited, is now derived end to end: stream")
+println("function -> tau_r_theta=0 -> f-ODE -> G-ODE -> L2[U]=0.")
+
+x = xx
 Dx_ = Differential(x)
 L2(U) = expand_derivatives(Dx_(Dx_(U)) - 2 / x * Dx_(U) + l * (l + 1) / x^2 * U)
 
@@ -519,7 +615,7 @@ Up = Pi_0 * x^(l + 1)
 L2_Up_target = 2 * (l - 1) * (l + 1) * Pi_0 * x^(l - 1)
 @assert symbolic_zero(L2(Up) - L2_Up_target)
 println()
-println("ASSERTION 12 OK: L2[U_p]=2(l-1)(l+1)*Pi_0*x^(l-1) exactly, for symbolic l.")
+println("ASSERTION 16 OK: L2[U_p]=2(l-1)(l+1)*Pi_0*x^(l-1) exactly, for symbolic l.")
 
 @variables v vp vpp
 z = q * x
@@ -529,7 +625,7 @@ vpp_relation = -(2 / q) * vp - (1 - l * (l + 1) / q^2) * v
 L2_Uh_target = C * (-q^2 * v + 2 * (l^2 + l - 1) * v - 2 * q * vp)
 @assert isequal(simplify(substitute(L2_Uh_at_1, Dict(vpp => vpp_relation)) - L2_Uh_target; expand=true), 0)
 println()
-println("ASSERTION 13 OK: L2[U_h]|_{x=1} = C*[-q^2*j_l(q) + 2(l^2+l-1)*j_l(q) - 2q*j_l'(q)]")
+println("ASSERTION 17 OK: L2[U_h]|_{x=1} = C*[-q^2*j_l(q) + 2(l^2+l-1)*j_l(q) - 2q*j_l'(q)]")
 println("exactly, after eliminating v'' via the spherical Bessel equation at z=q --")
 println("matching Reid's own stated coefficient, now independently re-derived.")
 println()
@@ -576,7 +672,7 @@ curvature_from_formula = 2 / R_sym - (1 / R_sym^2) * (2 * zeta + angular_lap_zet
 curvature_target = (1 / R_sym) * (2 + (l_sym - 1) * (l_sym + 2) * eps_sym * Yl)
 @assert symbolic_zero(simplify(curvature_from_formula - curvature_target; expand=true))
 println()
-println("ASSERTION 14 OK: substituting zeta=eps*R*Y_l^m and the angular eigenvalue")
+println("ASSERTION 18 OK: substituting zeta=eps*R*Y_l^m and the angular eigenvalue")
 println("property into the linearized curvature formula reproduces")
 println("1/R1+1/R2 = (1/R)[2+(l-1)(l+2)*eps*Y_l^m] exactly, for symbolic l -- a")
 println("failing assertion here would mean either the cited curvature formula or")
@@ -598,7 +694,7 @@ dGdx_at_1 = substitute(expand_derivatives(Dx__(U / x^2)), Dict(x => 1))
 target_at_1 = substitute(Dx__(U) - 2 * U, Dict(x => 1))
 @assert isequal(simplify(dGdx_at_1 - target_at_1; expand=true), 0)
 println()
-println("ASSERTION 15 OK: d/dx(U/x^2)|_{x=1} = U'(1) - 2U(1) exactly.")
+println("ASSERTION 19 OK: d/dx(U/x^2)|_{x=1} = U'(1) - 2U(1) exactly.")
 println()
 println("Dividing through by rho*epsilon*Y_l^m and using mu=rho*nu, BC3 becomes")
 
@@ -640,7 +736,7 @@ rhs_rescaled = simplify(substitute(bc3_rhs, Dict(P0 => sigma^2 * R^2 * Pi_0 / l)
 rhs_in_q = simplify(substitute(rhs_rescaled, Dict(sigma => q^2 * nu / R^2)); expand=true)   # sigma = q^2*nu/R^2
 @assert symbolic_zero(rhs_in_q - q^2 * (q^2 * Pi_0 - 2 * l * Uterm))
 println()
-println("ASSERTION 16 OK: rescaling BC3 by l*R^2/nu^2 turns sigma_{l;0}^2*R^2/l")
+println("ASSERTION 20 OK: rescaling BC3 by l*R^2/nu^2 turns sigma_{l;0}^2*R^2/l")
 println("into alpha^4 = sigma_{l;0}^2*R^4/nu^2 on the left (T_1 and rho cancel),")
 println("and turns the right side into q^4*Pi_0 - 2*l*q^2*Uterm exactly, using")
 println("q^2=sigma*R^2/nu -- i.e. T_1 and rho have both cancelled, leaving a")
@@ -672,7 +768,7 @@ Pi0sol = simplify(substitute(bc_solution[2], Dict(jlp => jl * (l - q * Q) / q));
 
 @assert symbolic_zero(Csol - 2 * (l^2 - 1) / (jl * q * (2Q - q)))
 println()
-println("ASSERTION 17 OK: solving BC1+BC2 gives C = 2(l-1)(l+1) / [j_l(q)*q*(2Q-q)]")
+println("ASSERTION 21 OK: solving BC1+BC2 gives C = 2(l-1)(l+1) / [j_l(q)*q*(2Q-q)]")
 println("exactly, matching Reid's Eq. 20 (this repo's docs/reid1960_expanded-3.tex,")
 println("Eq. C_soln), now via an independent symbolic solve rather than by-hand algebra.")
 
@@ -692,7 +788,7 @@ alpha4_derived = simplify(q^2 * (q^2 * Pi0sol - 2 * l * Uprime1_minus_2U1); expa
 characteristic_eq_rhs = q^4 * ((2 * (l - 1) / q^2) * (l + (l + 1) * (q - 2 * l * Q) / (q - 2 * Q)) - 1)
 @assert symbolic_zero(alpha4_derived - characteristic_eq_rhs)
 println()
-println("ASSERTION 18 OK -- THE MAIN RESULT: substituting the boundary-condition")
+println("ASSERTION 22 OK -- THE MAIN RESULT: substituting the boundary-condition")
 println("solutions into the T1-eliminated alpha^4 relation gives EXACTLY Reid's")
 println("closed-form characteristic equation, for symbolic l and q. This is the")
 println("single equation the rest of this repo's viscous-drop physics rests on.")
@@ -714,7 +810,7 @@ is now known to follow from exactly this one equation:
 #md #     "\$Q_{l+1/2}(q)=j_{l+1}(q)/j_l(q)\$.")
 #md # ```
 #
-# A failing `ASSERTION 16` would mean either this script's own algebra has
+# A failing `ASSERTION 22` would mean either this script's own algebra has
 # a bug, or that `docs/reid1960_expanded-3.tex`'s transcription of Reid
 # (1960)'s Eq. 19 has an error that this independent CAS re-derivation
 # caught -- worth knowing either way, since every damping/frequency number
@@ -744,7 +840,7 @@ characteristic_rhs_full = (2 * (l - 1) / q^2) * (l + (l + 1) * (q - 2 * l * Q) /
 characteristic_rhs_Q0 = substitute(characteristic_rhs_full, Dict(Q => 0))
 @assert symbolic_zero(characteristic_rhs_Q0 - 2 * (l - 1) * (2l + 1) / q^2)
 println()
-println("ASSERTION 19 OK: setting Q=0 in the exact characteristic equation's RHS")
+println("ASSERTION 23 OK: setting Q=0 in the exact characteristic equation's RHS")
 println("collapses the bracket [l+(l+1)(q-2lQ)/(q-2Q)] to exactly 2l+1 -- the")
 println("q->infinity idealization used throughout this section.")
 
@@ -778,7 +874,7 @@ for l_val in (2, 3, 5, 10)
     end
 end
 println()
-println("ASSERTION 20 OK: the exact quadratic's root and Lamb's leading-order")
+println("ASSERTION 24 OK: the exact quadratic's root and Lamb's leading-order")
 println("formula converge (relative gap shrinks monotonically as alpha grows,")
 println("l=2,3,5,10) -- confirming Lamb's formula IS the alpha->infinity limit")
 println("of the exact characteristic equation, not an unrelated approximation.")
@@ -844,7 +940,7 @@ for (Oh_val, l_val) in ((0.02, 2), (0.02, 3), (0.05, 2))
     @assert err < 0.05
 end
 println()
-println("ASSERTION 21 OK: a live, small-Oh solve_drop! run decays at the rate")
+println("ASSERTION 25 OK: a live, small-Oh solve_drop! run decays at the rate")
 println("Section 8's Lamb-limit derivation predicts, to <5% -- confirming this")
 println("document's physics matches the actual running production code, not")
 println("just its own internal algebra.")
