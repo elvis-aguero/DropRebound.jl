@@ -335,6 +335,58 @@ end  #src
 # ``G^{0}_{l l''}=\delta_{l l''}``, and the matrices are **diagonal** -- one
 # independent oscillator per mode.
 #
+# ### What this changes, concretely
+#
+# The Newtonian solver integrates the system of Gabbard et al. (2025): one
+# damped oscillator per surface mode, driven by the contact pressure,
+#
+# ```math
+# \ddot A_l \;+\; 2\lambda_l\,\dot A_l \;+\; \omega_l^2\,A_l \;+\; l\,B_l \;=\; 0 ,
+# \qquad l = 2\ldots M ,
+# ```
+#
+# with ``B_l`` the contact-pressure coefficients and ``\lambda_l``,
+# ``\omega_l^2`` the two roots of Reid's characteristic equation at the single
+# Ohnesorge number of the fluid.
+#
+# For a generalized Newtonian fluid the *only* thing that changes is that the
+# two scalars become matrices:
+#
+# ```math
+# \boxed{\;
+# \ddot A_l \;+\; \sum_{l''=2}^{M}\Bigl[\mathcal D^{(2)}_{l l''}\,\dot A_{l''}
+#      \;+\; \mathcal D^{(1)}_{l l''}\,A_{l''}\Bigr] \;+\; l\,B_l \;=\; 0 \;}
+# ```
+#
+# ```math
+# \mathcal D^{(i)}_{l l''}
+#   \;=\; \sum_{l'=0}^{\,l+l''} G^{l'}_{l l''}
+#          \int_0^1 \eta_{l'}(x,t)\,K^{(i)}_{l l''}(x)\,x^2\,dx ,
+# ```
+#
+# where ``\eta_{l'}(x,t)`` are the Legendre coefficients of the viscosity field
+# and ``K^{(i)}`` are radial kernels fixed by the mode shapes. Under the Cross
+# law the viscosity field is written down directly from the current state:
+#
+# ```math
+# \frac{\eta(x,\theta,t)}{\eta_0}
+#   \;=\; \varepsilon_\infty
+#       + \frac{1-\varepsilon_\infty}{1 + \bigl(K\,\dot\gamma(x,\theta,t)\bigr)^{m}} ,
+# \qquad
+# \varepsilon_\infty=\frac{\eta_\infty}{\eta_0},
+# \qquad
+# \dot\gamma=\sqrt{2\,\bm e\!:\!\bm e},
+# ```
+#
+# with ``\bm e`` the strain rate of the current modal state. **That is the whole
+# model.** Everything else on this page is either a justification for one of
+# those symbols or a simplification of the double sum.
+#
+# The Newtonian case is the special case, not a separate theory: constant
+# ``\eta`` has only an ``l'=0`` harmonic, ``G^{0}_{l l''}=\delta_{l l''}``, the
+# matrices collapse to their diagonals, and Gabbard's equation is recovered
+# term by term.
+#
 # ### The Gaunt selection rule, and what actually controls cost
 #
 # The triple integral ``G^{l'}_{l l''}`` is a Gaunt coefficient. It vanishes
@@ -431,11 +483,24 @@ end  #src
 #   integer.
 #
 # For a genuinely shear-thinning fluid ``n<1``, so ``p<0`` and the second
-# condition never holds. The conclusion:
+# condition never holds: ``\eta`` is not a polynomial in the strain rate, and
+# its Legendre series does not terminate.
 #
-# > For no real shear-thinning fluid is ``\eta`` exactly polynomial. The
-# > coupling matrix is never *exactly* banded, and ``L_\eta`` is always an
-# > empirical truncation with a measurable error -- never an exact one.
+# That sounds like a barrier and is not one, because the coupling does not see
+# the whole series. The Gaunt rule requires ``l'\le l+l''``, and the shape
+# expansion stops at ``l=M``, so **every viscosity harmonic above
+# ``l'=2M`` is orthogonal to every product ``P_lP_{l''}`` and cannot couple
+# any pair of modes.** It is not small; it is absent.
+#
+# > The mode-coupling matrix is determined **exactly** by the first ``2M+1``
+# > Legendre harmonics of the viscosity. Truncating there is not an
+# > approximation -- everything above is annihilated by the angular integral.
+#
+# So the infinite series is a property of ``\eta``, not a limitation of the
+# model. For ``M=50`` the coupling is fixed by 101 numbers per radius; for
+# ``M=90``, by 181. Whether the matrix can be further *banded* -- kept to
+# ``l'\le L_\eta`` with ``L_\eta\ll 2M``, for speed -- is a separate and
+# genuinely empirical question, and Step 6 measures it.
 #
 # It is worth being precise about why the classical ``a=2`` theory closes.
 # Not because ``a=2`` makes ``\eta`` polynomial -- it does not -- but because
@@ -444,6 +509,121 @@ end  #src
 # from the perturbative truncation, and ``a=2`` merely keeps the truncated
 # object polynomial.
 #
+# ### Where the shear rate is evaluated, and why the system is not linear
+#
+# Two things are easy to assume and both are wrong, so they are worth stating
+# before the algebra goes further.
+#
+# **The shear rate is a field, not a per-mode number.** The surface moves at
+# ``\dot\zeta=\sum_l\dot A_lP_l``, so the interior velocity is driven by the
+# modal *velocities*, and superposes over modes. Strain rate is linear in
+# velocity, so the strain **tensor** superposes too:
+#
+# ```math
+# \bm e(x,\theta,t) \;=\; \sum_{l=2}^{M}\dot A_l(t)\;\bm e^{(l)}(x,\theta).
+# ```
+#
+# The invariant does not:
+#
+# ```math
+# \dot\gamma \;=\; \sqrt{2\,\bm e\!:\!\bm e}
+#   \;=\; \Bigl(2\sum_{l,l''}\dot A_l\dot A_{l''}\;
+#          \bm e^{(l)}\!:\!\bm e^{(l'')}\Bigr)^{1/2}.
+# ```
+#
+# It is quadratic in the field and *then* square-rooted, so the ``l\neq l''``
+# cross terms do not drop out. Once more than one mode is active there is no
+# such thing as "mode ``l``'s shear rate", and treating each mode as carrying
+# its own is a modelling error, not a simplification.
+#
+# In practice ``\dot\gamma`` is evaluated **pointwise on the ``(x,\theta)``
+# quadrature grid** from the full superposition; ``\eta(\dot\gamma)`` follows
+# pointwise from the constitutive law; and a Legendre projection in ``\theta``
+# at each radius gives the coefficients ``\eta_{l'}(x)`` that the matrices need.
+#
+# Those cross terms are also where the angular structure of ``\eta`` comes
+# from, and that closes a loop: ``\dot\gamma^2`` is quadratic in a field of
+# degree ``M``, so it carries harmonics up to ``2M`` -- the same ``2M`` that
+# bounds the coupling below. Not a coincidence: both come from the field
+# entering quadratically. (``\dot\gamma`` and ``\eta(\dot\gamma)`` spread past
+# ``2M``, because of the square root and the constitutive law; by the proof
+# below, none of that reaches the dynamics.)
+#
+# **The system is nonlinear.** Since ``\eta`` depends on the state, so do the
+# matrices, and the equation is honestly written
+#
+# ```math
+# \ddot A_l + \sum_{l''}\Bigl[\mathcal D^{(2)}_{l l''}(\dot{\bm A})\,\dot A_{l''}
+#   + \mathcal D^{(1)}_{l l''}(\dot{\bm A})\,A_{l''}\Bigr] + l\,B_l = 0 .
+# ```
+#
+# This is *quasi-linear*: linear in ``(A_l,\dot A_l)`` at frozen coefficients,
+# nonlinear through them. No rearrangement turns it into a linear ODE, and
+# saying "the two scalars become matrices" without saying the matrices depend
+# on the state makes it look like one.
+#
+# The solver closes it by **lagging**: ``\mathcal D`` is evaluated at the
+# previous step's ``\dot{\bm A}``, so within a single Newton step the
+# coefficients are constants and the Jacobian is exact for that step. The
+# nonlinearity is carried across steps rather than inside them, which costs one
+# order in ``\Delta t`` and constrains the step size.
+#
+# ### Why the truncation is exact: a two-line proof
+#
+# Everything rests on one elementary fact about Legendre polynomials:
+#
+# > ``P_N`` is orthogonal to every polynomial of degree ``<N``.
+#
+# That is immediate from orthogonality, since any such polynomial is a finite
+# combination of ``P_0,\ldots,P_{N-1}``.
+#
+# Now ``P_l`` has degree exactly ``l``, so the product ``P_lP_{l''}`` is a
+# polynomial of degree exactly ``l+l''``. Therefore:
+#
+# * **Upper bound.** If ``l'>l+l''`` then ``P_{l'}`` is orthogonal to
+#   ``P_lP_{l''}``, a polynomial of degree ``l+l''<l'``. Hence
+#   ``G^{l'}_{l l''}=0``.
+# * **Lower bound.** Take ``l\ge l''`` without loss of generality. If
+#   ``l'<l-l''`` then ``P_{l'}P_{l''}`` has degree ``l'+l''<l``, and ``P_l`` is
+#   orthogonal to it. Hence ``G^{l'}_{l l''}=0`` again.
+# * **Parity.** ``P_l(-\mu)=(-1)^lP_l(\mu)``, so the integrand has parity
+#   ``(-1)^{l+l'+l''}``. An odd integrand over ``[-1,1]`` integrates to zero.
+#
+# Together: ``G^{l'}_{l l''}=0`` unless ``|l-l''|\le l'\le l+l''`` **and**
+# ``l+l'+l''`` is even. No special-function machinery is needed -- degree
+# counting and parity give the whole selection rule, and both bounds are the
+# *same* argument applied to different factors.
+#
+# The consequence for this model is the upper bound. The shape expansion stops
+# at ``l=M``, so ``l+l''\le 2M``, so viscosity harmonics above ``l'=2M`` are
+# annihilated exactly. The check below is a regression test on that proof, not
+# its justification.
+
+let  #src
+    Pl(l, m) = l == 0 ? one(m) : l == 1 ? m :  #src
+        begin am, b = one(m), m; for n in 1:l-1; b, am = ((2n+1)*m*b - n*am)/(n+1), b; end; b end  #src
+    ## Gauss-Legendre with 40 nodes integrates any polynomial of degree <= 79
+    ## exactly, so this evaluates the triple product with no quadrature error
+    ## at all -- the residual below is pure floating point.
+    gn, gw = DropSolver.gauss_legendre_nodes(40, -1.0, 1.0)  #src
+    Gc(l, lp, lpp) = sum(w * Pl(l,m) * Pl(lp,m) * Pl(lpp,m) for (m, w) in zip(gn, gw))  #src
+    forbidden = 0.0  #src
+    allowed = 0.0  #src
+    for l in 2:8, lpp in 2:8  #src
+        for lp in (l + lpp + 1):(l + lpp + 4)  #src
+            forbidden = max(forbidden, abs(Gc(l, lp, lpp)))  #src
+        end  #src
+        for lp in max(0, l - lpp):2:(l + lpp)  #src
+            allowed = max(allowed, abs(Gc(l, lp, lpp)))  #src
+        end  #src
+    end  #src
+    @assert forbidden < 1e-13 "viscosity above l'=l+l'' coupled two modes ($forbidden)"  #src
+    @assert allowed > 0.1 "allowed coefficients should be O(1), for contrast"  #src
+    println("  ASSERTION 7b OK: every Gaunt coefficient with l' > l+l'' vanishes")  #src
+    println("    (largest $(round(forbidden, sigdigits=3)) against an allowed scale of $(round(allowed, sigdigits=3))).")  #src
+    println("    => truncating the viscosity at l' = 2M is exact, as proved above.")  #src
+end  #src
+
 # ### The exception that matters: ``p=-1``
 #
 # There is one value of ``p`` that is special without being a non-negative
@@ -485,8 +665,8 @@ let  #src
     for nn in (0.0, 0.257, 0.5, 0.9), aa in (0.5, 0.743, 1.0, 2.0, 4.0)  #src
         @assert (nn - 1)/aa < 0 "p = (n-1)/a must be negative for every shear-thinning fluid"  #src
     end  #src
-    println("  ASSERTION 7 OK: p<0 for every shear-thinning fluid, so eta is never")  #src
-    println("    exactly polynomial and L_eta is always an empirical truncation.")  #src
+    println("  ASSERTION 7 OK: p<0 for every shear-thinning fluid, so eta's Legendre")  #src
+    println("    series does not terminate -- but the coupling is still exact, see below.")  #src
     println("    Physical meaning: no shear-thinning drop model can claim an EXACT")  #src
     println("    finite mode-coupling bandwidth; the truncation must carry an error bar.")  #src
 end  #src
@@ -505,6 +685,90 @@ end  #src
 # | (b) period-averaged | the ``m=0`` channel | justified by the lemma below |
 # | (c) Floquet | ``m=0`` and ``m=2`` | most faithful, most work |
 #
+# ### What the modulation actually does: the amplitude equation
+#
+# Prose is not enough here, so take one mode in free decay and carry the
+# time-varying damping through an averaging calculation. Write ``\phi=\omega t``.
+# By the period-``\pi`` lemma proved below, ``\lambda`` has **only even
+# harmonics** in ``\phi``:
+#
+# ```math
+# \lambda(\phi) \;=\; \bar\lambda
+#   \;+\; \sum_{k\ge1}\bigl[\alpha_k\cos 2k\phi + \beta_k\sin 2k\phi\bigr].
+# ```
+#
+# Put ``A=a(t)\cos\theta``, ``\theta=\omega t+\psi``, with ``a`` and ``\psi``
+# slow, into ``\ddot A+2\lambda(t)\dot A+\omega^2A=0``. Krylov--Bogoliubov
+# averaging gives ``\dot a=-2a\,\langle\lambda\sin^2\theta\rangle``, and with
+# ``\sin^2\theta=\tfrac12[1-\cos(2\phi+2\psi)]`` every harmonic ``k\ge2`` is
+# orthogonal to ``\cos(2\phi+2\psi)`` and drops out. What survives is
+#
+# ```math
+# \boxed{\;
+# \frac{da}{dt} \;=\; -\,\bar\lambda\,a
+#   \;+\; \frac{a}{2}\bigl(\alpha_1\cos 2\psi - \beta_1\sin 2\psi\bigr) \;}
+# ```
+#
+# Three things follow, and they are sharper than the prose they replace.
+#
+# **The period-average is the whole secular effect.** ``\bar\lambda`` -- the
+# ``m=0`` harmonic -- is the only term that survives without a phase condition.
+# That is what justifies closure (b), and it justifies it *quantitatively*
+# rather than by appeal to plausibility.
+#
+# **The ``m=2`` harmonic is a parametric term, and it sits exactly on
+# resonance.** It enters multiplied by ``\cos2\psi``, so its sign depends on the
+# phase. This is the point the earlier prose on this page got backwards: the
+# period-``\pi`` lemma does **not** make the second harmonic safe. It forces the
+# modulation to ``2\omega``, which is precisely the principal parametric
+# resonance of an oscillator at ``\omega``. The lemma identifies a resonance
+# rather than ruling one out.
+#
+# **A bound settles when that matters.** Since ``|\alpha_1\cos2\psi-\beta_1\sin2\psi|
+# \le\sqrt{\alpha_1^2+\beta_1^2}``, the effective decay rate is confined to
+#
+# ```math
+# \bar\lambda - \tfrac12\sqrt{\alpha_1^2+\beta_1^2}
+# \;\le\; \lambda_{\mathrm{eff}} \;\le\;
+# \bar\lambda + \tfrac12\sqrt{\alpha_1^2+\beta_1^2},
+# ```
+#
+# so a sufficient condition for the amplitude to decay **at every phase** is
+#
+# ```math
+# \sqrt{\alpha_1^2+\beta_1^2} \;<\; 2\bar\lambda .
+# ```
+#
+# If that holds, discarding the second harmonic changes the decay rate by a
+# bounded amount and cannot change its sign; if it fails, there are phases at
+# which the mode is parametrically pumped, and closure (b) is not merely
+# approximate but qualitatively wrong. The criterion is checkable for a given
+# fluid and amplitude, and it is the right thing to evaluate before trusting a
+# period-averaged model.
+#
+let  #src
+    avg(f) = quadgk(ph -> f(ph), 0, 2pi; rtol=1e-12)[1] / (2pi)  #src
+    worst = 0.0  #src
+    for ps in (0.0, 0.7, 1.9, 3.3, 5.1)  #src
+        ## the m=0 harmonic contributes 1/2, independent of phase
+        worst = max(worst, abs(avg(ph -> sin(ph + ps)^2) - 0.5))  #src
+        ## the m=2 harmonics contribute -cos(2psi)/4 and +sin(2psi)/4
+        worst = max(worst, abs(avg(ph -> cos(2ph) * sin(ph + ps)^2) + cos(2ps)/4))  #src
+        worst = max(worst, abs(avg(ph -> sin(2ph) * sin(ph + ps)^2) - sin(2ps)/4))  #src
+        ## every higher even harmonic averages away at this order
+        for k in 2:5  #src
+            worst = max(worst, abs(avg(ph -> cos(2k*ph) * sin(ph + ps)^2)))  #src
+            worst = max(worst, abs(avg(ph -> sin(2k*ph) * sin(ph + ps)^2)))  #src
+        end  #src
+    end  #src
+    @assert worst < 1e-10 "the averaging coefficients in the amplitude equation are wrong ($worst)"  #src
+    println("  ASSERTION 8b OK: averaging da/dt = -2a<lambda sin^2 theta> gives")  #src
+    println("    da/dt = -lbar*a + (a/2)(alpha_1 cos 2psi - beta_1 sin 2psi),")  #src
+    println("    with every harmonic k>=2 averaging to zero (worst residual $(round(worst, sigdigits=2))).")  #src
+    println("    => the period-average carries the secular decay; the m=2 harmonic is")  #src
+    println("       parametric, bounded by sqrt(alpha_1^2+beta_1^2)/2.")  #src
+end  #src
+
 # ### Why (a) is not licensed
 #
 # ``\lambda_l`` and ``\omega_l^2`` are *eigenvalues of a boundary-value
