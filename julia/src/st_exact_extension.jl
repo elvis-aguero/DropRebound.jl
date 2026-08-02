@@ -67,7 +67,14 @@ function characteristic_shear_K(l::Int)
         e_rr, e_thth, e_phph, e_rth = _strain_basis(l, x)
         2 * (e_rr^2 + e_thth^2 + e_phph^2 + 2 * e_rth^2)
     end
-    nodes, weights = gauss_legendre_nodes(40, -1.0, 1.0)
+    # `g_l` is a polynomial of degree 2l in x, so an n-node Gauss-Legendre rule
+    # is exact only for 2n - 1 >= 2l, i.e. n >= l + 1/2. A fixed 40-node rule is
+    # therefore exact to l = 39 and silently wrong beyond it: measured against
+    # the closed form 6(l-1)/l below, the relative error jumps from 1e-14 at
+    # l = 39 to 1.0e-2 at l = 50 and 1.1e-2 at l = 90. Production runs reach
+    # M = 90. Scale the rule with l so it stays exact.
+    n_nodes = max(40, l + 2)
+    nodes, weights = gauss_legendre_nodes(n_nodes, -1.0, 1.0)
     I_l = sum(w * g_l(x) for (x, w) in zip(nodes, weights))
     # _strain_basis is already normalized per unit Adot_l (needed for the
     # multi-mode sum in oh_eff_all_coupled), so no further division by l^2
@@ -308,6 +315,40 @@ function lambda_omega2_from_oh_eff(stx::STExactParams, Oh_eff::AbstractVector{Fl
 end
 
 """
+    _extrapolated_Adot(history, dt) -> Vector{Float64}
+
+Modal velocities at the step being solved for, used only to evaluate the
+shear-thinning coefficients.
+
+Holding these at `history[end]` is a constant (first-order) extrapolation. That
+is a splitting error of `O(dt)`, and because the coefficients it feeds multiply
+`Adot` in the residual, it drags the whole scheme down to first order even
+though the linear system is integrated with BDF2. Measured on a free
+shear-thinning oscillation, the observed order was ~1.3 against ~2.00 for the
+same solver with constant coefficients, and at `dt = 1.25e-3` the error was
+~200x larger than the Newtonian control -- essentially all of it splitting.
+
+Linear extrapolation from the last two states,
+
+    Adot* = (1 + r) Adot_n - r Adot_{n-1},    r = dt / dt_prev,
+
+is `O(dt^2)` and restores second order. This is the usual semi-implicit
+(IMEX) BDF2 treatment of a state-dependent coefficient. With one state in
+history there is nothing to extrapolate from, so the constant value is used --
+correct, since BDF1 is first order anyway on that step.
+
+The coefficients stay explicit either way: they do not depend on the unknown
+being solved for, so the Jacobian is still exact within a Newton step.
+"""
+function _extrapolated_Adot(history::Vector{DropState}, dt::Float64)
+    length(history) < 2 && return copy(history[end].Adot[2:end])
+    dt_prev = history[end-1].dt
+    (!isfinite(dt_prev) || dt_prev <= 0) && return copy(history[end].Adot[2:end])
+    r = dt / dt_prev
+    @. (1 + r) * history[end].Adot[2:end] - r * history[end-1].Adot[2:end]
+end
+
+"""
     build_residual_st_exact!(R, state, history, dt, cp, cfg, ob, stx)
 
 Like `build_residual!`, but with the R2 block's D1 (restoring) and D2
@@ -325,9 +366,9 @@ function build_residual_st_exact!(R::AbstractVector, state::DropState,
 
     order = length(history)
     c = bdf_coefficients(order, dt, order == 2 ? history[end-1].dt : NaN)
-    Adot_prev_lag = history[end].Adot[2:end]
+    Adot_lag = _extrapolated_Adot(history, dt)
 
-    Oh_eff = oh_eff_all_coupled(stx, cfg.Oh, Adot_prev_lag)
+    Oh_eff = oh_eff_all_coupled(stx, cfg.Oh, Adot_lag)
     lambda, omega2 = lambda_omega2_from_oh_eff(stx, Oh_eff)
     D1 = omega2
     D2 = 2 .* lambda
@@ -368,10 +409,10 @@ function build_jacobian_st_exact(state::DropState, history::Vector{DropState},
     Nm = M - 1
     ak = bdf_coefficients(length(history), dt,
         length(history) == 2 ? history[end-1].dt : NaN)[end]
-    Adot_prev_lag = history[end].Adot[2:end]
+    Adot_lag = _extrapolated_Adot(history, dt)
     damp_factor = (ob.De1 > 0.0 && ob.beta_s < 1.0) ? ob.beta_s : 1.0
 
-    Oh_eff = oh_eff_all_coupled(stx, cfg.Oh, Adot_prev_lag)
+    Oh_eff = oh_eff_all_coupled(stx, cfg.Oh, Adot_lag)
     lambda, omega2 = lambda_omega2_from_oh_eff(stx, Oh_eff)
 
     for k in 1:Nm

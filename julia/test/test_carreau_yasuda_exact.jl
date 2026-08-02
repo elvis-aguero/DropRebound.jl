@@ -493,3 +493,15 @@ using DropSolver
         end
     end
 end
+
+@testset "characteristic_shear_K stays exact at production mode counts" begin
+    # g_l is a polynomial of degree 2l, so a FIXED 40-node Gauss-Legendre rule
+    # is exact only to l = 39. The previous implementation used one, and was
+    # ~1% wrong from l = 50 onward -- while run_animation_st.jl uses M = 90.
+    # The old test swept l = 2..40, ending one mode before the failure began.
+    # This one reaches past the largest M the package is run at.
+    for l in (2, 10, 39, 41, 50, 70, 90, 120)
+        exact = 6 * (l - 1) / l
+        @test characteristic_shear_K(l)^2 ≈ exact rtol = 1e-10
+    end
+end

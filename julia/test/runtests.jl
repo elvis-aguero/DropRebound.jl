@@ -18,4 +18,5 @@ using DropSolver
     include("test_carreau.jl")
     include("test_carreau_yasuda.jl")
     include("test_carreau_yasuda_exact.jl")
+    include("test_convergence_order.jl")
 end

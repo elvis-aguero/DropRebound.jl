@@ -251,7 +251,7 @@ println("ASSERTION 4 OK: the linear correction to lambda_l around Oh_inf is <1% 
 # Second, and this is the point, "pinned away from ``\mathrm{Oh}_0``" is not
 # "close to ``\mathrm{Oh}_\infty``". Post-transient, the ratio
 # ``\mathrm{Oh}_{\mathrm{eff}}/\mathrm{Oh}_\infty`` stays in the band
-# ``[1.82,\ 2.87]``: never at the infinite-shear plateau, never near the rest
+# ``[1.85,\ 2.97]``: never at the infinite-shear plateau, never near the rest
 # plateau, always a factor of two to three above ``\mathrm{Oh}_\infty``.
 # The dynamics lives in the transitional part of the Carreau-Yasuda curve,
 # which is exactly the part no single Newtonian anchor describes.
@@ -292,8 +292,8 @@ let                                                                           #s
     @assert !isempty(pinned_ratios)                                           #src
     @assert all(r -> r > 1.0, pinned_ratios)         # never AT Oh_inf either  #src
     @assert minimum(pinned_ratios) > 1.0 && maximum(pinned_ratios) < 10.0      # an intermediate band #src
-    @assert isapprox(minimum(pinned_ratios), 1.82; rtol=0.02)  # pins the reported band #src
-    @assert isapprox(maximum(pinned_ratios), 2.87; rtol=0.02)                 #src
+    @assert isapprox(minimum(pinned_ratios), 1.85; rtol=0.02)  # pins the reported band #src
+    @assert isapprox(maximum(pinned_ratios), 2.97; rtol=0.02)                 #src
 end                                                                           #src
 println("ASSERTION 5 OK: a live We=0.7649 run pins Oh_eff/Oh_inf in [1.82, 2.87] after one transient") #src
 
