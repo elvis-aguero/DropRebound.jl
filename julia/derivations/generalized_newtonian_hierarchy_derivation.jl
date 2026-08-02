@@ -362,7 +362,28 @@ end  #src
 # is the Gegenbauer angular function -- the same field Reid writes as
 # ``u_r=f(x)P_l(\cos\theta)``, since ``\partial_\theta C_l\propto\sin\theta P_l``.
 # Taking the ``\varphi``-component of the curl of the momentum equation kills the
-# pressure and leaves, for ``\eta=\eta(x)``, exactly
+# pressure, whatever the rheology, and leaves an expression in
+#
+# ```math
+# \eta,\quad \partial_x\eta,\quad \partial_\theta\eta,\quad
+# \partial^2_{xx}\eta,\quad \partial^2_{x\theta}\eta,\quad
+# \partial^2_{\theta\theta}\eta
+# ```
+#
+# and no derivative of third order or higher.
+#
+# In general ``\eta`` depends on **both** coordinates and on time,
+# ``\eta=\eta(x,\theta,t)``: it is ``\eta(\dot\gamma)`` evaluated on the current
+# strain field, and that field varies over the drop. What follows first is the
+# **restriction** ``\eta=\eta(x)`` -- viscosity stratified in radius only, with
+# no angular structure. That is not the physical case. It is taken first
+# because it is the last case in which the problem still closes as an ordinary
+# differential equation, so it isolates what the extra term does to the
+# *interior operator* before the angular structure is allowed to also destroy
+# separability. Step (iv) removes the restriction, and Step 7 is the rung that
+# adopts it as a modelling assumption.
+#
+# With ``\partial_\theta\eta=0`` the curl becomes, exactly,
 #
 # ```math
 # \bigl[\nabla\times\bm M\bigr]_\varphi
@@ -606,7 +627,17 @@ end  #src
 
 # ### Carrying the projection through
 #
-# Project as before: multiply by ``P_l(\mu)`` and integrate over [TODO: Project what? be precise, state wha tequation is projected, exactly]. 
+# The equation being projected is the **normal-stress balance on the free
+# surface**, linearised and evaluated at ``x=1``,
+#
+# ```math
+# \Bigl[-p + \tau_{rr}\Bigr]_{x=1} \;=\; T_1\,(\nabla\cdot\bm n)\Big|_{x=1} ,
+# \qquad \tau_{rr}=2\eta\,e_{rr},
+# ```
+#
+# which is the third of the three conditions listed above and the only one that
+# produces an equation of motion -- BC1 fixes the kinematics and BC2 constrains
+# the interior profile. Multiply it by ``P_l(\mu)`` and integrate over
 # ``\mu\in[-1,1]``. Writing the surface motion as
 # ``\dot\zeta=R\sum_{l''}\dot A_{l''}P_{l''}``, so that mode ``l''`` enters with
 # strength ``\dot A_{l''}``, the contribution of the viscous stress to the
@@ -685,6 +716,29 @@ end  #src
 # feeds ``\mathcal D^{(2)}`` directly; it reaches ``\mathcal D^{(1)}`` through the
 # normal-stress condition, where ``\eta`` appears multiplicatively at the
 # surface -- which is also why Reid's ``\omega_l^2`` depends on viscosity at all.
+#
+# ### Where the space went
+#
+# ``\eta`` is a field over the drop, yet ``\mathcal D`` carries no ``x`` and no
+# ``\theta``. That is not an inconsistency: **both integrals above are
+# definite**, so the spatial dependence is integrated out and what survives is
+# one number per ``(l,l'')`` pair. ``G`` and ``H`` integrate the angle away over
+# ``\mu\in[-1,1]``; ``A^{(i)}`` and ``B^{(i)}`` integrate the radius away over
+# ``x\in[0,1]``.
+#
+# What does *not* integrate away is the dependence on the **state**. The
+# coefficients ``\eta_{l'}(x)`` entering those integrals are the Legendre
+# coefficients of ``\eta\bigl(\dot\gamma(x,\theta,t)\bigr)``, and ``\dot\gamma``
+# is built from the current modal velocities. So
+#
+# ```math
+# \mathcal D^{(i)} \;=\; \mathcal D^{(i)}\bigl[\bm{\dot A}(t)\bigr] :
+# \qquad\text{space integrated out, state dependence retained.}
+# ```
+#
+# Every entry is a functional of the whole velocity field at the current
+# instant -- which is what makes the system quasi-linear rather than linear, and
+# is taken up in *Where the shear rate is evaluated* below.
 #
 # !!! note "What is derived here and what is not"
 #     The angular structure above is complete, and the selection rule proved
@@ -906,10 +960,22 @@ end  #src
 # cross terms do not drop out. Once more than one mode is active there is no
 # such thing as "mode ``l``'s shear rate".
 #
-# In practice ``\dot\gamma`` is evaluated **pointwise on the ``(x,\theta)``
-# quadrature grid** from the full superposition; ``\eta(\dot\gamma)`` follows [TODO: quadrature grid undefined. What quadrature? Which term needs quadrature?]
-# pointwise from the constitutive law; and a Legendre projection in ``\theta``
-# at each radius gives the coefficients ``\eta_{l'}(x)`` that the matrices need.
+# Nothing about ``\eta(\dot\gamma)`` is polynomial, so the coefficients
+# ``\eta_{l'}(x)`` have no closed form and the radial and angular integrals
+# ``A^{(i)}``, ``B^{(i)}``, ``G``, ``H`` cannot be evaluated in closed form
+# either. They are computed numerically, on a **product Gauss-Legendre rule**:
+# ``n_r`` nodes in ``x\in[0,1]`` and ``n_x`` nodes in ``\mu\in[-1,1]``
+# (`STExactParams`). At each node ``\dot\gamma`` is evaluated from the *full*
+# superposition of active modes, ``\eta(\dot\gamma)`` follows pointwise from the
+# constitutive law, and a Legendre projection in ``\theta`` at each radius gives
+# the ``\eta_{l'}(x)`` the matrices need.
+#
+# The angular rule has to scale with the truncation: the weight being integrated
+# is a product of two strain bases, hence a polynomial of degree ``\le2M`` in
+# ``\mu``, so an ``n_x``-node rule is exact only for ``n_x\ge M+\tfrac12``. The
+# default is ``n_x=\max(30,\,2M+2)``. The radial rule does not need to scale,
+# because Gauss nodes cluster towards ``x=1``, which is where the ``x^{l-2}``
+# factor concentrates.
 #
 # Those cross terms are also where the angular structure of ``\eta`` comes
 # from, and that closes a loop: ``\dot\gamma^2`` is quadratic in a field of
@@ -932,11 +998,28 @@ end  #src
 # saying "the two scalars become matrices" without saying the matrices depend
 # on the state makes it look like one.
 #
-# The solver closes it by **lagging**: ``\mathcal D`` is evaluated at the [TODO: are you sure we still do lagging?]
-# previous step's ``\bm{\dot A}``, so within a single Newton step the
-# coefficients are constants and the Jacobian is exact for that step. The
-# nonlinearity is carried across steps rather than inside them, which costs one
-# order in ``\Delta t`` and constrains the step size.
+# The solver closes it by **extrapolation**. At the step from ``t_n`` to
+# ``t_{n+1}`` the coefficients are evaluated not at the current unknown state
+# but at a second-order estimate of it, built from the two previous steps:
+#
+# ```math
+# \bm{\dot A}^{\,\ast} \;=\; (1+r)\,\bm{\dot A}_n \;-\; r\,\bm{\dot A}_{n-1},
+# \qquad r=\frac{\Delta t_{n+1}}{\Delta t_n},
+# ```
+#
+# which is exact whenever ``\bm{\dot A}`` is linear in ``t``, for non-uniform
+# steps as well as uniform ones. Then ``\mathcal D(\bm{\dot A}^{\,\ast})`` is a
+# constant matrix within the step, the system is linear in the unknowns, and the
+# Jacobian is exact. This is an IMEX splitting: implicit in the modal
+# amplitudes, explicit in the coefficients.
+#
+# The extrapolation order matters, and is not free. Holding the coefficients at
+# the previous step instead -- ``\bm{\dot A}^{\,\ast}=\bm{\dot A}_n``, a constant
+# extrapolation -- is a first-order splitting error sitting inside an otherwise
+# second-order BDF2 scheme, and it drags the observed order of the whole
+# integration down to ``\approx1.3`` against a Newtonian control at ``2.0``.
+# The linear extrapolation above restores it. `julia/test/test_convergence_order.jl`
+# measures the order and holds it above ``1.5``.
 #
 # That completes the model. The modal system, the matrix assembly, the
 # constitutive law and this prescription for ``\dot\gamma`` are the whole of
