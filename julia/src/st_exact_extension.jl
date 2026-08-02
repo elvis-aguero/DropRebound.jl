@@ -131,20 +131,58 @@ end
 
 """
     STExactParams(M, Oh0, lambda_c, a, eps_ST; viscous=:reid, eta_inf_ratio=0.0,
-                  Oh_min=1e-4, Oh_max=nothing, n_table=150, n_r=20, n_x=30)
+                  Oh_min=1e-4, Oh_max=nothing, n_table=150, n_r=20,
+                  n_x=max(30, 2M + 2))
 
 Build `STExactParams` for modes `l=2..M` at rest Ohnesorge number `Oh0`.
 `Oh_max` defaults to `10*Oh0` (shear-thinning only ever reduces `Oh_eff`
 below `Oh0` for `eps_ST > 0`); pass explicitly if a wider margin is needed.
-`n_r`, `n_x` control the volume-quadrature resolution for the coupling
-integral -- 20x30 (600 points) was sufficient in testing; increase if
-`Oh_eff` estimates look under-resolved for a very large `M`.
+
+`n_r`, `n_x` set the volume-quadrature resolution of the `Oh_eff` coupling
+integral. Only `n_x` scales with `M`, because only the angular direction
+needs it:
+
+- ANGULAR. The sensitivity weight `wl` is built from products of two strain
+  bases. Each component of `_strain_basis(l, x)` is a polynomial of degree
+  `<= l` in `x` -- including `e_rth`, whose lone `sqrt(1-x^2)` always meets a
+  second one from the paired basis and squares away. So `wl` is a polynomial
+  of degree `<= 2M`, and an `n_x`-node Gauss-Legendre rule integrates it
+  exactly only for `2*n_x - 1 >= 2M`, i.e. `n_x >= M + 1/2`. A fixed 30-node
+  rule is therefore under-resolved for any `M > 29`: measured against a
+  converged reference on a real contact-phase state, the worst-mode relative
+  error in `Oh_eff` is 1.6e-3 at `M = 16` but 3.1e-2 at `M = 60` and 8.4e-2 at
+  `M = 90`, which is where production runs. Note `M + 1/2` is a floor, not a
+  sufficient condition: `muratio(S)` and the `abs(wl)` in the weight are not
+  polynomials, so no finite rule is exact and convergence past `M + 1` is
+  algebraic rather than spectral. `M + 1` alone still leaves the error growing
+  with `M` (2.1e-3 at `M = 90`); `2M + 2` is where accuracy stops depending on
+  `M` (7.9e-4 at `M = 90`, 1.5e-3 at `M = 60`, 7.3e-4 at `M = 16`), which is
+  the property a default wants. It costs roughly 4x the solver wall time at
+  `M = 90` and nothing at all below `M = 14`.
+
+  Those figures are for a realistic state. A deliberately broadband `l^-1`
+  spectrum, which loads every mode up to `M` and maximises the oscillation, is
+  harsher: ~1e-2 at `M = 90` under this rule. The `M`-independence survives
+  (error grows ~1.8x from `M = 16` to `M = 90`, against ~8.4x for the fixed
+  30-node rule), but the absolute error does not keep falling with `M` fixed
+  and `n_x` raised much further -- reaching ~4e-4 there needs `n_x ~ 500`.
+
+- The reference rule used for all of the above is itself the trap worth
+  flagging: a `(200, 300)` reference makes `n_x = 182` and `n_x = 270` look
+  equally accurate at `M = 90`, because the reference's own angular error is
+  the floor being measured. Against `(400, 500)` they differ by 20x.
+
+- RADIAL. `n_r = 20` needs no scaling despite the `r^(l-2)` factor reaching
+  `r^88` at `M = 90`: Gauss-Legendre nodes cluster towards the endpoints,
+  which is exactly where that boundary layer sits. Holding `n_x` at the
+  reference value and sweeping `n_r` alone, the error at `M = 90` is already
+  4.9e-4 at `n_r = 20` and only reaches 5.4e-6 by `n_r = 180`.
 """
 function STExactParams(M::Int, Oh0::Float64, lambda_c::Float64, a::Float64,
     eps_ST::Float64; viscous::Symbol=:reid, eta_inf_ratio::Float64=0.0,
     Oh_min::Float64=1e-4,
     Oh_max::Union{Nothing,Float64}=nothing, n_table::Int=150,
-    n_r::Int=20, n_x::Int=30)
+    n_r::Int=20, n_x::Int=max(30, 2M + 2))
     viscous in (:lamb, :reid) ||
         throw(ArgumentError("viscous must be :lamb or :reid, got $viscous"))
     (0.0 <= eta_inf_ratio < 1.0) ||

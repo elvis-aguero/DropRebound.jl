@@ -6,6 +6,7 @@ using DropSolver
     include("test_integrals.jl")
     include("test_bdf.jl")
     include("test_reid.jl")
+    include("test_reid_dominance.jl")
     include("test_residual.jl")
     include("test_contact.jl")
     include("test_timestepper.jl")
@@ -18,5 +19,6 @@ using DropSolver
     include("test_carreau.jl")
     include("test_carreau_yasuda.jl")
     include("test_carreau_yasuda_exact.jl")
+    include("test_oh_eff_quadrature.jl")
     include("test_convergence_order.jl")
 end
