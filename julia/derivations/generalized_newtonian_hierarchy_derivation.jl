@@ -200,52 +200,47 @@ end  #src
 # linear term as ``\epsilon\to0``.
 #
 # So "linear in ``\epsilon``" and "expandable in powers of ``\epsilon``" are
-# different statements. The first is a legitimate assumption about the
-# geometry. The second is false for a general Carreau-Yasuda fluid, and no
-# amount of small amplitude rescues it.
+# different statements. The first is a legitimate assumption about the geometry.
+# The second is false whenever ``a`` is not an even integer, and no amount of
+# small amplitude rescues it: ``\tfrac{d}{d\epsilon}\epsilon^a=a\epsilon^{a-1}``
+# is unbounded as ``\epsilon\to0`` for ``a<1``, so the function is not
+# differentiable there, let alone analytic. For ``a=2`` the same derivative is
+# ``2\epsilon``, which vanishes -- and that is precisely what "higher order"
+# means, and why the classical Carreau theory closes where a general one does
+# not.
 #
-# The ratio ``|\epsilon|^a/|\epsilon|`` measures whether the correction is
-# genuinely higher order. If it stays bounded, the term is a legitimate
-# perturbation; if it diverges, there is nothing to expand in:
+# !!! note "What this rules out, and what it does not"
+#     This closes a **route**, not a fluid. What fails is the small-amplitude
+#     *perturbation expansion* -- writing the shear-thinning correction as a
+#     term in a power series in ``\epsilon`` and truncating. That is the route
+#     the superseded weakly-nonlinear treatment took, and it is why that
+#     treatment does not generalise past ``a=2``.
 #
-# | ``\epsilon`` | ``a=0.5`` | ``a=0.743`` | ``a=1`` | ``a=2`` |
-# |:--|--:|--:|--:|--:|
-# | ``10^{-1}`` | 3.16 | 1.81 | 1 | 0.1 |
-# | ``10^{-3}`` | 31.6 | 5.90 | 1 | ``10^{-3}`` |
-# | ``10^{-5}`` | 316 | 19.3 | 1 | ``10^{-5}`` |
-# | ``10^{-7}`` | ``3.16\times10^{3}`` | 63.0 | 1 | ``10^{-7}`` |
-#
-# The shear-thinning columns *grow* as the amplitude falls, monotonically,
-# across six decades. The ``a=2`` column *collapses* -- which is precisely
-# what "higher order" means, and precisely why the classical Carreau theory
-# closes where the general one cannot. ``a=1`` is the marginal case.
+#     The chain built below never expands in ``\epsilon``. It evaluates
+#     ``\eta(\dot\gamma)`` at whatever ``\dot\gamma`` the current state produces
+#     and assembles the coupling from that, so a non-integer ``a`` costs it
+#     nothing. Carreau-Yasuda at the fitted ``a\approx0.743`` is admissible
+#     throughout, exactly as the table of models above says.
 
 let  #src
-    println("\nSTEP 1 (A1): linear in amplitude, NONLINEAR in rheology")  #src
-    println("  ratio |eps|^a / |eps|  -- if this diverges, eps^a is not a higher-order term")  #src
-    println("  eps        a=0.5      a=0.743     a=1.0      a=2.0")  #src
-    thin = Float64[]  #src
-    newt = Float64[]  #src
-    for epsv in (1e-1, 1e-3, 1e-5, 1e-7)  #src
-        row = [abs(epsv)^a / abs(epsv) for a in (0.5, 0.743, 1.0, 2.0)]  #src
-        push!(thin, row[2]); push!(newt, row[4])  #src
-        @printf("  %-10.0e %-10.3g %-11.3g %-10.3g %-10.3g\n",  #src
-                epsv, row[1], row[2], row[3], row[4])  #src
+    ## The claim is analytic, not numerical: d/deps eps^a = a*eps^(a-1). For  #src
+    ## a < 1 that grows without bound as eps -> 0, so eps^a is not even  #src
+    ## differentiable there; for a = 2 it vanishes; for a = 1 it is constant.  #src
+    ## Sample the derivative to confirm the three behaviours are distinct.  #src
+    epss = (1e-2, 1e-4, 1e-6, 1e-8)  #src
+    for a in (0.5, 0.743)  #src
+        d = [a*eps^(a-1) for eps in epss]  #src
+        @assert all(d[k+1] > d[k] for k in 1:length(d)-1) "eps^a derivative must increase as eps->0 for a<1"  #src
+        @assert d[end] > 10*d[1] "the growth over six decades is implausibly weak for a<1"  #src
     end  #src
-    ## The claim is that the ratio DIVERGES as eps -> 0, so the test is that it  #src
-    ## increases monotonically across every decade -- not that it clears some  #src
-    ## arbitrary threshold at the smallest amplitude we happened to tabulate.  #src
-    @assert all(thin[k+1] > thin[k] for k in 1:length(thin)-1) "eps^a/eps must grow as eps->0 for a<1"  #src
-    @assert thin[end] > 10*thin[1] "growth over six decades is implausibly weak"  #src
-    ## The contrast is the point: for a=2 the same ratio COLLAPSES, which is  #src
-    ## exactly what "higher order" means.  #src
-    @assert all(newt[k+1] < newt[k] for k in 1:length(newt)-1) "for a=2 the ratio must shrink"  #src
-    println("  ASSERTION 2 OK: for a<1 the Carreau-Yasuda correction grows without bound")  #src
-    println("    relative to the linear term as eps->0. A regular perturbation expansion")  #src
-    println("    in amplitude does not exist. Physically: there is no amplitude small")  #src
-    println("    enough that shear-thinning becomes a small correction of fixed order.")  #src
-    println("    (For a=2 the ratio is proportional to eps -- genuinely higher order.")  #src
-    println("     That is why the CLASSICAL Carreau theory closes and the general one does not.)")  #src
+    d2 = [2*eps for eps in epss]  #src
+    @assert all(d2[k+1] < d2[k] for k in 1:length(d2)-1) "for a=2 the derivative must vanish as eps->0"  #src
+    d1 = [1.0*eps^0 for eps in epss]  #src
+    @assert all(isapprox(x, 1.0) for x in d1) "a=1 should be the marginal, constant-derivative case"  #src
+    println("  ASSERTION 2 OK: d/deps of eps^a grows without bound as eps->0 for")  #src
+    println("    a<1, is constant at a=1, and vanishes at a=2 -- so a small-amplitude")  #src
+    println("    expansion exists only in the even-integer case. This closes the")  #src
+    println("    perturbative route; it excludes no fluid from the chain below.")  #src
 end  #src
 
 # ## Step 2 (A2) -- axisymmetry
@@ -360,6 +355,43 @@ end  #src
 # **Both matrices are diagonal, and that is the entire content of the Newtonian
 # model.** What follows is an argument that a shear-thinning fluid destroys the
 # diagonality and nothing else.
+#
+# ### Which constitutive models this covers
+#
+# The chain below uses exactly three properties of ``\eta``, and isolating them
+# defines the class of fluids it applies to.
+#
+# **(H1) Generalized Newtonian.** ``\eta`` depends on the flow only through the
+# instantaneous local shear-rate invariant, ``\eta=\eta(\dot\gamma)`` with
+# ``\dot\gamma=\sqrt{2\bm e\!:\!\bm e}`` -- no strain history, and no dependence
+# on the individual components of ``\bm e`` beyond that scalar. This is what
+# makes the coefficient matrices functions of the current state, so the system
+# is quasi-linear rather than integro-differential.
+#
+# **(H2) Bounded above and below**, ``0<\eta_\infty\le\eta(\dot\gamma)\le\eta_0<\infty``.
+# The lower bound is what BC2 needs: ``\tau_{r\theta}=2\eta e_{r\theta}=0`` forces
+# ``e_{r\theta}=0`` only because ``\eta`` cannot vanish. The upper bound keeps the
+# viscosity field integrable, so its Legendre coefficients exist.
+#
+# **(H3) Continuity in ``\dot\gamma``**, so ``\eta(x,\theta)`` has a convergent
+# Legendre expansion.
+#
+# Nothing else is used. In particular ``\eta`` need not be analytic, polynomial,
+# or close to constant: the exact truncation proved below holds for any ``\eta``
+# satisfying (H1)-(H3).
+#
+# | model | admissible | reason |
+# |:--|:--|:--|
+# | Carreau-Yasuda, any ``a``, any ``n<1``, ``\eta_\infty>0`` | yes | satisfies all three |
+# | Cross | yes | the ``p=-1`` slice of Carreau-Yasuda |
+# | Carreau (``a=2``) | yes | a further slice |
+# | Ellis, truncated power law | yes | bounded by construction |
+# | unregularised power law | no | violates (H2); ``\eta\to0`` or ``\infty`` and BC2 stops reducing |
+# | Bingham, Herschel-Bulkley | no | yield stress makes ``\eta`` unbounded as ``\dot\gamma\to0`` |
+# | Oldroyd-B, viscoelastic models | no | violates (H1): the stress carries memory |
+#
+# The viscoelastic exclusion is a different physical problem rather than a gap
+# in this argument; it is treated on the Oldroyd-B page.
 #
 # ### Following Reid's route, one step at a time
 #
@@ -516,21 +548,33 @@ end  #src
 # viscosity harmonic ``l'``, of terms
 #
 # ```math
-# \dot A_{l''}\;
-# \underbrace{\int_0^1\!\eta_{l'}(x)\,\bigl[\cdots\bigr]\,x^2\,dx}_{\text{radial}}
-# \;\times\;
-# \underbrace{\int_{-1}^{1}\! P_l\,P_{l'}\,P_{l''}\,d\mu
-#   \ \ \text{or}\ \
-#   \int_{-1}^{1}\! P_l\,(1-\mu^2)\,P'_{l'}\,P'_{l''}\,d\mu}_{\text{angular}} ,
+# \sum_{l''}\sum_{l'} \dot A_{l''}\Bigl[\,
+#   G^{l'}_{l l''}\!\!\int_0^1\!\bigl(\eta_{l'}\mathcal L_{l''}[F_{l''}]
+#                                      + \eta'_{l'}F'_{l''}\bigr)x^2dx
+# \;+\;
+#   H^{l'}_{l l''}\!\!\int_0^1\!\frac{\eta_{l'}}{2x}
+#      \Bigl(G'_{l''}-\frac{G_{l''}}{x}-\frac{F_{l''}}{x}\Bigr)x^2dx
+# \,\Bigr],
 # ```
 #
-# the two angular forms being the two contributions identified above. The
-# bracket ``[\cdots]`` in the radial integral holds the radial factors those same
-# terms produce: from ``\eta\nabla^2\bm u``, the radial Laplacian of the driving
-# mode's profile,
-# ``\mathcal L_{l''}[F_{l''}]=F''_{l''}+\tfrac{2}{x}F'_{l''}-\tfrac{l''(l''+1)}{x^2}F_{l''}``;
-# from ``2(\nabla\eta)\cdot\bm e``, the products of ``\eta'_{l'}`` and
-# ``\eta_{l'}/x`` with the radial parts of ``e_{rr}`` and ``e_{r\theta}`` above.
+# where the two angular factors are
+#
+# ```math
+# G^{l'}_{l l''}=\frac{2l+1}{2}\!\int_{-1}^{1}\!P_l\,P_{l'}\,P_{l''}\,d\mu ,
+# \qquad
+# H^{l'}_{l l''}=\frac{2l+1}{2}\!\int_{-1}^{1}\!P_l\,(1-\mu^2)\,P'_{l'}\,P'_{l''}\,d\mu ,
+# ```
+#
+# and the radial factors are exactly the ones the three viscous contributions
+# produce. From ``\eta\nabla^2\bm u``, the radial Laplacian of the driving mode's
+# profile,
+# ``\mathcal L_{l''}[F_{l''}]=F''_{l''}+\tfrac{2}{x}F'_{l''}-\tfrac{l''(l''+1)}{x^2}F_{l''}``,
+# carried by ``\eta_{l'}`` itself. From the radial part of
+# ``2(\nabla\eta)\cdot\bm e``, the radial strain amplitude ``F'_{l''}``, carried by
+# ``\eta'_{l'}``. From its polar part, the ``e_{r\theta}`` amplitude
+# ``\tfrac12(G'_{l''}-G_{l''}/x-F_{l''}/x)``, carried by ``\eta_{l'}/x`` -- and this
+# is the one term that pairs with ``H`` rather than ``G``, because its angular
+# factor carries the two derivatives.
 #
 # The second angular form is not a new object. Using
 # ``(1-\mu^2)P'_n=\tfrac{n(n+1)}{2n+1}(P_{n-1}-P_{n+1})`` and expanding
@@ -545,15 +589,20 @@ end  #src
 # -- a Gaunt coefficient, pure geometry, depending on three integers and on
 # nothing about the fluid. Likewise the radial integral depends only on
 # ``(l,l',l'')`` and on the current viscosity profile; write it
-# ``R^{(i)}_{l l''}[\eta_{l'}]``, the index ``i`` distinguishing the terms that
-# end up multiplying ``\dot A`` from those multiplying ``A``.
+# ``A^{(i)}_{l l''}[\eta_{l'}]`` and ``B^{(i)}_{l l''}[\eta_{l'}]`` -- the two
+# radial integrals written out above, pairing with ``G`` and ``H`` respectively.
+# The index ``i`` distinguishes the terms that end up multiplying ``\dot A``
+# from those multiplying ``A``.
 #
 # ### The result
 #
-# With those two names, the double sum collapses. Define
+# With those names the double sum collapses. Both angular factors obey the same
+# selection rule, proved below, so the sum over ``l'`` terminates. Define
 #
 # ```math
-# \mathcal D^{(i)}_{l l''} \;=\; \sum_{l'} G^{l'}_{l l''}\;R^{(i)}_{l l''}[\eta_{l'}] ,
+# \mathcal D^{(i)}_{l l''} \;=\; \sum_{l'}\Bigl[\,
+#   G^{l'}_{l l''}\,A^{(i)}_{l l''}[\eta_{l'}]
+#   \;+\; H^{l'}_{l l''}\,B^{(i)}_{l l''}[\eta_{l'}]\,\Bigr],
 # ```
 #
 # and the modal system takes exactly the Newtonian form with the two diagonal
