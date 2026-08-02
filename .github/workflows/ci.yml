@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+# One run per branch. Superseded pull-request runs are cancelled, but a run on
+# `main` is allowed to finish: cancelling it mid-deploy could leave `gh-pages`
+# half-written.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   julia-tests:
     runs-on: ubuntu-latest
@@ -43,6 +50,10 @@ jobs:
 
   docs:
     runs-on: ubuntu-latest
+    # Gate publication on the other two jobs. The derivation scripts ARE the
+    # documentation pages, so a failing assertion means the page is wrong;
+    # without this, a broken commit would still deploy its own docs.
+    needs: [julia-tests, derivations]
     permissions:
       contents: write
       pull-requests: read
@@ -55,7 +66,29 @@ jobs:
       - uses: julia-actions/cache@v2
       - name: Instantiate docs environment
         run: julia --project=docs -e 'using Pkg; Pkg.instantiate()'
+
       - name: Build and deploy docs (Literate.jl + Documenter.jl)
         run: julia --project=docs docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # `deploydocs` silently skips deployment when it cannot detect the
+      # environment, which has previously produced a green run with an unchanged
+      # site. Confirm gh-pages actually advanced to this commit.
+      - name: Verify the site was published
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -e
+          for i in $(seq 1 20); do
+            git fetch origin gh-pages --quiet 2>/dev/null || true
+            msg=$(git log --format=%s -1 origin/gh-pages 2>/dev/null || echo none)
+            echo "attempt $i: gh-pages says '$msg'"
+            case "$msg" in
+              *"${GITHUB_SHA:0:7}"*)
+                echo "::notice::docs published from ${GITHUB_SHA:0:7}"
+                exit 0 ;;
+            esac
+            sleep 15
+          done
+          echo "::error::gh-pages was not updated to ${GITHUB_SHA:0:7}; the live site is stale"
+          exit 1
