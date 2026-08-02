@@ -23,6 +23,7 @@ const PUBLISHED = [
     "reid1960_full_derivation.jl",
     "reid_finite_oh_derivation.jl",
     "generalized_newtonian_hierarchy_derivation.jl",
+    "shear_thinning_closures_derivation.jl",
     "carreau_yasuda_multimode_derivation.jl",
     "cross_fluid_derivation.jl",
     "eta_spectrum_derivation.jl",
@@ -88,11 +89,13 @@ makedocs(
             "Finite-Ohnesorge Coefficients"    => PAGE["reid_finite_oh_derivation.jl"],
         ],
         "Shear-Thinning Fluids" => [
-            # Read in this order: the map first, then why the obvious route is
-            # closed, then the two closures that are actually implemented, and
-            # last the measurement that prices the mode-coupling rungs of the
-            # map -- it is the evidence behind Steps 6 and 7 of the hierarchy.
-            "A Hierarchy of Models"            => PAGE["generalized_newtonian_hierarchy_derivation.jl"],
+            # Read in this order: the model first, stated completely and
+            # without approximation; then the descent from it to something
+            # runnable; then the two constitutive laws that are actually
+            # implemented; and last the measurement that prices the
+            # mode-coupling concessions the descent makes.
+            "Shear-Thinning Drops"             => PAGE["generalized_newtonian_hierarchy_derivation.jl"],
+            "Shear-Thinning Drops: Closures"   => PAGE["shear_thinning_closures_derivation.jl"],
                     "Carreau-Yasuda: Multi-Mode"       => PAGE["carreau_yasuda_multimode_derivation.jl"],
             "Cross-Model Fluids"               => PAGE["cross_fluid_derivation.jl"],
             "Angular Bandwidth of Viscosity"   => PAGE["eta_spectrum_derivation.jl"],
