@@ -1,7 +1,8 @@
 # # Multi-Mode-Coupled Carreau-Yasuda: Shear Rate Is Kinematic
 #
-# This is the model the validation pipeline runs. It supersedes the
-# single-mode closure of *Carreau-Yasuda: Single-Mode*.
+# This is the model the validation pipeline runs. Each mode's viscosity is
+# built from the shear rate of the FULL superposition of active modes, not from
+# its own amplitude alone.
 # Two further ingredients are needed before it behaves on a real impact -- a
 # dealiasing rule for truncation ringing at contact onset (§6) and a finite
 # infinite-shear viscosity plateau (§7) -- and both are derived below. §8

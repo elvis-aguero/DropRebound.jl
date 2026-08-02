@@ -23,8 +23,6 @@ const PUBLISHED = [
     "reid1960_full_derivation.jl",
     "reid_finite_oh_derivation.jl",
     "generalized_newtonian_hierarchy_derivation.jl",
-    "carreauYasuda_firstprinciples_derivation.jl",
-    "carreau_yasuda_nonperturbative_derivation.jl",
     "carreau_yasuda_multimode_derivation.jl",
     "cross_fluid_derivation.jl",
     "eta_spectrum_derivation.jl",
@@ -36,6 +34,15 @@ const PUBLISHED = [
 # uses, and publishing them alongside the current theory would only mislead.
 const UNPUBLISHED = [
     "carreau_yasuda_derivation.jl",
+    # Superseded by "Carreau-Yasuda: Multi-Mode", which says so in its own
+    # opening lines -- as does this page, at its end. A page that two published
+    # pages describe as obsolete should not itself be published.
+    "carreau_yasuda_nonperturbative_derivation.jl",
+    # Its result -- that no small-amplitude expansion of this problem exists,
+    # because eps^a is non-analytic at eps=0 for non-integer a -- is now derived
+    # in "Shear-Thinning Drops" where it is load-bearing. A chapter whose title
+    # is that something does not work is not a chapter.
+    "carreauYasuda_firstprinciples_derivation.jl",
 ]
 
 all_scripts = Set(filter(f -> endswith(f, ".jl"), readdir(DERIVATIONS_SRC)))
@@ -86,9 +93,7 @@ makedocs(
             # last the measurement that prices the mode-coupling rungs of the
             # map -- it is the evidence behind Steps 6 and 7 of the hierarchy.
             "A Hierarchy of Models"            => PAGE["generalized_newtonian_hierarchy_derivation.jl"],
-            "Why Amplitude Expansion Fails"    => PAGE["carreauYasuda_firstprinciples_derivation.jl"],
-            "Carreau-Yasuda: Single-Mode"      => PAGE["carreau_yasuda_nonperturbative_derivation.jl"],
-            "Carreau-Yasuda: Multi-Mode"       => PAGE["carreau_yasuda_multimode_derivation.jl"],
+                    "Carreau-Yasuda: Multi-Mode"       => PAGE["carreau_yasuda_multimode_derivation.jl"],
             "Cross-Model Fluids"               => PAGE["cross_fluid_derivation.jl"],
             "Angular Bandwidth of Viscosity"   => PAGE["eta_spectrum_derivation.jl"],
         ],

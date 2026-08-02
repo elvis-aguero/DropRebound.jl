@@ -340,9 +340,11 @@ println("ASSERTION 8 OK: We^(1/2) scaling confirmed on the real solver (<10% spr
 #
 # Algebraic consistency is not the same as a scheme that integrates stably,
 # so the recipe is integrated numerically for ``m\in\{0.5,1,2,3\}``. The
-# closure is the one the Carreau-Yasuda model already uses -- a lagged,
-# explicit shear-rate-dependent multiplier on the damping term -- with the
-# fixed quadratic ``\dot A^2`` replaced by ``|\dot A|^{m}`` and the
+# closure is the one the shear-thinning solver already uses -- an explicit
+# shear-rate-dependent multiplier on the damping term, evaluated at a
+# second-order extrapolation of the modal velocities rather than at the current
+# unknown state -- with the fixed quadratic ``\dot A^2`` replaced by
+# ``|\dot A|^{m}`` and the
 # closed-form ``\Gamma_l`` replaced by the numerically tabulated
 # ``\Gamma_l^{(m)}``.
 #
@@ -483,5 +485,5 @@ println("ASSERTION 9 OK: bounded, finite, sensible decay for every m in {0.5,1,2
 # demonstrate stability, not a validation against experimental data.
 # And the whole treatment is weakly nonlinear --
 # for a fluid whose ``(\lambda_c\dot\gamma)^a`` is not small, the
-# non-perturbative route of "Carreau-Yasuda: Single-Mode" is the applicable
-# one, not this one.
+# non-perturbative route of *Carreau-Yasuda: Multi-Mode*, which evaluates the
+# viscosity law directly rather than expanding it, is the applicable one.
