@@ -1,28 +1,7 @@
-# # Shear-Thinning Drops: a Hierarchy of Models, from the Exact Problem Down
+# # Shear-Thinning Drops
 #
-# This file answers one question: **can a shear-thinning fluid live inside
-# Reid's Legendre-mode framework, and if so, at what price?**
-#
-# It is written as a *chain*. We start from the exact free-surface problem
-# with no assumptions at all, then make one simplification at a time. Each
-# step is labelled, and each step records three things:
-#
-# 1. the assumption that was made,
-# 2. what it throws away,
-# 3. how you would undo it if you later decide you need to.
-#
-# The point of the chain is that each rung is *priced*: you can see what it
-# assumes, what it discards, and -- wherever the error has been measured -- what
-# that costs as a number. The model DropSolver currently implements sits near
-# the bottom.
-#
-# It should be said at the outset that this is not a menu with a comfortable
-# option on it. The chain was built expecting to find a cheap rung that keeps
-# most of the physics, and the measurements say there is not one: the two rungs
-# that restore Reid's independent-oscillator structure both cost more than they
-# look like they should, for reasons given in Steps 6 and 7. The useful output
-# is therefore a price list rather than a recommendation, and the closing
-# section states plainly which two options remain.
+# In this page we try to extend Reid's work to shear thinning rheologies. These are fluids that have an effective
+# viscosity which is shear-rate dependent, possibly nonlinearly.
 #
 # ## Notation
 #
@@ -83,10 +62,10 @@ println("="^78)  #src
 println("A HIERARCHY OF SHEAR-THINNING DROP MODELS")  #src
 println("="^78)  #src
 
-# ## Step 0 -- the exact problem
+# ## Problem definition
 #
-# No assumptions. An incompressible fluid of constant density ``\rho``
-# occupies a region bounded by a free surface ``\Sigma(t)``. The unknowns
+# An incompressible fluid of constant density ``\rho``
+# occupies a convex region bounded by a free surface ``\Sigma(t)``. The unknowns
 # are the velocity ``\bm u``, the pressure ``p``, and the surface itself.
 #
 # ```math
@@ -138,11 +117,6 @@ println("="^78)  #src
 # \boxed{\ \nabla\cdot(2\eta\bm e) = \eta\,\nabla^2\bm u \;+\; 2(\nabla\eta)\cdot\bm e\ }
 # ```
 #
-# **In plain English:** a shear-thinning fluid adds exactly one term to the
-# Navier-Stokes momentum equation. Everything hard about this project is
-# contained in that single extra term ``2(\nabla\eta)\cdot\bm e``. Reid was
-# entitled to drop it because for him ``\nabla\eta\equiv 0``.
-#
 # The boxed result rests on the incompressible identity
 # ``\nabla\cdot\bm e=\tfrac12\nabla^2\bm u``, which follows from
 # ``\nabla\cdot\bm e=\tfrac12[\nabla^2\bm u+\nabla(\nabla\cdot\bm u)]``
@@ -174,7 +148,7 @@ let  #src
     println("    => nabla.(2*eta*e) = eta*lap(u) + 2*(grad eta).e  is exact.")  #src
 end  #src
 
-# ## Step 1 (A1) -- linearise in the surface amplitude
+# ## Linearisation in the surface amplitude
 #
 # **Assumption.** The surface displacement is small, ``\epsilon=\zeta/R\ll1``.
 #
@@ -188,9 +162,7 @@ end  #src
 #
 # ### Linearising the kinematics does not linearise the rheology
 #
-# This is the most consequential distinction in the whole chain.
-#
-# Linearising the **kinematics** does *not* linearise the **rheology**.
+# Linearising the **kinematics** does not linearise the **rheology**.
 # The strain rate is ``O(\epsilon)``, so ``\dot\gamma=\epsilon\,\hat{\dot\gamma}``,
 # but ``\eta`` is a *nonlinear function of that small quantity*:
 #
@@ -203,28 +175,12 @@ end  #src
 # "the leading term", and for ``a<1`` the correction is *larger* than any
 # linear term as ``\epsilon\to0``.
 #
-# So "linear in ``\epsilon``" and "expandable in powers of ``\epsilon``" are
-# different statements. The first is a legitimate assumption about the geometry.
-# The second is false whenever ``a`` is not an even integer, and no amount of
-# small amplitude rescues it: ``\tfrac{d}{d\epsilon}\epsilon^a=a\epsilon^{a-1}``
-# is unbounded as ``\epsilon\to0`` for ``a<1``, so the function is not
-# differentiable there, let alone analytic. For ``a=2`` the same derivative is
-# ``2\epsilon``, which vanishes -- and that is precisely what "higher order"
-# means, and why the classical Carreau theory closes where a general one does
-# not.
-#
-# !!! note "What this rules out, and what it does not"
-#     This closes a **route**, not a fluid. What fails is the small-amplitude
-#     *perturbation expansion* -- writing the shear-thinning correction as a
-#     term in a power series in ``\epsilon`` and truncating. That is the route
-#     the superseded weakly-nonlinear treatment took, and it is why that
-#     treatment does not generalise past ``a=2``.
-#
+# !!! note
 #     The chain built below never expands in ``\epsilon``. It evaluates
 #     ``\eta(\dot\gamma)`` at whatever ``\dot\gamma`` the current state produces
 #     and assembles the coupling from that, so a non-integer ``a`` costs it
 #     nothing. Carreau-Yasuda at the fitted ``a\approx0.743`` is admissible
-#     throughout, exactly as the table of models above says.
+#     throughout, exactly as the table of admissible models below shows.
 
 let  #src
     ## The claim is analytic, not numerical: d/deps eps^a = a*eps^(a-1). For  #src
@@ -247,12 +203,9 @@ let  #src
     println("    perturbative route; it excludes no fluid from the chain below.")  #src
 end  #src
 
-# ## Step 2 (A2) -- axisymmetry
+# ## Axisymmetry
 #
 # **Assumption.** The forcing (impact) is axisymmetric.
-#
-# **What it drops.** Nothing. This step is *exact*, and it is worth proving
-# because it is the one piece of good news in the whole chain.
 #
 # **Claim.** A generalized Newtonian fluid cannot break axisymmetry.
 #
@@ -295,10 +248,7 @@ let  #src
     println("    Legendre polynomials suffice permanently; Y_l^m is never required.")  #src
 end  #src
 
-# ## Step 3 (A3) -- poloidal representation and modal expansion
-#
-# **Assumption.** None beyond incompressibility and axisymmetry -- this is a
-# change of variables, not a simplification.
+# ## Poloidal representation and modal expansion
 #
 # An axisymmetric incompressible velocity field is generated by a single
 # scalar. Writing the surface shape as
@@ -757,9 +707,10 @@ end  #src
 #     The angular structure above is complete, and the selection rule proved
 #     below follows from it. The radial integrals ``R^{(i)}`` are *defined* by
 #     the expression above but are not evaluated in closed form on this page:
-#     doing so means solving the interior problem of step 1 with a variable
-#     ``\eta``, which is the open work Step 7 identifies. Step 7 does construct
-#     that radial operator for ``l'=0``, where it can be checked against Reid's.
+#     doing so means solving the interior problem of the previous section with
+#     a variable ``\eta``, which is the open work Step 7 identifies. Step 7 does
+#     construct that radial operator for ``l'=0``, where it can be checked
+#     against Reid's.
 #
 # ### The Newtonian case, as a check
 #
@@ -1457,17 +1408,18 @@ end  #src
 # ``p=(n-1)/a=-1``, and it is how this repository's validation fluid is actually
 # characterised. Establishing that takes a short detour through which exponents
 # make ``\eta`` well behaved -- which is also where a persistent confusion about
-# Step 1 can be cleared up, so that comes first.
+# the amplitude non-analyticity can be cleared up, so that comes first.
 #
 # ### Two different non-analyticities, and only one of them is resolved
 #
 # Before going further it is worth separating two claims that sound alike and
 # are not, because conflating them is the easiest mistake on this page.
 #
-# Step 1 showed that ``\eta`` is not analytic in the **oscillation amplitude**
-# ``\epsilon``: with ``\dot\gamma=O(\epsilon)`` and a non-integer ``a``, the
-# correction scales as ``\epsilon^a``, which is larger than any linear term as
-# ``\epsilon\to0``. **That claim stands, and nothing below repairs it.** It is
+# The linearisation section showed that ``\eta`` is not analytic in the
+# **oscillation amplitude** ``\epsilon``: with ``\dot\gamma=O(\epsilon)`` and a
+# non-integer ``a``, the correction scales as ``\epsilon^a``, larger than any
+# linear term as ``\epsilon\to0``. **That claim stands, and nothing below
+# repairs it.** It is
 # why no small-amplitude expansion of this problem exists, and it is the reason
 # the whole chain is built around evaluating Reid's relations exactly rather
 # than perturbing them.
@@ -1477,7 +1429,8 @@ end  #src
 # behaves and therefore whether the coupling matrix is finite. The answer there
 # is favourable, and it is favourable *regardless* of the amplitude
 # non-analyticity, because the two involve different variables. A reader who
-# takes the good news below as an answer to Step 1 has read it wrongly.
+# takes the good news below as an answer to the amplitude non-analyticity has
+# read it wrongly.
 #
 # ### Which exponents make ``\eta`` a polynomial
 #
