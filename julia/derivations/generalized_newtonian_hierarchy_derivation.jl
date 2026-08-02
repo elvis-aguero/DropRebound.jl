@@ -450,21 +450,19 @@ end  #src
 # ```
 #
 # one such equation for each ``l``, with no reference to any other mode.
-# Separability is intact and the modes do not talk to each other. **This is the
-# rung Step 7 is about.**
+# Separability is intact and the modes do not talk to each other. 
 #
 # **(iv) An angularly varying viscosity destroys separability.** Let
 # ``\eta=\eta(x,\theta)``. Now ``\partial_\theta\eta\neq0``, the curl acquires
 # terms in ``\partial_\theta\eta`` and ``\partial^2_{\theta\theta}\eta``, and it
 # no longer factors: the ratio
 # ``[\nabla\times\bm M]_\varphi\big/C_l(\theta)`` is a function of ``\theta``,
-# not a constant. There is no radial operator to write down, because there is no
+# not a constant. 
+# There is no radial operator to write down, because there is no
 # ``\theta``-independent thing left after dividing out the angular factor.
-#
-# It is worth saying exactly what is lost, because "one mode can no longer be
-# isolated" is doing real work. Let ``\mathcal A`` be the linearised operator of
+# Let ``\mathcal A`` be the linearised operator of
 # the whole problem and ``\Lambda_\theta`` the angular Laplacian, whose
-# eigenfunctions are the ``P_l``. For constant -- or purely radial -- viscosity,
+# eigenfunctions are the ``P_l``. For purely radial viscosity,
 #
 # ```math
 # [\mathcal A,\Lambda_\theta]=0 ,
@@ -477,8 +475,7 @@ end  #src
 # \langle P_l|\mathcal A|P_{l''}\rangle \;=\; 0 \quad\text{for } l\neq l'' .
 # ```
 #
-# That is what "isolates one mode" means, and it is exactly the simultaneous
-# diagonalisation Reid's construction rests on. Once ``\eta`` depends on
+# Once ``\eta`` depends on
 # ``\theta``, ``[\mathcal A,\Lambda_\theta]\neq0``, no common eigenbasis exists,
 # and those off-diagonal projections are nonzero -- which is not a failure of
 # technique but the statement that mode ``l''`` genuinely drives mode ``l``. The
@@ -609,7 +606,7 @@ end  #src
 
 # ### Carrying the projection through
 #
-# Project as before: multiply by ``P_l(\mu)`` and integrate over
+# Project as before: multiply by ``P_l(\mu)`` and integrate over [TODO: Project what? be precise, state wha tequation is projected, exactly]. 
 # ``\mu\in[-1,1]``. Writing the surface motion as
 # ``\dot\zeta=R\sum_{l''}\dot A_{l''}P_{l''}``, so that mode ``l''`` enters with
 # strength ``\dot A_{l''}``, the contribution of the viscous stress to the
@@ -655,7 +652,7 @@ end  #src
 # G^{l'}_{l l''} \;\equiv\; \frac{2l+1}{2}\int_{-1}^{1}P_l\,P_{l'}\,P_{l''}\,d\mu
 # ```
 #
-# -- a Gaunt coefficient, pure geometry, depending on three integers and on
+# a Gaunt coefficient, pure geometry, depending on three integers and on
 # nothing about the fluid. Likewise the radial integral depends only on
 # ``(l,l',l'')`` and on the current viscosity profile; write it
 # ``A^{(i)}_{l l''}[\eta_{l'}]`` and ``B^{(i)}_{l l''}[\eta_{l'}]`` -- the two
@@ -698,19 +695,6 @@ end  #src
 #     construct that radial operator for ``l'=0``, where it can be checked
 #     against Reid's.
 #
-# ### The Newtonian case, as a check
-#
-# A constant viscosity has one nonzero harmonic, ``\eta_0``, at ``l'=0``. Since
-# ``P_0=1`` the angular factor is the ordinary orthogonality relation,
-#
-# ```math
-# G^{0}_{l l''}=\frac{2l+1}{2}\int_{-1}^{1}P_l\,P_{l''}\,d\mu=\delta_{l l''},
-# ```
-#
-# so both sums lose every off-diagonal term and ``\mathcal D^{(2)}``,
-# ``\mathcal D^{(1)}`` collapse to ``2\bm\Lambda`` and ``\bm\Omega``. Gabbard's
-# system returns term by term. The Newtonian model is the special case of this
-# one, not a separate theory.
 #
 
 let  #src
@@ -920,11 +904,10 @@ end  #src
 #
 # It is quadratic in the field and *then* square-rooted, so the ``l\neq l''``
 # cross terms do not drop out. Once more than one mode is active there is no
-# such thing as "mode ``l``'s shear rate", and treating each mode as carrying
-# its own is a modelling error, not a simplification.
+# such thing as "mode ``l``'s shear rate".
 #
 # In practice ``\dot\gamma`` is evaluated **pointwise on the ``(x,\theta)``
-# quadrature grid** from the full superposition; ``\eta(\dot\gamma)`` follows
+# quadrature grid** from the full superposition; ``\eta(\dot\gamma)`` follows [TODO: quadrature grid undefined. What quadrature? Which term needs quadrature?]
 # pointwise from the constitutive law; and a Legendre projection in ``\theta``
 # at each radius gives the coefficients ``\eta_{l'}(x)`` that the matrices need.
 #
@@ -949,7 +932,7 @@ end  #src
 # saying "the two scalars become matrices" without saying the matrices depend
 # on the state makes it look like one.
 #
-# The solver closes it by **lagging**: ``\mathcal D`` is evaluated at the
+# The solver closes it by **lagging**: ``\mathcal D`` is evaluated at the [TODO: are you sure we still do lagging?]
 # previous step's ``\bm{\dot A}``, so within a single Newton step the
 # coefficients are constants and the Jacobian is exact for that step. The
 # nonlinearity is carried across steps rather than inside them, which costs one
