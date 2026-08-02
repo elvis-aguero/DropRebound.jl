@@ -1,0 +1,38 @@
+# Modal velocity spectrum Adot_l, l = 2..30, of a live DropRebound impact solve.
+# Bo = 0.012, We = 0.7649, Reid viscous kernel, Cross rheology (the fitted
+# validation fluid whose constants appear in eta_spectrum_derivation.jl),
+# integrated to t = 15 with M = 30 shape modes.
+#
+# Provenance: of every saved state, this is the most energetic one that is NOT
+# truncation-ringing -- |Adot_M|/max_l|Adot_l| < 0.05 and the spectrum peaking at
+# low l. Ringing states peak AT l = M and are numerical artefacts, not physics.
+# One value per line, l ascending from l = 2. Blank lines and '#' lines ignored.
+-0.22495396412525767
+0.36520558512319495
+-0.4224039244514406
+0.3434769687419914
+-0.133811746921003
+-0.13000820038871433
+0.33975052124499633
+-0.4097461667091355
+0.3055386129874713
+-0.07999547869153893
+-0.15084641331406629
+0.28862384131828256
+-0.2924063943166937
+0.17938037187717748
+-0.02004311601691612
+-0.10619703566427272
+0.1616284909446091
+-0.15152025369349886
+0.09770794582846822
+-0.0301284959148594
+-0.028565134471051273
+0.06597404914825244
+-0.07779384621045936
+0.06334083994720136
+-0.02980730248047321
+-0.009834639492990238
+0.03510879076777028
+-0.034088101012938965
+-0.000424765167993002

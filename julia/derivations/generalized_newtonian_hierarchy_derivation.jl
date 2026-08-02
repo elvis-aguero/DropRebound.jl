@@ -452,7 +452,7 @@ let  #src
     l = 2  #src
     PTS = ((0.43,0.7),(0.61,1.3),(0.82,2.1),(0.37,2.6),(0.95,0.44))  #src
 
-    ## (i) which derivatives of eta survive the curl
+    ## (i) which derivatives of eta survive the curl  #src
     full = curlmom(l, rr^(l+1) + 0.7*rr^(l+3), Hgen(rr,tt))  #src
     txt = string(full)  #src
     d3 = Differential(rr)(Differential(rr)(Differential(rr)(Hgen(rr,tt))))  #src
@@ -461,13 +461,24 @@ let  #src
         @assert occursin(string(d), txt) "expected first derivatives of eta to appear"  #src
     end  #src
 
-    ## (ii) constant eta must return Reid's operator exactly
+    ## (ii) constant eta must return Reid's operator exactly -- and must do so  #src
+    ## with the RIGHT dependence on eta. Testing only at eta = 1 cannot tell  #src
+    ## tau = 2*eta*e from tau = 2*eta^2*e, since the two agree there. With  #src
+    ## eta = c the viscous terms carry a factor c while the inertial q^2 term  #src
+    ## does not, so the whole curl must equal  #src
+    ##     c * [-A_l/(r sin th)] * D_l(D_l + q^2/c)[U],  #src
+    ## which pins the power of eta as well as the operator.  #src
     Uc = rr^(l+1) + 0.7*rr^(l+3) - 0.3*rr^(l+5) + 0.11*rr^(l+2)  #src
-    rats = [ev(curlmom(l,Uc,1),rv,tv,3.7,0.,0.,0.) /  #src
-            ev(-reidop(Uc,l)*angl(l)/(rr*sin(tt)),rv,tv,3.7,0.,0.,0.) for (rv,tv) in PTS]  #src
-    @assert all(abs(x-1) < 1e-9 for x in rats) "constant eta did not return Reid's operator"  #src
+    rats = Float64[]  #src
+    for c in (1.0, 2.5, 0.4)  #src
+        tgt = -c*Dln(Dln(Uc,l) + (3.7/c)*Uc, l)*angl(l)/(rr*sin(tt))  #src
+        for (rv,tv) in PTS  #src
+            push!(rats, ev(curlmom(l,Uc,c),rv,tv,3.7,0.,0.,0.) / ev(tgt,rv,tv,3.7,0.,0.,0.))  #src
+        end  #src
+    end  #src
+    @assert all(abs(x-1) < 1e-9 for x in rats) "constant eta did not return Reid's operator with the right power of eta"  #src
 
-    ## (iii) eta = eta(r) keeps the angular factor -- separability survives
+    ## (iii) eta = eta(r) keeps the angular factor -- separability survives  #src
     Hr = hh0 + hh1*rr + hh2*rr^2  #src
     sep = 0.0  #src
     for U in (rr^(l+1), rr^(l+3), rr^(l+2))  #src
@@ -478,7 +489,7 @@ let  #src
     end  #src
     @assert sep < 1e-9 "eta(r) broke separability, which it must not ($sep)"  #src
 
-    ## (iv) eta with angular structure must break it
+    ## (iv) eta with angular structure must break it  #src
     Hrt = hh0 + hh1*rr + hh2*cos(tt)^2  #src
     C = curlmom(l, rr^(l+1), Hrt)  #src
     v = [ev(C,0.6,tv,3.7,1.0,0.4,-0.2)/ev(angl(l)/(rr*sin(tt)),0.6,tv,3.7,1.0,0.4,-0.2)  #src
@@ -1049,9 +1060,17 @@ end  #src
 # | real solver state, ``M=30`` | 133 |
 # | real solver state, ``M=20`` | 139 |
 #
-# > **``L_\eta\gtrsim M``, and for realistic multi-mode states
-# > ``L_\eta\gg M``. The coupling matrix is effectively dense. This rung
-# > buys nothing.**
+# > **For algebraically decaying modal spectra and for real solver states,
+# > ``L_\eta\gtrsim M``, reaching ``L_\eta\gg M`` in the latter. The coupling
+# > matrix is effectively dense, and this rung buys nothing.**
+#
+# The qualifier is doing work. A spectrum that decays *exponentially* -- say
+# ``\dot A_l\propto0.85^{\,l}`` -- keeps ``L_\eta\approx16`` even with fifty
+# modes nominally active, because so little amplitude reaches high ``l`` that
+# the viscosity field stays smooth: its contrast is only ``\approx34\times``
+# rather than the ``100\times`` a real state produces. Banding would work for
+# such a fluid. It does not work here because the modal spectra this solver
+# actually produces decay algebraically, not exponentially.
 #
 # At ``M=30`` you would need a half-bandwidth of ``\approx133`` to keep 1% --
 # i.e. a full matrix. Banding at ``L_\eta=8`` leaves a 40% error even under
@@ -1071,14 +1090,19 @@ end  #src
 # set is dense.
 #
 # **Caveat.** Coefficients beyond ``l'=140`` were not measured, so every
-# entry above is a *lower* bound on the discarded coupling. The measurement
-# is quoted here rather than recomputed: it takes roughly 30 minutes and
-# relies on a separate high-``l`` eigenfunction evaluator, itself checked to
-# ``5\times10^{-15}`` against Reid's tangential-stress boundary condition.
+# entry above is a *lower* bound on the discarded coupling.
+#
+# The measurement itself, including the high-``l`` eigenfunction evaluator it
+# rests on (checked to ``5\times10^{-15}`` against Reid's tangential-stress
+# boundary condition), is carried out in
+# [Angular Bandwidth of Viscosity](eta_spectrum_derivation.md), which reproduces
+# four of the six rows above on every CI run and the remaining two under
+# `ETA_SPECTRUM_FULL=1`.
 #
 # **How to undo it.** Raise ``L_\eta``. The structure does not change -- only
-# the bandwidth. But since ``L_\eta\gtrsim M`` is required, the practical
-# move is to skip this rung entirely and either take L4 dense or drop to A7.
+# the bandwidth. But since ``L_\eta\gtrsim M`` is required for the spectra this
+# solver produces, the practical move is to skip this rung and either take L4
+# dense or drop to A7.
 
 # ## Step 7 (A7) -- keep only ``l'=0``: a spherically symmetric viscosity
 #
@@ -1416,19 +1440,28 @@ let  #src
     ETA_INF = 0.0037320997942061666  #src
     ETA_0   = 8.433817577956766  #src
     M_CROSS = 0.7430524574330837  #src
+    K_CROSS = 18.48081673111359        ## s; the Cross time constant, from the same fit  #src
     Δ = (ETA_0 - ETA_INF)/ETA_0  #src
-    p_true = -1.0  #src
-    exponent_should_be = (1 - (1 - M_CROSS))/M_CROSS  #src
-    @printf("  this fluid: m = %.4f, Delta = (eta0-etainf)/eta0 = %.6f\n", M_CROSS, Δ)  #src
-    @printf("  the CY exponent (1-n)/a implied by the Cross mapping = %.6f (exactly 1)\n",  #src
-            exponent_should_be)  #src
-    @assert abs(exponent_should_be - 1.0) < 1e-12 "the Cross->CY exponent should be exactly 1"  #src
-    println("  ASSERTION 11 OK: under the Cross mapping the CY exponent is EXACTLY 1,")  #src
-    println("    but scripts/validate_shear_thinning.jl passes Delta = $(round(Δ, digits=6))")  #src
-    println("    into that slot. Harmless here only because Delta ~ 1 for this fluid;")  #src
-    println("    for a fluid with Delta = 0.5 the exponent would silently be wrong by 2x.")  #src
-    println("    Physical meaning: the AMPLITUDE of the thinning is being used as its")  #src
-    println("    SHAPE exponent. Deriving Cross natively removes the conversion entirely.")  #src
+    eps_inf = ETA_INF/ETA_0  #src
+    ## The claim is that the Cross law and the Carreau-Yasuda form the solver  #src
+    ## implements are the SAME curve under lambda_c=K, a=m, eps_ST=1 -- not that  #src
+    ## m/m equals one. Compare the two curves directly, across the shear rates  #src
+    ## an impact actually samples.  #src
+    cross(g)     = eps_inf + (1 - eps_inf)/(1 + (K_CROSS*g)^M_CROSS)  #src
+    cy(g, eps)   = eps_inf + (1 - eps_inf)*(1 + (K_CROSS*g)^M_CROSS)^(-eps)  #src
+    gs = exp10.(range(-3, 5; length=40))  #src
+    worst_ok  = maximum(abs(cy(g, 1.0) - cross(g))/cross(g) for g in gs)  #src
+    @assert worst_ok < 1e-12 "Cross is not the eps_ST = 1 slice of Carreau-Yasuda ($worst_ok)"  #src
+    ## And the slot must be load-bearing: putting Delta there instead of 1 has  #src
+    ## to change the curve materially, or the distinction would not matter.  #src
+    worst_bad = maximum(abs(cy(g, Δ) - cross(g))/cross(g) for g in gs)  #src
+    @assert worst_bad > 1e-3 "using Delta as the exponent should visibly change the curve"  #src
+    println("  ASSERTION 11 OK: the Cross law is exactly the eps_ST = 1 slice of the")  #src
+    println("    Carreau-Yasuda form the solver implements (agreement $(round(worst_ok, sigdigits=2)) over")  #src
+    println("    eight decades of shear rate). Substituting the thinning amplitude")  #src
+    println("    Delta = $(round(Δ, digits=6)) into the exponent slot instead shifts the curve by")  #src
+    println("    up to $(round(100*worst_bad, sigdigits=3))%, so the two are not interchangeable even though")  #src
+    println("    Delta is close to 1 for this fluid.")  #src
 end  #src
 
 # ## Step 10 -- the Newtonian floor, and a live cross-check
@@ -1535,8 +1568,9 @@ end  #src
 # production code does -- is not licensed at any amplitude, because the
 # period-``\pi`` lemma puts the modulation at exactly twice the mode
 # frequency. A6, banding the coupling matrix, buys nothing: the measured
-# ``L_\eta`` is ``\gtrsim M`` for synthetic spectra and ``\gg M`` for real
-# solver states.
+# ``L_\eta`` is ``\gtrsim M`` for algebraically decaying spectra and ``\gg M``
+# for real solver states. (An exponentially decaying spectrum would band
+# happily; this solver does not produce one.)
 #
 # **Priced, and not cheap.** A7 restores exact diagonality, but discards
 # angular structure that is *comparable to or larger than* the mean

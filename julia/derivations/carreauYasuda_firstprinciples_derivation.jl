@@ -54,7 +54,11 @@ function symbolic_zero(expr)                                                  #s
     is_symbolic_zero = isequal(simplified, 0) || isequal(simplified, 0.0)     #src
     vars = Symbolics.get_variables(expr)                                      #src
     is_numeric_zero = if isempty(vars)                                        #src
-        true                                                                  #src
+        ## A variable-free expression must be evaluated, not waved through: #src
+        ## an unconditional `true` accepts any constant, so an assertion whose #src
+        ## expression collapses to a nonzero number would still pass.     #src
+        v = Symbolics.value(simplified)                                   #src
+        v isa Number && abs(v) < 1e-8                                     #src
     else                                                                      #src
         f = Symbolics.build_function(expr, vars...; expression=false)         #src
         test_vals = (0.37, 1.21, 2.03, 0.68, 1.59, 3.14, 0.91, 2.77)          #src

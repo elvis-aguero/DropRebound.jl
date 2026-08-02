@@ -27,6 +27,7 @@ const PUBLISHED = [
     "carreau_yasuda_nonperturbative_derivation.jl",
     "carreau_yasuda_multimode_derivation.jl",
     "cross_fluid_derivation.jl",
+    "eta_spectrum_derivation.jl",
     "oldroyd_b_derivation.jl",
 ]
 
@@ -47,6 +48,22 @@ for script in PUBLISHED
     PAGE[script] = joinpath("derivations", replace(script, ".jl" => ".md"))
 end
 
+# A `##` comment inside a block whose every executable line is `#src` makes
+# Literate emit an @example box containing only comments -- a grey rectangle
+# with nothing in it. This has slipped through repeatedly, so fail the build.
+for md in readdir(DERIVATIONS_OUT; join=true)
+    endswith(md, ".md") || continue
+    body = read(md, String)
+    for m in eachmatch(r"````@example[^\n]*\n(.*?)````"s, body)
+        code = filter(l -> !isempty(strip(l)) && !startswith(strip(l), "#"),
+                      split(m.captures[1], "\n"))
+        isempty(code) && error("""
+            Empty code block in $(basename(md)): an @example block contains only
+            comments. Mark the offending `##` lines with a trailing `#src`.
+            Block began: $(first(split(strip(m.captures[1]), "\n")))""")
+    end
+end
+
 makedocs(
     sitename = "DropRebound.jl",
     modules = [DropSolver],
@@ -65,12 +82,15 @@ makedocs(
         ],
         "Shear-Thinning Fluids" => [
             # Read in this order: the map first, then why the obvious route is
-            # closed, then the two closures that are actually implemented.
+            # closed, then the two closures that are actually implemented, and
+            # last the measurement that prices the mode-coupling rungs of the
+            # map -- it is the evidence behind Steps 6 and 7 of the hierarchy.
             "A Hierarchy of Models"            => PAGE["generalized_newtonian_hierarchy_derivation.jl"],
             "Why Amplitude Expansion Fails"    => PAGE["carreauYasuda_firstprinciples_derivation.jl"],
             "Carreau-Yasuda: Single-Mode"      => PAGE["carreau_yasuda_nonperturbative_derivation.jl"],
             "Carreau-Yasuda: Multi-Mode"       => PAGE["carreau_yasuda_multimode_derivation.jl"],
             "Cross-Model Fluids"               => PAGE["cross_fluid_derivation.jl"],
+            "Angular Bandwidth of Viscosity"   => PAGE["eta_spectrum_derivation.jl"],
         ],
         "Viscoelastic Fluids" => [
             "Oldroyd-B"                        => PAGE["oldroyd_b_derivation.jl"],
