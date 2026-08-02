@@ -40,6 +40,10 @@
 # | ``\zeta(\theta,t)`` | radial surface displacement; ``\epsilon=\zeta/R`` |
 # | ``P_l(\mu)``, ``\mu=\cos\theta`` | Legendre polynomial |
 # | ``A_l(t)`` | amplitude of surface mode ``l``; the solver's state vector |
+# | ``C_l(\theta)`` | Gegenbauer angular function ``\sin^2\!\theta\,P_l'(\cos\theta)/(l(l+1))``; the *angular* factor of the stream function -- **not** ``A_l``, which is an amplitude in time |
+# | ``U(x)`` | radial factor of the stream function ``\psi=U(x)C_l(\theta)`` |
+# | ``\mathcal D_l`` | ``d^2/dx^2-l(l+1)/x^2``; Reid's radial operator |
+# | ``\mathcal L_2`` | ``d^2/dx^2-(2/x)d/dx+l(l+1)/x^2``; Reid's tangential-stress operator, ``\mathcal L_2[U]|_{x=1}=0`` is BC2 |
 # | ``l'`` | degree index of the **viscosity field's own** Legendre series |
 # | ``L_\eta`` | highest ``l'`` retained -- the *bandwidth* of the coupling |
 # | ``\mathrm{Oh}=\eta_0/\sqrt{\rho T_1R}`` | Ohnesorge number: viscous over inertio-capillary stress |
@@ -339,7 +343,7 @@ end  #src
 # ``\bm A=(A_2,\ldots,A_M)^{\mathsf T}``,
 #
 # ```math
-# \ddot{\bm A} \;+\; 2\bm\Lambda\,\dot{\bm A} \;+\; \bm\Omega\,\bm A
+# \bm{\ddot A} \;+\; 2\bm\Lambda\,\bm{\dot A} \;+\; \bm\Omega\,\bm A
 #   \;+\; \bm b \;=\; 0 ,
 # \qquad
 # \bm\Lambda=\operatorname{diag}(\lambda_l),
@@ -404,58 +408,151 @@ end  #src
 # answers that, and the answer is later than one might expect.
 #
 # **(i) The curl still removes the pressure.** That step is indifferent to the
-# rheology: ``\nabla\times\nabla p=0`` whatever ``\eta`` does. Writing the
-# axisymmetric field through a stream function ``\psi=U(x)A_l(\theta)``, exactly
-# as Reid does, and taking the ``\varphi``-component of the curl of the momentum
-# equation, the pressure drops out and what remains depends on the viscosity
-# through
+# rheology: ``\nabla\times\nabla p=0`` whatever ``\eta`` does. Represent the
+# axisymmetric field by the Stokes stream function ``\psi=U(x)\,C_l(\theta)``,
+# where
 #
 # ```math
-# \eta,\quad \partial_x\eta,\quad \partial_\theta\eta,\quad
-# \partial^2_{xx}\eta,\quad \partial^2_{x\theta}\eta,\quad \partial^2_{\theta\theta}\eta
+# C_l(\theta)\;=\;\frac{\sin^2\!\theta\;P_l'(\cos\theta)}{l(l+1)},
+# \qquad
+# u_r=\frac{1}{x^2\sin\theta}\frac{\partial\psi}{\partial\theta},
+# \qquad
+# u_\theta=-\frac{1}{x\sin\theta}\frac{\partial\psi}{\partial x},
 # ```
 #
-# and **no derivative of third order or higher**. That bound is worth having: it
-# says the variable-viscosity problem is no worse differentiated than Reid's,
-# and it is checked below rather than assumed.
-#
-# **(ii) Constant viscosity returns Reid exactly.** Setting every derivative of
-# ``\eta`` to zero, the surviving expression is
+# is the Gegenbauer angular function -- the same field Reid writes as
+# ``u_r=f(x)P_l(\cos\theta)``, since ``\partial_\theta C_l\propto\sin\theta P_l``.
+# Taking the ``\varphi``-component of the curl of the momentum equation kills the
+# pressure and leaves, for ``\eta=\eta(x)``, exactly
 #
 # ```math
 # \bigl[\nabla\times\bm M\bigr]_\varphi
-#   \;=\; -\frac{A_l(\theta)}{x\sin\theta}\;
-#     \mathcal D_l\bigl(\mathcal D_l+q^2\bigr)[U],
+#   \;=\; -\frac{C_l(\theta)}{x\sin\theta}\;
+#     \Bigl\{\,q^2\,\mathcal D_l[U] \;+\; \mathcal R_l[U;\eta]\,\Bigr\},
 # \qquad
 # \mathcal D_l \equiv \frac{d^2}{dx^2}-\frac{l(l+1)}{x^2},
 # ```
 #
-# which is Reid's radial equation, recovered from the general machinery rather
-# than assumed. The factor ``1/(x\sin\theta)`` is the Jacobian between the curl
-# and the stream-function operator, not a physical term.
+# with the **variable-viscosity radial operator**
 #
-# **(iii) A radially varying viscosity keeps one ODE per mode.** Let
-# ``\eta=\eta(x)`` -- no angular structure. The ``\partial_\theta\eta`` terms
-# vanish identically, and the curl still factors as
-# ``A_l(\theta)\times(\text{radial operator on }U)``: the angular dependence
-# separates exactly as in Reid, so there is still one ODE per mode and no
-# coupling. What changes is only the radial operator, which now carries
-# ``\eta'`` and ``\eta''`` alongside ``\eta``. **This is the rung Step 7 is
-# about**, and separability is the reason it is worth having.
+# ```math
+# \boxed{\;
+# \mathcal R_l[U;\eta] \;=\;
+#   \eta\,\mathcal D_l^{\,2}[U]
+# \;+\; 2\eta'(x)\,\frac{d}{dx}\!\Bigl(\mathcal D_l[U]-\frac{U'}{x}\Bigr)
+# \;+\; \eta''(x)\,\mathcal L_2[U] \;}
+# ```
 #
-# **(iv) An angularly varying viscosity destroys separability.** Give ``\eta``
-# any dependence on ``\theta`` and the ``\partial_\theta\eta`` terms are no
-# longer zero. The curl no longer factors: the ratio
-# ``[\nabla\times\bm M]_\varphi\,/\,A_l(\theta)`` varies with ``\theta`` at
-# ``O(1)``. A surface deformation ``\propto P_{l}`` therefore drives an interior
-# field whose stress at the surface is *not* ``\propto P_l``, and projecting the
-# stress balance onto ``P_l`` can no longer isolate one mode.
+# ```math
+# \mathcal L_2[U]\;\equiv\;U''-\frac{2}{x}U'+\frac{l(l+1)}{x^2}U .
+# ```
 #
-# That is the whole mechanism, and it is worth stating plainly what has and has
-# not happened. The extra term ``2(\nabla\eta)\cdot\bm e`` is carried through
-# every one of Reid's steps unchanged; it is inert at step (i), harmless at step
-# (iii), and only at step (iv) -- when ``\eta`` acquires angular structure --
-# does it break the property Reid's whole construction rests on.
+# This is the interior equation, and it is worth reading three things off it.
+#
+# **Reid is the constant-viscosity case.** Setting ``\eta'=\eta''=0`` leaves
+# ``\eta\mathcal D_l^2[U]+q^2\mathcal D_l[U]``, i.e. Reid's
+# ``\mathcal D_l(\mathcal D_l+q^2)[U]=0`` after dividing by ``\eta`` and
+# absorbing it into ``q^2=\sigma/\nu``. Nothing was assumed to get there; it
+# is recovered.
+#
+# **The order of the equation does not change.** The highest derivative is
+# ``\eta U''''`` in the first term; ``\eta'`` reaches only ``U'''`` and
+# ``\eta''`` only ``U''``. So ``\mathcal R_l`` is fourth order in ``U``, exactly
+# as Reid's operator is, the solution space is still four-dimensional, and the
+# problem still closes on the *same number* of boundary conditions. A variable
+# viscosity changes the coefficients of the interior problem; it does not change
+# its type.
+#
+# **``\eta''`` enters through Reid's own tangential-stress operator.** The
+# ``\mathcal L_2`` appearing above is not a new object: it is the operator whose
+# vanishing at the surface *is* Reid's BC2, ``\mathcal L_2[U]|_{x=1}=0``, derived
+# on the page *The Viscous Drop: Reid (1960)*. It appears here because
+# ``\mathcal L_2[U]\propto e_{r\theta}``, and the second radial derivative of the
+# viscosity couples to precisely the shear component of the strain.
+#
+# **(ii) The boundary conditions, one at a time.** Reid closes the problem with
+# three conditions. Under ``\eta=\eta(\dot\gamma)`` they fare as follows.
+#
+# ```math
+# \text{BC1 (kinematic):}\qquad u_r\big|_{x=1}=\frac{\partial\zeta}{\partial t}
+# ```
+#
+# contains no viscosity at all, and is **unchanged**.
+#
+# ```math
+# \text{BC2 (tangential):}\qquad \tau_{r\theta}\big|_{x=1}=2\eta\,e_{r\theta}=0
+# \;\Longleftrightarrow\; e_{r\theta}\big|_{x=1}=0
+# \;\Longleftrightarrow\; \mathcal L_2[U]\big|_{x=1}=0 ,
+# ```
+#
+# where the first equivalence holds because ``\eta(\dot\gamma)\ge\eta_\infty>0``
+# everywhere, so the scalar factor cannot vanish. **BC2 is therefore
+# rheology-agnostic for every generalized Newtonian fluid**, and Reid's whole
+# ``\tau_{r\theta}=0\Rightarrow\mathcal L_2[U]=0`` chain carries over verbatim.
+#
+# ```math
+# \text{BC3 (normal):}\qquad -p_{rr}\big|_{x=1}
+#   = p+\delta p-2\eta_s\frac{\partial u_r}{\partial x}\Big|_{x=1},
+# \qquad \eta_s\equiv\eta\bigl(\dot\gamma|_{x=1}\bigr),
+# ```
+#
+# in which ``\eta`` is genuinely multiplicative, so it survives as the *surface
+# value* ``\eta_s``. The form of the condition is unchanged; one coefficient
+# becomes state-dependent.
+#
+# So the honest scope of "adapt Reid to a generalized Newtonian fluid" is: **one
+# extra term in the interior operator, one coefficient in BC3, and nothing
+# else.**
+#
+# **(iii) A radially varying viscosity keeps one ODE per mode.** For
+# ``\eta=\eta(x)`` the display above already says it: every ``\theta``-dependence
+# sits in the single factor ``C_l(\theta)``, so dividing it out leaves a pure
+# radial equation,
+#
+# ```math
+# q^2\,\mathcal D_l[U] \;+\; \mathcal R_l[U;\eta] \;=\; 0 ,
+# ```
+#
+# one such equation for each ``l``, with no reference to any other mode.
+# Separability is intact and the modes do not talk to each other. **This is the
+# rung Step 7 is about.**
+#
+# **(iv) An angularly varying viscosity destroys separability.** Let
+# ``\eta=\eta(x,\theta)``. Now ``\partial_\theta\eta\neq0``, the curl acquires
+# terms in ``\partial_\theta\eta`` and ``\partial^2_{\theta\theta}\eta``, and it
+# no longer factors: the ratio
+# ``[\nabla\times\bm M]_\varphi\big/C_l(\theta)`` is a function of ``\theta``,
+# not a constant. There is no radial operator to write down, because there is no
+# ``\theta``-independent thing left after dividing out the angular factor.
+#
+# It is worth saying exactly what is lost, because "one mode can no longer be
+# isolated" is doing real work. Let ``\mathcal A`` be the linearised operator of
+# the whole problem and ``\Lambda_\theta`` the angular Laplacian, whose
+# eigenfunctions are the ``P_l``. For constant -- or purely radial -- viscosity,
+#
+# ```math
+# [\mathcal A,\Lambda_\theta]=0 ,
+# ```
+#
+# so the two commute, share an eigenbasis, and ``\mathcal A`` is *block diagonal*
+# in ``\{P_l\}``:
+#
+# ```math
+# \langle P_l|\mathcal A|P_{l''}\rangle \;=\; 0 \quad\text{for } l\neq l'' .
+# ```
+#
+# That is what "isolates one mode" means, and it is exactly the simultaneous
+# diagonalisation Reid's construction rests on. Once ``\eta`` depends on
+# ``\theta``, ``[\mathcal A,\Lambda_\theta]\neq0``, no common eigenbasis exists,
+# and those off-diagonal projections are nonzero -- which is not a failure of
+# technique but the statement that mode ``l''`` genuinely drives mode ``l``. The
+# ``\mathcal D`` matrices of the previous section are those projections.
+#
+# The mechanism is therefore located precisely. The extra term
+# ``2(\nabla\eta)\cdot\bm e`` is carried through every one of Reid's steps: it is
+# inert at the curl, it merely re-decorates the radial operator at (iii), and
+# only when ``\eta`` acquires *angular* structure does it break the commutation
+# that the whole construction rests on.
 #
 @variables rr tt qq hh0 hh1 hh2  #src
 @variables Hgen(..)  #src
@@ -498,7 +595,7 @@ let  #src
     ## tau = 2*eta*e from tau = 2*eta^2*e, since the two agree there. With  #src
     ## eta = c the viscous terms carry a factor c while the inertial q^2 term  #src
     ## does not, so the whole curl must equal  #src
-    ##     c * [-A_l/(r sin th)] * D_l(D_l + q^2/c)[U],  #src
+    ##     c * [-C_l/(x sin th)] * D_l(D_l + q^2/c)[U],  #src
     ## which pins the power of eta as well as the operator.  #src
     Uc = rr^(l+1) + 0.7*rr^(l+3) - 0.3*rr^(l+5) + 0.11*rr^(l+2)  #src
     rats = Float64[]  #src
@@ -509,6 +606,40 @@ let  #src
         end  #src
     end  #src
     @assert all(abs(x-1) < 1e-9 for x in rats) "constant eta did not return Reid's operator with the right power of eta"  #src
+
+    ## (ii-b) the BOXED radial operator itself. The page now states  #src
+    ##     R_l[U;eta] = eta*D_l^2[U] + 2*eta' d/dx(D_l[U] - U'/x) + eta''*L2[U]  #src
+    ## as an exact result, so it is checked as one -- against the curl computed  #src
+    ## from scratch, for several U and several eta(x), at several (r,theta).  #src
+    ## A failure here would mean the interior equation printed on the page is  #src
+    ## not the interior equation the fluid actually obeys.  #src
+    L2op(U) = Symbolics.expand_derivatives(Drr(Drr(U))) - 2*Symbolics.expand_derivatives(Drr(U))/rr + l*(l+1)*U/rr^2  #src
+    Dx(e) = Symbolics.expand_derivatives(Drr(e))  #src
+    Rl(U,H) = H*Dln(Dln(U,l),l) + 2*Dx(H)*Dx(Dln(U,l) - Dx(U)/rr) + Dx(Dx(H))*L2op(U)  #src
+    ## The error is normalised GLOBALLY -- largest discrepancy over the sweep  #src
+    ## against the largest magnitude over the sweep -- not pointwise. A         #src
+    ## pointwise relative error is meaningless wherever the operator genuinely  #src
+    ## vanishes, and it does vanish here: for U = x^(l+1) (harmonic, so         #src
+    ## D_l[U] = 0) and eta = 2 - 0.15x^2 the eta' and eta'' terms cancel        #src
+    ## identically, 1.8x - 1.8x = 0. That is a property of the operator, not a  #src
+    ## failure, and an earlier pointwise version of this check reported it as   #src
+    ## a 100% error.                                                            #src
+    maxdiff_box, maxmag_box = 0.0, 0.0  #src
+    for Ub in (rr^(l+1), rr^(l+3), rr^(l+1) + 0.7rr^(l+3) - 0.3rr^(l+5) + 0.11rr^(l+2))  #src
+        for (a0,a1,a2) in ((1.3,0.9,0.0), (0.8,0.5,0.6), (2.0,0.0,-0.15))  #src
+            Hb = a0 + a1*rr + a2*rr^2  #src
+            ## viscous part only: set the inertial q^2 to zero on both sides  #src
+            for (rv,tv) in PTS  #src
+                lhs = ev(curlmom(l,Ub,Hb),rv,tv,0.0,0.,0.,0.)  #src
+                rhs = ev(-Rl(Ub,Hb)*angl(l)/(rr*sin(tt)),rv,tv,0.0,0.,0.,0.)  #src
+                maxdiff_box = max(maxdiff_box, abs(lhs-rhs))  #src
+                maxmag_box  = max(maxmag_box, abs(rhs))  #src
+            end  #src
+        end  #src
+    end  #src
+    @assert maxmag_box > 1.0 "the R_l sweep never exercised a nonzero operator; the check is vacuous"  #src
+    worst_box = maxdiff_box / maxmag_box  #src
+    @assert worst_box < 1e-8 "the boxed radial operator R_l does not equal the curl it claims to ($worst_box)"  #src
 
     ## (iii) eta = eta(r) keeps the angular factor -- separability survives  #src
     Hr = hh0 + hh1*rr + hh2*rr^2  #src
@@ -533,6 +664,8 @@ let  #src
     println("    (i) the curl removes the pressure and leaves eta only through its")  #src
     println("        first and second derivatives, never third or higher;")  #src
     println("    (ii) constant eta returns D_l(D_l+q^2)U exactly (to $(round(maximum(abs(x-1) for x in rats), sigdigits=2)));")  #src
+    println("    (ii-b) the boxed operator R_l = eta*D_l^2 + 2eta' d/dx(D_l - d/dx /x) + eta''*L2")  #src
+    println("         reproduces the curl for variable eta(x) (to $(round(worst_box, sigdigits=2)));")  #src
     println("    (iii) eta(r) preserves separability (spread $(round(sep, sigdigits=2))), so one")  #src
     println("         radial ODE per mode survives -- this is the A7 rung;")  #src
     println("    (iv) eta(r,theta) destroys it (spread $(round(coup, sigdigits=3))), which is the coupling.")  #src
@@ -610,7 +743,7 @@ end  #src
 #
 # ```math
 # \boxed{\;
-# \ddot{\bm A} \;+\; \mathcal D^{(2)}\,\dot{\bm A}
+# \bm{\ddot A} \;+\; \mathcal D^{(2)}\,\bm{\dot A}
 #              \;+\; \mathcal D^{(1)}\,\bm A \;+\; \bm b \;=\; 0 \;}
 # ```
 #
@@ -870,8 +1003,8 @@ end  #src
 # matrices, and the equation is honestly written
 #
 # ```math
-# \ddot A_l + \sum_{l''}\Bigl[\mathcal D^{(2)}_{l l''}(\dot{\bm A})\,\dot A_{l''}
-#   + \mathcal D^{(1)}_{l l''}(\dot{\bm A})\,A_{l''}\Bigr] + l\,B_l = 0 .
+# \ddot A_l + \sum_{l''}\Bigl[\mathcal D^{(2)}_{l l''}(\bm{\dot A})\,\dot A_{l''}
+#   + \mathcal D^{(1)}_{l l''}(\bm{\dot A})\,A_{l''}\Bigr] + l\,B_l = 0 .
 # ```
 #
 # This is *quasi-linear*: linear in ``(A_l,\dot A_l)`` at frozen coefficients,
@@ -880,7 +1013,7 @@ end  #src
 # on the state makes it look like one.
 #
 # The solver closes it by **lagging**: ``\mathcal D`` is evaluated at the
-# previous step's ``\dot{\bm A}``, so within a single Newton step the
+# previous step's ``\bm{\dot A}``, so within a single Newton step the
 # coefficients are constants and the Jacobian is exact for that step. The
 # nonlinearity is carried across steps rather than inside them, which costs one
 # order in ``\Delta t`` and constrains the step size.
