@@ -319,166 +319,270 @@ end  #src
 
 # ## Step 4 (L4) -- the full coupled system
 #
-# This is the rung to remember. Everything below it is a simplification *of
-# this*, and anything you later decide you need, you recover by climbing back
+# This is the rung to remember. Everything below it is a simplification *of*
+# this, and anything you later decide you need, you recover by climbing back
 # here.
 #
-# The goal is concrete: write down the equation a shear-thinning drop obeys, in
-# the same variables the Newtonian solver already integrates, so the two can be
-# compared term by term.
+# ### Where a mode equation comes from
 #
-# ### The Newtonian system we are generalising
+# It is worth being explicit about how a single-mode equation is obtained at
+# all, because that is where the coupling will enter. For a given surface
+# deformation, three things happen in sequence:
 #
-# The solver of Gabbard et al. (2025) carries one damped oscillator per surface
-# mode. With the shape written as
-# ``\zeta(\theta,t)=R\sum_{l\ge2}A_l(t)P_l(\cos\theta)``,
+# 1. the interior velocity field is whatever the momentum equation produces
+#    when driven by that surface motion;
+# 2. that field carries a viscous normal stress up to the free surface;
+# 3. the stress balance at the surface -- viscous plus pressure against surface
+#    tension -- is projected onto ``P_l`` to give the equation for ``A_l``.
 #
-# ```math
-# \ddot A_l \;+\; \underbrace{2\lambda_l}_{\text{damping}}\dot A_l
-#           \;+\; \underbrace{\omega_l^2}_{\text{stiffness}}A_l
-#           \;+\; l\,B_l \;=\; 0 ,
-# \qquad l=2\ldots M .
-# ```
-#
-# Here ``\lambda_l`` and ``\omega_l^2`` are the two roots of Reid's
-# characteristic equation, evaluated at the single Ohnesorge number of a
-# Newtonian fluid, and ``B_l(t)`` are the Legendre coefficients of the contact
-# pressure on the free surface -- the forcing that the wall applies while the
-# drop is touching it. ``B_l`` is unchanged by anything on this page: it is
-# kinematic and geometric, and no rheology enters it.
-#
-# Two scalars per mode, and no coupling between modes. That last property is
-# what we are about to lose.
-#
-# ![Three mode-coupling matrices side by side: diagonal when the viscosity is
-# constant, banded when it varies slowly with angle, and fully dense when it
-# varies sharply.](../assets/coupling_structure.png)
-#
-# *Step 6 measures which of these the validation fluid actually produces --
-# the answer is the third.*
-# ### Where the coupling comes from
-#
-# From Step 0, a variable viscosity adds one term to the momentum equation:
+# With a constant viscosity all three steps preserve the mode. A surface
+# deformation ``\propto P_l`` drives an interior field whose angular dependence
+# is still ``P_l``, its stress at the surface is still ``\propto P_l``, and step 3
+# picks out one equation per mode by orthogonality. That is why Reid obtains one
+# characteristic equation per ``l``, and why the solver of Gabbard et al. (2025)
+# can integrate ``M-1`` independent oscillators. Collecting them into a vector
+# ``\bm A=(A_2,\ldots,A_M)^{\mathsf T}``,
 #
 # ```math
-# \nabla\cdot(2\eta\bm e) \;=\; \eta\,\nabla^2\bm u \;+\; 2(\nabla\eta)\cdot\bm e .
-# ```
-#
-# Both terms now carry ``\eta`` as a *field* rather than a constant. Expand it
-# in its own Legendre series -- the natural basis, since the problem is
-# axisymmetric (Step 2) and ``\eta`` is therefore a function of ``x=r/R`` and
-# ``\theta`` only:
-#
-# ```math
-# \frac{\eta(x,\theta,t)}{\eta_0}
-#   \;=\; \sum_{l'\ge0}\eta_{l'}(x,t)\,P_{l'}(\cos\theta),
+# \ddot{\bm A} \;+\; 2\bm\Lambda\,\dot{\bm A} \;+\; \bm\Omega\,\bm A
+#   \;+\; \bm b \;=\; 0 ,
 # \qquad
-# \eta_{l'}(x,t) = \frac{2l'+1}{2}\int_{-1}^{1}\frac{\eta}{\eta_0}\,P_{l'}(\mu)\,d\mu .
+# \bm\Lambda=\operatorname{diag}(\lambda_l),
+# \quad
+# \bm\Omega=\operatorname{diag}(\omega_l^2),
 # ```
 #
-# The index ``l'`` is the viscosity's own angular index. It is **not** a drop
-# mode, and it does not range over the same set: the shape expansion runs
-# ``l=2\ldots M``, while ``l'`` starts at ``0`` and, as shown below, only
-# matters up to ``2M``.
+# where ``\lambda_l`` and ``\omega_l^2`` are the two roots of Reid's
+# characteristic equation and ``\bm b`` has entries ``l\,B_l``, the contact
+# pressure the wall applies while the drop is touching it. ``\bm b`` is
+# kinematic and geometric; no rheology enters it, and nothing below changes it.
 #
-# ### Projecting onto a mode
+# **Both matrices are diagonal, and that is the entire content of the Newtonian
+# model.** What follows is an argument that a shear-thinning fluid destroys the
+# diagonality and nothing else.
 #
-# Write the velocity as a sum over modes. Mode ``l''`` has radial component
-# ``u_r^{(l'')}=F_{l''}(x)P_{l''}(\mu)``, and incompressibility fixes its polar
-# component as ``u_\theta^{(l'')}=G_{l''}(x)\sin\theta\,P'_{l''}(\mu)``, where a
-# prime on a Legendre polynomial denotes ``d/d\mu``. Both radial profiles are
-# Reid's. The strain components follow directly, in particular
+# ### Following Reid's route, one step at a time
+#
+# Reid's derivation has a fixed shape: linearise; take the curl of the momentum
+# equation to eliminate the pressure; reduce what is left to a radial ODE; solve
+# it; impose the three boundary conditions; read off the characteristic
+# equation. The question is not whether a shear-thinning fluid has an analogous
+# route -- it is *where along that route* the extra term
+# ``2(\nabla\eta)\cdot\bm e`` first does damage. Taking the steps in order
+# answers that, and the answer is later than one might expect.
+#
+# **(i) The curl still removes the pressure.** That step is indifferent to the
+# rheology: ``\nabla\times\nabla p=0`` whatever ``\eta`` does. Writing the
+# axisymmetric field through a stream function ``\psi=U(x)A_l(\theta)``, exactly
+# as Reid does, and taking the ``\varphi``-component of the curl of the momentum
+# equation, the pressure drops out and what remains depends on the viscosity
+# through
 #
 # ```math
-# e^{(l'')}_{rr} = F'_{l''}(x)\,P_{l''}(\mu),
+# \eta,\quad \partial_x\eta,\quad \partial_\theta\eta,\quad
+# \partial^2_{xx}\eta,\quad \partial^2_{x\theta}\eta,\quad \partial^2_{\theta\theta}\eta
+# ```
+#
+# and **no derivative of third order or higher**. That bound is worth having: it
+# says the variable-viscosity problem is no worse differentiated than Reid's,
+# and it is checked below rather than assumed.
+#
+# **(ii) Constant viscosity returns Reid exactly.** Setting every derivative of
+# ``\eta`` to zero, the surviving expression is
+#
+# ```math
+# \bigl[\nabla\times\bm M\bigr]_\varphi
+#   \;=\; -\frac{A_l(\theta)}{x\sin\theta}\;
+#     \mathcal D_l\bigl(\mathcal D_l+q^2\bigr)[U],
 # \qquad
-# e^{(l'')}_{r\theta}
-#   = \tfrac12\Bigl[G'_{l''}-\tfrac{G_{l''}}{x}-\tfrac{F_{l''}}{x}\Bigr]
-#     \sin\theta\,P'_{l''}(\mu).
+# \mathcal D_l \equiv \frac{d^2}{dx^2}-\frac{l(l+1)}{x^2},
 # ```
 #
-# Now take the viscous term of Step 0 with ``\eta`` carrying its own harmonic
-# ``\eta_{l'}(x)P_{l'}(\mu)``. The two pieces contribute different angular
-# structures. For ``\eta\nabla^2\bm u`` the viscosity multiplies the field
-# without differentiating it, so the radial component carries
-# ``P_{l'}(\mu)P_{l''}(\mu)``. For ``2(\nabla\eta)\cdot\bm e`` the gradient has
-# both components,
+# which is Reid's radial equation, recovered from the general machinery rather
+# than assumed. The factor ``1/(x\sin\theta)`` is the Jacobian between the curl
+# and the stream-function operator, not a physical term.
+#
+# **(iii) A radially varying viscosity keeps one ODE per mode.** Let
+# ``\eta=\eta(x)`` -- no angular structure. The ``\partial_\theta\eta`` terms
+# vanish identically, and the curl still factors as
+# ``A_l(\theta)\times(\text{radial operator on }U)``: the angular dependence
+# separates exactly as in Reid, so there is still one ODE per mode and no
+# coupling. What changes is only the radial operator, which now carries
+# ``\eta'`` and ``\eta''`` alongside ``\eta``. **This is the rung Step 7 is
+# about**, and separability is the reason it is worth having.
+#
+# **(iv) An angularly varying viscosity destroys separability.** Give ``\eta``
+# any dependence on ``\theta`` and the ``\partial_\theta\eta`` terms are no
+# longer zero. The curl no longer factors: the ratio
+# ``[\nabla\times\bm M]_\varphi\,/\,A_l(\theta)`` varies with ``\theta`` at
+# ``O(1)``. A surface deformation ``\propto P_{l}`` therefore drives an interior
+# field whose stress at the surface is *not* ``\propto P_l``, and projecting the
+# stress balance onto ``P_l`` can no longer isolate one mode.
+#
+# That is the whole mechanism, and it is worth stating plainly what has and has
+# not happened. The extra term ``2(\nabla\eta)\cdot\bm e`` is carried through
+# every one of Reid's steps unchanged; it is inert at step (i), harmless at step
+# (iii), and only at step (iv) -- when ``\eta`` acquires angular structure --
+# does it break the property Reid's whole construction rests on.
+#
+@variables rr tt qq hh0 hh1 hh2  #src
+@variables Hgen(..)  #src
+let  #src
+    Drr = Differential(rr); Dtt = Differential(tt)  #src
+    LPn(l,m) = l==0 ? one(m) : l==1 ? m : begin a,b=one(m),m; for n in 1:l-1; b,a=((2n+1)*m*b-n*a)/(n+1),b; end; b end  #src
+    LPpn(l,m) = l==0 ? zero(m) : l*(m*LPn(l,m)-LPn(l-1,m))/(m^2-1)  #src
+    angl(l) = sin(tt)^2*LPpn(l,cos(tt))/(l*(l+1))  #src
+    function curlmom(l, U, H)  #src
+        psi = U*angl(l)  #src
+        u_r  =  Symbolics.expand_derivatives(Dtt(psi)/(rr^2*sin(tt)))  #src
+        u_th = -Symbolics.expand_derivatives(Drr(psi)/(rr*sin(tt)))  #src
+        e_rr = Symbolics.expand_derivatives(Drr(u_r))  #src
+        e_tt = Symbolics.expand_derivatives(Dtt(u_th)/rr + u_r/rr)  #src
+        e_pp = u_r/rr + u_th*cos(tt)/(sin(tt)*rr)  #src
+        e_rt = Symbolics.expand_derivatives((Dtt(u_r)/rr + Drr(u_th) - u_th/rr)/2)  #src
+        trr=2H*e_rr; ttt=2H*e_tt; tpp=2H*e_pp; trt=2H*e_rt  #src
+        dr = Symbolics.expand_derivatives(Drr(rr^2*trr)/rr^2 + Dtt(trt*sin(tt))/(rr*sin(tt)) - (ttt+tpp)/rr)  #src
+        dt = Symbolics.expand_derivatives(Drr(rr^2*trt)/rr^2 + Dtt(ttt*sin(tt))/(rr*sin(tt)) + trt/rr - cos(tt)/(sin(tt)*rr)*tpp)  #src
+        Symbolics.expand_derivatives((Drr(rr*(qq*u_th+dt)) - Dtt(qq*u_r+dr))/rr)  #src
+    end  #src
+    Dln(e,l) = Symbolics.expand_derivatives(Drr(Drr(e))) - l*(l+1)*e/rr^2  #src
+    reidop(U,l) = Symbolics.expand_derivatives(Dln(Dln(U,l) + qq*U, l))  #src
+    ev(e,rv,tv,qv,a0,a1,a2) = Float64(eval(Symbolics.toexpr(Symbolics.substitute(  #src
+        Symbolics.expand_derivatives(e), Dict(rr=>rv, tt=>tv, qq=>qv, hh0=>a0, hh1=>a1, hh2=>a2)))))  #src
+    l = 2  #src
+    PTS = ((0.43,0.7),(0.61,1.3),(0.82,2.1),(0.37,2.6),(0.95,0.44))  #src
+
+    ## (i) which derivatives of eta survive the curl
+    full = curlmom(l, rr^(l+1) + 0.7*rr^(l+3), Hgen(rr,tt))  #src
+    txt = string(full)  #src
+    d3 = Differential(rr)(Differential(rr)(Differential(rr)(Hgen(rr,tt))))  #src
+    @assert !occursin(string(d3), txt) "a third derivative of eta survived the curl"  #src
+    for d in (Differential(rr)(Hgen(rr,tt)), Differential(tt)(Hgen(rr,tt)))  #src
+        @assert occursin(string(d), txt) "expected first derivatives of eta to appear"  #src
+    end  #src
+
+    ## (ii) constant eta must return Reid's operator exactly
+    Uc = rr^(l+1) + 0.7*rr^(l+3) - 0.3*rr^(l+5) + 0.11*rr^(l+2)  #src
+    rats = [ev(curlmom(l,Uc,1),rv,tv,3.7,0.,0.,0.) /  #src
+            ev(-reidop(Uc,l)*angl(l)/(rr*sin(tt)),rv,tv,3.7,0.,0.,0.) for (rv,tv) in PTS]  #src
+    @assert all(abs(x-1) < 1e-9 for x in rats) "constant eta did not return Reid's operator"  #src
+
+    ## (iii) eta = eta(r) keeps the angular factor -- separability survives
+    Hr = hh0 + hh1*rr + hh2*rr^2  #src
+    sep = 0.0  #src
+    for U in (rr^(l+1), rr^(l+3), rr^(l+2))  #src
+        C = curlmom(l, U, Hr)  #src
+        v = [ev(C,0.6,tv,3.7,1.0,0.4,-0.2)/ev(angl(l)/(rr*sin(tt)),0.6,tv,3.7,1.0,0.4,-0.2)  #src
+             for tv in (0.5,1.1,1.9,2.5)]  #src
+        sep = max(sep, (maximum(v)-minimum(v))/abs(v[1]))  #src
+    end  #src
+    @assert sep < 1e-9 "eta(r) broke separability, which it must not ($sep)"  #src
+
+    ## (iv) eta with angular structure must break it
+    Hrt = hh0 + hh1*rr + hh2*cos(tt)^2  #src
+    C = curlmom(l, rr^(l+1), Hrt)  #src
+    v = [ev(C,0.6,tv,3.7,1.0,0.4,-0.2)/ev(angl(l)/(rr*sin(tt)),0.6,tv,3.7,1.0,0.4,-0.2)  #src
+         for tv in (0.5,1.1,1.9,2.5)]  #src
+    coup = (maximum(v)-minimum(v))/abs(v[1])  #src
+    @assert coup > 1e-2 "angular eta failed to break separability; the coupling claim is false"  #src
+
+    println("  ASSERTION 3b OK: following Reid's route with a variable viscosity --")  #src
+    println("    (i) the curl removes the pressure and leaves eta only through its")  #src
+    println("        first and second derivatives, never third or higher;")  #src
+    println("    (ii) constant eta returns D_l(D_l+q^2)U exactly (to $(round(maximum(abs(x-1) for x in rats), sigdigits=2)));")  #src
+    println("    (iii) eta(r) preserves separability (spread $(round(sep, sigdigits=2))), so one")  #src
+    println("         radial ODE per mode survives -- this is the A7 rung;")  #src
+    println("    (iv) eta(r,theta) destroys it (spread $(round(coup, sigdigits=3))), which is the coupling.")  #src
+end  #src
+
+# ### Carrying the projection through
+#
+# Project as before: multiply by ``P_l(\mu)`` and integrate over
+# ``\mu\in[-1,1]``. Writing the surface motion as
+# ``\dot\zeta=R\sum_{l''}\dot A_{l''}P_{l''}``, so that mode ``l''`` enters with
+# strength ``\dot A_{l''}``, the contribution of the viscous stress to the
+# equation for ``A_l`` is a double sum over the driving mode ``l''`` and the
+# viscosity harmonic ``l'``, of terms
 #
 # ```math
-# \nabla\eta = \eta'_{l'}(x)P_{l'}(\mu)\,\hat{\bm e}_r
-#            - \frac{\eta_{l'}(x)}{x}\sin\theta\,P'_{l'}(\mu)\,\hat{\bm e}_\theta ,
+# \dot A_{l''}\;
+# \underbrace{\int_0^1\!\eta_{l'}(x)\,\bigl[\cdots\bigr]\,x^2\,dx}_{\text{radial}}
+# \;\times\;
+# \underbrace{\int_{-1}^{1}\! P_l\,P_{l'}\,P_{l''}\,d\mu
+#   \ \ \text{or}\ \
+#   \int_{-1}^{1}\! P_l\,(1-\mu^2)\,P'_{l'}\,P'_{l''}\,d\mu}_{\text{angular}} ,
 # ```
 #
-# so its radial component picks up ``\eta'_{l'}P_{l'}e_{rr}``, again of the form
-# ``P_{l'}P_{l''}``, together with
-# ``-(\eta_{l'}/x)\sin\theta P'_{l'}\,e_{r\theta}``, whose angular part is
-# ``(1-\mu^2)P'_{l'}(\mu)P'_{l''}(\mu)``.
+# the two angular forms being the two contributions identified above. The
+# bracket ``[\cdots]`` in the radial integral holds the radial factors those same
+# terms produce: from ``\eta\nabla^2\bm u``, the radial Laplacian of the driving
+# mode's profile,
+# ``\mathcal L_{l''}[F_{l''}]=F''_{l''}+\tfrac{2}{x}F'_{l''}-\tfrac{l''(l''+1)}{x^2}F_{l''}``;
+# from ``2(\nabla\eta)\cdot\bm e``, the products of ``\eta'_{l'}`` and
+# ``\eta_{l'}/x`` with the radial parts of ``e_{rr}`` and ``e_{r\theta}`` above.
 #
-# Project by multiplying through by ``P_l(\mu)`` and integrating over
-# ``\mu\in[-1,1]``. Every term therefore reduces to one of two integrals,
+# The second angular form is not a new object. Using
+# ``(1-\mu^2)P'_n=\tfrac{n(n+1)}{2n+1}(P_{n-1}-P_{n+1})`` and expanding
+# ``P'_{l''}`` in Legendre polynomials of lower degree turns it into a finite
+# combination of integrals of the first kind at shifted indices. **Every angular
+# integral in the problem is therefore of one type**, and it is worth a name:
 #
 # ```math
-# \int_{-1}^{1}P_l\,P_{l'}\,P_{l''}\,d\mu
-# \qquad\text{or}\qquad
-# \int_{-1}^{1}P_l\,(1-\mu^2)\,P'_{l'}\,P'_{l''}\,d\mu ,
+# G^{l'}_{l l''} \;\equiv\; \frac{2l+1}{2}\int_{-1}^{1}P_l\,P_{l'}\,P_{l''}\,d\mu
 # ```
 #
-# and the second is not a new object: applying
-# ``(1-\mu^2)P'_n = \tfrac{n(n+1)}{2n+1}\bigl(P_{n-1}-P_{n+1}\bigr)`` and
-# expanding ``P'_{l''}`` in Legendre polynomials of degree below ``l''`` turns
-# it into a finite combination of integrals of the first kind, at shifted
-# indices. **Every angular integral in the problem is therefore a Gaunt
-# coefficient**, and that is the whole origin of the coupling.
+# -- a Gaunt coefficient, pure geometry, depending on three integers and on
+# nothing about the fluid. Likewise the radial integral depends only on
+# ``(l,l',l'')`` and on the current viscosity profile; write it
+# ``R^{(i)}_{l l''}[\eta_{l'}]``, the index ``i`` distinguishing the terms that
+# end up multiplying ``\dot A`` from those multiplying ``A``.
 #
-# In the Newtonian case ``\eta`` has only its ``l'=0`` harmonic, ``P_0=1``, and
-# both families collapse to two-factor integrals that orthogonality kills unless
-# ``l=l''``. Reid's independent oscillators are what is left.
+# ### The result
 #
-# ### The resulting system
+# With those two names, the double sum collapses. Define
 #
-# Collecting terms, and writing ``B_l`` for the contact-pressure coefficients as
-# before,
+# ```math
+# \mathcal D^{(i)}_{l l''} \;=\; \sum_{l'} G^{l'}_{l l''}\;R^{(i)}_{l l''}[\eta_{l'}] ,
+# ```
+#
+# and the modal system takes exactly the Newtonian form with the two diagonal
+# matrices replaced by full ones:
 #
 # ```math
 # \boxed{\;
-# \ddot A_l \;+\; \sum_{l''=2}^{M}\Bigl[\,\mathcal D^{(2)}_{l l''}\,\dot A_{l''}
-#      \;+\; \mathcal D^{(1)}_{l l''}\,A_{l''}\Bigr] \;+\; l\,B_l \;=\; 0 \;}
+# \ddot{\bm A} \;+\; \mathcal D^{(2)}\,\dot{\bm A}
+#              \;+\; \mathcal D^{(1)}\,\bm A \;+\; \bm b \;=\; 0 \;}
 # ```
 #
-# with ``\mathcal D^{(2)}`` the **damping** matrix, generalising ``2\lambda_l``,
-# and ``\mathcal D^{(1)}`` the **stiffness** matrix, generalising
-# ``\omega_l^2``. The viscous stress is linear in the velocity and so feeds
-# ``\mathcal D^{(2)}`` directly; it reaches ``\mathcal D^{(1)}`` through the
+# ``\mathcal D^{(2)}`` generalises ``2\bm\Lambda`` and ``\mathcal D^{(1)}``
+# generalises ``\bm\Omega``. The viscous stress is linear in the velocity and so
+# feeds ``\mathcal D^{(2)}`` directly; it reaches ``\mathcal D^{(1)}`` through the
 # normal-stress condition, where ``\eta`` appears multiplicatively at the
-# surface, which is why Reid's ``\omega_l^2`` depends on viscosity at all. Both
-# matrices have the same assembly:
+# surface -- which is also why Reid's ``\omega_l^2`` depends on viscosity at all.
+#
+# !!! note "What is derived here and what is not"
+#     The angular structure above is complete, and the selection rule proved
+#     below follows from it. The radial integrals ``R^{(i)}`` are *defined* by
+#     the expression above but are not evaluated in closed form on this page:
+#     doing so means solving the interior problem of step 1 with a variable
+#     ``\eta``, which is the open work Step 7 identifies. Step 7 does construct
+#     that radial operator for ``l'=0``, where it can be checked against Reid's.
+#
+# ### The Newtonian case, as a check
+#
+# A constant viscosity has one nonzero harmonic, ``\eta_0``, at ``l'=0``. Since
+# ``P_0=1`` the angular factor is the ordinary orthogonality relation,
 #
 # ```math
-# \mathcal D^{(i)}_{l l''}
-#   \;=\; \sum_{l'} G^{l'}_{l l''}
-#          \int_0^1 \eta_{l'}(x,t)\,K^{(i)}_{l l''}(x)\,x^2\,dx ,
-# \qquad
-# G^{l'}_{l l''} \;=\; \frac{2l+1}{2}\int_{-1}^{1}P_l\,P_{l'}\,P_{l''}\,d\mu .
+# G^{0}_{l l''}=\frac{2l+1}{2}\int_{-1}^{1}P_l\,P_{l''}\,d\mu=\delta_{l l''},
 # ```
 #
-# ``G^{l'}_{l l''}`` is the angular factor -- a Gaunt coefficient -- and it is
-# pure geometry, depending on three integers and on nothing about the fluid.
-# ``K^{(i)}_{l l''}(x)`` is what the radial factors of the same terms collect
-# into: from ``\eta\nabla^2\bm u``, the radial Laplacian of mode ``l''``'s
-# profile, ``\mathcal L_{l''}[F_{l''}]=F''_{l''}+\tfrac{2}{x}F'_{l''}
-# -\tfrac{l''(l''+1)}{x^2}F_{l''}``; and from ``2(\nabla\eta)\cdot\bm e``, the
-# products of ``\eta'_{l'}`` and ``\eta_{l'}/x`` with the radial parts of
-# ``e_{rr}`` and ``e_{r\theta}`` written above.
+# so both sums lose every off-diagonal term and ``\mathcal D^{(2)}``,
+# ``\mathcal D^{(1)}`` collapse to ``2\bm\Lambda`` and ``\bm\Omega``. Gabbard's
+# system returns term by term. The Newtonian model is the special case of this
+# one, not a separate theory.
 #
-# !!! note "What is and is not derived here"
-#     The angular structure above is complete: the coupling is a Gaunt
-#     coefficient, and the selection rule proved below follows from it. The
-#     radial kernels ``K^{(i)}`` are *defined* by the integrals above but are not
-#     solved for in closed form on this page, because doing so means solving the
-#     variable-``\eta`` radial eigenproblem -- which is exactly the open work
-#     Step 7 identifies. Step 7 does construct the radial operator for
-#     ``l'=0``, where it can be checked against Reid's.
-#
+
 let  #src
     Pl(l, m) = l == 0 ? one(m) : l == 1 ? m :  #src
         begin am, b = one(m), m; for n in 1:l-1; b, am = ((2n+1)*m*b - n*am)/(n+1), b; end; b end  #src
@@ -500,9 +604,9 @@ let  #src
     end  #src
     @assert worst_deriv < 1e-12 "the derivative-type angular integral broke the selection rule"  #src
     println("  ASSERTION 4b OK: (1-mu^2)P_n' = n(n+1)/(2n+1)(P_{n-1}-P_{n+1}) to")  #src
-    println("    $(round(worst_rec, sigdigits=2)), and the derivative-type integral")  #src
-    println("    obeys the same l <= l'+l'' selection rule (max $(round(worst_deriv, sigdigits=2)))")  #src
-    println("    -- so both angular families reduce to Gaunt coefficients.")  #src
+    println("    $(round(worst_rec, sigdigits=2)); and the derivative-type angular integral")  #src
+    println("    obeys the same l <= l'+l'' selection rule (max $(round(worst_deriv, sigdigits=2))),")  #src
+    println("    so both angular families reduce to Gaunt coefficients.")  #src
 end  #src
 
 # ### The selection rule
