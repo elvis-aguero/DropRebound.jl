@@ -112,16 +112,21 @@ function coupling_structure()
     W = 3M + 2gap
     A = fill(NaN, M, W)
     for i in 1:M, j in 1:M
-        A[i, j]             = (i == j)          ? 1.0 : 0.0
-        A[i, j + M + gap]   = abs(i - j) <= 4   ? 1.0 : 0.0
-        A[i, j + 2M + 2gap] = 1.0
+        ## Parity: G^{l'}_{l l''} vanishes unless l + l' + l'' is even, so for any
+        ## single viscosity harmonic roughly half the entries are zero even in the
+        ## fully coupled case. Drawing the right panel solid would contradict the
+        ## selection rule the figure illustrates.
+        even = iseven(i + j)
+        A[i, j]             = (i == j)                  ? 1.0 : 0.0
+        A[i, j + M + gap]   = (abs(i - j) <= 4 && even) ? 1.0 : 0.0
+        A[i, j + 2M + 2gap] = even                      ? 1.0 : 0.0
     end
     plt = heatmap(A, c=cgrad([:white, :steelblue]), cbar=false,
                   ticks=false, framestyle=:none, grid=false, size=(940, 360),
                   ylims=(-4.5, M + 0.5))
     for (k, ttl) in enumerate(("η constant\nmodes stay independent",
                                "η varies slowly\nnearby modes couple",
-                               "η varies sharply\nevery mode couples"))
+                               "η varies sharply\nevery parity-allowed pair couples"))
         cx = (k - 1) * (M + gap) + M / 2 + 0.5
         annotate!(plt, cx, -2.3, text(ttl, 10, :black, :center))
     end

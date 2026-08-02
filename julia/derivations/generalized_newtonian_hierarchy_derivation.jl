@@ -11,11 +11,18 @@
 # 2. what it throws away,
 # 3. how you would undo it if you later decide you need to.
 #
-# The point of the chain is that you can stop wherever you like and know
-# exactly what you are standing on. The model DropSolver currently
-# implements sits near the bottom; a reader who wants something more
-# faithful can walk back up and see precisely which rung to climb to. Each
-# rung's error is quoted as a number wherever one has been measured.
+# The point of the chain is that each rung is *priced*: you can see what it
+# assumes, what it discards, and -- wherever the error has been measured -- what
+# that costs as a number. The model DropSolver currently implements sits near
+# the bottom.
+#
+# It should be said at the outset that this is not a menu with a comfortable
+# option on it. The chain was built expecting to find a cheap rung that keeps
+# most of the physics, and the measurements say there is not one: the two rungs
+# that restore Reid's independent-oscillator structure both cost more than they
+# look like they should, for reasons given in Steps 6 and 7. The useful output
+# is therefore a price list rather than a recommendation, and the closing
+# section states plainly which two options remain.
 #
 # ## Notation
 #
@@ -32,16 +39,19 @@
 # | ``\dot\gamma=\sqrt{2\,\bm e\!:\!\bm e}`` | shear-rate invariant (a scalar) |
 # | ``\zeta(\theta,t)`` | radial surface displacement; ``\epsilon=\zeta/R`` |
 # | ``P_l(\mu)``, ``\mu=\cos\theta`` | Legendre polynomial |
-# | ``a_l(t)`` | amplitude of surface mode ``l`` |
+# | ``A_l(t)`` | amplitude of surface mode ``l``; the solver's state vector |
 # | ``l'`` | degree index of the **viscosity field's own** Legendre series |
 # | ``L_\eta`` | highest ``l'`` retained -- the *bandwidth* of the coupling |
+# | ``\mathrm{Oh}=\eta_0/\sqrt{\rho T_1R}`` | Ohnesorge number: viscous over inertio-capillary stress |
+# | ``\mathrm{Oh}_{\mathrm{eff}}`` | the single Ohnesorge number a scalar closure substitutes for the field |
 #
-# A note on one symbol that is easy to misread: ``l'`` is
-# **not** a mode of the drop's shape. The shape expansion runs
-# ``l=2\ldots M`` with ``M`` of order 50--90. ``l'`` indexes the angular
-# structure of the *viscosity*, and as shown in Step 5 it controls only how
-# far off the diagonal the mode-coupling matrix reaches. Its dimension is
-# always ``M``.
+# One symbol is easy to misread. ``l`` and ``l''`` label modes of the drop's
+# *shape*, and run ``2\ldots M``, where ``M`` is the truncation of the shape
+# expansion (of order 50--90 in practice). ``l'`` labels harmonics of the
+# *viscosity field* and is a different index entirely: it starts at ``0``, and
+# Step 4 shows it controls only how far off the diagonal the mode-coupling
+# matrix reaches -- never the size of that matrix, which is always
+# ``M\times M``.
 #
 # Some results below are established symbolically, for arbitrary ``l``; others
 # only by evaluation at a spread of concrete points, which is strong numerical
@@ -100,7 +110,13 @@ println("="^78)  #src
 # (-p\,\bm I + \bm\tau)\cdot\bm n = T_1(\nabla\cdot\bm n)\,\bm n .
 # ```
 #
-# Everything below is a simplification of these five lines.
+# Here ``\bm u`` is the velocity field and ``p`` the pressure, ``\rho`` the
+# (constant) density, ``\bm n`` the outward unit normal to the free surface,
+# ``T_1`` the surface tension coefficient, and ``\nabla\cdot\bm n`` twice the
+# mean curvature, positive for a convex surface. ``\bm\tau=2\eta\bm e`` is the
+# deviatoric stress.
+#
+# Everything below is a simplification of these equations.
 #
 # ### The one identity that shapes the whole problem
 #
@@ -123,9 +139,10 @@ println("="^78)  #src
 # contained in that single extra term ``2(\nabla\eta)\cdot\bm e``. Reid was
 # entitled to drop it because for him ``\nabla\eta\equiv 0``.
 #
-# Let us verify the incompressible identity ``\nabla\cdot\bm e =
-# \tfrac12\nabla^2\bm u`` rather than assert it, since the boxed result
-# rests on it.
+# The boxed result rests on the incompressible identity
+# ``\nabla\cdot\bm e=\tfrac12\nabla^2\bm u``, which follows from
+# ``\nabla\cdot\bm e=\tfrac12[\nabla^2\bm u+\nabla(\nabla\cdot\bm u)]``
+# and ``\nabla\cdot\bm u=0``.
 
 @variables xc yc zc  #src
 let  #src
@@ -288,226 +305,362 @@ end  #src
 # scalar. Writing the surface shape as
 #
 # ```math
-# \zeta(\theta,t) = R\sum_{l\ge2} a_l(t)\,P_l(\cos\theta),
+# \zeta(\theta,t) = R\sum_{l\ge2} A_l(t)\,P_l(\cos\theta),
 # ```
 #
-# the state of the drop is the vector of modal amplitudes ``\{a_l(t)\}``,
+# the state of the drop is the vector of modal amplitudes ``\{A_l(t)\}``,
 # ``l=2\ldots M``. This is exactly the state `julia/src/types.jl` carries.
 #
-# For each mode, Reid's radial velocity amplitude is ``F(x)=U(x)/x^2`` with
-# ``U(x)=C\,x\,j_l(qx)+\Pi_0 x^{l+1}``, and the strain components follow
-# from the poloidal representation. Those are derived in *The Viscous Drop:
-# Reid (1960)*; we use them below without re-deriving.
+# For each mode the radial velocity profile, and the strain components that
+# follow from it, are Reid's; they are derived on the page *The Viscous Drop:
+# Reid (1960)*. Only two of their properties are needed below: the profile is
+# fixed once ``l`` and the viscosity are given, and the strain tensor is linear
+# in the modal velocity ``\dot A_l``.
 
 # ## Step 4 (L4) -- the full coupled system
 #
-# We are now at the most general *tractable* statement of the problem, and
-# this is the rung to remember: everything below is a simplification **of
-# this**, and anything you later want to recover, you recover by climbing
-# back to here.
+# This is the rung to remember. Everything below it is a simplification *of
+# this*, and anything you later decide you need, you recover by climbing back
+# here.
 #
-# Expand the viscosity field in its own Legendre series,
+# The goal is concrete: write down the equation a shear-thinning drop obeys, in
+# the same variables the Newtonian solver already integrates, so the two can be
+# compared term by term.
 #
-# ```math
-# \eta(r,\theta,t) = \sum_{l'} \eta_{l'}(r,t)\,P_{l'}(\cos\theta),
-# ```
+# ### The Newtonian system we are generalising
 #
-# substitute into ``\eta\nabla^2\bm u + 2(\nabla\eta)\cdot\bm e``, and project
-# the momentum equation onto ``P_l``. Because both ``\eta`` and ``\bm u`` are
-# now Legendre series, every term becomes a sum of integrals of *three*
-# angular functions, and the modal equations couple:
+# The solver of Gabbard et al. (2025) carries one damped oscillator per surface
+# mode. With the shape written as
+# ``\zeta(\theta,t)=R\sum_{l\ge2}A_l(t)P_l(\cos\theta)``,
 #
 # ```math
-# \boxed{\ \ddot a_l + \sum_{l''}\Bigl[\mathcal D^{(2)}_{l l''}\,\dot a_{l''}
-#        + \mathcal D^{(1)}_{l l''}\,a_{l''}\Bigr] = F_l\ }
+# \ddot A_l \;+\; \underbrace{2\lambda_l}_{\text{damping}}\dot A_l
+#           \;+\; \underbrace{\omega_l^2}_{\text{stiffness}}A_l
+#           \;+\; l\,B_l \;=\; 0 ,
+# \qquad l=2\ldots M .
 # ```
 #
-# where ``\mathcal D^{(1)},\mathcal D^{(2)}`` are ``M\times M`` matrices built as
+# Here ``\lambda_l`` and ``\omega_l^2`` are the two roots of Reid's
+# characteristic equation, evaluated at the single Ohnesorge number of a
+# Newtonian fluid, and ``B_l(t)`` are the Legendre coefficients of the contact
+# pressure on the free surface -- the forcing that the wall applies while the
+# drop is touching it. ``B_l`` is unchanged by anything on this page: it is
+# kinematic and geometric, and no rheology enters it.
+#
+# Two scalars per mode, and no coupling between modes. That last property is
+# what we are about to lose.
+#
+# ![Three mode-coupling matrices side by side: diagonal when the viscosity is
+# constant, banded when it varies slowly with angle, and fully dense when it
+# varies sharply.](../assets/coupling_structure.png)
+#
+# *Step 6 measures which of these the validation fluid actually produces --
+# the answer is the third.*
+# ### Where the coupling comes from
+#
+# From Step 0, a variable viscosity adds one term to the momentum equation:
 #
 # ```math
-# \mathcal D_{l l''} = \sum_{l'} \bigl(\text{radial integral of }\eta_{l'}\bigr)
-#                      \times G^{l'}_{l l''} ,
-# \qquad
-# G^{l'}_{l l''} = \frac{2l+1}{2}\int_{-1}^{1} P_l P_{l'} P_{l''}\,d\mu .
+# \nabla\cdot(2\eta\bm e) \;=\; \eta\,\nabla^2\bm u \;+\; 2(\nabla\eta)\cdot\bm e .
 # ```
 #
-# Compare Reid, where ``\eta`` is constant so only ``l'=0`` survives,
-# ``G^{0}_{l l''}=\delta_{l l''}``, and the matrices are **diagonal** -- one
-# independent oscillator per mode.
-#
-# ### What this changes, concretely
-#
-# The Newtonian solver integrates the system of Gabbard et al. (2025): one
-# damped oscillator per surface mode, driven by the contact pressure,
-#
-# ```math
-# \ddot A_l \;+\; 2\lambda_l\,\dot A_l \;+\; \omega_l^2\,A_l \;+\; l\,B_l \;=\; 0 ,
-# \qquad l = 2\ldots M ,
-# ```
-#
-# with ``B_l`` the contact-pressure coefficients and ``\lambda_l``,
-# ``\omega_l^2`` the two roots of Reid's characteristic equation at the single
-# Ohnesorge number of the fluid.
-#
-# For a generalized Newtonian fluid the *only* thing that changes is that the
-# two scalars become matrices:
-#
-# ```math
-# \boxed{\;
-# \ddot A_l \;+\; \sum_{l''=2}^{M}\Bigl[\mathcal D^{(2)}_{l l''}\,\dot A_{l''}
-#      \;+\; \mathcal D^{(1)}_{l l''}\,A_{l''}\Bigr] \;+\; l\,B_l \;=\; 0 \;}
-# ```
-#
-# ```math
-# \mathcal D^{(i)}_{l l''}
-#   \;=\; \sum_{l'=0}^{\,l+l''} G^{l'}_{l l''}
-#          \int_0^1 \eta_{l'}(x,t)\,K^{(i)}_{l l''}(x)\,x^2\,dx ,
-# ```
-#
-# where ``\eta_{l'}(x,t)`` are the Legendre coefficients of the viscosity field
-# and ``K^{(i)}`` are radial kernels fixed by the mode shapes. Under the Cross
-# law the viscosity field is written down directly from the current state:
+# Both terms now carry ``\eta`` as a *field* rather than a constant. Expand it
+# in its own Legendre series -- the natural basis, since the problem is
+# axisymmetric (Step 2) and ``\eta`` is therefore a function of ``x=r/R`` and
+# ``\theta`` only:
 #
 # ```math
 # \frac{\eta(x,\theta,t)}{\eta_0}
-#   \;=\; \varepsilon_\infty
-#       + \frac{1-\varepsilon_\infty}{1 + \bigl(K\,\dot\gamma(x,\theta,t)\bigr)^{m}} ,
+#   \;=\; \sum_{l'\ge0}\eta_{l'}(x,t)\,P_{l'}(\cos\theta),
 # \qquad
-# \varepsilon_\infty=\frac{\eta_\infty}{\eta_0},
-# \qquad
-# \dot\gamma=\sqrt{2\,\bm e\!:\!\bm e},
+# \eta_{l'}(x,t) = \frac{2l'+1}{2}\int_{-1}^{1}\frac{\eta}{\eta_0}\,P_{l'}(\mu)\,d\mu .
 # ```
 #
-# with ``\bm e`` the strain rate of the current modal state. **That is the whole
-# model.** Everything else on this page is either a justification for one of
-# those symbols or a simplification of the double sum.
+# The index ``l'`` is the viscosity's own angular index. It is **not** a drop
+# mode, and it does not range over the same set: the shape expansion runs
+# ``l=2\ldots M``, while ``l'`` starts at ``0`` and, as shown below, only
+# matters up to ``2M``.
 #
-# The Newtonian case is the special case, not a separate theory: constant
-# ``\eta`` has only an ``l'=0`` harmonic, ``G^{0}_{l l''}=\delta_{l l''}``, the
-# matrices collapse to their diagonals, and Gabbard's equation is recovered
-# term by term.
+# ### Projecting onto a mode
 #
-# ### The Gaunt selection rule, and what actually controls cost
-#
-# The triple integral ``G^{l'}_{l l''}`` is a Gaunt coefficient. It vanishes
-# unless
+# Write the velocity as a sum over modes. Mode ``l''`` has radial component
+# ``u_r^{(l'')}=F_{l''}(x)P_{l''}(\mu)``, and incompressibility fixes its polar
+# component as ``u_\theta^{(l'')}=G_{l''}(x)\sin\theta\,P'_{l''}(\mu)``, where a
+# prime on a Legendre polynomial denotes ``d/d\mu``. Both radial profiles are
+# Reid's. The strain components follow directly, in particular
 #
 # ```math
-# |l-l''| \le l' \le l+l'' \qquad\text{and}\qquad l+l'+l''\ \text{is even}.
+# e^{(l'')}_{rr} = F'_{l''}(x)\,P_{l''}(\mu),
+# \qquad
+# e^{(l'')}_{r\theta}
+#   = \tfrac12\Bigl[G'_{l''}-\tfrac{G_{l''}}{x}-\tfrac{F_{l''}}{x}\Bigr]
+#     \sin\theta\,P'_{l''}(\mu).
 # ```
 #
-# This rule is **geometric**: it holds no matter what the fluid is. Read
-# backwards it says something decisive:
+# Now take the viscous term of Step 0 with ``\eta`` carrying its own harmonic
+# ``\eta_{l'}(x)P_{l'}(\mu)``. The two pieces contribute different angular
+# structures. For ``\eta\nabla^2\bm u`` the viscosity multiplies the field
+# without differentiating it, so the radial component carries
+# ``P_{l'}(\mu)P_{l''}(\mu)``. For ``2(\nabla\eta)\cdot\bm e`` the gradient has
+# both components,
 #
-# > Mode ``l`` couples to mode ``l''`` only if ``|l-l''|\le l'`` for some ``l'``
-# > at which the viscosity field has content. **The bandwidth of the coupling
-# > matrix equals the spectral width of ``\eta``, and nothing else.**
+# ```math
+# \nabla\eta = \eta'_{l'}(x)P_{l'}(\mu)\,\hat{\bm e}_r
+#            - \frac{\eta_{l'}(x)}{x}\sin\theta\,P'_{l'}(\mu)\,\hat{\bm e}_\theta ,
+# ```
 #
-# So the cost of the coupled model is *not* set by ``M``. If ``\eta``'s
-# angular spectrum is confined to ``l'\le L_\eta``, then ``\mathcal D`` is a
-# banded ``M\times M`` matrix of half-bandwidth ``L_\eta``, and applying it
-# costs ``O(M L_\eta)`` rather than ``O(M^2)``. With ``M=90`` and
-# ![Three mode-coupling matrices: a diagonal one when viscosity is constant, a
-# banded one when viscosity varies slowly, and a fully dense one when it varies
-# sharply.](../assets/coupling_structure.png)
+# so its radial component picks up ``\eta'_{l'}P_{l'}e_{rr}``, again of the form
+# ``P_{l'}P_{l''}``, together with
+# ``-(\eta_{l'}/x)\sin\theta P'_{l'}\,e_{r\theta}``, whose angular part is
+# ``(1-\mu^2)P'_{l'}(\mu)P'_{l''}(\mu)``.
 #
-# *What the viscosity's angular structure does to the mode-coupling matrix.
-# Constant viscosity leaves it diagonal and every mode independent; slow
-# variation couples neighbours into a band; sharp variation couples everything.
-# Step 6 measures which of these the real fluid produces.*
+# Project by multiplying through by ``P_l(\mu)`` and integrating over
+# ``\mu\in[-1,1]``. Every term therefore reduces to one of two integrals,
 #
-# ``L_\eta=6`` that is nearly as cheap as diagonal.
-
+# ```math
+# \int_{-1}^{1}P_l\,P_{l'}\,P_{l''}\,d\mu
+# \qquad\text{or}\qquad
+# \int_{-1}^{1}P_l\,(1-\mu^2)\,P'_{l'}\,P'_{l''}\,d\mu ,
+# ```
+#
+# and the second is not a new object: applying
+# ``(1-\mu^2)P'_n = \tfrac{n(n+1)}{2n+1}\bigl(P_{n-1}-P_{n+1}\bigr)`` and
+# expanding ``P'_{l''}`` in Legendre polynomials of degree below ``l''`` turns
+# it into a finite combination of integrals of the first kind, at shifted
+# indices. **Every angular integral in the problem is therefore a Gaunt
+# coefficient**, and that is the whole origin of the coupling.
+#
+# In the Newtonian case ``\eta`` has only its ``l'=0`` harmonic, ``P_0=1``, and
+# both families collapse to two-factor integrals that orthogonality kills unless
+# ``l=l''``. Reid's independent oscillators are what is left.
+#
+# ### The resulting system
+#
+# Collecting terms, and writing ``B_l`` for the contact-pressure coefficients as
+# before,
+#
+# ```math
+# \boxed{\;
+# \ddot A_l \;+\; \sum_{l''=2}^{M}\Bigl[\,\mathcal D^{(2)}_{l l''}\,\dot A_{l''}
+#      \;+\; \mathcal D^{(1)}_{l l''}\,A_{l''}\Bigr] \;+\; l\,B_l \;=\; 0 \;}
+# ```
+#
+# with ``\mathcal D^{(2)}`` the **damping** matrix, generalising ``2\lambda_l``,
+# and ``\mathcal D^{(1)}`` the **stiffness** matrix, generalising
+# ``\omega_l^2``. The viscous stress is linear in the velocity and so feeds
+# ``\mathcal D^{(2)}`` directly; it reaches ``\mathcal D^{(1)}`` through the
+# normal-stress condition, where ``\eta`` appears multiplicatively at the
+# surface, which is why Reid's ``\omega_l^2`` depends on viscosity at all. Both
+# matrices have the same assembly:
+#
+# ```math
+# \mathcal D^{(i)}_{l l''}
+#   \;=\; \sum_{l'} G^{l'}_{l l''}
+#          \int_0^1 \eta_{l'}(x,t)\,K^{(i)}_{l l''}(x)\,x^2\,dx ,
+# \qquad
+# G^{l'}_{l l''} \;=\; \frac{2l+1}{2}\int_{-1}^{1}P_l\,P_{l'}\,P_{l''}\,d\mu .
+# ```
+#
+# ``G^{l'}_{l l''}`` is the angular factor -- a Gaunt coefficient -- and it is
+# pure geometry, depending on three integers and on nothing about the fluid.
+# ``K^{(i)}_{l l''}(x)`` is what the radial factors of the same terms collect
+# into: from ``\eta\nabla^2\bm u``, the radial Laplacian of mode ``l''``'s
+# profile, ``\mathcal L_{l''}[F_{l''}]=F''_{l''}+\tfrac{2}{x}F'_{l''}
+# -\tfrac{l''(l''+1)}{x^2}F_{l''}``; and from ``2(\nabla\eta)\cdot\bm e``, the
+# products of ``\eta'_{l'}`` and ``\eta_{l'}/x`` with the radial parts of
+# ``e_{rr}`` and ``e_{r\theta}`` written above.
+#
+# !!! note "What is and is not derived here"
+#     The angular structure above is complete: the coupling is a Gaunt
+#     coefficient, and the selection rule proved below follows from it. The
+#     radial kernels ``K^{(i)}`` are *defined* by the integrals above but are not
+#     solved for in closed form on this page, because doing so means solving the
+#     variable-``\eta`` radial eigenproblem -- which is exactly the open work
+#     Step 7 identifies. Step 7 does construct the radial operator for
+#     ``l'=0``, where it can be checked against Reid's.
+#
 let  #src
-    println("\nSTEP 4 (L4): the coupled system, and the Gaunt selection rule")  #src
     Pl(l, m) = l == 0 ? one(m) : l == 1 ? m :  #src
         begin am, b = one(m), m; for n in 1:l-1; b, am = ((2n+1)*m*b - n*am)/(n+1), b; end; b end  #src
-    gaunt(l, lp, lpp) = quadgk(m -> Pl(l,m)*Pl(lp,m)*Pl(lpp,m), -1, 1; rtol=1e-12)[1]  #src
+    dPl(l, m) = l == 0 ? zero(m) : l*(m*Pl(l,m) - Pl(l-1,m))/(m^2 - 1)  #src
+    worst_rec = 0.0  #src
+    for l in 1:12, m in (-0.93, -0.41, 0.17, 0.58, 0.86)  #src
+        lhs = (1 - m^2)*dPl(l, m)  #src
+        rhs = l*(l+1)/(2l+1)*(Pl(l-1,m) - Pl(l+1,m))  #src
+        worst_rec = max(worst_rec, abs(lhs - rhs))  #src
+    end  #src
+    @assert worst_rec < 1e-12 "the recurrence reducing the derivative integrals is wrong"  #src
+    gn, gw = DropSolver.gauss_legendre_nodes(60, -1.0, 1.0)  #src
+    worst_deriv = 0.0  #src
+    for l in 2:8, lp in 0:6, lpp in 2:8  #src
+        if l > lp + lpp  #src
+            v = sum(w*Pl(l,m)*(1-m^2)*dPl(lp,m)*dPl(lpp,m) for (m,w) in zip(gn,gw))  #src
+            worst_deriv = max(worst_deriv, abs(v))  #src
+        end  #src
+    end  #src
+    @assert worst_deriv < 1e-12 "the derivative-type angular integral broke the selection rule"  #src
+    println("  ASSERTION 4b OK: (1-mu^2)P_n' = n(n+1)/(2n+1)(P_{n-1}-P_{n+1}) to")  #src
+    println("    $(round(worst_rec, sigdigits=2)), and the derivative-type integral")  #src
+    println("    obeys the same l <= l'+l'' selection rule (max $(round(worst_deriv, sigdigits=2)))")  #src
+    println("    -- so both angular families reduce to Gaunt coefficients.")  #src
+end  #src
+
+# ### The selection rule
+#
+# The angular factor ``G^{l'}_{l l''}`` is not merely small for most index
+# triples -- it is exactly zero for most of them. The rule is
+#
+# ```math
+# G^{l'}_{l l''} = 0
+# \qquad\text{unless}\qquad
+# |l-l''| \;\le\; l' \;\le\; l+l''
+# \qquad\text{and}\qquad
+# l+l'+l''\ \text{is even}.
+# ```
+#
+# It is a statement about three integers, so it holds for every fluid, every
+# amplitude and every geometry in this problem. It is also elementary, which is
+# worth showing rather than citing.
+#
+# ### Why the truncation is exact: a two-line proof
+#
+# Everything rests on one elementary fact about Legendre polynomials:
+#
+# > ``P_N`` is orthogonal to every polynomial of degree ``<N``.
+#
+# That is immediate from orthogonality, since any such polynomial is a finite
+# combination of ``P_0,\ldots,P_{N-1}``.
+#
+# Now ``P_l`` has degree exactly ``l``, so the product ``P_lP_{l''}`` is a
+# polynomial of degree exactly ``l+l''``. Therefore:
+#
+# * **Upper bound.** If ``l'>l+l''`` then ``P_{l'}`` is orthogonal to
+#   ``P_lP_{l''}``, a polynomial of degree ``l+l''<l'``. Hence
+#   ``G^{l'}_{l l''}=0``.
+# * **Lower bound.** Take ``l\ge l''`` without loss of generality. If
+#   ``l'<l-l''`` then ``P_{l'}P_{l''}`` has degree ``l'+l''<l``, and ``P_l`` is
+#   orthogonal to it. Hence ``G^{l'}_{l l''}=0`` again.
+# * **Parity.** ``P_l(-\mu)=(-1)^lP_l(\mu)``, so the integrand has parity
+#   ``(-1)^{l+l'+l''}``. An odd integrand over ``[-1,1]`` integrates to zero.
+#
+# Together: ``G^{l'}_{l l''}=0`` unless ``|l-l''|\le l'\le l+l''`` **and**
+# ``l+l'+l''`` is even. No special-function machinery is needed -- degree
+# counting and parity give the whole selection rule, and both bounds are the
+# *same* argument applied to different factors.
+#
+# The consequence for this model is the upper bound. The shape expansion stops
+# at ``l=M``, so ``l+l''\le 2M``, so viscosity harmonics above ``l'=2M`` are
+# annihilated exactly. The check below is a regression test on that proof, not
+# its justification.
+
+let  #src
+    Pl(l, m) = l == 0 ? one(m) : l == 1 ? m :  #src
+        begin am, b = one(m), m; for n in 1:l-1; b, am = ((2n+1)*m*b - n*am)/(n+1), b; end; b end  #src
+    ## Gauss-Legendre with 40 nodes integrates any polynomial of degree <= 79  #src
+    ## exactly, so this evaluates the triple product with no quadrature error  #src
+    ## at all -- the residual below is pure floating point.  #src
+    gn, gw = DropSolver.gauss_legendre_nodes(40, -1.0, 1.0)  #src
+    Gc(l, lp, lpp) = sum(w * Pl(l,m) * Pl(lp,m) * Pl(lpp,m) for (m, w) in zip(gn, gw))  #src
+    forbidden = 0.0  #src
+    allowed = 0.0  #src
+    for l in 2:8, lpp in 2:8  #src
+        for lp in (l + lpp + 1):(l + lpp + 4)  #src
+            forbidden = max(forbidden, abs(Gc(l, lp, lpp)))  #src
+        end  #src
+        for lp in max(0, l - lpp):2:(l + lpp)  #src
+            allowed = max(allowed, abs(Gc(l, lp, lpp)))  #src
+        end  #src
+    end  #src
+    @assert forbidden < 1e-13 "viscosity above l'=l+l'' coupled two modes ($forbidden)"  #src
+    @assert allowed > 0.1 "allowed coefficients should be O(1), for contrast"  #src
+    println("  ASSERTION 7b OK: every Gaunt coefficient with l' > l+l'' vanishes")  #src
+    println("    (largest $(round(forbidden, sigdigits=3)) against an allowed scale of $(round(allowed, sigdigits=3))).")  #src
+    println("    => truncating the viscosity at l' = 2M is exact, as proved above.")  #src
+end  #src
+
+# ### What the rule does to the matrix
+#
+# Read the upper bound backwards: mode ``l`` reaches mode ``l''`` only through
+# viscosity harmonics with ``l'\ge|l-l''|``. So if ``\eta`` has angular content
+# only up to some ``L_\eta``, no pair of modes further apart than ``L_\eta`` is
+# coupled at all, and ``\mathcal D`` is banded with half-bandwidth ``L_\eta``.
+# The middle panel of the figure above is this banded case.
+#
+#
+# Applying a banded matrix costs ``O(M L_\eta)`` rather than ``O(M^2)``, so
+# ``L_\eta`` -- not ``M`` -- is what sets the price of the coupled model.
+
+let  #src
+    Pl(l, m) = l == 0 ? one(m) : l == 1 ? m :  #src
+        begin am, b = one(m), m; for n in 1:l-1; b, am = ((2n+1)*m*b - n*am)/(n+1), b; end; b end  #src
+    gn, gw = DropSolver.gauss_legendre_nodes(40, -1.0, 1.0)  #src
+    Gr(l, lp, lpp) = sum(w * Pl(l,m) * Pl(lp,m) * Pl(lpp,m) for (m, w) in zip(gn, gw))  #src
     viol_zero = 0.0  #src
     viol_nonzero = Inf  #src
     for l in 0:8, lp in 0:8, lpp in 0:8  #src
-        g = gaunt(l, lp, lpp)  #src
-        allowed = (abs(l-lpp) <= lp <= l+lpp) && iseven(l+lp+lpp)  #src
+        g = Gr(l, lp, lpp)  #src
+        allowed = (abs(l - lpp) <= lp <= l + lpp) && iseven(l + lp + lpp)  #src
         if allowed  #src
-            (l+lp+lpp > 0) && (viol_nonzero = min(viol_nonzero, abs(g)))  #src
+            (l + lp + lpp > 0) && (viol_nonzero = min(viol_nonzero, abs(g)))  #src
         else  #src
             viol_zero = max(viol_zero, abs(g))  #src
         end  #src
     end  #src
-    @assert viol_zero < 1e-11 "a FORBIDDEN Gaunt coefficient was nonzero ($viol_zero)"  #src
-    @assert viol_nonzero > 1e-6 "an ALLOWED Gaunt coefficient vanished ($viol_nonzero)"  #src
-    @printf("  largest FORBIDDEN |G| : %.2e   (must be ~0)\n", viol_zero)  #src
-    @printf("  smallest ALLOWED  |G| : %.2e   (must be well clear of 0)\n", viol_nonzero)  #src
-    println("  ASSERTION 4 OK: the selection rule |l-l''|<=l'<=l+l'' with l+l'+l'' even")  #src
-    println("    holds exactly, over all 729 triples with l,l',l'' <= 8.")  #src
+    @assert viol_zero < 1e-13 "a forbidden Gaunt coefficient was nonzero ($viol_zero)"  #src
+    @assert viol_nonzero > 1e-6 "an allowed Gaunt coefficient vanished ($viol_nonzero)"  #src
+    println("  ASSERTION 4 OK: the selection rule holds over all 729 triples with")  #src
+    println("    l, l', l'' <= 8: forbidden max $(round(viol_zero, sigdigits=3)), allowed min $(round(viol_nonzero, sigdigits=3)).")  #src
 
-    println("\n  Bandwidth consequence -- multiplication by P_{l'} in the P_l basis:")  #src
+    band_ok = true  #src
     for lp in (0, 2, 4)  #src
-        M = 12  #src
         band = 0  #src
-        for l in 0:M, lpp in 0:M  #src
-            if abs(gaunt(l, lp, lpp)) > 1e-11  #src
-                band = max(band, abs(l - lpp))  #src
-            end  #src
+        for l in 0:12, lpp in 0:12  #src
+            abs(Gr(l, lp, lpp)) > 1e-13 && (band = max(band, abs(l - lpp)))  #src
         end  #src
-        @printf("    eta content at l'=%d  ->  couples modes up to |l-l''| = %d\n", lp, band)  #src
-        @assert band <= lp "bandwidth exceeded l' -- the selection rule argument is broken"  #src
+        band <= lp || (band_ok = false)  #src
     end  #src
-    println("  ASSERTION 5 OK: viscosity content at degree l' couples modes no further")  #src
-    println("    than |l-l''| = l'. The coupling matrix is BANDED with half-bandwidth")  #src
-    println("    L_eta, dimension M. Cost is set by L_eta, NOT by M.")  #src
-    println("    (Physical meaning of a failure here: a spatially varying viscosity would")  #src
-    println("     couple every mode to every other regardless of how smooth it is, and no")  #src
-    println("     truncation of the coupled model could ever be justified.)")  #src
+    @assert band_ok "viscosity content at l' coupled modes further apart than l'"  #src
+    println("  ASSERTION 5 OK: viscosity content at degree l' couples modes no")  #src
+    println("    further apart than |l - l''| = l'. The matrix is banded with")  #src
+    println("    half-bandwidth L_eta and dimension M, so cost scales with L_eta, not M.")  #src
 end  #src
 
-# ## Step 4b -- where the exponent ``a`` enters *structurally*
+# ### The Newtonian case, as a check
 #
-# We can now say precisely what is special about particular exponents, and
-# it is a statement about **structure**, not about accuracy.
-#
-# The coupling matrix is exactly banded, and exactly truncatable, if and
-# only if ``\eta`` is a **polynomial** in the components of ``\bm e``. Track
-# the two nestings:
+# A constant viscosity has a single nonzero coefficient, ``\eta_0``, at
+# ``l'=0``. Since ``P_0=1``, the angular factor collapses to the ordinary
+# orthogonality relation,
 #
 # ```math
-# \eta = \eta_\infty + \Delta\eta\,(1+X)^{p},
-# \qquad X = (\lambda_c\dot\gamma)^a,
-# \qquad p = \frac{n-1}{a}.
+# G^{0}_{l l''} \;=\; \frac{2l+1}{2}\int_{-1}^{1}P_l\,P_{l''}\,d\mu
+#   \;=\; \delta_{l l''},
 # ```
 #
-# * ``X`` is a polynomial in ``\bm e`` **iff** ``a`` is a non-negative even
-#   integer, because ``\dot\gamma^a=(\dot\gamma^2)^{a/2}`` and
-#   ``\dot\gamma^2=2\bm e\!:\!\bm e`` is quadratic.
-# * ``(1+X)^p`` is a polynomial in ``X`` **iff** ``p`` is a non-negative
-#   integer.
+# the sums lose every off-diagonal term, and the two matrices collapse to the
+# two scalars ``2\lambda_l`` and ``\omega_l^2``. Gabbard's system is recovered
+# term by term. The Newtonian model is the special case of this one, not a
+# separate theory.
 #
-# For a genuinely shear-thinning fluid ``n<1``, so ``p<0`` and the second
-# condition never holds: ``\eta`` is not a polynomial in the strain rate, and
-# its Legendre series does not terminate.
+# ### Closing the system: the constitutive law
 #
-# That sounds like a barrier and is not one, because the coupling does not see
-# the whole series. The Gaunt rule requires ``l'\le l+l''``, and the shape
-# expansion stops at ``l=M``, so **every viscosity harmonic above
-# ``l'=2M`` is orthogonal to every product ``P_lP_{l''}`` and cannot couple
-# any pair of modes.** It is not small; it is absent.
+# The matrices need ``\eta_{l'}(x,t)``, which comes from the fluid. Under the
+# Cross law -- the model this repository's validation fluid is characterised
+# with, and the ``p=-1`` slice of Carreau-Yasuda derived in Step 9 --
 #
-# > The mode-coupling matrix is determined **exactly** by the first ``2M+1``
-# > Legendre harmonics of the viscosity. Truncating there is not an
-# > approximation -- everything above is annihilated by the angular integral.
+# ```math
+# \frac{\eta(x,\theta,t)}{\eta_0}
+#   \;=\; \varepsilon_\infty
+#       \;+\; \frac{1-\varepsilon_\infty}
+#                  {1+\bigl(K\,\dot\gamma(x,\theta,t)\bigr)^{m}} ,
+# \qquad
+# \varepsilon_\infty \equiv \frac{\eta_\infty}{\eta_0},
+# ```
 #
-# So the infinite series is a property of ``\eta``, not a limitation of the
-# model. For ``M=50`` the coupling is fixed by 101 numbers per radius; for
-# ``M=90``, by 181. Whether the matrix can be further *banded* -- kept to
-# ``l'\le L_\eta`` with ``L_\eta\ll 2M``, for speed -- is a separate and
-# genuinely empirical question, and Step 6 measures it.
-#
-# It is worth being precise about why the classical ``a=2`` theory closes.
-# Not because ``a=2`` makes ``\eta`` polynomial -- it does not -- but because
-# that theory additionally *truncates* ``(1+X)^p\approx 1+pX`` at first
-# order, and ``X`` alone is polynomial when ``a=2``. The finiteness comes
-# from the perturbative truncation, and ``a=2`` merely keeps the truncated
-# object polynomial.
+# where ``K`` is the fluid's time constant (written ``\lambda_c`` in the
+# Carreau-Yasuda parametrisation) and ``m`` its thinning exponent (written
+# ``a``). The shear rate ``\dot\gamma=\sqrt{2\,\bm e\!:\!\bm e}`` is built from
+# the drop's current state; the next section says exactly how, because that
+# step is where the model is easiest to get wrong.
 #
 # ### Where the shear rate is evaluated, and why the system is not linear
 #
@@ -568,108 +721,12 @@ end  #src
 # nonlinearity is carried across steps rather than inside them, which costs one
 # order in ``\Delta t`` and constrains the step size.
 #
-# ### Why the truncation is exact: a two-line proof
+# That completes the model. The modal system, the matrix assembly, the
+# constitutive law and this prescription for ``\dot\gamma`` are the whole of
+# it; every step below either justifies one of those pieces or simplifies the
+# double sum.
 #
-# Everything rests on one elementary fact about Legendre polynomials:
-#
-# > ``P_N`` is orthogonal to every polynomial of degree ``<N``.
-#
-# That is immediate from orthogonality, since any such polynomial is a finite
-# combination of ``P_0,\ldots,P_{N-1}``.
-#
-# Now ``P_l`` has degree exactly ``l``, so the product ``P_lP_{l''}`` is a
-# polynomial of degree exactly ``l+l''``. Therefore:
-#
-# * **Upper bound.** If ``l'>l+l''`` then ``P_{l'}`` is orthogonal to
-#   ``P_lP_{l''}``, a polynomial of degree ``l+l''<l'``. Hence
-#   ``G^{l'}_{l l''}=0``.
-# * **Lower bound.** Take ``l\ge l''`` without loss of generality. If
-#   ``l'<l-l''`` then ``P_{l'}P_{l''}`` has degree ``l'+l''<l``, and ``P_l`` is
-#   orthogonal to it. Hence ``G^{l'}_{l l''}=0`` again.
-# * **Parity.** ``P_l(-\mu)=(-1)^lP_l(\mu)``, so the integrand has parity
-#   ``(-1)^{l+l'+l''}``. An odd integrand over ``[-1,1]`` integrates to zero.
-#
-# Together: ``G^{l'}_{l l''}=0`` unless ``|l-l''|\le l'\le l+l''`` **and**
-# ``l+l'+l''`` is even. No special-function machinery is needed -- degree
-# counting and parity give the whole selection rule, and both bounds are the
-# *same* argument applied to different factors.
-#
-# The consequence for this model is the upper bound. The shape expansion stops
-# at ``l=M``, so ``l+l''\le 2M``, so viscosity harmonics above ``l'=2M`` are
-# annihilated exactly. The check below is a regression test on that proof, not
-# its justification.
 
-let  #src
-    Pl(l, m) = l == 0 ? one(m) : l == 1 ? m :  #src
-        begin am, b = one(m), m; for n in 1:l-1; b, am = ((2n+1)*m*b - n*am)/(n+1), b; end; b end  #src
-    ## Gauss-Legendre with 40 nodes integrates any polynomial of degree <= 79
-    ## exactly, so this evaluates the triple product with no quadrature error
-    ## at all -- the residual below is pure floating point.
-    gn, gw = DropSolver.gauss_legendre_nodes(40, -1.0, 1.0)  #src
-    Gc(l, lp, lpp) = sum(w * Pl(l,m) * Pl(lp,m) * Pl(lpp,m) for (m, w) in zip(gn, gw))  #src
-    forbidden = 0.0  #src
-    allowed = 0.0  #src
-    for l in 2:8, lpp in 2:8  #src
-        for lp in (l + lpp + 1):(l + lpp + 4)  #src
-            forbidden = max(forbidden, abs(Gc(l, lp, lpp)))  #src
-        end  #src
-        for lp in max(0, l - lpp):2:(l + lpp)  #src
-            allowed = max(allowed, abs(Gc(l, lp, lpp)))  #src
-        end  #src
-    end  #src
-    @assert forbidden < 1e-13 "viscosity above l'=l+l'' coupled two modes ($forbidden)"  #src
-    @assert allowed > 0.1 "allowed coefficients should be O(1), for contrast"  #src
-    println("  ASSERTION 7b OK: every Gaunt coefficient with l' > l+l'' vanishes")  #src
-    println("    (largest $(round(forbidden, sigdigits=3)) against an allowed scale of $(round(allowed, sigdigits=3))).")  #src
-    println("    => truncating the viscosity at l' = 2M is exact, as proved above.")  #src
-end  #src
-
-# ### The exception that matters: ``p=-1``
-#
-# There is one value of ``p`` that is special without being a non-negative
-# integer, and it is the one the validation fluid has. If ``p=-1``, i.e.
-# ``n=1-a``, then
-#
-# ```math
-# \eta = \eta_\infty + \frac{\Delta\eta}{1+X}
-# \qquad\Longleftrightarrow\qquad
-# (1+X)\,\eta = (1+X)\,\eta_\infty + \Delta\eta .
-# ```
-#
-# The constitutive law becomes an **algebraic constraint** that is *linear*
-# in ``\eta`` and *linear* in ``X``, with no fractional power of anything
-# left on the outside. This is the Cross model, and it is why Step 9 below
-# is a genuine simplification rather than a relabelling.
-
-let  #src
-    println("\nSTEP 4b: which exponents make eta polynomial (hence EXACTLY banded)")  #src
-    @variables Xs etainf Deta  #src
-    lhs = (1 + Xs)*(etainf + Deta/(1 + Xs))  #src
-    rhs = (1 + Xs)*etainf + Deta  #src
-    ok, how = symbolic_zero(Symbolics.simplify(lhs - rhs), [Xs, etainf, Deta])  #src
-    @assert ok "the Cross law failed to reduce to a polynomial constraint"  #src
-    println("  ASSERTION 6 OK ($how): for p = (n-1)/a = -1 the constitutive law is")  #src
-    println("    equivalent to the POLYNOMIAL constraint (1+X)*eta = (1+X)*eta_inf + Deta.")  #src
-    println("    No fractional power remains on the outside. This is the Cross model.")  #src
-
-    println("\n  Polynomiality bookkeeping (X = (lambda_c*gammadot)^a):")  #src
-    for a in (0.5, 0.743, 1.0, 2.0, 4.0)  #src
-        xpoly = (a >= 0) && isinteger(a/2)  #src
-        @printf("    a=%-6.3f  X polynomial in e? %-5s\n", a, xpoly)  #src
-    end  #src
-    for (nn, aa) in ((0.257, 0.743), (0.5, 2.0), (0.0, 1.0))  #src
-        pp = (nn - 1)/aa  #src
-        @printf("    n=%-6.3f a=%-6.3f -> p=%-7.3f  (1+X)^p polynomial in X? %s\n",  #src
-                nn, aa, pp, (pp >= 0 && isinteger(pp)))  #src
-    end  #src
-    for nn in (0.0, 0.257, 0.5, 0.9), aa in (0.5, 0.743, 1.0, 2.0, 4.0)  #src
-        @assert (nn - 1)/aa < 0 "p = (n-1)/a must be negative for every shear-thinning fluid"  #src
-    end  #src
-    println("  ASSERTION 7 OK: p<0 for every shear-thinning fluid, so eta's Legendre")  #src
-    println("    series does not terminate -- but the coupling is still exact, see below.")  #src
-    println("    Physical meaning: no shear-thinning drop model can claim an EXACT")  #src
-    println("    finite mode-coupling bandwidth; the truncation must carry an error bar.")  #src
-end  #src
 
 # ## Step 5 (A5) -- the temporal closure
 #
@@ -687,8 +744,8 @@ end  #src
 #
 # ### What the modulation actually does: the amplitude equation
 #
-# Prose is not enough here, so take one mode in free decay and carry the
-# time-varying damping through an averaging calculation. Write ``\phi=\omega t``.
+# Take one mode in free decay and carry the time-varying damping through an
+# averaging calculation. Write ``\phi=\omega t``.
 # By the period-``\pi`` lemma proved below, ``\lambda`` has **only even
 # harmonics** in ``\phi``:
 #
@@ -709,7 +766,7 @@ end  #src
 #   \;+\; \frac{a}{2}\bigl(\alpha_1\cos 2\psi - \beta_1\sin 2\psi\bigr) \;}
 # ```
 #
-# Three things follow, and they are sharper than the prose they replace.
+# Three things follow.
 #
 # **The period-average is the whole secular effect.** ``\bar\lambda`` -- the
 # ``m=0`` harmonic -- is the only term that survives without a phase condition.
@@ -718,11 +775,10 @@ end  #src
 #
 # **The ``m=2`` harmonic is a parametric term, and it sits exactly on
 # resonance.** It enters multiplied by ``\cos2\psi``, so its sign depends on the
-# phase. This is the point the earlier prose on this page got backwards: the
-# period-``\pi`` lemma does **not** make the second harmonic safe. It forces the
-# modulation to ``2\omega``, which is precisely the principal parametric
-# resonance of an oscillator at ``\omega``. The lemma identifies a resonance
-# rather than ruling one out.
+# phase -- and the period-``\pi`` lemma places it at ``2\omega``, precisely the
+# principal parametric resonance of an oscillator at ``\omega``. The lemma is
+# therefore not a reassurance about the second harmonic: it identifies a
+# resonance rather than ruling one out.
 #
 # **A bound settles when that matters.** Since ``|\alpha_1\cos2\psi-\beta_1\sin2\psi|
 # \le\sqrt{\alpha_1^2+\beta_1^2}``, the effective decay rate is confined to
@@ -750,12 +806,12 @@ let  #src
     avg(f) = quadgk(ph -> f(ph), 0, 2pi; rtol=1e-12)[1] / (2pi)  #src
     worst = 0.0  #src
     for ps in (0.0, 0.7, 1.9, 3.3, 5.1)  #src
-        ## the m=0 harmonic contributes 1/2, independent of phase
+        ## the m=0 harmonic contributes 1/2, independent of phase  #src
         worst = max(worst, abs(avg(ph -> sin(ph + ps)^2) - 0.5))  #src
-        ## the m=2 harmonics contribute -cos(2psi)/4 and +sin(2psi)/4
+        ## the m=2 harmonics contribute -cos(2psi)/4 and +sin(2psi)/4  #src
         worst = max(worst, abs(avg(ph -> cos(2ph) * sin(ph + ps)^2) + cos(2ps)/4))  #src
         worst = max(worst, abs(avg(ph -> sin(2ph) * sin(ph + ps)^2) - sin(2ps)/4))  #src
-        ## every higher even harmonic averages away at this order
+        ## every higher even harmonic averages away at this order  #src
         for k in 2:5  #src
             worst = max(worst, abs(avg(ph -> cos(2k*ph) * sin(ph + ps)^2)))  #src
             worst = max(worst, abs(avg(ph -> sin(2k*ph) * sin(ph + ps)^2)))  #src
@@ -813,9 +869,27 @@ end  #src
 # The fundamental is zero to machine precision -- not small, *absent* -- while
 # the mean and the second harmonic are both ``O(1)``. There is nothing for a
 # resonant solvability condition to act on.
-
+#
+# It is tempting to read the criterion off this table, and it does not work.
+# The criterion is on the Fourier harmonics of ``\lambda(\phi)``; these are the
+# harmonics of ``S(\phi)``. Between the two sit a saturating constitutive law
+# ``S\mapsto\eta(S)`` and an eigenvalue problem ``\eta\mapsto\lambda`` which, as
+# stated above, is not a pointwise function of the state. Treating the two sets
+# of coefficients as proportional is precisely the substitution this step exists
+# to rule out.
+#
+# So ``\alpha_1`` and ``\beta_1`` are **not evaluated here.** Obtaining them
+# means sweeping ``\phi`` through a cycle, evaluating ``\lambda`` from the
+# eigenvalue solver at ``\eta(S(\phi))`` at each phase, and Fourier-decomposing
+# *that*. Until that is done the criterion stands as a criterion and the
+# stability of discarding the ``m=2`` channel is open -- which is how the
+# closing section records it.
+#
+#
 let  #src
-    println("\nSTEP 5 (A5): the period-pi lemma -- why instantaneous evaluation is not licensed")  #src
+    ## An arbitrary four-component complex field. That is the right test for a  #src
+    ## LEMMA -- an identity must hold for any such field -- but it is not a  #src
+    ## physical state, and nothing about the model may be priced from it.  #src
     e_amp = [1.3 + 0.7im, -0.4 + 1.1im, 0.9 - 0.2im, 0.5 + 0.3im]  #src
     Sof(φ) = begin  #src
         r = [real(z*(cos(φ) - im*sin(φ))) for z in e_amp]  #src
@@ -823,33 +897,29 @@ let  #src
     end  #src
     worst = maximum(abs(Sof(φ) - Sof(φ + π)) for φ in range(0, 2π; length=257))  #src
     @assert worst < 1e-13 "S is not period-pi; the lemma is false as stated"  #src
-    @printf("  max |S(phi) - S(phi+pi)| over a full period : %.2e\n", worst)  #src
     N = 4096  #src
     φs = range(0, 2π; length=N+1)[1:end-1]  #src
     c1 = sum(Sof(φ)*cos(φ) for φ in φs)*2/N  #src
     s1 = sum(Sof(φ)*sin(φ) for φ in φs)*2/N  #src
     c2 = sum(Sof(φ)*cos(2φ) for φ in φs)*2/N  #src
     c0 = sum(Sof(φ) for φ in φs)/N  #src
-    @printf("  Fourier content:  m=0 : %.4f    m=1 : %.2e / %.2e    m=2 : %.4f\n",  #src
-            c0, abs(c1), abs(s1), abs(c2))  #src
     @assert abs(c1) < 1e-12 && abs(s1) < 1e-12 "S has content at the mode's OWN frequency"  #src
     @assert abs(c2) > 1e-3 "the m=2 parametric channel vanished; expected it to survive"  #src
-    println("  ASSERTION 8 OK: S has EXACTLY zero content at m=1 (the mode's own")  #src
-    println("    frequency) and nonzero content at m=0 and m=2.")  #src
-    println("    => the leading temporal effect is the PERIOD-AVERAGED (m=0) channel.")  #src
-    println("    => evaluating eta instantaneously injects a spurious 2*omega modulation")  #src
-    println("       whose quasi-static justification is violated by O(1), at any amplitude.")  #src
+    println("  ASSERTION 8 OK: S is period-pi to $(round(worst, sigdigits=2)); its Fourier")  #src
+    println("    content at m=1 is zero to machine precision, while m=0 and m=2 survive.")  #src
+    println("    (A lemma check on an arbitrary field -- not a physical state.)")  #src
 end  #src
 
 # ## Step 6 (A6) -- truncate the viscosity spectrum at ``L_\eta``
 #
 # **Assumption.** ``\eta``'s Legendre content above ``l'=L_\eta`` is negligible.
 #
-# **What it drops.** Coupling between modes further apart than ``L_\eta``.
-# The matrix becomes banded; cost falls from ``O(M^2)`` to ``O(M L_\eta)``.
+# **What it drops.** Coupling between modes further apart than ``L_\eta``. The
+# matrix becomes banded and the cost of applying it falls from ``O(M^2)`` to
+# ``O(M L_\eta)``.
 #
-# **Error.** Exactly the discarded coupling, which can be measured directly.
-# It has been, and the measurement rules this rung out.
+# **Error.** Exactly the discarded coupling, which is a measurable number. It
+# has been measured, and the measurement rules this rung out.
 #
 # ### Measurement, and the choice of error norm
 #
@@ -857,7 +927,7 @@ end  #src
 # lies below ``L_\eta``", says ``L_\eta=2\ldots5`` suffices everywhere. That
 # metric is **misleading**. What controls the banding error is the *summed
 # magnitude* of the discarded coefficients,
-# ``T_1(L)=\sum_{l'>L}|\eta_{l'}|/|\eta_0|``, because those terms enter the
+# ``\mathcal T(L)=\sum_{l'>L}|\eta_{l'}|/|\eta_0|``, because those terms enter the
 # coupling matrix additively, not in quadrature. The spectrum turns out to
 # have a long, slowly-decaying plateau carrying little *power* but large
 # *summed magnitude*.
@@ -987,59 +1057,20 @@ let  #src
     println("    rotational symmetry of the problem.")  #src
 end  #src
 
-# ### The radial equation, derived
+# ### The radial equation
 #
-# Reid's problem is separable because his operator commutes with the angular
-# Laplacian. With ``\eta=\eta(r)`` that is still true, so we can derive the
-# replacement for his radial ODE directly.
+# With ``\eta=\eta(r)`` the angular structure is untouched, so the problem stays
+# diagonal in ``l`` exactly as Step 4 predicts, and each mode again reduces to a
+# single radial equation. Carrying a variable ``\eta`` through the
+# stream-function form of the momentum equation adds terms proportional to
+# ``\eta'`` and ``\eta''`` and nothing else; setting ``\eta'=0`` returns Reid's
+# operator ``\mathcal D_l(\mathcal D_l+q^2)U=0`` identically, which is how the
+# construction is checked.
 #
-# Use the Stokes stream function for axisymmetric incompressible flow. For
-# surface mode ``l``,
+# What remains is a linear two-point boundary-value eigenproblem with variable
+# coefficients: no longer Bessel, but entirely standard. The continuation
+# machinery that tracks Reid's eigenvalue branches applies to it unchanged.
 #
-# ```math
-# \psi(r,\theta) = U(r)\,A_l(\theta),
-# \qquad
-# A_l(\theta) = \frac{\sin^2\theta\;P_l'(\cos\theta)}{l(l+1)},
-# ```
-#
-# which reproduces ``u_r=F(r)P_l(\cos\theta)`` with ``U=r^2F`` -- Reid's own
-# variable. The angular part is a Gegenbauer function, so it diagonalises the
-# Stokes operator ``E^2=\partial_{rr}+\frac{1-\mu^2}{r^2}\partial_{\mu\mu}``:
-#
-# ```math
-# E^2\psi = \mathcal D_l[U]\,A_l,
-# \qquad
-# \mathcal D_l[U] \equiv U'' - \frac{l(l+1)}{r^2}U .
-# ```
-#
-# Taking the ``\varphi``-component of the curl of the momentum equation
-# annihilates the pressure, which is what makes this tractable at all. With
-# ``\rho=1``, ``\eta_0=1``, and a time factor ``e^{-\sigma t}`` (so
-# ``\sigma=q^2``), building ``\bm e``, then ``\bm\tau=2\eta(r)\bm e``, then
-# ``\nabla\cdot\bm\tau`` in spherical coordinates, and finally the curl, gives
-# for **constant** ``\eta``
-#
-# ```math
-# \boxed{\ \bigl[\nabla\times\bm M\bigr]_\varphi
-#   = -\frac{A_l(\theta)}{r\sin\theta}\,
-#     \mathcal D_l\bigl(\mathcal D_l + q^2\bigr)[U]\ }
-# ```
-#
-# -- exactly Reid's ``\mathcal D_l(\mathcal D_l+q^2)U=0``, recovered from the
-# general variable-viscosity machinery. Verified to a relative spread of
-# ``\sim10^{-13}`` at five independent ``(r,\theta)`` points, for
-# ``l=2,3,4``, against an independently constructed Reid operator. The factor
-# ``1/(r\sin\theta)`` is the Jacobian between the curl and the stream-function
-# operator, not a physical term.
-#
-# **What this buys.** The same construction with ``\eta=\eta(r)`` non-constant
-# produces additional terms proportional to ``\eta'`` and ``\eta''``, and
-# nothing else -- the angular structure is untouched, so the equation stays
-# diagonal in ``l``, exactly as Step 7 promised. The resulting radial problem
-# is a linear two-point boundary-value eigenproblem: no longer Bessel, but
-# entirely standard, and `julia/src/reid.jl`'s continuation machinery already
-# knows how to track eigenvalue branches through one.
-
 @variables rr tt qq hh1 hh2  #src
 let  #src
     Drr = Differential(rr); Dtt = Differential(tt)  #src
@@ -1083,22 +1114,158 @@ let  #src
         @assert abs(ev(extra,0.61,1.3,3.7,0.0,1.0)) > 1e-3 "a quadratic eta(r) must produce a nonzero correction"  #src
     end  #src
 end  #src
-
 # ## Step 8 (A8) -- freeze the radial profile: ``\eta(r)\to\eta_{\rm eff}``
 #
-# **Assumption.** The radial variation of ``\eta`` is small enough to
-# replace by a single number.
+# **Assumption.** The radial variation of ``\eta`` is small enough to replace
+# by a single number ``\eta_{\mathrm{eff}}``, taken as the
+# dissipation-weighted average of ``\eta`` over the drop. Equivalently, the
+# whole field is summarised by one effective Ohnesorge number
+# ``\mathrm{Oh}_{\mathrm{eff}}=\eta_{\mathrm{eff}}/\sqrt{\rho T_1R}``.
 #
 # **What it buys.** The radial equation becomes constant-coefficient again,
 # i.e. Bessel's equation, and Reid's closed-form characteristic equation
 # returns verbatim -- evaluated at a shifted Ohnesorge number.
 #
-# **This is where the current production code sits** (`st_exact_extension.jl`),
-# combined with choice (a) of Step 5.
+# **This is where the current production code sits**, combined with choice (a)
+# of Step 5.
+#
+# Its error is the one measured in Step 7: for a realistic multi-mode state the
+# viscosity spans a factor of order ``100`` across the drop, and the angular
+# coefficients ``|\eta_1|/|\eta_0|\approx1.3`` and
+# ``|\eta_2|/|\eta_0|\approx0.2`` are comparable to or larger than the mean.
+# Collapsing all of that onto one number per mode is a leading-order
+# approximation, not a perturbative one. Combined with the temporal closure of
+# Step 5(a), which is unlicensed at any amplitude, this rung carries two
+# uncontrolled approximations at once -- which is worth knowing when reading its
+# predictions.
 #
 # **How to undo it.** Step 7.
 
 # ## Step 9 -- the Cross model as a rung, not an alternative
+#
+# Cross is not a competing constitutive law; it is Carreau-Yasuda on the slice
+# ``p=(n-1)/a=-1``, and it is how this repository's validation fluid is actually
+# characterised. Establishing that takes a short detour through which exponents
+# make ``\eta`` well behaved -- which is also where a persistent confusion about
+# Step 1 can be cleared up, so that comes first.
+#
+# ### Two different non-analyticities, and only one of them is resolved
+#
+# Before going further it is worth separating two claims that sound alike and
+# are not, because conflating them is the easiest mistake on this page.
+#
+# Step 1 showed that ``\eta`` is not analytic in the **oscillation amplitude**
+# ``\epsilon``: with ``\dot\gamma=O(\epsilon)`` and a non-integer ``a``, the
+# correction scales as ``\epsilon^a``, which is larger than any linear term as
+# ``\epsilon\to0``. **That claim stands, and nothing below repairs it.** It is
+# why no small-amplitude expansion of this problem exists, and it is the reason
+# the whole chain is built around evaluating Reid's relations exactly rather
+# than perturbing them.
+#
+# What follows concerns a different question: whether ``\eta`` is a polynomial
+# in the **strain-rate components**, which controls how its Legendre series
+# behaves and therefore whether the coupling matrix is finite. The answer there
+# is favourable, and it is favourable *regardless* of the amplitude
+# non-analyticity, because the two involve different variables. A reader who
+# takes the good news below as an answer to Step 1 has read it wrongly.
+#
+# ### Which exponents make ``\eta`` a polynomial
+#
+# We can now say precisely what is special about particular exponents, and
+# it is a statement about **structure**, not about accuracy.
+#
+# The coupling matrix is exactly banded, and exactly truncatable, if and
+# only if ``\eta`` is a **polynomial** in the components of ``\bm e``. Track
+# the two nestings:
+#
+# ```math
+# \eta = \eta_\infty + \Delta\eta\,(1+X)^{p},
+# \qquad X = (\lambda_c\dot\gamma)^a,
+# \qquad p = \frac{n-1}{a},
+# \qquad \Delta\eta \equiv \eta_0-\eta_\infty .
+# ```
+#
+# * ``X`` is a polynomial in ``\bm e`` **iff** ``a`` is a non-negative even
+#   integer, because ``\dot\gamma^a=(\dot\gamma^2)^{a/2}`` and
+#   ``\dot\gamma^2=2\bm e\!:\!\bm e`` is quadratic.
+# * ``(1+X)^p`` is a polynomial in ``X`` **iff** ``p`` is a non-negative
+#   integer.
+#
+# For a genuinely shear-thinning fluid ``n<1``, so ``p<0`` and the second
+# condition never holds: ``\eta`` is not a polynomial in the strain rate, and
+# its Legendre series does not terminate.
+#
+# That sounds like a barrier and is not one, because the coupling does not see
+# the whole series. The Gaunt rule requires ``l'\le l+l''``, and the shape
+# expansion stops at ``l=M``, so **every viscosity harmonic above
+# ``l'=2M`` is orthogonal to every product ``P_lP_{l''}`` and cannot couple
+# any pair of modes.** It is not small; it is absent.
+#
+# > The mode-coupling matrix is determined **exactly** by the first ``2M+1``
+# > Legendre harmonics of the viscosity. Truncating there is not an
+# > approximation -- everything above is annihilated by the angular integral.
+#
+# So the infinite series is a property of ``\eta``, not a limitation of the
+# model. For ``M=50`` the coupling is fixed by 101 numbers per radius; for
+# ``M=90``, by 181. Whether the matrix can be further *banded* -- kept to
+# ``l'\le L_\eta`` with ``L_\eta\ll 2M``, for speed -- is a separate and
+# genuinely empirical question, and Step 6 measures it.
+#
+# It is worth being precise about why the classical ``a=2`` theory closes.
+# Not because ``a=2`` makes ``\eta`` polynomial -- it does not -- but because
+# that theory additionally *truncates* ``(1+X)^p\approx 1+pX`` at first
+# order, and ``X`` alone is polynomial when ``a=2``. The finiteness comes
+# from the perturbative truncation, and ``a=2`` merely keeps the truncated
+# object polynomial.
+#
+# ### The exception that matters: ``p=-1``
+#
+# There is one value of ``p`` that is special without being a non-negative
+# integer, and it is the one the validation fluid has. If ``p=-1``, i.e.
+# ``n=1-a``, then
+#
+# ```math
+# \eta = \eta_\infty + \frac{\Delta\eta}{1+X}
+# \qquad\Longleftrightarrow\qquad
+# (1+X)\,\eta = (1+X)\,\eta_\infty + \Delta\eta .
+# ```
+#
+# The constitutive law becomes an **algebraic constraint** that is *linear*
+# in ``\eta`` and *linear* in ``X``, with no fractional power of anything
+# left on the outside. This is the Cross model, and it is what makes this step
+# is a genuine simplification rather than a relabelling.
+
+let  #src
+    println("\nSTEP 4b: which exponents make eta polynomial (hence EXACTLY banded)")  #src
+    @variables Xs etainf Deta  #src
+    lhs = (1 + Xs)*(etainf + Deta/(1 + Xs))  #src
+    rhs = (1 + Xs)*etainf + Deta  #src
+    ok, how = symbolic_zero(Symbolics.simplify(lhs - rhs), [Xs, etainf, Deta])  #src
+    @assert ok "the Cross law failed to reduce to a polynomial constraint"  #src
+    println("  ASSERTION 6 OK ($how): for p = (n-1)/a = -1 the constitutive law is")  #src
+    println("    equivalent to the POLYNOMIAL constraint (1+X)*eta = (1+X)*eta_inf + Deta.")  #src
+    println("    No fractional power remains on the outside. This is the Cross model.")  #src
+
+    println("\n  Polynomiality bookkeeping (X = (lambda_c*gammadot)^a):")  #src
+    for a in (0.5, 0.743, 1.0, 2.0, 4.0)  #src
+        xpoly = (a >= 0) && isinteger(a/2)  #src
+        @printf("    a=%-6.3f  X polynomial in e? %-5s\n", a, xpoly)  #src
+    end  #src
+    for (nn, aa) in ((0.257, 0.743), (0.5, 2.0), (0.0, 1.0))  #src
+        pp = (nn - 1)/aa  #src
+        @printf("    n=%-6.3f a=%-6.3f -> p=%-7.3f  (1+X)^p polynomial in X? %s\n",  #src
+                nn, aa, pp, (pp >= 0 && isinteger(pp)))  #src
+    end  #src
+    for nn in (0.0, 0.257, 0.5, 0.9), aa in (0.5, 0.743, 1.0, 2.0, 4.0)  #src
+        @assert (nn - 1)/aa < 0 "p = (n-1)/a must be negative for every shear-thinning fluid"  #src
+    end  #src
+    println("  ASSERTION 7 OK: p<0 for every shear-thinning fluid, so eta's Legendre")  #src
+    println("    series does not terminate -- but the coupling is still exact, see below.")  #src
+    println("    Physical meaning: no shear-thinning drop model can claim an EXACT")  #src
+    println("    finite mode-coupling bandwidth; the truncation must carry an error bar.")  #src
+end  #src
+
+
 #
 # Cross is not a different model; it is Carreau-Yasuda restricted to
 # ``p=(n-1)/a=-1``, i.e. ``n=1-a``:
@@ -1110,7 +1277,7 @@ end  #src
 #
 # Two reasons this rung is worth taking, both structural:
 #
-# 1. By Step 4b the constitutive law becomes an **algebraic constraint**
+# 1. By the argument above the constitutive law becomes an **algebraic constraint**
 #    ``(1+X)\eta=(1+X)\eta_\infty+\Delta\eta`` -- linear in ``\eta``, linear
 #    in ``X``, no outer fractional power. Symbolic manipulation becomes
 #    tractable in a way it is not for general ``p``.
@@ -1168,6 +1335,15 @@ end  #src
 # must emerge when the viscosity stops depending on the flow, and they must
 # reduce to Lamb as ``\mathrm{Oh}\to0``.
 #
+# Both are checked here. The first is the statement that switching the thinning
+# off -- ``\lambda_c=0``, a fluid whose viscosity does not depend on the flow --
+# must return ``\mathrm{Oh}_{\mathrm{eff}}=\mathrm{Oh}`` for every mode and
+# recover Reid's coefficients through the shear-thinning code path rather than
+# the Newtonian one. It does, to within the interpolation error of the
+# tabulated lookup that path uses. That is the check this page most needs,
+# because it is the one that exercises the generalisation itself; the Lamb
+# limit below tests only the Newtonian floor underneath it.
+#
 # | ``\mathrm{Oh}`` | ``|\lambda_{\rm Reid}-\lambda_{\rm Lamb}|/\lambda_{\rm Lamb}`` |
 # |:--|--:|
 # | ``10^{-2}`` | ``5.17\times10^{-2}`` |
@@ -1205,6 +1381,24 @@ let  #src
     println("    limit that julia/src/reid.jl already implements and validates.")  #src
     println("    Physical meaning of a failure: the hierarchy would not contain the")  #src
     println("    Newtonian case it claims to generalise.")  #src
+end  #src
+
+let  #src
+    M = 5  #src
+    Oh0 = 0.05  #src
+    stx = STExactParams(M, Oh0, 0.0, 2.0, 0.5; viscous=:reid)  #src
+    Adot = [0.05, -0.02, 0.031, 0.004]  #src
+    oh_eff = oh_eff_all_coupled(stx, Oh0, Adot)  #src
+    @assert all(o -> isapprox(o, Oh0; rtol=1e-12), oh_eff) "Oh_eff must equal Oh0 when lambda_c = 0"  #src
+    lam_st, om2_st = lambda_omega2_from_oh_eff(stx, oh_eff)  #src
+    lam_n, om2_n = drop_viscous_coeffs(M, Oh0, :reid)  #src
+    worst = maximum(max(abs(lam_st[k]-lam_n[k])/lam_n[k], abs(om2_st[k]-om2_n[k])/om2_n[k])  #src
+                    for k in eachindex(lam_n))  #src
+    @assert worst < 5e-3 "the shear-thinning path does not reduce to Reid at lambda_c=0 ($worst)"  #src
+    println("  ASSERTION 12b OK: with the thinning switched off (lambda_c = 0) the")  #src
+    println("    shear-thinning path returns Oh_eff = Oh0 exactly, and its lambda_l,")  #src
+    println("    omega_l^2 agree with the Newtonian Reid coefficients to")  #src
+    println("    $(round(100*worst, sigdigits=2))% (tabulated-vs-exact interpolation error).")  #src
 end  #src
 
 # ## Summary of the chain
