@@ -156,10 +156,6 @@ end  #src
 # transfer of the boundary conditions from the deformed surface
 # ``r=R+\zeta`` to the sphere ``r=R``. Error ``O(\epsilon^2)``.
 #
-# **How to undo it.** Standard weakly-nonlinear free-surface theory. This
-# is entirely independent of the rheology question and can be revisited
-# separately.
-#
 # ### Linearising the kinematics does not linearise the rheology
 #
 # Linearising the **kinematics** does not linearise the **rheology**.
@@ -266,7 +262,7 @@ end  #src
 # fixed once ``l`` and the viscosity are given, and the strain tensor is linear
 # in the modal velocity ``\dot A_l``.
 
-# ## Step 4 (L4) -- the full coupled system
+# ## The full coupled system
 #
 # This is the rung to remember. Everything below it is a simplification *of*
 # this, and anything you later decide you need, you recover by climbing back
@@ -288,8 +284,7 @@ end  #src
 # deformation ``\propto P_l`` drives an interior field whose angular dependence
 # is still ``P_l``, its stress at the surface is still ``\propto P_l``, and step 3
 # picks out one equation per mode by orthogonality. That is why Reid obtains one
-# characteristic equation per ``l``, and why the solver of Gabbard et al. (2025)
-# can integrate ``M-1`` independent oscillators. Collecting them into a vector
+# characteristic equation per ``l``. Collecting them into a vector
 # ``\bm A=(A_2,\ldots,A_M)^{\mathsf T}``,
 #
 # ```math
@@ -305,10 +300,8 @@ end  #src
 # characteristic equation and ``\bm b`` has entries ``l\,B_l``, the contact
 # pressure the wall applies while the drop is touching it. ``\bm b`` is
 # kinematic and geometric; no rheology enters it, and nothing below changes it.
-#
-# **Both matrices are diagonal, and that is the entire content of the Newtonian
-# model.** What follows is an argument that a shear-thinning fluid destroys the
-# diagonality and nothing else.
+# Both matrices are diagonal, and that is the entire content of the Newtonian
+# model.
 #
 # ### Which constitutive models this covers
 #
@@ -330,15 +323,11 @@ end  #src
 # **(H3) Continuity in ``\dot\gamma``**, so ``\eta(x,\theta)`` has a convergent
 # Legendre expansion.
 #
-# Nothing else is used. In particular ``\eta`` need not be analytic, polynomial,
-# or close to constant: the exact truncation proved below holds for any ``\eta``
-# satisfying (H1)-(H3).
 #
 # | model | admissible | reason |
 # |:--|:--|:--|
 # | Carreau-Yasuda, any ``a``, any ``n<1``, ``\eta_\infty>0`` | yes | satisfies all three |
 # | Cross | yes | the ``p=-1`` slice of Carreau-Yasuda |
-# | Carreau (``a=2``) | yes | a further slice |
 # | Ellis, truncated power law | yes | bounded by construction |
 # | unregularised power law | no | violates (H2); ``\eta\to0`` or ``\infty`` and BC2 stops reducing |
 # | Bingham, Herschel-Bulkley | no | yield stress makes ``\eta`` unbounded as ``\dot\gamma\to0`` |
@@ -450,9 +439,6 @@ end  #src
 # value* ``\eta_s``. The form of the condition is unchanged; one coefficient
 # becomes state-dependent.
 #
-# So the honest scope of "adapt Reid to a generalized Newtonian fluid" is: **one
-# extra term in the interior operator, one coefficient in BC3, and nothing
-# else.**
 #
 # **(iii) A radially varying viscosity keeps one ODE per mode.** For
 # ``\eta=\eta(x)`` the display above already says it: every ``\theta``-dependence
