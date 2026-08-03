@@ -50,9 +50,13 @@ const KNOWN_DEBT = Set([
         for f in readdir(d)
             endswith(f, ".jl") || continue
             body = read(joinpath(d, f), String)
-            # only flag code, not the prose that explains the rule
+            # Only flag CODE. A comment line is a comment even when it carries a
+            # `#src` marker, and the sections that explain this rule necessarily
+            # quote the forbidden construction -- an earlier version of this
+            # filter kept `#src` comment lines and so flagged its own rationale.
+            # Julia code with a trailing `#src` does not start with `#`.
             code = join([l for l in split(body, "\n")
-                         if !startswith(strip(l), "#") || occursin("#src", l)], "\n")
+                         if !startswith(strip(l), "#")], "\n")
             occursin(FORBIDDEN, code) && push!(offenders, f)
         end
     end

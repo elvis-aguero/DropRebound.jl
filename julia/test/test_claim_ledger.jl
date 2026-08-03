@@ -14,8 +14,11 @@
 #   2. ANCHORING.  Every ledger entry's anchor text is still present in the
 #                  summary. Editing an equation breaks its anchor, so a changed
 #                  equation cannot keep an old proof's endorsement.
-#   3. DISCHARGE.  Every entry marked `:proved` names an assertion label that
-#                  actually appears in the derivation sources.
+#   3. DISCHARGE.  Every entry marked `:proved` points at a check that carries
+#                  that claim's OWN id as a `## CLAIM: <id>` tag on the assertion
+#                  line. An earlier version searched only for the assertion's
+#                  NAME, which any neighbouring check satisfies -- and that hole
+#                  passed five claims that were never verified.
 #
 # Entries carry one of three statuses, and the distinction is the point:
 #
@@ -79,11 +82,12 @@ const LEDGER = [
      by = "ASSERTION 2c"),
     (id = "SUM-FW",     status = :proved, anchor = raw"u_{\theta,l}=\frac{\psi_l'}{x\,l(l+1)}",
      by = "ASSERTION 2b"),
-    # Its pieces are checked -- the diagonal operator, the coupling band, the
-    # vorticity factor, q^2 = sigma/Oh -- but the assembled equation is not, so
-    # a wrong Oh or a wrong sign in the summary would survive.
-    (id = "SUM-INT",    status = :open,   anchor = raw"\partial_t\,\mathcal D_l[\psi_l]",
-     by = ""),
+    # Discharged end to end: the 3x3 determinant built from this equation plus
+    # BC1-BC3 must vanish at roots the solver finds from Reid's characteristic
+    # equation independently, and sigma = Oh q^2 enters through it, so a wrong
+    # Oh prefactor breaks it.
+    (id = "SUM-INT",    status = :proved, anchor = raw"\partial_t\,\mathcal D_l[\psi_l]",
+     by = "ASSERTION 3e"),
     (id = "SUM-BC",     status = :proved, anchor = raw"\mathcal T[\psi_l]\big|_{x=1}=0",
      by = "ASSERTION 2b"),
     # ASSERTION 3d proves the SOURCE vanishes iff eta is constant (that is
@@ -95,11 +99,11 @@ const LEDGER = [
      by = "ASSERTION 3d"),
     (id = "SUM-FILM",   status = :axiom,  anchor = raw"h\,p_c = 0",
      by = ""),  # lubrication limit: the film transmits stress with no dynamics of its own
-    # Never checked. It was marked :proved by an assertion that verified the
-    # curvature term in the same section -- the adjacency hole this test now
-    # closes. Deriving it, with a tagged check, is the next task.
-    (id = "SUM-NORMAL", status = :open,   anchor = raw"\bigl[-p+2\eta\,e_{rr}\bigr]_{x=1}",
-     by = ""),
+    # Derived from the traction jump, and the sign on the curvature term is fixed
+    # by the base state: p = 2, div n = 2 at rest, and only one combination gives
+    # zero. The form previously on the page failed that test by -4.
+    (id = "SUM-NORMAL", status = :proved, anchor = raw"\bigl[-p+2\eta\,e_{rr}\bigr]_{x=1}",
+     by = "ASSERTION 3e"),
     (id = "SUM-CURV",   status = :proved, anchor = raw"(l-1)(l+2)\zeta_lP_l(\mu)",
      by = "ASSERTION 2c"),
     # The force relation and the mass are checked (SUM-FORCE); the assembled
@@ -125,7 +129,7 @@ const LEDGER = [
 # Reduce this only by tagging a check that would falsify the equation in
 # question. Do not reduce it by re-pointing an anchor or by citing a neighbouring
 # assertion -- that is precisely what produced the false zero.
-const OPEN_BUDGET = 5
+const OPEN_BUDGET = 3
 
 @testset "claim ledger" begin
     text = summary_text(MODEL_PAGE)

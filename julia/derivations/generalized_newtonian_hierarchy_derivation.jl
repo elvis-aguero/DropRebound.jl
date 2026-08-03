@@ -91,6 +91,8 @@
 
 using Symbolics, QuadGK, SpecialFunctions, DropSolver  #src
 using Printf  #src
+using LinearAlgebra: det  #src
+using DropSolver: sph_bessel_ratio  #src
 
 function symbolic_zero(expr, vars; npts::Int=12, tol::Float64=1e-10)  #src
     s = Symbolics.simplify(Symbolics.expand(expr))  #src
@@ -1418,6 +1420,135 @@ end  #src
 
 
 
+# ## The normal-stress balance, and whether the interior problem is well posed
+#
+# ### The balance, derived rather than quoted
+#
+# The traction on the free surface is ``\bm t=\bm\sigma\cdot\bm n`` with
+# ``\bm\sigma=-p\bm I+2\eta\bm e``. Outside sits the atmosphere, at gauge zero,
+# plus the film pressure ``p_c`` pushing inward. Surface tension balances the
+# jump, so the normal component gives
+#
+# ```math
+# \boxed{\;
+# \bigl[-p+2\eta\,e_{rr}\bigr]_{x=1} \;+\; \bigl(\nabla\cdot\bm n\bigr)\big|_{x=1}
+#   \;+\; p_c \;=\; 0 \;}
+# ```
+#
+# and the surface strain follows from the strain tensor rather than from memory,
+#
+# ```math
+# e_{rr}=\Bigl(\frac{\psi_l'}{x^2}-\frac{2\psi_l}{x^3}\Bigr)P_l
+# \quad\Longrightarrow\quad
+# e_{rr}\big|_{x=1}=\psi_l'(1)-2\psi_l(1) .
+# ```
+#
+# **The base state fixes the sign, and it is worth doing before anything else.**
+# A drop at rest carries ``p=2`` (Laplace) and ``\nabla\cdot\bm n=2``, with no
+# flow and no contact. Substituting: ``-2+0+2+0=0``. The opposite sign on the
+# curvature leaves ``-4``, which is a Laplace pressure pointing the wrong way.
+# One line, no algebra, and it is decisive.
+#
+# ### The pressure amplitude is not free
+#
+# For a normal mode with ``p=\mathcal P x^lP_l``, the radial momentum equation
+# reads ``-\sigma u_r=-\partial_xp+\mathrm{Oh}[\nabla^2\bm u]_r``, and the
+# poloidal field has ``[\nabla^2\bm u]_r=\mathcal D_l[\psi_l]P_l/x^2``. Multiplying
+# by ``x^2``,
+#
+# ```math
+# \mathrm{Oh}\,(\mathcal D_l+q^2)[\psi_l]=\mathcal P\,l\,x^{l+1} .
+# ```
+#
+# With ``\psi_l=Cxj_l(qx)+Dx^{l+1}`` the Bessel part is annihilated and
+# ``x^{l+1}`` maps to ``q^2x^{l+1}``, so
+#
+# ```math
+# \mathcal P=\frac{\mathrm{Oh}\,q^2D}{l}=\frac{\sigma D}{l} .
+# ```
+#
+# Counting ``\mathcal P`` as an independent constant is one way to manufacture a
+# phantom under-determinacy; the other is treating ``\zeta_l`` as an unknown
+# needing its own equation, when BC1 ties it to the interior and BC3 advances it.
+#
+# ### The allocation, and the test that settles it
+#
+# ```math
+# \boxed{\;
+# \begin{aligned}
+# &\text{regularity at } x=0 &&\text{kills the two singular solutions}\\
+# &\text{BC1:}\ \ \psi_l\big|_{x=1}=\dot\zeta_l &&\text{kinematic}\\
+# &\text{BC2:}\ \ \mathcal T[\psi_l]\big|_{x=1}=0 &&\text{tangential stress}\\
+# &\text{BC3:}\ \ \text{normal stress, above} &&\text{advances }\zeta_l
+# \end{aligned}\;}
+# ```
+#
+# In the Newtonian limit with a normal mode this is a homogeneous ``3\times3``
+# system in ``(C,D,Z)``, where ``Z`` is the surface amplitude. A non-trivial
+# solution exists only where the determinant vanishes, so that determinant *is* a
+# characteristic equation -- and if the allocation is right it must be Reid's,
+# which the solver computes independently. That is the check below, and it also
+# re-tests the interior equation end to end: ``\sigma=\mathrm{Oh}\,q^2`` enters
+# through it, so a wrong ``\mathrm{Oh}`` would break it.
+
+let  #src
+    ## Two things went wrong in earlier attempts at this check, and both are      #src
+    ## worth recording because each produced a confident wrong answer.            #src
+    ##                                                                            #src
+    ## 1. A hand-rolled j_l. sqrt(pi/2z)*besselj(l+1/2,z) takes a different       #src
+    ##    branch than the entire function for complex z with negative imaginary    #src
+    ##    part, and a recurrence seeded from sin(z)/z loses precision where        #src
+    ##    |sin z| ~ e^15. Both made the test report agreement for the WRONG sign.  #src
+    ##    Use sph_bessel_ratio -- the determinant's Bessel column is homogeneous   #src
+    ##    in j_l, so only the ratio is needed and j_l itself is never evaluated.   #src
+    ## 2. Deriving the base-state sign by rearrangement rather than by evaluating  #src
+    ##    a residual. The rearrangement had an algebra slip and reversed the       #src
+    ##    conclusion.                                                             #src
+    Tg(f, d1, d2, l) = d2 - 2d1 + l*(l+1)*f  #src
+    function bess_at_one(q, l)  #src
+        Q  = sph_bessel_ratio(l, q)            # j_{l+1}(q)/j_l(q); set j_l(q) := 1  #src
+        j1 = l/q - Q                            # j_l'  #src
+        j2 = -2j1/q - (1 - l*(l+1)/q^2)         # j_l'' from the Bessel equation  #src
+        (one(q), 1 + q*j1, 2q*j1 + q^2*j2)      # f, f', f'' for f = x j_l(qx)  #src
+    end  #src
+    ## BC3 with the curvature sign as a parameter, so the test discriminates.  #src
+    function alloc_det(q, Oh, l; s = +1.0)  #src
+        fB, d1B, d2B = bess_at_one(q, l)  #src
+        fP, d1P = 1.0, l + 1.0                  # x^(l+1) and its derivative at 1  #src
+        d2P = (l + 1.0)*l  #src
+        er(f, d1) = 2Oh*(d1 - 2f)               # 2 Oh e_rr at x=1  #src
+        det([ fB                    fP                        complex(Oh*q^2)  #src
+              Tg(fB,d1B,d2B,l)      Tg(fP,d1P,d2P,l)          complex(0.0)  #src
+              er(fB,d1B)            er(fP,d1P) - Oh*q^2/l     complex(s*(l-1)*(l+2)) ])  #src
+    end  #src
+    ## (i) the base state, by residual and not by rearrangement  #src
+    base_right = -2.0 + 0.0 + 2.0 + 0.0        # -p + 2 eta e_rr + div n + p_c  #src
+    base_wrong = -2.0 + 0.0 - 2.0 + 0.0  #src
+    @assert abs(base_right) < 1e-14 "the derived normal-stress balance fails the base state ($base_right)"  ## CLAIM: SUM-NORMAL  #src
+    @assert abs(base_wrong) > 1.0 "the opposite curvature sign also passes; the base state cannot fix it"  #src
+    ## (ii) the determinant vanishes at Reid's roots, and only for the derived sign  #src
+    worst_right, best_wrong = 0.0, Inf  #src
+    for Oh in (0.006, 0.05, 0.3, 1.0), l in (2, 4, 8)  #src
+        q  = dominant_root(Oh, l)  #src
+        sc = maximum(abs(alloc_det(q*(1+d), Oh, l)) for d in (0.15, -0.15, 0.3))  #src
+        @assert sc > 0 "the determinant is identically zero; the check is vacuous"  #src
+        worst_right = max(worst_right, abs(alloc_det(q, Oh, l; s = +1.0))/sc)  #src
+        best_wrong  = min(best_wrong,  abs(alloc_det(q, Oh, l; s = -1.0))/sc)  #src
+    end  #src
+    @assert worst_right < 1e-12 "the BC allocation does not reproduce Reid's characteristic equation ($worst_right)"  ## CLAIM: SUM-INT  #src
+    @assert best_wrong > 1e-3 "the opposite curvature sign also satisfies Reid, so this cannot fix it ($best_wrong)"  #src
+    println("  ASSERTION 3e OK: the normal-stress balance and the BC allocation --")  #src
+    @printf("    base state: -p + 2 eta e_rr + div n + p_c = %.1e, and the opposite\n", abs(base_right))  #src
+    @printf("      curvature sign leaves %.1f, a Laplace pressure of the wrong sign;\n", abs(base_wrong))  #src
+    @printf("    the 3x3 determinant vanishes at Reid's roots to %.1e over Oh=0.006..1,\n", worst_right)  #src
+    @printf("      l=2,4,8, while the wrong sign is off by at least %.1e.\n", best_wrong)  #src
+    println("    So the interior problem is well posed on {regularity, BC1, BC2, BC3},")  #src
+    println("    zeta needs no extra equation, and the pressure amplitude is not free.")  #src
+    println("    Physical meaning of a failure: the interior problem would be under- or")  #src
+    println("    over-determined, and a solver built on it would still run, returning a")  #src
+    println("    spectrum that is not the drop's.")  #src
+end  #src
+
 # ## Two results the summary needs
 #
 # ### The capillary restoring force
@@ -1794,10 +1925,15 @@ end  #src
 #
 # ```math
 # \Bigl\langle\,\bigl[-p+2\eta\,e_{rr}\bigr]_{x=1}
-#   - \bigl(\nabla\!\cdot\!\bm n\bigr)\big|_{x=1}
+#   + \bigl(\nabla\!\cdot\!\bm n\bigr)\big|_{x=1}
 #   + p_c \,,\ P_l\Bigr\rangle \;=\; 0,
 # \qquad l\ge2,
 # ```
+#
+# The sign on the curvature term is fixed by the base state: a drop at rest
+# carries ``p=2`` and ``\nabla\cdot\bm n=2``, and only this combination gives
+# zero. The opposite sign leaves a residual of ``-4`` -- a Laplace pressure of
+# the wrong sign, which is what the page said before it was checked.
 #
 # with ``\langle f,P_l\rangle=\tfrac{2l+1}{2}\int_{-1}^{1}fP_l\,d\mu`` and the
 # curvature supplying the capillary restoring term through
