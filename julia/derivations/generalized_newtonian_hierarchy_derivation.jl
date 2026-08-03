@@ -38,6 +38,9 @@
 # | ``F_l(x),\ W_l(x)`` | radial profiles of ``u_r`` and ``u_\theta`` for mode ``l``; both fixed by ``U_l`` |
 # | ``\mathcal D_l`` | ``d^2/dx^2-l(l+1)/x^2``; Reid's radial operator |
 # | ``\mathcal L_2`` | ``d^2/dx^2-(2/x)d/dx+l(l+1)/x^2``; Reid's tangential-stress operator, ``\mathcal L_2[U]|_{x=1}=0`` is BC2 |
+# | ``\mathcal L_n`` | ``d^2/dx^2+(2/x)d/dx-n(n+1)/x^2``; the radial Laplacian (**not** ``\mathcal L_2``) |
+# | ``p`` | pressure inside the drop; ``p_n(x,t)`` its Legendre coefficients |
+# | ``p_c(\theta,t)`` | pressure in the air film holding the drop off the substrate; ``B_n`` its coefficients |
 # | ``\mathcal R_l[U;\eta]`` | variable-viscosity radial operator, derived below |
 # | ``\mathcal R_{l l''}`` | its off-diagonal generalisation once ``\eta`` varies with ``\theta`` |
 # | ``l'`` | degree index of the **viscosity field's own** Legendre series |
@@ -1417,17 +1420,17 @@ end  #src
 #
 # ### The net force the substrate exerts
 #
-# The reaction pressure ``\Pi\ge0`` can only push, so the traction on the drop is
-# ``-\Pi\bm n`` and its vertical component is ``-\Pi\mu``. Integrating over the
-# surface -- and noting that ``\Pi`` vanishes off the contact region, so the
+# The reaction pressure ``p_c\ge0`` can only push, so the traction on the drop is
+# ``-p_c\bm n`` and its vertical component is ``-p_c\mu``. Integrating over the
+# surface -- and noting that ``p_c`` vanishes off the contact region, so the
 # integral may be taken over the whole sphere -- gives
 #
 # ```math
-# \mathfrak F \;=\; -2\pi\int_{-1}^{1}\Pi(\mu)\,\mu\,d\mu
+# \mathfrak F \;=\; -2\pi\int_{-1}^{1}p_c(\mu)\,\mu\,d\mu
 #   \;=\; -\frac{4\pi}{3}B_1 ,
 # ```
 #
-# because ``\mu=P_1`` and every other term in ``\Pi=\sum_nB_nP_n`` is orthogonal
+# because ``\mu=P_1`` and every other term in ``p_c=\sum_nB_nP_n`` is orthogonal
 # to it. So the net force is carried *entirely* by the single coefficient
 # ``B_1``, and every other pressure coefficient is invisible to the centre of
 # mass. Dividing by the drop's non-dimensional mass, which is also ``4\pi/3``,
@@ -1561,6 +1564,29 @@ let  #src
     @assert w_force < 1e-10 "the net substrate force is not -(4pi/3) B_1 ($w_force)"  #src
     @assert abs((-(4pi/3)*1.0)/(4pi/3) + 1.0) < 1e-14 "F/mass must reduce to -B_1"  #src
 
+    ## SUM-PLAP: the angular reduction of the pressure Laplacian, and the fact    #src
+    ## that x^n is its homogeneous solution -- which is why a vanishing source     #src
+    ## leaves exactly one amplitude per mode and no radial equation.               #src
+    Ln(f, n) = ed2(Dr(Dr(f))) + 2*ed2(Dr(f))/rr - n*(n+1)*f/rr^2  #src
+    lap3(e) = ed2(Dr(rr^2*Dr(e))/rr^2 + Dt(sin(tt)*Dt(e))/(rr^2*sin(tt)))  #src
+    w_plap, w_harm, mag_plap = 0.0, 0.0, 0.0  #src
+    for n in 0:5  #src
+        pn = rr^(n+2) + 0.4rr^(n+4) - 0.2rr^(n+1)   # generic, not the harmonic one  #src
+        lhs = lap3(pn*LP(n, cos(tt)))  #src
+        rhs = Ln(pn, n)*LP(n, cos(tt))  #src
+        for (xv,tv) in XT  #src
+            w_plap  = max(w_plap, abs(f2(lhs - rhs, xv, tv)))  #src
+            mag_plap = max(mag_plap, abs(f2(rhs, xv, tv)))  #src
+        end  #src
+        ## x^n must be annihilated: the harmonic part carries no source  #src
+        for (xv,_) in XT  #src
+            w_harm = max(w_harm, abs(f2(Ln(rr^n, n), xv, 1.0)))  #src
+        end  #src
+    end  #src
+    @assert mag_plap > 1e-3 "the pressure-Laplacian sweep never exercised a nonzero operator ($mag_plap)"  #src
+    @assert w_plap < 1e-10 "lap(p_n P_n) is not L_n[p_n] P_n ($w_plap)"  #src
+    @assert w_harm < 1e-10 "x^n is not annihilated by L_n, so the harmonic part is wrong ($w_harm)"  #src
+
     println("  ASSERTION 2c OK: the remaining Model summary claims, discharged --")  #src
     @printf("    h = mu(1+zeta)+z is the exact surface height        (%.1e)\n", w_gap)  #src
     @printf("    the stream-function field is divergence free        (%.1e)\n", w_div)  #src
@@ -1569,6 +1595,7 @@ let  #src
     @printf("    q^2 = sigma/Oh reconciles interior with Reid        (%.1e)\n", w_int)  #src
     @printf("    curvature: 2 + (l-1)(l+2)A_l P_l, l=2..6            (%.1e)\n", w_curv)  #src
     @printf("    net force = -(4pi/3)B_1, so vdot = -Bo - B_1        (%.1e)\n", w_force)  #src
+    @printf("    lap(p_n P_n) = L_n[p_n] P_n, and L_n[x^n] = 0       (%.1e, %.1e)\n", w_plap, w_harm)  #src
     println("    Physical meaning of a failure: the summary would contain an equation")  #src
     println("    with a wrong coefficient, and every number the solver produces from")  #src
     println("    it would be wrong by that factor while looking entirely plausible.")  #src
@@ -1618,7 +1645,7 @@ end  #src
 # ```math
 # \zeta(\theta,t)=\sum_{l\ge2}A_l(t)P_l(\mu),
 # \qquad
-# \Pi(\theta,t)=\sum_{n\ge0}B_n(t)P_n(\mu),
+# p_c(\theta,t)=\sum_{n\ge0}B_n(t)P_n(\mu),
 # ```
 # ```math
 # h(\theta,t)=\mu\,\bigl[1+\zeta(\theta,t)\bigr]+z(t) ,
@@ -1670,14 +1697,75 @@ end  #src
 #
 # ### (2) The pressure
 #
+# Taking the divergence of the momentum equation, with ``\nabla\cdot\bm u=0``,
+#
 # ```math
-# \nabla^2 p = \mathrm{Oh}\,\nabla\cdot\bigl(\nabla\cdot(2\eta\bm e)\bigr),
-# \qquad\text{regular at } x=0 ,
+# \nabla^2 p = \mathrm{Oh}\,\nabla\cdot\bigl(\nabla\cdot(2\eta\bm e)\bigr)
+#   \;\equiv\; \mathrm{Oh}\,S(x,\mu,t) ,
 # ```
 #
-# an elliptic problem at each instant, whose source vanishes only for constant
-# ``\eta``. It is needed because the curl that closed (1) removed ``p``, while
-# (3) requires it.
+# an elliptic problem at each instant. It is needed because the curl that closed
+# (1) removed ``p``, while (3) requires it.
+#
+# The pressure is carried in the same angular basis as everything else,
+# ``p(x,\mu,t)=\sum_{n\ge0}p_n(x,t)P_n(\mu)``, and since the ``P_n`` are
+# eigenfunctions of the angular Laplacian each coefficient obeys a radial
+# equation:
+#
+# ```math
+# \mathcal L_n[p_n] \;=\; \mathrm{Oh}\,S_n(x,t),
+# \qquad
+# \mathcal L_n = \frac{d^2}{dx^2}+\frac{2}{x}\frac{d}{dx}-\frac{n(n+1)}{x^2} ,
+# ```
+#
+# with ``S_n`` the ``n``-th Legendre coefficient of
+# ``\nabla\cdot(\nabla\cdot(2\eta\bm e))`` and ``p_n`` regular at ``x=0``, which
+# forces ``p_n\sim x^n``. The operator ``\mathcal L_n`` is the same radial
+# Laplacian that appears in the projection integrals of *Carrying the projection
+# through*; it is not a new object.
+#
+# Two things follow. First, the general solution is a particular part driven by
+# ``S_n`` plus a **harmonic** part ``c_n(t)\,x^n``, and the ``c_n`` are fixed by
+# the surface condition (3) rather than by anything here -- which is the sense in
+# which the pressure is coupled to the surface rather than determined
+# independently of it. Second, when ``\eta`` is constant the source vanishes and
+# only the harmonic part survives,
+#
+# ```math
+# p = \sum_n c_n(t)\,x^nP_n(\mu) ,
+# ```
+#
+# one amplitude per mode and no differential equation at all. That is exactly the
+# form the Newtonian theory uses, and it is why a variable viscosity turns a
+# closed-form pressure into a solve.
+#
+# ### A note on representation
+#
+# It is worth saying plainly what is spectral here and what is not, because the
+# treatment is deliberately asymmetric.
+#
+# **In the angle, everything is spectral, and exactly so.** The surface, the film
+# pressure, the stream function and the fluid pressure are all carried as
+# Legendre or Gegenbauer series with no truncation imposed. That is not a
+# discretisation: ``\{P_n\}`` is complete on ``[-1,1]``, so the expansions are
+# changes of variable, from a function of ``\theta`` to a sequence of functions of
+# ``x`` and ``t``. The reason to do it is that the ``P_n`` are the eigenfunctions
+# of the angular Laplacian on the sphere, which is what turns every angular
+# derivative in the problem into an algebraic factor of ``n(n+1)`` and leaves
+# behind the radial operators ``\mathcal D_l``, ``\mathcal L_n``,
+# ``\mathcal L_2``. The geometry supplies that basis; nothing is chosen.
+#
+# **In the radius, nothing is.** ``U_l(x,t)`` and ``p_n(x,t)`` are left as
+# functions of ``x``, and the equations governing them are differential equations
+# in ``x``, not algebraic relations among coefficients. This is not an oversight
+# and not a gap in the model: the radial direction has no distinguished basis --
+# no operator whose eigenfunctions it hands you -- so any radial expansion is a
+# numerical choice rather than a consequence of the geometry. Making that choice
+# is discretisation, and it belongs on the companion page with the quadrature and
+# the time stepping.
+#
+# So the model is a system of partial differential equations in one space
+# variable, indexed by mode number, and it is stated that way on purpose.
 #
 # ### (3) The surface
 #
@@ -1687,7 +1775,7 @@ end  #src
 # ```math
 # \Bigl\langle\,\bigl[-p+2\eta\,e_{rr}\bigr]_{x=1}
 #   - \bigl(\nabla\!\cdot\!\bm n\bigr)\big|_{x=1}
-#   + \Pi \,,\ P_l\Bigr\rangle \;=\; 0,
+#   + p_c \,,\ P_l\Bigr\rangle \;=\; 0,
 # \qquad l\ge2,
 # ```
 #
@@ -1717,7 +1805,7 @@ end  #src
 # where the net vertical force the substrate exerts is
 #
 # ```math
-# \mathfrak F = -\!\oint \Pi\,n_z\,dS = -2\pi\!\int_{-1}^{1}\Pi\,\mu\,d\mu
+# \mathfrak F = -\!\oint p_c\,n_z\,dS = -2\pi\!\int_{-1}^{1}p_c\,\mu\,d\mu
 #   = -\frac{4\pi}{3}B_1 .
 # ```
 #
@@ -1727,18 +1815,29 @@ end  #src
 # ``B_n`` is orthogonal to ``\mu`` and so invisible to the centre of mass. The
 # impact speed enters only as the initial condition.
 #
-# The substrate is rigid and cannot pull, so the gap and the reaction satisfy a
-# **Signorini complementarity condition**: at each ``\theta`` the drop either
-# touches and carries pressure, or does not touch and carries none,
+# The drop does not wet the substrate: it is held off by a thin intervening air
+# layer, and ``p_c`` is that layer's pressure. The layer is taken to be thin
+# enough to transmit stress without dynamics of its own -- the lubrication limit
+# -- so it appears in the model only through the traction it applies. Because a
+# gas film cannot sustain tension, it can push and never pull, and the gap and
+# the pressure therefore satisfy a **Signorini complementarity condition**: at
+# each ``\theta`` the drop is either pressed and carries pressure, or is free and
+# carries none,
 #
 # ```math
 # h\ge0,
 # \qquad
-# \Pi\ge0,
+# p_c\ge0,
 # \qquad
-# h\,\Pi = 0
+# h\,p_c = 0
 # \qquad\text{for all }\theta\in[0,\pi] .
 # ```
+#
+# It is worth being clear that the drop never touches anything in this model. The
+# constraint ``h\ge0`` is the statement that the surface does not cross the plane
+# on which the film's pressure acts, which is exact only in the limit of
+# vanishing film thickness. ``p_c\ge0`` is a property of the film, not of the
+# substrate's rigidity.
 #
 # ### (5) The fluid
 #

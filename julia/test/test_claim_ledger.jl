@@ -65,8 +65,12 @@ const LEDGER = [
      by = "ASSERTION 2c"),
     (id = "SUM-ZETA",   status = :axiom,  anchor = raw"\zeta(\theta,t)=\sum_{l\ge2}A_l(t)P_l(\mu)",
      by = ""),  # choice of basis and of truncation floor l >= 2
-    (id = "SUM-PI",     status = :axiom,  anchor = raw"\Pi(\theta,t)=\sum_{n\ge0}B_n(t)P_n(\mu)",
+    (id = "SUM-PI",     status = :axiom,  anchor = raw"p_c(\theta,t)=\sum_{n\ge0}B_n(t)P_n(\mu)",
      by = ""),
+    (id = "SUM-PLAP",   status = :proved, anchor = raw"\mathcal L_n[p_n] \;=\; \mathrm{Oh}\,S_n(x,t)",
+     by = "ASSERTION 2c"),
+    (id = "SUM-PHARM",  status = :proved, anchor = raw"p = \sum_n c_n(t)\,x^nP_n(\mu)",
+     by = "ASSERTION 2c"),
     (id = "SUM-GAP",    status = :proved, anchor = raw"h(\theta,t)=\mu\,\bigl[1+\zeta(\theta,t)\bigr]+z(t)",
      by = "ASSERTION 2c"),
     (id = "SUM-STREAM", status = :proved, anchor = raw"u_r=\frac{1}{x^2\sin\theta}\frac{\partial\psi}{\partial\theta}",
@@ -79,6 +83,8 @@ const LEDGER = [
      by = "ASSERTION 2b"),
     (id = "SUM-PRESS",  status = :proved, anchor = raw"\nabla^2 p = \mathrm{Oh}\,\nabla\cdot\bigl(\nabla\cdot(2\eta\bm e)\bigr)",
      by = "ASSERTION 3d"),
+    (id = "SUM-FILM",   status = :axiom,  anchor = raw"h\,p_c = 0",
+     by = ""),  # lubrication limit: the film transmits stress with no dynamics of its own
     (id = "SUM-NORMAL", status = :proved, anchor = raw"\bigl[-p+2\eta\,e_{rr}\bigr]_{x=1}",
      by = "ASSERTION 2c"),
     (id = "SUM-CURV",   status = :proved, anchor = raw"(l-1)(l+2)A_lP_l(\mu)",
@@ -87,8 +93,8 @@ const LEDGER = [
      by = "ASSERTION 2c"),
     (id = "SUM-FORCE",  status = :proved, anchor = raw"= -\frac{4\pi}{3}B_1",
      by = "ASSERTION 2c"),
-    (id = "SUM-SIGN",   status = :axiom,  anchor = raw"h\,\Pi = 0",
-     by = ""),  # the substrate is rigid and cannot pull: a postulate
+    (id = "SUM-NOPULL", status = :axiom,  anchor = raw"p_c\ge0",
+     by = ""),  # a gas film cannot sustain tension
     (id = "SUM-RHEO",   status = :proved, anchor = raw"\dot\gamma=\sqrt{2\,\bm e\!:\!\bm e}",
      by = "ASSERTION 2c"),
 ]
