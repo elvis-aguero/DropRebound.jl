@@ -75,6 +75,12 @@ const LEDGER = [
      by = "ASSERTION 3f"),
     (id = "SUM-PHARM",  status = :proved, anchor = raw"p = \sum_l c_l(t)\,x^lP_l(\mu)",
      by = "ASSERTION 2c"),
+    # The two pressure harmonics the surface condition does not reach. Both are
+    # postulates of the same kind as SUM-ZETA: the linearised shape conserves
+    # volume (so zeta_0 = 0) and carries no rigid translation (so l=1 is the
+    # centre-of-mass bookkeeping in (4)). Not derived here, and marked as taken.
+    (id = "SUM-PLOW",   status = :axiom,  anchor = raw"\zeta_0=0 \ \ \text{(the drop's volume is conserved)}",
+     by = ""),
     (id = "SUM-GAP",    status = :proved, anchor = raw"h(\theta,t)=\mu\,\bigl[1+\zeta(\theta,t)\bigr]+z(t)",
      by = "ASSERTION 2c"),
     (id = "SUM-STREAM", status = :proved, anchor = raw"u_r=\frac{1}{x^2\sin\theta}\frac{\partial\psi}{\partial\theta}",

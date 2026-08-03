@@ -47,3 +47,51 @@ const DERIV_DIR = joinpath(@__DIR__, "..", "derivations")
     @test total > 50
     @info "src markers" annotated_lines = total
 end
+
+# The rule above catches unmarked COMMENTS. It does not catch unmarked CODE, and
+# that is the other half of the same failure: a `@printf` or `@variables` line
+# added to an otherwise-hidden assertion block leaks into the rendered page and
+# runs in a module where `Printf` was never imported. Both have happened; the
+# second broke the build twice.
+#
+# Heuristic, and it is only a heuristic: inside a `let ... end` block that is
+# overwhelmingly `#src`, a line WITHOUT `#src` is almost certainly an oversight.
+# The threshold is deliberately high so that genuinely mixed blocks -- ones that
+# intend to show code on the page -- are not flagged.
+@testset "no unmarked code inside hidden blocks" begin
+    # LOCAL CONTEXT, not block parsing. A first version tracked `let ... end`
+    # depth, but these blocks contain `for` loops, so the first inner `end` closed
+    # the block early and the check missed the very line that had just broken the
+    # build. Nesting-aware parsing of Julia by regex is not worth attempting.
+    #
+    # The rule instead: a code line lacking `#src` whose nearest code neighbours on
+    # BOTH sides carry `#src` is an oversight. A genuine on-page code block has
+    # several consecutive unmarked lines, so its interior is never flagged; only an
+    # isolated unmarked line among marked ones is.
+    suspects = Tuple{String,Int,String}[]
+    iscode(l) = !isempty(strip(l)) && !startswith(strip(l), "#")
+    for f in sort(readdir(DERIV_DIR))
+        endswith(f, ".jl") || continue
+        lines = readlines(joinpath(DERIV_DIR, f))
+        code = [i for i in eachindex(lines) if iscode(lines[i])]
+        for (n, i) in enumerate(code)
+            occursin("#src", lines[i]) && continue
+            (n == 1 || n == length(code)) && continue   # && binds tighter than ||
+            prev, nxt = code[n-1], code[n+1]
+            # CONTIGUOUS neighbours only. Skipping over prose to find the nearest
+            # code line flags legitimate on-page snippets -- a one-line definition
+            # displayed between two paragraphs has `#src` code somewhere above and
+            # below it, and is not a leak. Requiring adjacency separates "isolated
+            # unmarked line inside a hidden block" from "deliberately visible code".
+            (i - prev <= 2 && nxt - i <= 2) || continue
+            if occursin("#src", lines[prev]) && occursin("#src", lines[nxt])
+                push!(suspects, (f, i, first(strip(lines[i]), 60)))
+            end
+        end
+    end
+    @test isempty(suspects) || error(
+        "code without `#src` inside an otherwise-hidden block:\n" *
+        join(["  $f:$i  $t" for (f, i, t) in suspects], "\n") *
+        "\n\nThese lines render into the @example block and execute in a module " *
+        "that has none of the derivation's imports. Add `#src`.")
+end

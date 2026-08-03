@@ -288,11 +288,13 @@ let  #src
         end  #src
     end  #src
     @assert worst < 1e-13 "the shear invariant is NOT rotation-invariant"  #src
-    println("  ASSERTION 3 OK: S = sqrt(2 e:e) is unchanged by rotation about the")  #src
-    println("    symmetry axis, to $(round(worst, sigdigits=2)). An axisymmetric field maps")  #src
-    println("    to itself under that rotation, so S -- and hence eta -- cannot depend on phi.")  #src
-    println("    => eta is axisymmetric => no m != 0 coupling is EVER generated.")  #src
-    println("    Legendre polynomials suffice permanently; Y_l^m is never required.")  #src
+    println("  ASSERTION 3 OK: S = sqrt(2 e:e) is invariant under rotation about the")  #src
+    println("    symmetry axis, to $(round(worst, sigdigits=2)).")  #src
+    println("    SCOPE: this checks the INVARIANT, on a constant tensor. It does not")  #src
+    println("    exercise a field, any phi-dependence, or any mode coupling, so it is")  #src
+    println("    corroboration of one step and not a proof that m != 0 is never")  #src
+    println("    generated -- that argument is the prose above, which needs only that an")  #src
+    println("    axisymmetric field maps to itself under the rotation.")  #src
 end  #src
 
 # ## Poloidal representation and modal expansion
@@ -889,10 +891,18 @@ let  #src
         ed2((Dr2(rr*dt) - Dt2(dr))/rr)  #src
     end  #src
     nodes, wts = QuadGK.gauss(36, -1.0, 1.0)  #src
-    Uc = sum(uc[i+1]*(rr-1)^i/factorial(i) for i in 0:4)  #src
-    Ec = sum(ec[j+1]*(rr-1)^j/factorial(j) for j in 0:2)  #src
-    ## a_{ji} for all (j,i) at once, for one (l,m,k)  #src
-    function coeffs(gen, l)  #src
+    ## Expanded about an arbitrary point x0, NOT hard-wired to x0 = 1. An earlier    #src
+    ## version substituted rr => 1.0 before extracting anything, which made any      #src
+    ## residual x-dependence invisible BY CONSTRUCTION -- while the prose claimed     #src
+    ## the failure mode under test was exactly that. Expanding about two different    #src
+    ## points and requiring the recovered coefficients to agree is what actually     #src
+    ## tests the claimed power x^(j+i-4).                                             #src
+    Uc(x0) = sum(uc[i+1]*(rr-x0)^i/factorial(i) for i in 0:4)  #src
+    Ec(x0) = sum(ec[j+1]*(rr-x0)^j/factorial(j) for j in 0:2)  #src
+    ## a_{ji} for all (j,i) at once, for one (l,m,k), from an expansion about x0.  #src
+    ## The projection at radius x0 returns a_{ji} * x0^(j+i-4), so the recovered    #src
+    ## coefficient is scaled back by x0^(4-j-i).                                    #src
+    function coeffs(gen, l, x0)  #src
         A = zeros(3, 5)  #src
         for j in 0:2, i in 0:4  #src
             ev = ntuple(a -> (a-1 == j ? 1.0 : 0.0), 3)  #src
@@ -900,10 +910,10 @@ let  #src
             num = 0.0  #src
             for (mu, w) in zip(nodes, wts)  #src
                 th = acos(mu)  #src
-                F  = -sin(th)*gen(th, ev..., uv...)          # x = 1  #src
+                F  = -x0*sin(th)*gen(x0, th, ev..., uv...)  #src
                 num += w*(1-mu^2)*(F/sin(th)^2)*dLPc(l,mu)/(l*(l+1))  #src
             end  #src
-            A[j+1, i+1] = num/(2/((2l+1)*l*(l+1)))  #src
+            A[j+1, i+1] = (num/(2/((2l+1)*l*(l+1)))) * x0^(4-j-i)  #src
         end  #src
         A  #src
     end  #src
@@ -919,23 +929,38 @@ let  #src
     ## Trimmed to three (m,k) pairs to keep the CI budget sane: (2,0) supplies the  #src
     ## diagonal cross-check against the boxed operator, (2,1) and (2,2) exercise  #src
     ## the off-diagonal coupling at both parities.  #src
+    worst_xdep = 0.0  #src
     for (m, k) in ((2,0), (2,1), (2,2))  #src
-        Cx = Symbolics.substitute(ed2(curlv(Uc*Cgc(m), Ec*LPc(k,cos(tt)))), Dict(rr => 1.0))  #src
-        gen = Symbolics.build_function(Cx, tt, ec[1],ec[2],ec[3], uc[1],uc[2],uc[3],uc[4],uc[5]; expression=Val(false))  #src
-        for l in max(1, abs(m-k)):(m+k)  #src
-            iseven(l+k+m) || continue  #src
-            A = coeffs(gen, l); ntriple += 1  #src
-            if k == 0 && l == m  #src
-                worst_diag = max(worst_diag, maximum(abs.(A .- boxedA(l))))  #src
-            elseif k > 0  #src
-                worst_offmag = max(worst_offmag, maximum(abs.(A)))  #src
+        As = Dict{Int,Matrix{Float64}}()  #src
+        for x0 in (1.0, 0.73)  #src
+            expr = ed2(curlv(Uc(x0)*Cgc(m), Ec(x0)*LPc(k,cos(tt))))  #src
+            gen  = Symbolics.build_function(expr, rr, tt, ec[1],ec[2],ec[3],  #src
+                                            uc[1],uc[2],uc[3],uc[4],uc[5]; expression=Val(false))  #src
+            for l in max(1, abs(m-k)):(m+k)  #src
+                iseven(l+k+m) || continue  #src
+                A = coeffs(gen, l, x0)  #src
+                if haskey(As, l)  #src
+                    ## same coefficients from a different expansion point  #src
+                    sc = max(maximum(abs.(As[l])), 1e-30)  #src
+                    worst_xdep = max(worst_xdep, maximum(abs.(A .- As[l]))/sc)  #src
+                else  #src
+                    As[l] = A; ntriple += 1  #src
+                    if k == 0 && l == m  #src
+                        worst_diag = max(worst_diag, maximum(abs.(A .- boxedA(l))))  #src
+                    elseif k > 0  #src
+                        worst_offmag = max(worst_offmag, maximum(abs.(A)))  #src
+                    end  #src
+                end  #src
             end  #src
         end  #src
     end  #src
+    @assert worst_xdep < 1e-8 "the coefficients depend on the expansion point, so R_lm does not have the claimed x^(j+i-4) form ($worst_xdep)"  ## CLAIM: SUM-RLM  #src
     @assert ntriple >= 5 "the sweep covered too few (l,m,k) triples to be meaningful ($ntriple)"  #src
     @assert worst_offmag > 1.0 "every off-diagonal operator came out zero; the extraction is not exercising the coupling"  #src
-    @assert worst_diag < 1e-9 "the extracted diagonal does not reproduce the boxed R_l ($worst_diag)"  ## CLAIM: SUM-RLM  #src
-    @printf("  ASSERTION 3g OK: R_{lm} extracted as 15 numbers per (l,m,k) over %d triples.\n", ntriple)  #src
+    @assert worst_diag < 1e-9 "the extracted diagonal does not reproduce the boxed R_l ($worst_diag)"  #src
+    @printf("  ASSERTION 3g OK: R_{lm} extracted as 15 numbers per (l,m,k) over %d triples,\n", ntriple)  #src
+    @printf("    and the coefficients agree to %.1e between expansions about x0 = 1 and\n", worst_xdep)  #src
+    @printf("    x0 = 0.73, which is what tests the claimed x^(j+i-4) power.\n")  #src
     @printf("    The diagonal (k=0, l=m) reproduces the boxed R_l to %.1e, and the\n", worst_diag)  #src
     @printf("    off-diagonal operators are nonzero (largest coefficient %.3g), so the\n", worst_offmag)  #src
     println("    mode coupling is a sparse table computed once, not a per-step projection.")  #src
@@ -1287,166 +1312,6 @@ let  #src
     println("    prefactor, or the drop would fall upwards.")  #src
 end  #src
 #
-# ### Carrying the projection through
-#
-# The equation being projected is the **normal-stress balance on the free
-# surface**, linearised and evaluated at ``x=1``,
-#
-# ```math
-# \Bigl[-p + \tau_{rr}\Bigr]_{x=1} \;=\; T_1\,(\nabla\cdot\bm n)\Big|_{x=1} ,
-# \qquad \tau_{rr}=2\eta\,e_{rr},
-# ```
-#
-# which is the third of the three conditions listed above and the only one that
-# produces an equation of motion -- BC1 fixes the kinematics and BC2 constrains
-# the interior profile. Multiply it by ``P_l(\mu)`` and integrate over
-# ``\mu\in[-1,1]``. Writing the surface motion as
-# ``\dot\zeta=R\sum_{m}\dot\zeta_{m}P_{m}``, so that mode ``m`` enters with
-# strength ``\dot\zeta_{m}``, the contribution of the viscous stress to the
-# equation for ``\zeta_l`` is a double sum over the driving mode ``m`` and the
-# viscosity harmonic ``k``, of terms
-#
-# ```math
-# \sum_{m}\sum_{k} \dot\zeta_{m}\Bigl[\,
-#   G^{k}_{l m}\!\!\int_0^1\!\bigl(\eta_{k}\mathcal L_{m}[u_{r,m}]
-#                                      + \eta'_{k}u_{r,m}'\bigr)x^2dx
-# \;+\;
-#   H^{k}_{l m}\!\!\int_0^1\!\frac{\eta_{k}}{2x}
-#      \Bigl(u_{\theta,m}'-\frac{u_{\theta,m}}{x}-\frac{u_{r,m}}{x}\Bigr)x^2dx
-# \,\Bigr],
-# ```
-#
-# where the two angular factors are
-#
-# ```math
-# G^{k}_{l m}=\frac{2l+1}{2}\!\int_{-1}^{1}\!P_l\,P_{k}\,P_{m}\,d\mu ,
-# \qquad
-# H^{k}_{l m}=\frac{2l+1}{2}\!\int_{-1}^{1}\!P_l\,(1-\mu^2)\,P'_{k}\,P'_{m}\,d\mu ,
-# ```
-#
-# and the radial factors are exactly the ones the three viscous contributions
-# produce. From ``\eta\nabla^2\bm u``, the radial Laplacian of the driving mode's
-# profile,
-# ``\mathcal L_{m}[u_{r,m}]=F''_{m}+\tfrac{2}{x}u_{r,m}'-\tfrac{m(m+1)}{x^2}u_{r,m}``,
-# carried by ``\eta_{k}`` itself. From the radial part of
-# ``2(\nabla\eta)\cdot\bm e``, the radial strain amplitude ``u_{r,m}'``, carried by
-# ``\eta'_{k}``. From its polar part, the ``e_{r\theta}`` amplitude
-# ``\tfrac12(u_{\theta,m}'-u_{\theta,m}/x-u_{r,m}/x)``, carried by ``\eta_{k}/x`` -- and this
-# is the one term that pairs with ``H`` rather than ``G``, because its angular
-# factor carries the two derivatives.
-#
-# ``u_{r,m}`` and ``u_{\theta,m}`` are the radial profiles of ``u_r`` and
-# ``u_\theta`` introduced with the modal expansion; both are determined by
-# ``\psi_{m}``, hence by the interior problem of the previous section. They are
-# named ``F`` and ``W`` so that the letter ``G`` belongs to the Gaunt
-# coefficient alone.
-#
-# The second angular form is not a new object. Using
-# ``(1-\mu^2)P'_l=\tfrac{l(l+1)}{2l+1}(P_{l-1}-P_{l+1})`` and expanding
-# ``P'_{m}`` in Legendre polynomials of lower degree turns it into a finite
-# combination of integrals of the first kind at shifted indices. **Every angular
-# integral in the problem is therefore of one type**, and it is worth a name:
-#
-# ```math
-# G^{k}_{l m} \;\equiv\; \frac{2l+1}{2}\int_{-1}^{1}P_l\,P_{k}\,P_{m}\,d\mu
-# ```
-#
-# a Gaunt coefficient, pure geometry, depending on three integers and on
-# nothing about the fluid. Likewise the radial integral depends only on
-# ``(l,k,m)`` and on the current viscosity profile; write it
-# ``A^{(i)}_{l m}[\eta_{k}]`` and ``B^{(i)}_{l m}[\eta_{k}]`` -- the two
-# radial integrals written out above, pairing with ``G`` and ``H`` respectively.
-# The index ``i`` distinguishes the terms that end up multiplying ``\dot\zeta``
-# from those multiplying ``A``.
-#
-# ### The result
-#
-# With those names the double sum collapses. Both angular factors obey the same
-# selection rule, proved below, so the sum over ``k`` terminates. Define
-#
-# ```math
-# \mathcal D^{(i)}_{l m} \;=\; \sum_{k}\Bigl[\,
-#   G^{k}_{l m}\,A^{(i)}_{l m}[\eta_{k}]
-#   \;+\; H^{k}_{l m}\,B^{(i)}_{l m}[\eta_{k}]\,\Bigr],
-# ```
-#
-# and the modal system takes exactly the Newtonian form with the two diagonal
-# matrices replaced by full ones:
-#
-# ```math
-# \boxed{\;
-# \bm{\ddot\zeta} \;+\; \mathcal D^{(2)}\,\bm{\dot\zeta}
-#              \;+\; \mathcal D^{(1)}\,\bm\zeta \;+\; \bm b \;=\; 0 \;}
-# ```
-#
-# ``\mathcal D^{(2)}`` generalises ``2\bm\Lambda`` and ``\mathcal D^{(1)}``
-# generalises ``\bm\Omega``. The viscous stress is linear in the velocity and so
-# feeds ``\mathcal D^{(2)}`` directly; it reaches ``\mathcal D^{(1)}`` through the
-# normal-stress condition, where ``\eta`` appears multiplicatively at the
-# surface -- which is also why Reid's ``\omega_l^2`` depends on viscosity at all.
-#
-# ### Where the space went
-#
-# ``\eta`` is a field over the drop, yet ``\mathcal D`` carries no ``x`` and no
-# ``\theta``. That is not an inconsistency: **both integrals above are
-# definite**, so the spatial dependence is integrated out and what survives is
-# one number per ``(l,m)`` pair. ``G`` and ``H`` integrate the angle away over
-# ``\mu\in[-1,1]``; ``A^{(i)}`` and ``B^{(i)}`` integrate the radius away over
-# ``x\in[0,1]``.
-#
-# What does *not* integrate away is the dependence on the **state**. The
-# coefficients ``\eta_{k}(x)`` entering those integrals are the Legendre
-# coefficients of ``\eta\bigl(\dot\gamma(x,\theta,t)\bigr)``, and ``\dot\gamma``
-# is built from the current modal velocities. So
-#
-# ```math
-# \mathcal D^{(i)} \;=\; \mathcal D^{(i)}\bigl[\bm{\dot\zeta}(t)\bigr] :
-# \qquad\text{space integrated out, state dependence retained.}
-# ```
-#
-# Every entry is a functional of the whole velocity field at the current
-# instant -- which is what makes the system quasi-linear rather than linear, and
-# is taken up in *Where the shear rate is evaluated* below.
-#
-# !!! note "What is in closed form here, and what is not"
-#     The angular factors ``G`` and ``H`` are closed-form integrals of Legendre
-#     polynomials, and the selection rule proved below follows from them. The
-#     radial factors ``A^{(i)}`` and ``B^{(i)}`` are definite integrals of the
-#     interior profiles, and those profiles solve the boxed interior problem of
-#     the previous section. So the model is closed -- every unknown is
-#     determined by an equation stated on this page -- but it is not *explicit*:
-#     no step of the chain has a formula in elementary functions, because
-#     ``\eta(\dot\gamma)`` does not. Closed and explicit are different
-#     properties, and only the first is needed to have a model.
-#
-#
-
-let  #src
-    Pl(l, m) = l == 0 ? one(m) : l == 1 ? m :  #src
-        begin am, b = one(m), m; for n in 1:l-1; b, am = ((2n+1)*m*b - n*am)/(n+1), b; end; b end  #src
-    dPl(l, m) = l == 0 ? zero(m) : l*(m*Pl(l,m) - Pl(l-1,m))/(m^2 - 1)  #src
-    worst_rec = 0.0  #src
-    for l in 1:12, m in (-0.93, -0.41, 0.17, 0.58, 0.86)  #src
-        lhs = (1 - m^2)*dPl(l, m)  #src
-        rhs = l*(l+1)/(2l+1)*(Pl(l-1,m) - Pl(l+1,m))  #src
-        worst_rec = max(worst_rec, abs(lhs - rhs))  #src
-    end  #src
-    @assert worst_rec < 1e-12 "the recurrence reducing the derivative integrals is wrong"  #src
-    gn, gw = DropSolver.gauss_legendre_nodes(60, -1.0, 1.0)  #src
-    worst_deriv = 0.0  #src
-    for l in 2:8, lp in 0:6, lpp in 2:8  #src
-        if l > lp + lpp  #src
-            v = sum(w*Pl(l,m)*(1-m^2)*dPl(lp,m)*dPl(lpp,m) for (m,w) in zip(gn,gw))  #src
-            worst_deriv = max(worst_deriv, abs(v))  #src
-        end  #src
-    end  #src
-    @assert worst_deriv < 1e-12 "the derivative-type angular integral broke the selection rule"  #src
-    println("  ASSERTION 4b OK: (1-mu^2)P_n' = n(n+1)/(2n+1)(P_{n-1}-P_{n+1}) to")  #src
-    println("    $(round(worst_rec, sigdigits=2)); and the derivative-type angular integral")  #src
-    println("    obeys the same l <= l'+l'' selection rule (max $(round(worst_deriv, sigdigits=2))),")  #src
-    println("    so both angular families reduce to Gaunt coefficients.")  #src
-end  #src
-
 # ### The selection rule
 #
 # The angular factor ``G^{k}_{l m}`` is not merely small for most index
@@ -1526,7 +1391,6 @@ end  #src
 # viscosity harmonics with ``k\ge|l-m|``. So if ``\eta`` has angular content
 # only up to some ``L_\eta``, no pair of modes further apart than ``L_\eta`` is
 # coupled at all, and ``\mathcal D`` is banded with half-bandwidth ``L_\eta``.
-# The middle panel of the figure above is this banded case.
 #
 #
 # Applying a banded matrix costs ``O(M L_\eta)`` rather than ``O(M^2)``, so
@@ -1583,92 +1447,106 @@ end  #src
 # term by term. The Newtonian model is the special case of this one, not a
 # separate theory.
 #
-# ## The variational structure, and a much cheaper route to the same matrices
+# ## The variational structure
 #
-# Everything above assembles the coupling by projecting
-# ``\nabla\times\nabla\cdot(2\eta\bm e)`` -- four nested derivatives. There is a
-# second route to the same numbers that needs one, and it comes from noticing what
-# kind of system this is rather than from any new physics.
+# The interior problem above is stated as a differential equation, and assembling
+# anything from it means projecting ``\nabla\times\nabla\cdot(2\eta\bm e)`` --
+# four nested derivatives. There is an equivalent statement that needs one, and it
+# comes from recognising what kind of system this is rather than from any new
+# physics.
 #
-# ### The system is Lagrangian with Rayleigh damping
+# ### The whole problem descends from three quadratic forms
 #
 # The viscous operator is self-adjoint because it descends from a dissipation
-# functional. Taking the modal amplitudes as generalised coordinates, the drop has
-# a kinetic energy, a surface energy, and a dissipation rate, all *quadratic
-# forms*:
+# functional. Take as generalised coordinates the surface amplitudes ``\zeta_l``
+# **together with** whatever coordinates describe the interior -- the radial
+# profiles ``\psi_l``, or the amplitudes of any expansion of them. Write
+# ``\bm\xi`` for the whole collection. Then
 #
 # ```math
-# T=\tfrac12\sum_{l,m}M_{lm}\dot\zeta_l\dot\zeta_m,
+# T[\dot{\bm\xi}]=\tfrac12\int|\bm u|^2\,dV,
 # \qquad
-# V=\tfrac12\sum_{l}K_l\zeta_l^2,
+# \Phi[\dot{\bm\xi}]=\int 2\eta\;\bm e\!:\!\bm e\,dV,
 # \qquad
-# \Phi=\tfrac12\sum_{l,m}C_{lm}\dot\zeta_l\dot\zeta_m,
-# ```
-# ```math
-# M_{lm}=\int \bm u^{(l)}\!\cdot\!\bm u^{(m)}\,dV,
-# \qquad
-# \boxed{\;C_{lm}=\int 2\eta\;\bm e^{(l)}\!:\!\bm e^{(m)}\,dV\;},
-# \qquad
-# K_l\propto(l-1)(l+2),
+# V[\bm\xi]=\text{surface energy} ,
 # ```
 #
-# and the equations of motion are ``\bm M\ddot{\bm\zeta}+\bm C\dot{\bm\zeta}
-# +\bm K\bm\zeta=\bm Q``, so that
+# and the equations of motion are the Euler--Lagrange equations of that data,
 #
 # ```math
-# \mathcal D^{(2)}=\bm M^{-1}\bm C,
-# \qquad
-# \mathcal D^{(1)}=\bm M^{-1}\bm K .
+# \boxed{\;
+# \frac{d}{dt}\frac{\partial T}{\partial\dot\xi_a}
+# \;+\;\frac12\frac{\partial\Phi}{\partial\dot\xi_a}
+# \;+\;\frac{\partial V}{\partial\xi_a}
+# \;=\; Q_a \;}
 # ```
 #
-# Four things follow, and they are why this is worth having.
+# with ``Q_a`` the work done by the film pressure. **No elimination and no
+# closure**: because the interior coordinates are retained, this is the same
+# coupled surface-plus-interior system the differential form states, and it holds
+# whether or not the interior has relaxed.
 #
-# **The damping needs one derivative, not four.** ``C_{lm}`` is an integral of
-# ``\bm e^{(l)}\!:\!\bm e^{(m)}`` against ``\eta``. No stress divergence, no
-# curl, no fourth-order operator anywhere. The same information that the
-# projection route extracts through
-# ``\nabla\times\nabla\cdot(2\eta\bm e)`` is obtained here by differentiating the
-# velocity once and integrating.
+# What it buys is that every coefficient is a second derivative of a quadratic
+# form, so the objects to assemble are
 #
-# **The Gaunt structure is now obvious rather than derived.** ``\bm e^{(l)}\!:\!
-# \bm e^{(m)}`` against ``\eta_k P_k`` is a product of three angular factors, and
-# the ``H``-family -- the one carrying ``(1-\mu^2)P_k'P_m'`` -- is precisely the
-# ``e_{r\theta}e_{r\theta}`` term. That is why exactly two angular families
-# appeared earlier and no third.
+# ```math
+# \frac{\partial^2 T}{\partial\dot\xi_a\partial\dot\xi_b}
+#   =\int\bm u^{(a)}\!\cdot\!\bm u^{(b)}\,dV,
+# \qquad
+# \boxed{\;\frac{\partial^2\Phi}{\partial\dot\xi_a\partial\dot\xi_b}
+#   =\int 2\eta\;\bm e^{(a)}\!:\!\bm e^{(b)}\,dV\;}
+# ```
 #
-# **``\bm M`` and ``\bm C`` are symmetric, which is a free correctness test.**
-# ``\mathcal D^{(2)}=\bm M^{-1}\bm C`` is not symmetric, but its factors must be,
-# and an assembly that produces an asymmetric ``\bm C`` has a bug rather than a
+# Three things follow.
+#
+# **The damping needs one derivative, not four.** It is an integral of
+# ``\bm e^{(a)}\!:\!\bm e^{(b)}`` against ``\eta``: no stress divergence, no curl,
+# no fourth-order operator anywhere. The same information the projection route
+# extracts from ``\nabla\times\nabla\cdot(2\eta\bm e)`` is obtained by
+# differentiating the velocity once and integrating.
+#
+# **Both matrices are symmetric, which is a free correctness test.** They are
+# Hessians, so an assembly that returns an asymmetric one has a bug rather than a
 # feature.
 #
-# **It explains why the frequency depends on viscosity.** Surface tension supplies
-# ``\bm K``, and ``\bm K`` contains no ``\eta`` at all -- yet Reid's
-# ``\omega_l^2`` depends on ``\mathrm{Oh}``. The resolution is that
-# ``\mathcal D^{(1)}=\bm M^{-1}\bm K`` and the **added mass** ``\bm M`` depends on
-# ``\mathrm{Oh}``, because the flow field does. Viscosity reaches the frequency
-# through inertia, not through stiffness.
+# **The Gaunt structure becomes obvious rather than derived.**
+# ``\bm e^{(a)}\!:\!\bm e^{(b)}`` against ``\eta_kP_k`` is a product of three
+# angular factors, and the ``H``-family -- the one carrying
+# ``(1-\mu^2)P_k'P_m'`` -- is precisely the ``e_{r\theta}e_{r\theta}`` term. That
+# is why exactly two angular families appear and no third.
+#
+# !!! note "What this section does not do"
+#     It does not reduce the system to two coefficients per mode. Doing that means
+#     eliminating the interior coordinates from ``\bm\xi``, which is a closure and
+#     is treated as one on the companion page. The variational statement above is
+#     an equivalent form of the model, not a simplification of it.
 #
 # ### The calibration that makes it trustworthy
 #
-# In the inviscid limit the interior flow is potential, ``\psi_l\propto x^{l+1}``,
-# and the damping should collapse to Lamb's small-viscosity result. It does,
-# exactly:
+# The quadratic forms can be checked without committing to any closure, by
+# evaluating them on a flow field that is known independently. In the inviscid
+# limit the interior flow is potential, ``\psi_l\propto x^{l+1}``, and the
+# dissipation rate of that field must reproduce Lamb's small-viscosity damping. It
+# does, exactly:
 #
 # ```math
-# \lambda_l=\mathrm{Oh}\,\frac{C_{ll}}{2M_{ll}}=(l-1)(2l+1)\,\mathrm{Oh} ,
+# \mathrm{Oh}\,\frac{\Phi_{ll}}{2\,T_{ll}}
+#   \;=\;(l-1)(2l+1)\,\mathrm{Oh}
+#   \;=\;\lambda_l^{\text{Lamb}} ,
 # ```
 #
 # with no Bessel function, no characteristic equation and no root-finding -- one
 # volume integral of a potential-flow field. That is a strong check on the whole
-# construction: the dissipation form, the added-mass form, and the factor of two
+# construction: the dissipation form, the kinetic form, and the factor of two
 # between them all have to be right simultaneously for the integers to come out.
 #
-# A practical consequence for the solver: because the functional is quadratic and
-# self-adjoint, **Rayleigh--Ritz converges quadratically**. An error ``\epsilon``
-# in the radial trial function gives ``\epsilon^2`` in the coefficient, so a
-# handful of trial functions buys what a fine radial grid buys. It also explains
-# why Reid's own two-constant ansatz is as accurate as it is: it is a Ritz
-# solution, not a fortunate guess.
+# A practical consequence for the solver: the functional is quadratic and
+# self-adjoint, so a **Rayleigh--Ritz** treatment of the interior coordinates
+# converges quadratically -- an error ``\epsilon`` in the radial trial space gives
+# ``\epsilon^2`` in the resulting coefficient. A handful of trial functions
+# therefore buys what a much finer radial grid buys. (This says nothing about
+# Reid's ``Cxj_l(qx)+Dx^{l+1}``, which is not a trial function at all: it is the
+# exact general regular solution of the constant-viscosity interior equation.)
 
 let  #src
     ## Two checks, and the second is the one that would be hard to pass by         #src
@@ -2177,8 +2055,16 @@ end  #src
 # ## Model summary
 #
 # Everything above, collected. The model is stated once, completely, and in
-# continuous terms: no truncation, no discretisation, and no numerical parameter
-# appears in it. Nothing below is an approximation of anything above it.
+# continuous terms: the radial direction is not discretised and no numerical
+# parameter appears. Nothing below is an approximation of anything above it.
+#
+# Two truncations are nonetheless present and are named rather than hidden. The
+# shape expansion is cut at ``M``, which is what makes the viscosity's harmonic
+# content terminate at ``k\le2M``; and the coefficients ``a^{(k)}_{lm,ji}`` are
+# defined by an expansion of the radial factors about ``x=1``, truncated at the
+# orders the operator can reach. The first is a modelling choice, the second an
+# exact device -- the operator reaches no higher, so nothing is discarded -- but
+# both belong on the page rather than in a footnote.
 #
 # ### Scalings
 #
@@ -2253,11 +2139,12 @@ end  #src
 # projection onto ``C_l`` defined in *The interior equation*, and explicitly
 #
 # ```math
-# \mathcal R_{l m}\bigl[\psi_m;\eta_k\bigr]=\sum_{j=0}^{2}\sum_{i=0}^{4}
-#   a^{(k)}_{l m,\,ji}\;x^{\,j+i-4}\;\eta_k^{(j)}\,\psi_m^{(i)} ,
+# \mathcal R_{l m}\bigl[\psi_m;\eta\bigr]=\sum_{k\ge0}\sum_{j=0}^{2}\sum_{i=0}^{4}
+#   a^{(k)}_{l m,\,ji}\;x^{\,j+i-4}\;\eta_k^{(j)}(x)\,\psi_m^{(i)}(x) ,
 # ```
 #
-# fifteen pure numbers per ``(l,m,k)``, tabulated once. Coupling is
+# fifteen pure numbers per ``(l,m,k)``, tabulated once, **summed over the
+# viscosity harmonics** ``k``. Coupling is
 # confined to ``|l-m|\le k\le l+m`` with ``l+k+m`` even, so the system is
 # banded. Closed by regularity at ``x=0``, which forces ``\psi_l\sim x^{l+1}``, and
 # at ``x=1`` by
@@ -2305,11 +2192,27 @@ end  #src
 # through*; it is not a new object.
 #
 # Two things follow. First, the general solution is a particular part driven by
-# ``S_l`` plus a **harmonic** part ``c_l(t)\,x^l``, and the ``c_l`` are fixed by
-# the surface condition (3) rather than by anything here -- which is the sense in
-# which the pressure is coupled to the surface rather than determined
-# independently of it. Second, when ``\eta`` is constant the source vanishes and
-# only the harmonic part survives,
+# ``S_l`` plus a **harmonic** part ``c_l(t)\,x^l``, and for ``l\ge2`` the ``c_l``
+# are fixed by the surface condition (3) rather than by anything here -- which is
+# the sense in which the pressure is coupled to the surface rather than determined
+# independently of it.
+#
+# The two lowest harmonics are not covered by (3), which is projected only for
+# ``l\ge2``, and they are fixed by the two constraints the shape expansion leaves
+# implicit:
+#
+# ```math
+# c_0:\quad \zeta_0=0 \ \ \text{(the drop's volume is conserved)},
+# \qquad
+# c_1:\quad \text{the } l=1 \text{ traction balances } \mathfrak F \text{ in (4)} .
+# ```
+#
+# ``\zeta`` starts at ``l=2`` precisely because ``l=0`` is a change of volume and
+# ``l=1`` a rigid translation, so neither is a surface mode -- but the pressure
+# still has those harmonics, and they are what the two conditions above pin down.
+#
+# Second, when ``\eta`` is constant the source vanishes and only the harmonic part
+# survives,
 #
 # ```math
 # p = \sum_l c_l(t)\,x^lP_l(\mu) ,
@@ -2361,8 +2264,8 @@ end  #src
 #
 # The sign on the curvature term is fixed by the base state: a drop at rest
 # carries ``p=2`` and ``\nabla\cdot\bm n=2``, and only this combination gives
-# zero. The opposite sign leaves a residual of ``-4`` -- a Laplace pressure of
-# the wrong sign, which is what the page said before it was checked.
+# zero. The opposite sign leaves a residual of ``-4``, which is a Laplace
+# pressure of the wrong sign.
 #
 # with ``\langle f,P_l\rangle=\tfrac{2l+1}{2}\int_{-1}^{1}fP_l\,d\mu`` and the
 # curvature supplying the capillary restoring term through

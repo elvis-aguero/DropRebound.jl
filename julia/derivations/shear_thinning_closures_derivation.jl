@@ -11,8 +11,9 @@
 # section adopts one further assumption, says what it buys, and prices what it
 # costs; the last section covers the numerical realisation, which is a
 # different kind of concession and is kept separate for that reason. The
-# modelling sections are ordered so that each is independent of the ones after
-# it: any of them can be dropped and the remainder still stands.
+# modelling sections are ordered so that each buys something the next one takes
+# for granted, and the first of them -- the eigenmode closure -- is assumed by all
+# the rest. Where a section depends on its predecessor it says so.
 
 using Symbolics, QuadGK, SpecialFunctions, DropSolver  #src
 using Printf  #src
@@ -115,6 +116,267 @@ println("="^78)  #src
 #
 # The sections below are stated within this closure, because that is where the
 # implemented solver sits.
+
+# ## From the interior to two numbers per mode
+#
+# This is the step the two pages used to leave implicit, and it belongs here
+# rather than on the model page: the coefficient matrices below exist *only*
+# once ``\psi_l`` has been eliminated, which is what the closure above does.
+# Stated on the model page they contradicted its own summary, which records that
+# the second-order oscillator form is a consequence of eliminating the interior
+# rather than a feature of the physics.
+#
+# ### Two routes, and they must agree
+#
+# With ``\psi_l`` eliminated the coordinates are the surface amplitudes alone, and
+# the model page's variational statement collapses to constant matrices:
+#
+# ```math
+# \bm M\ddot{\bm\zeta}+\bm C\dot{\bm\zeta}+\bm K\bm\zeta=\bm Q,
+# \qquad
+# \mathcal D^{(2)}=\bm M^{-1}\bm C,
+# \qquad
+# \mathcal D^{(1)}=\bm M^{-1}\bm K ,
+# ```
+# ```math
+# M_{lm}=\int\bm u^{(l)}\!\cdot\!\bm u^{(m)}dV,
+# \qquad
+# C_{lm}=\int2\eta\;\bm e^{(l)}\!:\!\bm e^{(m)}dV,
+# \qquad
+# K_l\propto(l-1)(l+2) .
+# ```
+#
+# That is the **energy route**. What follows is the **traction route**: project the
+# normal-stress balance and collect the result. They are different calculations of
+# the same matrices -- one integrates a dissipation over the volume, the other
+# projects a stress at the surface -- and they agree only if the interior is solved
+# consistently, so the agreement is a claim to be checked rather than a remark.
+# The check below does that, and it is the reason both routes are kept: two
+# independent assemblies agreeing is worth more than either alone.
+#
+# ### Carrying the projection through
+#
+# The equation being projected is the **normal-stress balance on the free
+# surface**, linearised and evaluated at ``x=1``,
+#
+# ```math
+# \Bigl[-p + \tau_{rr}\Bigr]_{x=1} \;=\; T_1\,(\nabla\cdot\bm n)\Big|_{x=1} ,
+# \qquad \tau_{rr}=2\eta\,e_{rr},
+# ```
+#
+# which is the third of the three conditions listed above and the only one that
+# produces an equation of motion -- BC1 fixes the kinematics and BC2 constrains
+# the interior profile. Multiply it by ``P_l(\mu)`` and integrate over
+# ``\mu\in[-1,1]``. Writing the surface motion as
+# ``\dot\zeta=R\sum_{m}\dot\zeta_{m}P_{m}``, so that mode ``m`` enters with
+# strength ``\dot\zeta_{m}``, the contribution of the viscous stress to the
+# equation for ``\zeta_l`` is a double sum over the driving mode ``m`` and the
+# viscosity harmonic ``k``, of terms
+#
+# ```math
+# \sum_{m}\sum_{k} \dot\zeta_{m}\Bigl[\,
+#   G^{k}_{l m}\!\!\int_0^1\!\bigl(\eta_{k}\mathcal L_{m}[u_{r,m}]
+#                                      + \eta'_{k}u_{r,m}'\bigr)x^2dx
+# \;+\;
+#   H^{k}_{l m}\!\!\int_0^1\!\frac{\eta_{k}}{2x}
+#      \Bigl(u_{\theta,m}'-\frac{u_{\theta,m}}{x}-\frac{u_{r,m}}{x}\Bigr)x^2dx
+# \,\Bigr],
+# ```
+#
+# where the two angular factors are
+#
+# ```math
+# G^{k}_{l m}=\frac{2l+1}{2}\!\int_{-1}^{1}\!P_l\,P_{k}\,P_{m}\,d\mu ,
+# \qquad
+# H^{k}_{l m}=\frac{2l+1}{2}\!\int_{-1}^{1}\!P_l\,(1-\mu^2)\,P'_{k}\,P'_{m}\,d\mu ,
+# ```
+#
+# and the radial factors are exactly the ones the three viscous contributions
+# produce. From ``\eta\nabla^2\bm u``, the radial Laplacian of the driving mode's
+# profile,
+# ``\mathcal L_{m}[u_{r,m}]=F''_{m}+\tfrac{2}{x}u_{r,m}'-\tfrac{m(m+1)}{x^2}u_{r,m}``,
+# carried by ``\eta_{k}`` itself. From the radial part of
+# ``2(\nabla\eta)\cdot\bm e``, the radial strain amplitude ``u_{r,m}'``, carried by
+# ``\eta'_{k}``. From its polar part, the ``e_{r\theta}`` amplitude
+# ``\tfrac12(u_{\theta,m}'-u_{\theta,m}/x-u_{r,m}/x)``, carried by ``\eta_{k}/x`` -- and this
+# is the one term that pairs with ``H`` rather than ``G``, because its angular
+# factor carries the two derivatives.
+#
+# ``u_{r,m}`` and ``u_{\theta,m}`` are the radial profiles of ``u_r`` and
+# ``u_\theta`` introduced with the modal expansion; both are determined by
+# ``\psi_{m}``, hence by the interior problem of the previous section. They are
+# named ``F`` and ``W`` so that the letter ``G`` belongs to the Gaunt
+# coefficient alone.
+#
+# The second angular form is not a new object. Using
+# ``(1-\mu^2)P'_l=\tfrac{l(l+1)}{2l+1}(P_{l-1}-P_{l+1})`` and expanding
+# ``P'_{m}`` in Legendre polynomials of lower degree turns it into a finite
+# combination of integrals of the first kind at shifted indices. **Every angular
+# integral in the problem is therefore of one type**, and it is worth a name:
+#
+# ```math
+# G^{k}_{l m} \;\equiv\; \frac{2l+1}{2}\int_{-1}^{1}P_l\,P_{k}\,P_{m}\,d\mu
+# ```
+#
+# a Gaunt coefficient, pure geometry, depending on three integers and on
+# nothing about the fluid. Likewise the radial integral depends only on
+# ``(l,k,m)`` and on the current viscosity profile; write it
+# ``A^{(i)}_{l m}[\eta_{k}]`` and ``B^{(i)}_{l m}[\eta_{k}]`` -- the two
+# radial integrals written out above, pairing with ``G`` and ``H`` respectively.
+# The index ``i`` distinguishes the terms that end up multiplying ``\dot\zeta``
+# from those multiplying ``A``.
+#
+# ### The result
+#
+# With those names the double sum collapses. Both angular factors obey the same
+# selection rule, proved below, so the sum over ``k`` terminates. Define
+#
+# ```math
+# \mathcal D^{(i)}_{l m} \;=\; \sum_{k}\Bigl[\,
+#   G^{k}_{l m}\,A^{(i)}_{l m}[\eta_{k}]
+#   \;+\; H^{k}_{l m}\,B^{(i)}_{l m}[\eta_{k}]\,\Bigr],
+# ```
+#
+# and the modal system takes exactly the Newtonian form with the two diagonal
+# matrices replaced by full ones:
+#
+# ```math
+# \boxed{\;
+# \bm{\ddot\zeta} \;+\; \mathcal D^{(2)}\,\bm{\dot\zeta}
+#              \;+\; \mathcal D^{(1)}\,\bm\zeta \;+\; \bm b \;=\; 0 \;}
+# ```
+#
+# ``\mathcal D^{(2)}`` generalises ``2\bm\Lambda`` and ``\mathcal D^{(1)}``
+# generalises ``\bm\Omega``. The viscous stress is linear in the velocity and so
+# feeds ``\mathcal D^{(2)}`` directly; it reaches ``\mathcal D^{(1)}`` through the
+# normal-stress condition, where ``\eta`` appears multiplicatively at the
+# surface -- which is also why Reid's ``\omega_l^2`` depends on viscosity at all.
+#
+# ### Where the space went
+#
+# ``\eta`` is a field over the drop, yet ``\mathcal D`` carries no ``x`` and no
+# ``\theta``. That is not an inconsistency: **both integrals above are
+# definite**, so the spatial dependence is integrated out and what survives is
+# one number per ``(l,m)`` pair. ``G`` and ``H`` integrate the angle away over
+# ``\mu\in[-1,1]``; ``A^{(i)}`` and ``B^{(i)}`` integrate the radius away over
+# ``x\in[0,1]``.
+#
+# What does *not* integrate away is the dependence on the **state**. The
+# coefficients ``\eta_{k}(x)`` entering those integrals are the Legendre
+# coefficients of ``\eta\bigl(\dot\gamma(x,\theta,t)\bigr)``, and ``\dot\gamma``
+# is built from the current modal velocities. So
+#
+# ```math
+# \mathcal D^{(i)} \;=\; \mathcal D^{(i)}\bigl[\bm{\dot\zeta}(t)\bigr] :
+# \qquad\text{space integrated out, state dependence retained.}
+# ```
+#
+# Every entry is a functional of the whole velocity field at the current
+# instant -- which is what makes the system quasi-linear rather than linear, and
+# is taken up in *Where the shear rate is evaluated* below.
+#
+# !!! note "What is in closed form here, and what is not"
+#     The angular factors ``G`` and ``H`` are closed-form integrals of Legendre
+#     polynomials, and the selection rule proved below follows from them. The
+#     radial factors ``A^{(i)}`` and ``B^{(i)}`` are definite integrals of the
+#     interior profiles, and those profiles solve the boxed interior problem of
+#     the previous section. So the model is closed -- every unknown is
+#     determined by an equation stated on this page -- but it is not *explicit*:
+#     no step of the chain has a formula in elementary functions, because
+#     ``\eta(\dot\gamma)`` does not. Closed and explicit are different
+#     properties, and only the first is needed to have a model.
+#
+#
+
+let  #src
+    Pl(l, m) = l == 0 ? one(m) : l == 1 ? m :  #src
+        begin am, b = one(m), m; for n in 1:l-1; b, am = ((2n+1)*m*b - n*am)/(n+1), b; end; b end  #src
+    dPl(l, m) = l == 0 ? zero(m) : l*(m*Pl(l,m) - Pl(l-1,m))/(m^2 - 1)  #src
+    worst_rec = 0.0  #src
+    for l in 1:12, m in (-0.93, -0.41, 0.17, 0.58, 0.86)  #src
+        lhs = (1 - m^2)*dPl(l, m)  #src
+        rhs = l*(l+1)/(2l+1)*(Pl(l-1,m) - Pl(l+1,m))  #src
+        worst_rec = max(worst_rec, abs(lhs - rhs))  #src
+    end  #src
+    @assert worst_rec < 1e-12 "the recurrence reducing the derivative integrals is wrong"  #src
+    gn, gw = DropSolver.gauss_legendre_nodes(60, -1.0, 1.0)  #src
+    worst_deriv = 0.0  #src
+    for l in 2:8, lp in 0:6, lpp in 2:8  #src
+        if l > lp + lpp  #src
+            v = sum(w*Pl(l,m)*(1-m^2)*dPl(lp,m)*dPl(lpp,m) for (m,w) in zip(gn,gw))  #src
+            worst_deriv = max(worst_deriv, abs(v))  #src
+        end  #src
+    end  #src
+    @assert worst_deriv < 1e-12 "the derivative-type angular integral broke the selection rule"  #src
+    println("  ASSERTION 4b OK: (1-mu^2)P_n' = n(n+1)/(2n+1)(P_{n-1}-P_{n+1}) to")  #src
+    println("    $(round(worst_rec, sigdigits=2)); and the derivative-type angular integral")  #src
+    println("    obeys the same l <= l'+l'' selection rule (max $(round(worst_deriv, sigdigits=2))),")  #src
+    println("    so both angular families reduce to Gaunt coefficients.")  #src
+end  #src
+
+@variables rr tt qq hh1 hh2  #src
+
+# ### Do the two routes agree?
+#
+# The energy route gives the damping as a volume integral of
+# ``2\eta\,\bm e^{(l)}\!:\!\bm e^{(m)}``; the traction route gives it by projecting
+# the surface stress. They are equal by integration by parts -- the interior terms
+# cancel against the momentum equation and the boundary term is what the surface
+# projection collects -- **provided** the field used is a solution of the interior
+# problem and the surface terms that parts throws off actually vanish. Neither is
+# automatic, so it is checked.
+#
+# The cleanest place to check it is where an independent answer exists: constant
+# viscosity, where the traction route must return Reid's ``\lambda_l`` and the
+# energy route must return the same number from a volume integral. In the
+# small-viscosity limit both must equal Lamb's ``(l-1)(2l+1)\mathrm{Oh}``.
+
+let  #src
+    ## Energy route, evaluated on the potential-flow field, against Reid's own      #src
+    ## lambda_l from the running solver as Oh -> 0. This is weaker than a           #src
+    ## coefficient-by-coefficient comparison at finite Oh -- which needs the        #src
+    ## variable-eta interior solution and so is not available yet -- but it is the   #src
+    ## strongest check that can be made without one, and it is a comparison of two  #src
+    ## genuinely independent computations rather than of an expression with itself.  #src
+    Drv = Differential(rr); Dtv = Differential(tt)  #src
+    edv(e) = Symbolics.expand_derivatives(e)  #src
+    LPv(l,m) = l==0 ? one(m) : l==1 ? m : begin a,b=one(m),m; for n in 1:l-1; b,a=((2n+1)*m*b-n*a)/(n+1),b; end; b end  #src
+    dLPv(l,m) = l==0 ? zero(m) : l*(m*LPv(l,m)-LPv(l-1,m))/(m^2-1)  #src
+    Cgv(l) = sin(tt)^2*dLPv(l,cos(tt))/(l*(l+1))  #src
+    nrv, wrv = QuadGK.gauss(40, 0.0, 1.0); nmv, wmv = QuadGK.gauss(40, -1.0, 1.0)  #src
+    function forms(l)  #src
+        psi = rr^(l+1)*Cgv(l)                       # potential flow  #src
+        ur =  edv(Dtv(psi)/(rr^2*sin(tt))); ut = -edv(Drv(psi)/(rr*sin(tt)))  #src
+        e_rr = edv(Drv(ur)); e_tt = edv(Dtv(ut)/rr + ur/rr)  #src
+        e_pp = ur/rr + ut*cos(tt)/(sin(tt)*rr)  #src
+        e_rt = edv((Dtv(ur)/rr + Drv(ut) - ut/rr)/2)  #src
+        vint(e) = begin  #src
+            g = Symbolics.build_function(edv(e), rr, tt; expression=Val(false))  #src
+            s = 0.0  #src
+            for (x,wx) in zip(nrv,wrv), (mu,wu) in zip(nmv,wmv)  #src
+                s += wx*wu*2pi*x^2*g(x, acos(mu))  #src
+            end  #src
+            s  #src
+        end  #src
+        (vint(2*(e_rr^2 + e_tt^2 + e_pp^2 + 2e_rt^2)), vint(ur^2 + ut^2))  #src
+    end  #src
+    worst = 0.0  #src
+    for l in 2:5  #src
+        Phi, T = forms(l)  #src
+        energy_lambda = Phi/(2T)                                  # per unit Oh  #src
+        ## Reid's lambda_l/Oh as Oh -> 0, from the solver's own root finder  #src
+        traction_lambda = DropSolver.reid_lambda_omega2(1e-6, l)[1]/1e-6  #src
+        worst = max(worst, abs(energy_lambda - traction_lambda)/traction_lambda)  #src
+    end  #src
+    @assert worst < 1e-3 "the energy and traction routes disagree on lambda_l ($worst)"  #src
+    @printf("  ASSERTION 5c OK: energy route and traction route agree on lambda_l to\n")  #src
+    @printf("    %.1e relative over l = 2..5, comparing a volume integral of the\n", worst)  #src
+    println("    dissipation against the solver's own root of Reid's characteristic")  #src
+    println("    equation. Two independent assemblies, not one expression twice.")  #src
+    println("    Physical meaning of a failure: the surface projection and the volume")  #src
+    println("    dissipation would be computing different things, and only one of them")  #src
+    println("    could be the damping.")  #src
+end  #src
 
 # ## The temporal closure
 #
@@ -396,7 +658,7 @@ end  #src
 # is recovered intact.
 #
 # What you give up is *only* the closed form. The radial equation now has an
-# ``r``-dependent coefficient, so it is no longer Besseks equation and must
+# ``r``-dependent coefficient, so it is no longer Bessel's equation and must
 # be solved as a numerical two-point boundary-value problem, once per mode.
 # `julia/src/reid.jl`'s continuation machinery already knows how to track
 # eigenvalue branches through such a solve.
@@ -481,7 +743,6 @@ end  #src
 # coefficients: no longer Bessel, but entirely standard. The continuation
 # machinery that tracks Reid's eigenvalue branches applies to it unchanged.
 #
-@variables rr tt qq hh1 hh2  #src
 let  #src
     Drr = Differential(rr); Dtt = Differential(tt)  #src
     LPn(l,m) = l==0 ? one(m) : l==1 ? m : begin a,b=one(m),m; for n in 1:l-1; b,a=((2n+1)*m*b-n*a)/(n+1),b; end; b end  #src
@@ -533,7 +794,7 @@ end  #src
 # ``\mathrm{Oh}_{\mathrm{eff}}=\eta_{\mathrm{eff}}/\sqrt{\rho T_1R}``.
 #
 # **What it buys.** The radial equation becomes constant-coefficient again,
-# i.e. Besseks equation, and Reid's closed-form characteristic equation
+# i.e. Bessel's equation, and Reid's closed-form characteristic equation
 # returns verbatim -- evaluated at a shifted Ohnesorge number.
 #
 # **This is where the current production code sits**, combined with choice (a)
@@ -545,8 +806,8 @@ end  #src
 # coefficients ``|\eta_1|/|\eta_0|\approx1.3`` and
 # ``|\eta_2|/|\eta_0|\approx0.2`` are comparable to or larger than the mean.
 # Collapsing all of that onto one number per mode is a leading-order
-# approximation, not a perturbative one. Combined with the temporal closure of
-# the instantaneous temporal closure, this rung carries two
+# approximation, not a perturbative one. Combined with the eigenmode closure it
+# is stated within, this rung carries two
 # uncontrolled approximations at once -- which is worth knowing when reading its
 # predictions.
 #
@@ -824,87 +1085,6 @@ let  #src
     println("    $(round(100*worst, sigdigits=2))% (tabulated-vs-exact interpolation error).")  #src
 end  #src
 
-# ## What the surface actually needs from the interior
-#
-# This section is analysis rather than a closure: it says what object the interior
-# problem is *for*, and that identification reorganises the choices above. Nothing
-# here is yet checked, and it is marked as structure for that reason.
-#
-# ### The interior enters only as a boundary impedance
-#
-# The surface equation needs one thing from the interior: the viscous normal
-# traction at ``x=1``, given the surface motion. It never needs the field itself.
-# Define, mode by mode, the map from surface velocity to surface traction,
-#
-# ```math
-# \bigl[2\eta\,e_{rr}\bigr]_{x=1} \;=\; -\,\mathcal Z_l\bigl[\dot\zeta_l\bigr] ,
-# ```
-#
-# which is a **Dirichlet-to-Neumann** map for the interior problem -- the same
-# object that appears as a mobility in Stokes flow, an impedance in acoustics, and
-# an absorbing boundary condition in wave propagation. The whole content of the
-# interior is compressed into ``\mathcal Z_l``.
-#
-# For a normal mode ``\propto e^{-\sigma t}`` and constant viscosity,
-# ``\mathcal Z_l`` is a known function of ``\sigma``: solving
-# ``\mathcal D_l(\mathcal D_l+q^2)[\psi_l]=0`` with regularity and BC2 leaves one
-# free constant, and the ratio of traction to velocity is a rational function of
-# ``\sigma`` and the Bessel ratio ``Q=j_{l+1}(q)/j_l(q)``. Reid's characteristic
-# equation is then just the statement that the total impedance vanishes,
-#
-# ```math
-# \underbrace{\sigma^2}_{\text{inertia}}
-# \;+\;\underbrace{\mathcal Z_l(\sigma)}_{\text{viscous}}
-# \;+\;\underbrace{\omega_{l,0}^2}_{\text{capillary}} \;=\;0 ,
-# ```
-#
-# with ``\omega_{l,0}^2=l(l-1)(l+2)`` the inviscid frequency. Read this way, the
-# infinitely many roots are not a peculiarity: they are the poles of an impedance,
-# and there are always infinitely many because the interior is a diffusion
-# problem.
-#
-# ### The two-root truncation is a two-pole fit, and that is the useful way to see it
-#
-# ``\lambda_l`` and ``\omega_l^2`` describe an oscillator with two poles. Since
-# ``\mathcal Z_l`` has infinitely many, the Newtonian modal model is a **two-pole
-# rational approximation** of the exact impedance. That reframes the truncation
-# from a defect into the first member of a convergent family: keep ``N_p`` poles,
-#
-# ```math
-# \mathcal Z_l(\sigma)\;\approx\;\sum_{p=1}^{N_p}\frac{c_p\,\sigma}{\sigma+s_p} ,
-# ```
-#
-# and each pole is **one auxiliary scalar ODE per mode**,
-#
-# ```math
-# \dot g_p = -s_p\,g_p + \dot\zeta_l ,
-# \qquad
-# \mathcal Z_l\bigl[\dot\zeta_l\bigr]=\sum_p c_p\bigl(\dot\zeta_l - s_p g_p\bigr) ,
-# ```
-#
-# which is a Prony, or diffusive, representation of the viscous memory. The cost
-# comparison is the point: marching the interior on a radial grid carries tens of
-# unknowns per mode, and a few poles carry a handful -- for the same object,
-# because the grid was only ever a device for computing ``\mathcal Z_l``.
-#
-# ### The small-Ohnesorge limit has a name
-#
-# At small ``\mathrm{Oh}`` the interior is potential flow plus a vortical layer of
-# thickness ``\sqrt{\mathrm{Oh}}`` at the surface. A layer of that kind, driven by
-# an oscillating boundary, contributes an impedance scaling as
-# ``\sqrt\sigma`` -- a **half-order derivative in time**, which is the
-# Basset--Boussinesq history term familiar from particle dynamics. So the regime
-# where the instantaneous-eigenmode closure is *worst* is the regime whose memory
-# kernel is best understood, and ``\sqrt\sigma`` is exactly the kernel that Prony
-# sums represent efficiently.
-#
-# **What would have to be checked before any of this is used.** That
-# ``\mathcal Z_l`` assembled from the interior solution reproduces Reid's
-# characteristic equation through the balance above; that a two-pole fit of it
-# returns ``\lambda_l`` and ``\omega_l^2``; and that the pole count converges. Each
-# is a concrete test against a quantity the solver already computes, which is why
-# this is written down as a route rather than adopted as one.
-
 # ## Numerical realisation
 #
 # The sections above are modelling concessions: each replaces the physics with
@@ -1109,3 +1289,85 @@ end  #src
 # problem rather than a research question; and the ``j=2`` parametric channel,
 # which the period-``\pi`` lemma places at exactly the principal resonance
 # condition and which nothing here evaluates.
+
+# ## Open direction: the interior as a boundary impedance
+#
+# This section is analysis rather than a closure: it says what object the interior
+# problem is *for*, and that identification reorganises the choices above. Nothing
+# here is yet checked, and it is marked as structure for that reason.
+#
+# ### The interior enters only as a boundary impedance
+#
+# The surface equation needs one thing from the interior: the viscous normal
+# traction at ``x=1``, given the surface motion. It never needs the field itself.
+# Define, mode by mode, the map from surface velocity to surface traction,
+#
+# ```math
+# \bigl[2\eta\,e_{rr}\bigr]_{x=1} \;=\; -\,\mathcal Z_l\bigl[\dot\zeta_l\bigr] ,
+# ```
+#
+# which is a **Dirichlet-to-Neumann** map for the interior problem -- the same
+# object that appears as a mobility in Stokes flow, an impedance in acoustics, and
+# an absorbing boundary condition in wave propagation. The whole content of the
+# interior is compressed into ``\mathcal Z_l``.
+#
+# For a normal mode ``\propto e^{-\sigma t}`` and constant viscosity,
+# ``\mathcal Z_l`` is a known function of ``\sigma``: solving
+# ``\mathcal D_l(\mathcal D_l+q^2)[\psi_l]=0`` with regularity and BC2 leaves one
+# free constant, and the ratio of traction to velocity is a rational function of
+# ``\sigma`` and the Bessel ratio ``Q=j_{l+1}(q)/j_l(q)``. Reid's characteristic
+# equation is then just the statement that the total impedance vanishes,
+#
+# ```math
+# \underbrace{\sigma^2}_{\text{inertia}}
+# \;+\;\underbrace{\mathcal Z_l(\sigma)}_{\text{viscous}}
+# \;+\;\underbrace{\omega_{l,0}^2}_{\text{capillary}} \;=\;0 ,
+# ```
+#
+# with ``\omega_{l,0}^2=l(l-1)(l+2)`` the inviscid frequency. Read this way, the
+# infinitely many roots are not a peculiarity: they are the poles of an impedance,
+# and there are always infinitely many because the interior is a diffusion
+# problem.
+#
+# ### The two-root truncation is a two-pole fit, and that is the useful way to see it
+#
+# ``\lambda_l`` and ``\omega_l^2`` describe an oscillator with two poles. Since
+# ``\mathcal Z_l`` has infinitely many, the Newtonian modal model is a **two-pole
+# rational approximation** of the exact impedance. That reframes the truncation
+# from a defect into the first member of a convergent family: keep ``N_p`` poles,
+#
+# ```math
+# \mathcal Z_l(\sigma)\;\approx\;\sum_{p=1}^{N_p}\frac{c_p\,\sigma}{\sigma+s_p} ,
+# ```
+#
+# and each pole is **one auxiliary scalar ODE per mode**,
+#
+# ```math
+# \dot g_p = -s_p\,g_p + \dot\zeta_l ,
+# \qquad
+# \mathcal Z_l\bigl[\dot\zeta_l\bigr]=\sum_p c_p\bigl(\dot\zeta_l - s_p g_p\bigr) ,
+# ```
+#
+# which is a Prony, or diffusive, representation of the viscous memory. The cost
+# comparison is the point: marching the interior on a radial grid carries tens of
+# unknowns per mode, and a few poles carry a handful -- for the same object,
+# because the grid was only ever a device for computing ``\mathcal Z_l``.
+#
+# ### The small-Ohnesorge limit has a name
+#
+# At small ``\mathrm{Oh}`` the interior is potential flow plus a vortical layer of
+# thickness ``\sqrt{\mathrm{Oh}}`` at the surface. A layer of that kind, driven by
+# an oscillating boundary, contributes an impedance scaling as
+# ``\sqrt\sigma`` -- a **half-order derivative in time**, which is the
+# Basset--Boussinesq history term familiar from particle dynamics. So the regime
+# where the instantaneous-eigenmode closure is *worst* is the regime whose memory
+# kernel is best understood, and ``\sqrt\sigma`` is exactly the kernel that Prony
+# sums represent efficiently.
+#
+# **What would have to be checked before any of this is used.** That
+# ``\mathcal Z_l`` assembled from the interior solution reproduces Reid's
+# characteristic equation through the balance above; that a two-pole fit of it
+# returns ``\lambda_l`` and ``\omega_l^2``; and that the pole count converges. Each
+# is a concrete test against a quantity the solver already computes, which is why
+# this is written down as a route rather than adopted as one.
+
