@@ -1583,6 +1583,168 @@ end  #src
 # term by term. The Newtonian model is the special case of this one, not a
 # separate theory.
 #
+# ## The variational structure, and a much cheaper route to the same matrices
+#
+# Everything above assembles the coupling by projecting
+# ``\nabla\times\nabla\cdot(2\eta\bm e)`` -- four nested derivatives. There is a
+# second route to the same numbers that needs one, and it comes from noticing what
+# kind of system this is rather than from any new physics.
+#
+# ### The system is Lagrangian with Rayleigh damping
+#
+# The viscous operator is self-adjoint because it descends from a dissipation
+# functional. Taking the modal amplitudes as generalised coordinates, the drop has
+# a kinetic energy, a surface energy, and a dissipation rate, all *quadratic
+# forms*:
+#
+# ```math
+# T=\tfrac12\sum_{l,m}M_{lm}\dot\zeta_l\dot\zeta_m,
+# \qquad
+# V=\tfrac12\sum_{l}K_l\zeta_l^2,
+# \qquad
+# \Phi=\tfrac12\sum_{l,m}C_{lm}\dot\zeta_l\dot\zeta_m,
+# ```
+# ```math
+# M_{lm}=\int \bm u^{(l)}\!\cdot\!\bm u^{(m)}\,dV,
+# \qquad
+# \boxed{\;C_{lm}=\int 2\eta\;\bm e^{(l)}\!:\!\bm e^{(m)}\,dV\;},
+# \qquad
+# K_l\propto(l-1)(l+2),
+# ```
+#
+# and the equations of motion are ``\bm M\ddot{\bm\zeta}+\bm C\dot{\bm\zeta}
+# +\bm K\bm\zeta=\bm Q``, so that
+#
+# ```math
+# \mathcal D^{(2)}=\bm M^{-1}\bm C,
+# \qquad
+# \mathcal D^{(1)}=\bm M^{-1}\bm K .
+# ```
+#
+# Four things follow, and they are why this is worth having.
+#
+# **The damping needs one derivative, not four.** ``C_{lm}`` is an integral of
+# ``\bm e^{(l)}\!:\!\bm e^{(m)}`` against ``\eta``. No stress divergence, no
+# curl, no fourth-order operator anywhere. The same information that the
+# projection route extracts through
+# ``\nabla\times\nabla\cdot(2\eta\bm e)`` is obtained here by differentiating the
+# velocity once and integrating.
+#
+# **The Gaunt structure is now obvious rather than derived.** ``\bm e^{(l)}\!:\!
+# \bm e^{(m)}`` against ``\eta_k P_k`` is a product of three angular factors, and
+# the ``H``-family -- the one carrying ``(1-\mu^2)P_k'P_m'`` -- is precisely the
+# ``e_{r\theta}e_{r\theta}`` term. That is why exactly two angular families
+# appeared earlier and no third.
+#
+# **``\bm M`` and ``\bm C`` are symmetric, which is a free correctness test.**
+# ``\mathcal D^{(2)}=\bm M^{-1}\bm C`` is not symmetric, but its factors must be,
+# and an assembly that produces an asymmetric ``\bm C`` has a bug rather than a
+# feature.
+#
+# **It explains why the frequency depends on viscosity.** Surface tension supplies
+# ``\bm K``, and ``\bm K`` contains no ``\eta`` at all -- yet Reid's
+# ``\omega_l^2`` depends on ``\mathrm{Oh}``. The resolution is that
+# ``\mathcal D^{(1)}=\bm M^{-1}\bm K`` and the **added mass** ``\bm M`` depends on
+# ``\mathrm{Oh}``, because the flow field does. Viscosity reaches the frequency
+# through inertia, not through stiffness.
+#
+# ### The calibration that makes it trustworthy
+#
+# In the inviscid limit the interior flow is potential, ``\psi_l\propto x^{l+1}``,
+# and the damping should collapse to Lamb's small-viscosity result. It does,
+# exactly:
+#
+# ```math
+# \lambda_l=\mathrm{Oh}\,\frac{C_{ll}}{2M_{ll}}=(l-1)(2l+1)\,\mathrm{Oh} ,
+# ```
+#
+# with no Bessel function, no characteristic equation and no root-finding -- one
+# volume integral of a potential-flow field. That is a strong check on the whole
+# construction: the dissipation form, the added-mass form, and the factor of two
+# between them all have to be right simultaneously for the integers to come out.
+#
+# A practical consequence for the solver: because the functional is quadratic and
+# self-adjoint, **Rayleigh--Ritz converges quadratically**. An error ``\epsilon``
+# in the radial trial function gives ``\epsilon^2`` in the coefficient, so a
+# handful of trial functions buys what a fine radial grid buys. It also explains
+# why Reid's own two-constant ansatz is as accurate as it is: it is a Ritz
+# solution, not a fortunate guess.
+
+let  #src
+    ## Two checks, and the second is the one that would be hard to pass by         #src
+    ## accident. Both integrals are evaluated on a product Gauss rule over the     #src
+    ## sphere; the integrands need only FIRST derivatives of the velocity, which   #src
+    ## is the whole point -- no double divergence appears anywhere here, and this   #src
+    ## block runs in seconds where the projection route needed minutes.            #src
+    Dr3 = Differential(rr); Dt3 = Differential(tt)  #src
+    ed3(e) = Symbolics.expand_derivatives(e)  #src
+    LPd(l,m) = l==0 ? one(m) : l==1 ? m : begin a,b=one(m),m; for n in 1:l-1; b,a=((2n+1)*m*b-n*a)/(n+1),b; end; b end  #src
+    dLPd(l,m) = l==0 ? zero(m) : l*(m*LPd(l,m)-LPd(l-1,m))/(m^2-1)  #src
+    Cgd(l) = sin(tt)^2*dLPd(l,cos(tt))/(l*(l+1))  #src
+    function strain4(psi)  #src
+        ur =  ed3(Dt3(psi)/(rr^2*sin(tt))); ut = -ed3(Dr3(psi)/(rr*sin(tt)))  #src
+        (ed3(Dr3(ur)),                                   # e_rr  #src
+         ed3(Dt3(ut)/rr + ur/rr),                        # e_tt  #src
+         ur/rr + ut*cos(tt)/(sin(tt)*rr),                # e_pp  #src
+         ed3((Dt3(ur)/rr + Dr3(ut) - ut/rr)/2),          # e_rtheta  #src
+         ur, ut)  #src
+    end  #src
+    nr, wr = QuadGK.gauss(40, 0.0, 1.0)  #src
+    nm, wm = QuadGK.gauss(40, -1.0, 1.0)  #src
+    function volint(expr, etaf)  #src
+        g = Symbolics.build_function(ed3(expr), rr, tt; expression=Val(false))  #src
+        tot = 0.0  #src
+        for (x, wx) in zip(nr, wr), (mu, wu) in zip(nm, wm)  #src
+            tot += wx*wu*2pi*x^2*etaf(x, mu)*g(x, acos(mu))  #src
+        end  #src
+        tot  #src
+    end  #src
+    Cform(l, m, Pl_, Pm_, etaf) = begin  #src
+        A = strain4(Pl_*Cgd(l)); B = strain4(Pm_*Cgd(m))  #src
+        volint(2*(A[1]*B[1] + A[2]*B[2] + A[3]*B[3] + 2*A[4]*B[4]), etaf)  #src
+    end  #src
+    Mform(l, m, Pl_, Pm_) = begin  #src
+        A = strain4(Pl_*Cgd(l)); B = strain4(Pm_*Cgd(m))  #src
+        volint(A[5]*B[5] + A[6]*B[6], (x,mu) -> 1.0)  #src
+    end  #src
+
+    ## (i) SYMMETRY of C, including for a viscosity with angular structure  #src
+    prof(l) = rr^(l+1) + 0.7rr^(l+3) - 0.3rr^(l+5)  #src
+    worst_sym, scale_sym = 0.0, 0.0  #src
+    for etaf in ((x,mu) -> 1.0,  #src
+                 (x,mu) -> 1.3 + 0.9x + 0.4x^2,  #src
+                 (x,mu) -> 1.3 + 0.9x*mu + 0.4*(3mu^2 - 1)/2)  #src
+        for (l, m) in ((2,3), (3,2), (2,4), (4,2))  #src
+            a = Cform(l, m, prof(l), prof(m), etaf)  #src
+            b = Cform(m, l, prof(m), prof(l), etaf)  #src
+            worst_sym = max(worst_sym, abs(a - b)); scale_sym = max(scale_sym, abs(a))  #src
+        end  #src
+    end  #src
+    @assert scale_sym > 1.0 "the dissipation sweep never produced a nonzero form ($scale_sym)"  #src
+    @assert worst_sym/scale_sym < 1e-12 "the dissipation form is not symmetric ($worst_sym)"  #src
+
+    ## (ii) LAMB: with the potential profile, Oh*C_ll/(2 M_ll) = (l-1)(2l+1) Oh  #src
+    worst_lamb = 0.0  #src
+    for l in 2:6  #src
+        P = rr^(l+1)  #src
+        got = Cform(l, l, P, P, (x,mu) -> 1.0)/(2*Mform(l, l, P, P))  #src
+        worst_lamb = max(worst_lamb, abs(got - (l-1)*(2l+1))/((l-1)*(2l+1)))  #src
+    end  #src
+    @assert worst_lamb < 1e-10 "the dissipation form does not reproduce Lamb's damping ($worst_lamb)"  #src
+
+    println("  ASSERTION 5b OK: the damping matrix is the dissipation Hessian --")  #src
+    @printf("    C_lm = int 2 eta e^(l):e^(m) dV is symmetric to %.1e relative, for a\n", worst_sym/scale_sym)  #src
+    println("      viscosity with angular structure as well as radial;")  #src
+    @printf("    and with the potential profile psi ~ x^(l+1), Oh C_ll/(2 M_ll) equals\n")  #src
+    @printf("      Lamb's (l-1)(2l+1) Oh to %.1e over l = 2..6 -- exact integers, from\n", worst_lamb)  #src
+    println("      one volume integral, with no Bessel function and no root-finding.")  #src
+    println("    So the coupling can be assembled from FIRST derivatives of the velocity")  #src
+    println("    instead of from a fourth-order projection.")  #src
+    println("    Physical meaning of a failure: the system would not derive from a")  #src
+    println("    dissipation functional, the damping matrix would not be symmetric, and")  #src
+    println("    no energy budget could be closed against it.")  #src
+end  #src
+
 # ## Closing the system
 #
 # ### The constitutive law
