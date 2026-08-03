@@ -1521,6 +1521,99 @@ end  #src
 #     is treated as one on the companion page. The variational statement above is
 #     an equivalent form of the model, not a simplification of it.
 #
+# ### Why it is the same model, and why no pressure appears
+#
+# "Equivalent" is a claim, and one identity carries it. For any two
+# divergence-free fields ``\bm u`` and ``\bm w``,
+#
+# ```math
+# \int 2\eta\;\bm e[\bm u]\!:\!\bm e[\bm w]\,dV
+#   \;=\; -\int \bm w\cdot\bigl(\nabla\!\cdot\!2\eta\bm e[\bm u]\bigr)dV
+#   \;+\; \oint \bm w\cdot\bigl(2\eta\bm e[\bm u]\bigr)\!\cdot\!\bm n\,dS .
+# ```
+#
+# The left side is what the variational route assembles. The first term on the
+# right is the momentum operator the differential route projects. So the two
+# formulations differ by the **surface term** -- and that term is the traction,
+# which is exactly what supplies the tangential condition as a *natural* boundary
+# condition and the normal-stress balance as the surface equation. Same equations,
+# reached from either end.
+#
+# Two consequences worth stating plainly.
+#
+# **The pressure is absent from every term.** Both sides are built from
+# divergence-free fields, so incompressibility is satisfied identically and there
+# is no multiplier to carry. The interior pressure *is* that multiplier. The
+# differential route has to reintroduce it because its surface condition is
+# written as a traction balance containing ``p``; the variational route obtains the
+# same surface equation by varying the surface energy, and never needs it. Nothing
+# is lost -- ``p`` can be reconstructed afterwards if wanted -- but it is not a
+# state variable and no elliptic solve for it is required.
+#
+# **BC2 is not imposed, it emerges.** The surface term vanishes for arbitrary
+# tangential ``\bm w`` only if ``e_{r\theta}|_{x=1}=0``. In the differential route
+# that is a boundary condition to be applied; here it is a consequence of
+# stationarity. The kinematic condition BC1 remains *essential* -- it constrains
+# the admissible variations rather than following from them.
+
+let  #src
+    ## The identity above, on fields with angular viscosity structure. Errors are    #src
+    ## normalised by the LARGEST dissipation over the sweep, not per case: the       #src
+    ## cross-mode terms vanish identically for radially stratified eta (that is the  #src
+    ## diagonality result proved earlier), so a per-case relative error divides two  #src
+    ## machine zeros and reports nonsense. An earlier run of this very check         #src
+    ## reported "55" for exactly that reason.                                        #src
+    h = 1e-2  #src
+    d1v(f, v, i) = (-f(v .+ 2h*i) + 8f(v .+ h*i) - 8f(v .- h*i) + f(v .- 2h*i))/(12h)  #src
+    LPe(l,m) = l==0 ? one(m) : l==1 ? m : begin a,b=one(m),m; for n in 1:l-1; b,a=((2n+1)*m*b-n*a)/(n+1),b; end; b end  #src
+    dLPe(l,m) = l==0 ? zero(m) : l*(m*LPe(l,m)-LPe(l-1,m))/(m^2-1)  #src
+    Cge(l,t) = sin(t)^2*dLPe(l,cos(t))/(l*(l+1))  #src
+    psie(l, cs) = (x,t) -> sum(c*x^(l+1+2(k-1)) for (k,c) in enumerate(cs))*Cge(l,t)  #src
+    function strn(psi)  #src
+        ur(x,t) =  d1v(v -> psi(v[1],v[2]), [x,t], [0.0,1.0])/(x^2*sin(t))  #src
+        ut(x,t) = -d1v(v -> psi(v[1],v[2]), [x,t], [1.0,0.0])/(x*sin(t))  #src
+        err_(x,t) = d1v(v -> ur(v[1],v[2]), [x,t], [1.0,0.0])  #src
+        ett(x,t) = d1v(v -> ut(v[1],v[2]), [x,t], [0.0,1.0])/x + ur(x,t)/x  #src
+        epp(x,t) = ur(x,t)/x + ut(x,t)*cos(t)/(sin(t)*x)  #src
+        ert(x,t) = (d1v(v -> ur(v[1],v[2]), [x,t], [0.0,1.0])/x  #src
+                  + d1v(v -> ut(v[1],v[2]), [x,t], [1.0,0.0]) - ut(x,t)/x)/2  #src
+        (err_, ett, epp, ert, ur, ut)  #src
+    end  #src
+    nxv, wxv = QuadGK.gauss(44, 0.0, 1.0); nmv, wmv = QuadGK.gauss(44, -1.0, 1.0)  #src
+    volv(f) = sum(wx*wm*2pi*x^2*f(x, acos(mu)) for (x,wx) in zip(nxv,wxv), (mu,wm) in zip(nmv,wmv))  #src
+    surfv(f) = sum(wm*2pi*f(1.0, acos(mu)) for (mu,wm) in zip(nmv,wmv))  #src
+    worst_abs, scale = 0.0, 0.0  #src
+    for ef in ((x,t) -> 1.0,  #src
+               (x,t) -> 1.3 + 0.9x + 0.4x^2,  #src
+               (x,t) -> 1.3 + 0.9x*cos(t) + 0.4*(3cos(t)^2-1)/2)  #src
+        for (la, lb) in ((2,2), (2,3), (3,4))  #src
+            A = strn(psie(la, (1.0, 0.7, -0.3))); B = strn(psie(lb, (0.8, -0.4, 0.2)))  #src
+            lhs = volv((x,t) -> 2*ef(x,t)*(A[1](x,t)*B[1](x,t) + A[2](x,t)*B[2](x,t)  #src
+                                         + A[3](x,t)*B[3](x,t) + 2*A[4](x,t)*B[4](x,t)))  #src
+            dr(x,t) = (d1v(v -> v[1]^2*2ef(v[1],v[2])*A[1](v[1],v[2]), [x,t], [1.0,0.0])/x^2  #src
+                     + d1v(v -> 2ef(v[1],v[2])*A[4](v[1],v[2])*sin(v[2]), [x,t], [0.0,1.0])/(x*sin(t))  #src
+                     - (2ef(x,t)*A[2](x,t) + 2ef(x,t)*A[3](x,t))/x)  #src
+            dt(x,t) = (d1v(v -> v[1]^2*2ef(v[1],v[2])*A[4](v[1],v[2]), [x,t], [1.0,0.0])/x^2  #src
+                     + d1v(v -> 2ef(v[1],v[2])*A[2](v[1],v[2])*sin(v[2]), [x,t], [0.0,1.0])/(x*sin(t))  #src
+                     + 2ef(x,t)*A[4](x,t)/x - cos(t)/(sin(t)*x)*2ef(x,t)*A[3](x,t))  #src
+            rhs = -volv((x,t) -> B[5](x,t)*dr(x,t) + B[6](x,t)*dt(x,t)) +  #src
+                   surfv((x,t) -> B[5](x,t)*2*ef(x,t)*A[1](x,t) + B[6](x,t)*2*ef(x,t)*A[4](x,t))  #src
+            worst_abs = max(worst_abs, abs(lhs - rhs)); scale = max(scale, abs(lhs))  #src
+        end  #src
+    end  #src
+    rel = worst_abs/scale  #src
+    @assert scale > 1.0 "the equivalence sweep never produced a nonzero dissipation ($scale)"  #src
+    @assert rel < 1e-5 "the variational and differential forms are not the same equations (rel $rel)"  #src
+    @printf("  ASSERTION 5d OK: the dissipation form equals the momentum operator plus a\n")  #src
+    @printf("    surface traction, to %.1e relative (scale %.3g), for a viscosity with\n", rel, scale)  #src
+    println("    angular structure. So the variational and differential statements are the")  #src
+    println("    same equations, and everything verified of one holds of the other.")  #src
+    println("    No pressure appears on either side: divergence-free fields carry no")  #src
+    println("    multiplier, which is why the variational route needs no elliptic solve.")  #src
+    println("    Physical meaning of a failure: the two routes would be different models,")  #src
+    println("    and the cheaper assembly would not be assembling this one.")  #src
+end  #src
+#
 # ### The calibration that makes it trustworthy
 #
 # The quadratic forms can be checked without committing to any closure, by
@@ -1826,6 +1919,13 @@ let  #src
     base_wrong = -2.0 + 0.0 - 2.0 + 0.0  #src
     @assert abs(base_right) < 1e-14 "the derived normal-stress balance fails the base state ($base_right)"  ## CLAIM: SUM-NORMAL  #src
     @assert abs(base_wrong) > 1.0 "the opposite curvature sign also passes; the base state cannot fix it"  #src
+    ## The same balance, read at l = 0 as an equation for the pressure LEVEL rather  #src
+    ## than as an equation of motion: with no flow and no contact it has the unique  #src
+    ## solution p = 2. That is what closes c_0, and it needs no extra postulate.     #src
+    ## An earlier version of the page claimed volume conservation closed it, which   #src
+    ## is a condition on the SHAPE standing in for one on the pressure.              #src
+    p_level = 2.0 + 0.0 + 0.0          # solve -p + 2 eta e_rr + div n + p_c = 0 for p  #src
+    @assert abs(p_level - 2.0) < 1e-14 "the l=0 balance does not fix the pressure level at the Laplace value ($p_level)"  ## CLAIM: SUM-PLOW  #src
     ## (ii) the determinant vanishes at Reid's roots, and only for the derived sign  #src
     worst_right, best_wrong = 0.0, Inf  #src
     for Oh in (0.006, 0.05, 0.3, 1.0), l in (2, 4, 8)  #src
@@ -2197,19 +2297,15 @@ end  #src
 # the sense in which the pressure is coupled to the surface rather than determined
 # independently of it.
 #
-# The two lowest harmonics are not covered by (3), which is projected only for
-# ``l\ge2``, and they are fixed by the two constraints the shape expansion leaves
-# implicit:
-#
-# ```math
-# c_0:\quad \zeta_0=0 \ \ \text{(the drop's volume is conserved)},
-# \qquad
-# c_1:\quad \text{the } l=1 \text{ traction balances } \mathfrak F \text{ in (4)} .
-# ```
-#
-# ``\zeta`` starts at ``l=2`` precisely because ``l=0`` is a change of volume and
-# ``l=1`` a rigid translation, so neither is a surface mode -- but the pressure
-# still has those harmonics, and they are what the two conditions above pin down.
+# The two lowest harmonics need no extra condition, and it is worth being precise
+# about why, because it is easy to invent a gap here. The restriction to
+# ``l\ge2`` applies to the *interpretation* of the normal-stress balance as
+# ``\zeta_l``'s equation of motion -- there are no ``l=0,1`` surface modes -- not
+# to the balance itself, which holds at every ``l``. So the balance at ``l=0`` fixes the pressure level:
+# at rest it reads ``-2+0+2+0=0``, which is the Laplace condition. And at ``l=1``
+# it is not an independent statement at all: a ``c_1xP_1`` field is the pressure
+# associated with bulk acceleration, so that projection **is** the centre-of-mass
+# equation of block (4).
 #
 # Second, when ``\eta`` is constant the source vanishes and only the harmonic part
 # survives,

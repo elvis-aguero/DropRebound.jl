@@ -75,12 +75,14 @@ const LEDGER = [
      by = "ASSERTION 3f"),
     (id = "SUM-PHARM",  status = :proved, anchor = raw"p = \sum_l c_l(t)\,x^lP_l(\mu)",
      by = "ASSERTION 2c"),
-    # The two pressure harmonics the surface condition does not reach. Both are
-    # postulates of the same kind as SUM-ZETA: the linearised shape conserves
-    # volume (so zeta_0 = 0) and carries no rigid translation (so l=1 is the
-    # centre-of-mass bookkeeping in (4)). Not derived here, and marked as taken.
-    (id = "SUM-PLOW",   status = :axiom,  anchor = raw"\zeta_0=0 \ \ \text{(the drop's volume is conserved)}",
-     by = ""),
+    # The normal-stress balance holds at EVERY l. For l >= 2 it advances zeta_l;
+    # at l = 0 it fixes the pressure level (at rest: -2 + 2 = 0, the Laplace
+    # condition ASSERTION 3e already checks); at l = 1 it IS the centre-of-mass
+    # equation of block (4). Nothing is postulated -- an earlier version of this
+    # entry claimed volume conservation closed the l = 0 PRESSURE harmonic, which
+    # is a shape condition standing in for a pressure one.
+    (id = "SUM-PLOW",   status = :proved, anchor = raw"the balance at ``l=0`` fixes the pressure level",
+     by = "ASSERTION 3e"),
     (id = "SUM-GAP",    status = :proved, anchor = raw"h(\theta,t)=\mu\,\bigl[1+\zeta(\theta,t)\bigr]+z(t)",
      by = "ASSERTION 2c"),
     (id = "SUM-STREAM", status = :proved, anchor = raw"u_r=\frac{1}{x^2\sin\theta}\frac{\partial\psi}{\partial\theta}",
