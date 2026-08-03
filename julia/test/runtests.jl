@@ -23,4 +23,5 @@ using DropSolver
     include("test_convergence_order.jl")
     include("test_claim_ledger.jl")
     include("test_bessel_discipline.jl")
+    include("test_src_markers.jl")
 end

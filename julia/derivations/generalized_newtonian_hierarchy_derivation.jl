@@ -916,9 +916,9 @@ let  #src
         A  #src
     end  #src
     worst_diag, worst_offmag, ntriple = 0.0, 0.0, 0  #src
-    ## Trimmed to three (m,k) pairs to keep the CI budget sane: (2,0) supplies the
-    ## diagonal cross-check against the boxed operator, (2,1) and (2,2) exercise
-    ## the off-diagonal coupling at both parities.
+    ## Trimmed to three (m,k) pairs to keep the CI budget sane: (2,0) supplies the  #src
+    ## diagonal cross-check against the boxed operator, (2,1) and (2,2) exercise  #src
+    ## the off-diagonal coupling at both parities.  #src
     for (m, k) in ((2,0), (2,1), (2,2))  #src
         Cx = Symbolics.substitute(ed2(curlv(Uc*Cgc(m), Ec*LPc(k,cos(tt)))), Dict(rr => 1.0))  #src
         gen = Symbolics.build_function(Cx, tt, ec[1],ec[2],ec[3], uc[1],uc[2],uc[3],uc[4],uc[5]; expression=Val(false))  #src
