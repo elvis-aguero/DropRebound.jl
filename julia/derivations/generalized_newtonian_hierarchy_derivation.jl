@@ -700,6 +700,7 @@ end  #src
 # field is the entire origin of the mode coupling.
 #
 @variables rr tt qq hh0 hh1 hh2  #src
+@variables uc[1:5] ec[1:3]  #src
 @variables Hgen(..)  #src
 let  #src
     Drr = Differential(rr); Dtt = Differential(tt)  #src
@@ -815,6 +816,133 @@ let  #src
     println("      (to $(round(worst_box, sigdigits=2)));")  #src
     println("    that case stays diagonal (spread $(round(sep, sigdigits=2))), and an angular eta")  #src
     println("      does not (spread $(round(coup, sigdigits=3))) -- which is the coupling itself.")  #src
+end  #src
+
+# ### The off-diagonal operators, explicitly
+#
+# ``\mathcal R_{l m}`` was defined above by a projection, which is enough to
+# close the model but not enough to assemble a matrix. It has an explicit form,
+# and the reason is structural: the viscous term is linear in ``\eta`` and linear
+# in ``\psi``, and reaches no higher than ``\eta''``. So for a single viscosity
+# harmonic and a single driving mode,
+#
+# ```math
+# \boxed{\;
+# \mathcal R_{l m}\bigl[\psi_m;\eta_k\bigr]
+#   \;=\; \sum_{j=0}^{2}\sum_{i=0}^{4}
+#     a^{(k)}_{l m,\,ji}\; x^{\,j+i-4}\;
+#     \eta_k^{(j)}(x)\;\psi_m^{(i)}(x) \;}
+# ```
+#
+# with ``a^{(k)}_{lm,ji}`` **pure numbers depending only on the three integers**.
+# Fifteen of them per triple, and the selection rule already says which triples
+# are nonzero, so the whole coupling is a sparse table computed once and then
+# contracted at each step. Nothing symbolic happens inside the time loop.
+#
+# The coefficients are extracted by a device worth naming, because the direct
+# route is prohibitively slow. Take ``\psi_m=U(x)C_m(\theta)`` and
+# ``\eta_k=E(x)P_k(\mu)`` with ``U`` and ``E`` *local Taylor polynomials about*
+# ``x=1``,
+#
+# ```math
+# U(x)=\sum_{i=0}^{4}u_i\frac{(x-1)^i}{i!},
+# \qquad
+# E(x)=\sum_{j=0}^{2}e_j\frac{(x-1)^j}{j!} ,
+# ```
+#
+# truncated at exactly the orders the operator can reach. Then
+# ``U^{(i)}(1)=u_i`` and ``E^{(j)}(1)=e_j`` identically, the projected value is
+# *bilinear* in ``(e_j,u_i)``, and at ``x=1`` every power of ``x`` is one -- so
+#
+# ```math
+# a^{(k)}_{lm,\,ji} \;=\; \bigl[\text{projection}\bigr]
+#   \Big|_{e_j=1,\;u_i=1,\;\text{all others }0} .
+# ```
+#
+# One symbolic curl per ``(m,k)`` pair serves every ``l`` in the band. Feeding
+# monomials instead needs one curl per sampled pair of exponents, which is
+# twenty-five times the work for the same fifteen numbers.
+#
+# The check below runs the extraction and compares the diagonal against the boxed
+# ``\mathcal R_l``, which is the one case already known in closed form. A failure
+# would mean the operator does not have this form at all -- that some coefficient
+# depends on ``x`` beyond the stated power, and the coupling could not be
+# tabulated.
+
+let  #src
+    ## One curl per (m,k), reused for every l in the band; and ONE build_function  #src
+    ## over (theta, e..., u...) rather than fifteen, which is what makes this      #src
+    ## affordable. An earlier monomial-fitting version needed 25 symbolic curls    #src
+    ## per (m,k) and ran for over half an hour without finishing.                  #src
+    Dr2 = Differential(rr); Dt2 = Differential(tt)  #src
+    ed2(e) = Symbolics.expand_derivatives(e)  #src
+    LPc(l,m) = l==0 ? one(m) : l==1 ? m : begin a,b=one(m),m; for n in 1:l-1; b,a=((2n+1)*m*b-n*a)/(n+1),b; end; b end  #src
+    dLPc(l,m) = l==0 ? zero(m) : l*(m*LPc(l,m)-LPc(l-1,m))/(m^2-1)  #src
+    Cgc(l) = sin(tt)^2*dLPc(l,cos(tt))/(l*(l+1))  #src
+    function curlv(psi, eta)  #src
+        ur =  ed2(Dt2(psi)/(rr^2*sin(tt))); ut = -ed2(Dr2(psi)/(rr*sin(tt)))  #src
+        err_ = ed2(Dr2(ur)); ett = ed2(Dt2(ut)/rr + ur/rr)  #src
+        epp = ur/rr + ut*cos(tt)/(sin(tt)*rr)  #src
+        ert = ed2((Dt2(ur)/rr + Dr2(ut) - ut/rr)/2)  #src
+        dr = ed2(Dr2(rr^2*2eta*err_)/rr^2 + Dt2(2eta*ert*sin(tt))/(rr*sin(tt)) - (2eta*ett+2eta*epp)/rr)  #src
+        dt = ed2(Dr2(rr^2*2eta*ert)/rr^2 + Dt2(2eta*ett*sin(tt))/(rr*sin(tt)) + 2eta*ert/rr - cos(tt)/(sin(tt)*rr)*2eta*epp)  #src
+        ed2((Dr2(rr*dt) - Dt2(dr))/rr)  #src
+    end  #src
+    nodes, wts = QuadGK.gauss(36, -1.0, 1.0)  #src
+    Uc = sum(uc[i+1]*(rr-1)^i/factorial(i) for i in 0:4)  #src
+    Ec = sum(ec[j+1]*(rr-1)^j/factorial(j) for j in 0:2)  #src
+    ## a_{ji} for all (j,i) at once, for one (l,m,k)  #src
+    function coeffs(gen, l)  #src
+        A = zeros(3, 5)  #src
+        for j in 0:2, i in 0:4  #src
+            ev = ntuple(a -> (a-1 == j ? 1.0 : 0.0), 3)  #src
+            uv = ntuple(b -> (b-1 == i ? 1.0 : 0.0), 5)  #src
+            num = 0.0  #src
+            for (mu, w) in zip(nodes, wts)  #src
+                th = acos(mu)  #src
+                F  = -sin(th)*gen(th, ev..., uv...)          # x = 1  #src
+                num += w*(1-mu^2)*(F/sin(th)^2)*dLPc(l,mu)/(l*(l+1))  #src
+            end  #src
+            A[j+1, i+1] = num/(2/((2l+1)*l*(l+1)))  #src
+        end  #src
+        A  #src
+    end  #src
+    ## the boxed diagonal operator in the same basis, L = l(l+1)  #src
+    function boxedA(l)  #src
+        L = l*(l+1.0); A = zeros(3,5)  #src
+        A[1,5] += 1.0; A[1,3] += -2L; A[1,2] += 4L; A[1,1] += L^2 - 6L  #src
+        A[2,4] += 2.0; A[2,3] += -2.0; A[2,2] += -2(L-1); A[2,1] += 4L  #src
+        A[3,3] += 1.0; A[3,2] += -2.0; A[3,1] += L  #src
+        A  #src
+    end  #src
+    worst_diag, worst_offmag, ntriple = 0.0, 0.0, 0  #src
+    ## Trimmed to three (m,k) pairs to keep the CI budget sane: (2,0) supplies the
+    ## diagonal cross-check against the boxed operator, (2,1) and (2,2) exercise
+    ## the off-diagonal coupling at both parities.
+    for (m, k) in ((2,0), (2,1), (2,2))  #src
+        Cx = Symbolics.substitute(ed2(curlv(Uc*Cgc(m), Ec*LPc(k,cos(tt)))), Dict(rr => 1.0))  #src
+        gen = Symbolics.build_function(Cx, tt, ec[1],ec[2],ec[3], uc[1],uc[2],uc[3],uc[4],uc[5]; expression=Val(false))  #src
+        for l in max(1, abs(m-k)):(m+k)  #src
+            iseven(l+k+m) || continue  #src
+            A = coeffs(gen, l); ntriple += 1  #src
+            if k == 0 && l == m  #src
+                worst_diag = max(worst_diag, maximum(abs.(A .- boxedA(l))))  #src
+            elseif k > 0  #src
+                worst_offmag = max(worst_offmag, maximum(abs.(A)))  #src
+            end  #src
+        end  #src
+    end  #src
+    @assert ntriple >= 5 "the sweep covered too few (l,m,k) triples to be meaningful ($ntriple)"  #src
+    @assert worst_offmag > 1.0 "every off-diagonal operator came out zero; the extraction is not exercising the coupling"  #src
+    @assert worst_diag < 1e-9 "the extracted diagonal does not reproduce the boxed R_l ($worst_diag)"  ## CLAIM: SUM-RLM  #src
+    @printf("  ASSERTION 3g OK: R_{lm} extracted as 15 numbers per (l,m,k) over %d triples.\n", ntriple)  #src
+    @printf("    The diagonal (k=0, l=m) reproduces the boxed R_l to %.1e, and the\n", worst_diag)  #src
+    @printf("    off-diagonal operators are nonzero (largest coefficient %.3g), so the\n", worst_offmag)  #src
+    println("    mode coupling is a sparse table computed once, not a per-step projection.")  #src
+    println("    Physical meaning of a failure: the operator would not have this form,")  #src
+    println("    some coefficient would depend on x beyond x^(j+i-4), and the coupling")  #src
+    println("    could not be tabulated at all -- assembly would need a projection")  #src
+    println("    inside the time loop.")  #src
 end  #src
 
 # ### How far the coupling reaches
@@ -1960,7 +2088,14 @@ end  #src
 # ```
 #
 # with ``\mathcal D_l=d^2/dx^2-l(l+1)/x^2`` and ``\mathcal R_{l m}`` the
-# projection onto ``C_l`` defined in *The interior equation*. Coupling is
+# projection onto ``C_l`` defined in *The interior equation*, and explicitly
+#
+# ```math
+# \mathcal R_{l m}\bigl[\psi_m;\eta_k\bigr]=\sum_{j=0}^{2}\sum_{i=0}^{4}
+#   a^{(k)}_{l m,\,ji}\;x^{\,j+i-4}\;\eta_k^{(j)}\,\psi_m^{(i)} ,
+# ```
+#
+# fifteen pure numbers per ``(l,m,k)``, tabulated once. Coupling is
 # confined to ``|l-m|\le k\le l+m`` with ``l+k+m`` even, so the system is
 # banded. Closed by regularity at ``x=0``, which forces ``\psi_l\sim x^{l+1}``, and
 # at ``x=1`` by

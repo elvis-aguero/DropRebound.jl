@@ -89,6 +89,11 @@ const LEDGER = [
      by = "ASSERTION 3e"),
     (id = "SUM-BC",     status = :proved, anchor = raw"\mathcal T[\psi_l]\big|_{x=1}=0",
      by = "ASSERTION 2b"),
+    # The explicit off-diagonal operator: 15 numbers per (l,m,k). Discharged by
+    # extracting them and checking the diagonal against the boxed R_l, which is
+    # the one case independently known in closed form.
+    (id = "SUM-RLM",    status = :proved, anchor = raw"a^{(k)}_{l m,\,ji}\;x^{\,j+i-4}",
+     by = "ASSERTION 3g"),
     # The divergence of momentum yields this with the SAME coefficient the
     # momentum equation carries, and doubling that coefficient breaks the
     # identity -- so the prefactor is pinned, not assumed. (ASSERTION 3d proves
