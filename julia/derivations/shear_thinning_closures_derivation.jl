@@ -36,43 +36,85 @@ println("="^78)  #src
 println("SHEAR-THINNING DROPS: CLOSURES")  #src
 println("="^78)  #src
 
-# ## The quasi-static interior
+# ## The instantaneous-eigenmode closure
 #
-# **Assumption.** The interior velocity field is in equilibrium with the
-# instantaneous surface motion.
+# **Assumption.** At each instant the interior flow is a single exponentially
+# decaying mode of the interior operator, with the viscosity field held fixed.
 #
-# The model page leaves the interior problem as a parabolic evolution,
+# This is the assumption that lets the interior be eliminated, and it is worth
+# stating with some care, because "quasi-static" -- the name it usually travels
+# under -- suggests something different from what is actually done, and nothing
+# in it is static.
+#
+# The model page leaves the interior as a parabolic evolution,
 #
 # ```math
 # \partial_t\,\mathcal D_l[U_l]
 #   = \mathrm{Oh}\sum_{l''}\mathcal R_{l l''}[U_{l''};\eta] ,
 # ```
 #
-# which has to be marched alongside the surface amplitudes. Replacing it by the
-# statement that the interior has already relaxed -- dropping ``\partial_t`` and
-# solving for a single decay rate ``\sigma`` at each instant -- turns it into
-# the eigenproblem
+# which has to be marched alongside the surface amplitudes, with ``U_l`` part of
+# the state. There are two different ways to get rid of that, and only the
+# second is used:
+#
+# | | substitution | result |
+# |:--|:--|:--|
+# | (a) drop the time derivative | ``\partial_t\mathcal D_l[U_l]\to0`` | a Stokes interior: no oscillation, ``\sigma=0`` |
+# | (b) replace it by an eigenvalue | ``\partial_t U_l\to-\sigma U_l`` | Reid's eigenproblem |
+#
+# Option (a) is what "quasi-static" sounds like, and it is not what anyone does:
+# it deletes the inertia that makes the drop ring. Option (b) does not discard
+# the term at all -- it *replaces* it, asserting that the interior's time
+# dependence is a single exponential ``e^{-\sigma t}`` and then solving for
+# ``\sigma``. Substituting it gives
 #
 # ```math
 # q^2\,\mathcal D_l[U_l] + \mathcal R_l[U_l;\eta] = 0,
 # \qquad q^2=\sigma/\mathrm{Oh} ,
 # ```
 #
-# one per mode, of exactly the form solved on the Newtonian pages. This is what
-# makes ``\lambda_l`` and ``\omega_l^2`` meaningful as *instantaneous*
-# coefficients at all: without it there are no eigenvalues, only a field.
+# one per mode, of exactly the form solved on the Newtonian pages.
 #
-# **What it costs.** The substitution is exact only if the interior relaxes
-# fast compared with the surface motion, i.e. if the viscous diffusion time
-# across the drop is short against the oscillation period. Those are
-# ``\mathrm{Oh}^{-1}`` and ``O(1)`` respectively in these units, so the
-# assumption is a **high-Ohnesorge** one, and it degrades exactly where the
-# drop is least damped and rings longest. It is not a small-parameter expansion
-# with a leading correction; it is a change in the type of the interior
-# equation, from parabolic to algebraic, and the discarded term is
-# ``\partial_t\mathcal D_l[U_l]`` in full.
+# **What it entails, precisely.** Three separate claims, worth separating
+# because they fail in different places:
 #
-# Every section below is stated within this assumption.
+# 1. **One exponential, not a superposition.** The interior response to a given
+#    surface motion is in general a sum over *all* decay rates admitted by the
+#    operator. Keeping a single ``e^{-\sigma t}`` asserts the others have
+#    already decayed.
+# 2. **The viscosity is constant over the relaxation.** An eigenvalue only
+#    exists for a time-independent operator. Since ``\eta`` varies on the same
+#    timescale as the mode that produces it, this is an assertion about
+#    timescales, not an identity.
+# 3. **``U_l`` stops being a state variable.** It becomes an algebraic function
+#    of the current ``\eta`` and ``l``. This is the whole point: it is what makes
+#    ``\lambda_l`` and ``\omega_l^2`` *instantaneous numbers* rather than
+#    histories, and so what lets the surface equation stay a second-order ODE.
+#
+# A fourth approximation is usually layered on top and is *not* part of this
+# one: even granted 1--3, the resulting characteristic equation has infinitely
+# many roots ``\sigma`` per mode, and ``\lambda_l``, ``\omega_l^2`` are built
+# from **two** of them. That truncation is independent, and it is not exact even
+# for a constant viscosity.
+#
+# **What it costs.** Claims 1 and 2 both require the interior to relax fast
+# compared with the surface motion -- the viscous diffusion time across the drop
+# short against the oscillation period. In these units those are
+# ``\mathrm{Oh}^{-1}`` and ``O(1)``, so this is a **high-Ohnesorge** assumption,
+# and it degrades exactly where the drop is least damped and rings longest. It is
+# not a small-parameter expansion with a leading correction; it changes the type
+# of the interior equation, from parabolic to algebraic.
+#
+# !!! note "This closure is optional"
+#     Nothing forces it. If the interior is discretised and marched as the model
+#     page states it -- ``U_l`` in the state, a banded system in ``x`` -- then
+#     none of claims 1--3 is needed, no eigenproblem is ever formed, and the
+#     two-root truncation disappears with it. The closure buys a smaller state
+#     and the reuse of tabulated Newtonian coefficients; it is not a
+#     prerequisite for having a solvable model.
+#
+# The sections below are stated within this closure, because that is where the
+# implemented solver sits.
 
 # ## The temporal closure
 #
@@ -840,6 +882,67 @@ end  #src
 # Newtonian control at ``2.0``. The linear extrapolation above restores it.
 # `julia/test/test_convergence_order.jl` measures the order and holds it above
 # ``1.5``.
+#
+# ### The step-size ceiling
+#
+# The truncation sets a hard cap. The highest retained mode oscillates at
+# ``\omega_M=\sqrt{M(M-1)(M+2)}``, so resolving it at ``N`` samples per period
+# requires
+#
+# ```math
+# \Delta t \;\le\; \frac{2\pi}{N\sqrt{M(M-1)(M+2)}} \;\sim\; M^{-3/2} .
+# ```
+#
+# Raising ``M`` therefore costs twice: more unknowns per step, and more steps.
+# This is why the truncation cannot be raised casually to chase the ``L_\eta``
+# convergence discussed above.
+#
+# ### The contact set
+#
+# The reaction pressure and the gap satisfy a complementarity condition, not an
+# equation, so the contact set is an unknown of a different kind: it is
+# discrete. Represented on a fixed angular grid it is an integer -- the number of
+# nodes in contact -- and the step must decide that integer as well as the
+# amplitudes.
+#
+# Two properties of the resulting search matter, and both are consequences of
+# complementarity rather than of any particular discretisation.
+#
+# **Infeasible candidates are rejected, not ranked.** A candidate contact set
+# that leaves the surface below the substrate somewhere outside the contact
+# region describes an interpenetrating state. It is not a worse solution than the
+# others, it is not a solution, and it is excluded before any objective is
+# consulted rather than being allowed to compete.
+#
+# **The objective must be local to the contact edge.** An objective that
+# integrates a residual over the contact region is biased toward vanishing
+# contact, because shrinking the region also shrinks the domain the residual is
+# measured over. Its minimiser is then the smallest admissible contact set,
+# independently of the physics -- which reproduces the degeneracy at first touch
+# rather than resolving it. The objective must therefore be evaluated *at the
+# edge*.
+#
+# **The step size is the safety valve.** The contact set is allowed to change by
+# at most one node per step. If no admissible neighbouring set can be found, the
+# correct response is not to accept a worse one but to reject the step and halve
+# ``\Delta t``. This is what keeps the nonsmoothness of the contact transition
+# from being straddled by a single step, and it is why the integration is
+# adaptive in time even though nothing in the model requires it to be.
+#
+# ### Two measurement traps
+#
+# **Contact time.** Contact is not necessarily a single interval: a marginally
+# resolved run can chatter, re-entering contact briefly after the physical
+# rebound. The span from first to last contact then overstates the contact time,
+# while the duration of the *first* interval understates it, badly, on exactly
+# those runs. The defensible metric is the duration of the **longest contiguous**
+# contact interval.
+#
+# **Conditioning of the pressure basis.** The pressure coefficients are a
+# spectral representation of a field supported on part of the domain, and the
+# conditioning of the resulting system depends strongly on how many are retained.
+# It is a quantity to be measured at the truncation actually used, not inferred
+# from a value quoted at another one.
 
 # ## Summary of the chain
 #
@@ -853,7 +956,8 @@ end  #src
 # | axisymmetric | axisymmetric forcing -- **exact** | ``Y_l^m\to P_l``, no ``m``-coupling ever |
 # | poloidal + modal | change of variables | state is ``\{A_l\}``, ``l=2\ldots M`` |
 # | **full coupled system** | none beyond the three above | banded interior BVP + dense surface matrices |
-# | quasi-static interior | interior relaxed; parabolic ``\to`` eigenproblem | recovers ``\lambda_l``, ``\omega_l^2`` as instantaneous numbers |
+# | instantaneous eigenmode | ``\partial_tU_l\to-\sigma U_l``; ``\eta`` frozen | eliminates ``U_l``; parabolic ``\to`` algebraic |
+# | two-root truncation | keep two of infinitely many ``\sigma`` | recovers ``\lambda_l``, ``\omega_l^2`` as two numbers per mode |
 # | temporal closure | instantaneous / period-averaged / Floquet | picks which ``\eta(t)`` channel survives |
 # | truncate at ``L_\eta`` | discarded coupling small -- **measured false** | banded, but needs ``L_\eta\gtrsim M``: no saving |
 # | ``\eta=\eta(x)`` | viscosity spherically symmetric -- **leading-order error** | **diagonal**; numerical radial BVP per mode |
