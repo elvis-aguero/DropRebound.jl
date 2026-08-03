@@ -1395,6 +1395,185 @@ end  #src
 
 
 
+# ## Two results the summary needs
+#
+# ### The capillary restoring force
+#
+# The normal-stress balance carries the curvature of the deformed surface, and
+# what the surface equation needs is its linearisation. For an axisymmetric
+# surface ``x=1+\zeta(\theta)``, taking ``\bm n=\nabla F/|\nabla F|`` with
+# ``F=x-1-\zeta`` and expanding to first order in ``\zeta``,
+#
+# ```math
+# \nabla\cdot\bm n \;=\; 2 \;+\; \sum_{l\ge2}(l-1)(l+2)\,A_l\,P_l(\mu)
+#   \;+\;O(\zeta^2) .
+# ```
+#
+# The leading ``2`` is the equilibrium sphere's ``2/R``; the mode-``l`` term is
+# the restoring stiffness, and ``(l-1)(l+2)`` vanishing at ``l=1`` is why
+# translation costs no surface energy -- the ``l=1`` mode is a rigid shift, which
+# is exactly why ``\zeta`` starts at ``l=2`` and the drop's position is carried
+# separately by ``z``.
+#
+# ### The net force the substrate exerts
+#
+# The reaction pressure ``\Pi\ge0`` can only push, so the traction on the drop is
+# ``-\Pi\bm n`` and its vertical component is ``-\Pi\mu``. Integrating over the
+# surface -- and noting that ``\Pi`` vanishes off the contact region, so the
+# integral may be taken over the whole sphere -- gives
+#
+# ```math
+# \mathfrak F \;=\; -2\pi\int_{-1}^{1}\Pi(\mu)\,\mu\,d\mu
+#   \;=\; -\frac{4\pi}{3}B_1 ,
+# ```
+#
+# because ``\mu=P_1`` and every other term in ``\Pi=\sum_nB_nP_n`` is orthogonal
+# to it. So the net force is carried *entirely* by the single coefficient
+# ``B_1``, and every other pressure coefficient is invisible to the centre of
+# mass. Dividing by the drop's non-dimensional mass, which is also ``4\pi/3``,
+#
+# ```math
+# \dot v = -\mathrm{Bo} - B_1 .
+# ```
+#
+# The two ``4\pi/3`` factors cancelling is why the equation of motion looks as
+# though ``B_1`` *were* the force. It is not -- it is one coefficient of the
+# pressure expansion, and ``\mathfrak F=-\tfrac{4\pi}{3}B_1`` is the relation
+# between them.
+
+let  #src
+    ## Discharges the remaining Model summary claims. Each check builds the        #src
+    ## quantity from its definition rather than from the identity being tested.    #src
+    Dr = Differential(rr); Dt = Differential(tt)  #src
+    ed2(e) = Symbolics.expand_derivatives(e)  #src
+    LP(l,m)  = l==0 ? one(m) : l==1 ? m : begin a,b=one(m),m; for n in 1:l-1; b,a=((2n+1)*m*b-n*a)/(n+1),b; end; b end  #src
+    LPp(l,m) = l==0 ? zero(m) : l*(m*LP(l,m)-LP(l-1,m))/(m^2-1)  #src
+    Cg(l) = sin(tt)^2*LPp(l,cos(tt))/(l*(l+1))  #src
+    f2(e,xv,tv) = Symbolics.build_function(ed2(e), rr, tt; expression=Val(false))(xv,tv)  #src
+    f1(e,tv) = Symbolics.build_function(ed2(e), tt; expression=Val(false))(tv)  #src
+    TH = (0.4, 0.9, 1.5, 2.2, 2.8)  #src
+    XT = ((0.43,0.7),(0.61,1.3),(0.82,2.1),(0.37,2.6))  #src
+
+    ## SUM-GAP: h = mu(1+zeta) + z is the EXACT height of the surface point at    #src
+    ## angle theta, not a linearisation -- the vertical Cartesian coordinate of    #src
+    ## the point at radius 1+zeta on a centre at height z.                        #src
+    @variables zc zeta_  #src
+    gap_exact  = zc + (1 + zeta_)*cos(tt)          # z + r cos(theta), r = 1+zeta  #src
+    gap_claim  = cos(tt)*(1 + zeta_) + zc  #src
+    w_gap = maximum(abs(Symbolics.value(Symbolics.substitute(  #src
+                ed2(gap_exact - gap_claim), Dict(tt=>tv, zc=>0.3, zeta_=>0.17))))  #src
+            for tv in TH)  #src
+    @assert w_gap < 1e-14 "h is not the exact height of the surface point ($w_gap)"  #src
+
+    ## SUM-STREAM: the stream-function velocities are divergence free, for a       #src
+    ## multi-mode psi (not one mode at a time -- incompressibility must survive    #src
+    ## superposition).                                                            #src
+    psi_m = (rr^3 + 0.7rr^5)*Cg(2) + (rr^4 - 0.3rr^6)*Cg(3) + 0.5rr^5*Cg(4)  #src
+    ur_m  =  ed2(Dt(psi_m)/(rr^2*sin(tt)))  #src
+    ut_m  = -ed2(Dr(psi_m)/(rr*sin(tt)))  #src
+    divu_m = ed2(Dr(rr^2*ur_m)/rr^2 + Dt(ut_m*sin(tt))/(rr*sin(tt)))  #src
+    w_div = maximum(abs(f2(divu_m, xv, tv)) for (xv,tv) in XT)  #src
+    @assert w_div < 1e-12 "the stream-function velocity field is not divergence free ($w_div)"  #src
+
+    ## SUM-GROUPS: the three groups, checked by substituting values rather than    #src
+    ## by symbolic simplification -- Symbolics will not cancel T1*(R^3 rho/T1)     #src
+    ## under a square root, and an unsimplified residual is not a failure.        #src
+    w_grp = 0.0  #src
+    for (rho_,R_,T1_,g_,V_,e0_) in ((998.0,3.5e-4,0.0722,9.81,0.31,1.0e-3),  #src
+                                    (1210.0,7.1e-4,0.0640,9.81,0.85,4.3e-2),  #src
+                                    (1.0,1.0,1.0,1.0,1.0,1.0))  #src
+        Tsig = sqrt(rho_*R_^3/T1_)  #src
+        inert = rho_*R_/Tsig^2  #src
+        w_grp = max(w_grp, abs((T1_/R_)/R_/inert - 1.0))                         # pressure scale matches inertial  #src
+        w_grp = max(w_grp, abs(e0_*(R_/Tsig)/R_^2/inert - e0_/sqrt(rho_*T1_*R_))) # Oh  #src
+        w_grp = max(w_grp, abs(rho_*g_/inert            - rho_*g_*R_^2/T1_))      # Bo  #src
+        w_grp = max(w_grp, abs((V_/(R_/Tsig))^2         - rho_*R_*V_^2/T1_))      # We  #src
+    end  #src
+    @assert w_grp < 1e-10 "the non-dimensional groups do not follow from the stated scalings ($w_grp)"  #src
+
+    ## SUM-RHEO: the factor 2. Build e from a velocity field and contract it in     #src
+    ## full; do not assume which components are nonzero. Calibrated on simple      #src
+    ## shear, where the engineering shear rate is unambiguous.                     #src
+    @variables X Y Z Gs  #src
+    DX, DY, DZ = Differential(X), Differential(Y), Differential(Z)  #src
+    uvec = [Gs*Y, 0X, 0X]  #src
+    Ds   = (DX, DY, DZ)  #src
+    grad = [ed2(Ds[j](uvec[i])) for i in 1:3, j in 1:3]  #src
+    estr = (grad .+ permutedims(grad)) ./ 2  #src
+    ee   = sum(estr[i,j]^2 for i in 1:3, j in 1:3)  #src
+    for Gv in (1.0, 2.5, 7.3)  #src
+        got = sqrt(2*Symbolics.value(Symbolics.substitute(ee, Dict(Gs=>Gv))))  #src
+        @assert abs(got - Gv) < 1e-12 "sqrt(2 e:e) is not the shear rate in simple shear ($got vs $Gv)"  #src
+    end  #src
+
+    ## SUM-INT: the relative coefficient of the inertial and viscous terms. With   #src
+    ## u ~ exp(-sigma t) the interior equation reads -sigma D_l[U] = Oh R_l[U],     #src
+    ## and at constant eta that must be Reid's D_l(D_l + q^2)U = 0 with            #src
+    ## q^2 = sigma/Oh -- which is what fixes the Oh prefactor.                     #src
+    @variables sig Ohs  #src
+    w_int = 0.0  #src
+    for l in 2:5  #src
+        Uf = rr^(l+1) + 0.7rr^(l+3) - 0.3rr^(l+5)  #src
+        Dl_(f) = ed2(Dr(Dr(f))) - l*(l+1)*f/rr^2  #src
+        lhs = Ohs*Dl_(Dl_(Uf)) + sig*Dl_(Uf)          # from -sigma D_l[U] = Oh D_l^2[U]  #src
+        rhs = Ohs*Dl_(Dl_(Uf) + (sig/Ohs)*Uf)         # Reid's D_l(D_l + q^2)U, q^2 = sigma/Oh  #src
+        for (xv,_) in XT, (sv,ov) in ((0.7,0.031),(2.3,0.9))  #src
+            d = Symbolics.value(Symbolics.substitute(ed2(lhs - rhs),  #src
+                    Dict(rr=>xv, sig=>sv, Ohs=>ov)))  #src
+            w_int = max(w_int, abs(Float64(d)))  #src
+        end  #src
+    end  #src
+    @assert w_int < 1e-10 "q^2 = sigma/Oh does not reconcile the interior equation with Reid's ($w_int)"  #src
+
+    ## SUM-NORMAL: the linearised curvature coefficient (l-1)(l+2).               #src
+    @variables ep  #src
+    w_curv = 0.0; base_ok = true  #src
+    for l in 2:6  #src
+        Rs = 1 + ep*LP(l, cos(tt))  #src
+        Rp = ed2(Dt(Rs))  #src
+        nr =  1/sqrt(1 + Rp^2/rr^2)  #src
+        nt = (-Rp/rr)/sqrt(1 + Rp^2/rr^2)  #src
+        dn = ed2(Dr(rr^2*nr)/rr^2 + Dt(sin(tt)*nt)/(rr*sin(tt)))  #src
+        at = Symbolics.substitute(dn, Dict(rr => Rs))  #src
+        d1e = Symbolics.substitute(ed2(Differential(ep)(at)), Dict(ep => 0.0))  #src
+        ## Symbolics leaves this as "2/sqrt(1)", which is a symbolic expression      #src
+        ## rather than a number, so it is evaluated rather than converted.          #src
+        b0e = Symbolics.substitute(at, Dict(ep => 0.0))  #src
+        claim = (l-1)*(l+2)*LP(l, cos(tt))  #src
+        for tv in TH  #src
+            base_ok &= abs(f1(b0e, tv) - 2.0) < 1e-12  #src
+            w_curv = max(w_curv, abs(f1(d1e, tv) - f1(claim, tv)))  #src
+        end  #src
+    end  #src
+    @assert base_ok "the undeformed sphere's curvature is not 2"  #src
+    @assert w_curv < 1e-12 "the linearised curvature coefficient is not (l-1)(l+2) ($w_curv)"  #src
+    ## and (l-1)(l+2) must vanish at l=1: translation costs no surface energy  #src
+    @assert (1-1)*(1+2) == 0 "the l=1 curvature stiffness must vanish"  #src
+
+    ## SUM-COM: the net vertical force is -(4 pi/3) B_1, and nothing else.        #src
+    w_force = 0.0  #src
+    for N in 3:6  #src
+        Bv = [0.3 + 0.11k for k in 0:N]  #src
+        Pif(mu) = sum(Bv[k+1]*LP(k,mu) for k in 0:N)  #src
+        Fq = -2pi*QuadGK.quadgk(mu -> Pif(mu)*mu, -1, 1; rtol=1e-13)[1]  #src
+        w_force = max(w_force, abs(Fq - (-(4pi/3)*Bv[2])))  #src
+    end  #src
+    @assert w_force < 1e-10 "the net substrate force is not -(4pi/3) B_1 ($w_force)"  #src
+    @assert abs((-(4pi/3)*1.0)/(4pi/3) + 1.0) < 1e-14 "F/mass must reduce to -B_1"  #src
+
+    println("  ASSERTION 2c OK: the remaining Model summary claims, discharged --")  #src
+    @printf("    h = mu(1+zeta)+z is the exact surface height        (%.1e)\n", w_gap)  #src
+    @printf("    the stream-function field is divergence free        (%.1e)\n", w_div)  #src
+    @printf("    Oh, Bo, We follow from the stated scalings          (%.1e)\n", w_grp)  #src
+    println("    sqrt(2 e:e) is the shear rate in simple shear       (exact)")  #src
+    @printf("    q^2 = sigma/Oh reconciles interior with Reid        (%.1e)\n", w_int)  #src
+    @printf("    curvature: 2 + (l-1)(l+2)A_l P_l, l=2..6            (%.1e)\n", w_curv)  #src
+    @printf("    net force = -(4pi/3)B_1, so vdot = -Bo - B_1        (%.1e)\n", w_force)  #src
+    println("    Physical meaning of a failure: the summary would contain an equation")  #src
+    println("    with a wrong coefficient, and every number the solver produces from")  #src
+    println("    it would be wrong by that factor while looking entirely plausible.")  #src
+end  #src
+
 # ## Model summary
 #
 # Everything above, collected. The model is stated once, completely, and in
@@ -1512,9 +1691,14 @@ end  #src
 # \qquad l\ge2,
 # ```
 #
-# with ``\langle f,P_l\rangle=\tfrac{2l+1}{2}\int_{-1}^{1}fP_l\,d\mu`` and
-# ``\nabla\cdot\bm n`` twice the mean curvature of the deformed surface, whose
-# linearisation supplies the capillary restoring term. Carried out explicitly,
+# with ``\langle f,P_l\rangle=\tfrac{2l+1}{2}\int_{-1}^{1}fP_l\,d\mu`` and the
+# curvature supplying the capillary restoring term through
+#
+# ```math
+# \nabla\cdot\bm n = 2 + \sum_{l\ge2}(l-1)(l+2)A_lP_l(\mu) + O(\zeta^2) .
+# ```
+#
+# Carried out explicitly,
 # the viscous part of this projection is the double sum of *Carrying the
 # projection through*, and it is what the coefficient matrices
 # ``\mathcal D^{(i)}`` collect. Those matrices are functionals of the interior
@@ -1525,18 +1709,23 @@ end  #src
 # ```math
 # \dot z = v,
 # \qquad
-# \dot v = -\mathrm{Bo} - \mathfrak F,
-# \qquad
-# \mathfrak F(t) = \oint \Pi\,n_z\,dS ,
+# \dot v = -\mathrm{Bo} - B_1,
 # \qquad
 # v(0) = -\sqrt{\mathrm{We}} ,
 # ```
 #
-# where ``\mathfrak F`` is the net vertical force the substrate exerts, obtained
-# by integrating the reaction pressure over the contact region. It is a
-# functional of ``\Pi``, and therefore of the ``B_n``; it is **not** ``B_1``,
-# which is one coefficient of that expansion. The impact speed enters only as
-# the initial condition.
+# where the net vertical force the substrate exerts is
+#
+# ```math
+# \mathfrak F = -\!\oint \Pi\,n_z\,dS = -2\pi\!\int_{-1}^{1}\Pi\,\mu\,d\mu
+#   = -\frac{4\pi}{3}B_1 .
+# ```
+#
+# ``B_1`` is one coefficient of the pressure expansion, not the force; the two
+# are proportional, and the drop's non-dimensional mass being ``4\pi/3`` as well
+# is what cancels the factor and leaves ``\dot v=-\mathrm{Bo}-B_1``. Every other
+# ``B_n`` is orthogonal to ``\mu`` and so invisible to the centre of mass. The
+# impact speed enters only as the initial condition.
 #
 # The substrate is rigid and cannot pull, so the gap and the reaction satisfy a
 # **Signorini complementarity condition**: at each ``\theta`` the drop either

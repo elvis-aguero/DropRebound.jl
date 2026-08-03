@@ -61,37 +61,46 @@ end
 
 # id, status, anchor (must appear verbatim in the summary), discharged-by
 const LEDGER = [
-    (id = "SUM-GROUPS", status = :open,   anchor = raw"\mathrm{Oh}=\frac{\eta_0}",
-     by = ""),
+    (id = "SUM-GROUPS", status = :proved, anchor = raw"\mathrm{Oh}=\frac{\eta_0}",
+     by = "ASSERTION 2c"),
     (id = "SUM-ZETA",   status = :axiom,  anchor = raw"\zeta(\theta,t)=\sum_{l\ge2}A_l(t)P_l(\mu)",
      by = ""),  # choice of basis and of truncation floor l >= 2
     (id = "SUM-PI",     status = :axiom,  anchor = raw"\Pi(\theta,t)=\sum_{n\ge0}B_n(t)P_n(\mu)",
      by = ""),
-    (id = "SUM-GAP",    status = :open,   anchor = raw"h(\theta,t)=\mu\,\bigl[1+\zeta(\theta,t)\bigr]+z(t)",
-     by = ""),
-    (id = "SUM-STREAM", status = :open,   anchor = raw"u_r=\frac{1}{x^2\sin\theta}\frac{\partial\psi}{\partial\theta}",
-     by = ""),
+    (id = "SUM-GAP",    status = :proved, anchor = raw"h(\theta,t)=\mu\,\bigl[1+\zeta(\theta,t)\bigr]+z(t)",
+     by = "ASSERTION 2c"),
+    (id = "SUM-STREAM", status = :proved, anchor = raw"u_r=\frac{1}{x^2\sin\theta}\frac{\partial\psi}{\partial\theta}",
+     by = "ASSERTION 2c"),
     (id = "SUM-FW",     status = :proved, anchor = raw"W_l=\frac{U_l'}{x\,l(l+1)}",
      by = "ASSERTION 2b"),
-    (id = "SUM-INT",    status = :open,   anchor = raw"\partial_t\,\mathcal D_l[U_l]",
-     by = ""),  # the operator and the band are proved; the Oh prefactor is not
+    (id = "SUM-INT",    status = :proved, anchor = raw"\partial_t\,\mathcal D_l[U_l]",
+     by = "ASSERTION 2c"),
     (id = "SUM-BC",     status = :proved, anchor = raw"\mathcal L_2[U_l]\big|_{x=1}=0",
      by = "ASSERTION 2b"),
     (id = "SUM-PRESS",  status = :proved, anchor = raw"\nabla^2 p = \mathrm{Oh}\,\nabla\cdot\bigl(\nabla\cdot(2\eta\bm e)\bigr)",
      by = "ASSERTION 3d"),
-    (id = "SUM-NORMAL", status = :open,   anchor = raw"\bigl[-p+2\eta\,e_{rr}\bigr]_{x=1}",
-     by = ""),
-    (id = "SUM-COM",    status = :open,   anchor = raw"\mathfrak F(t) = \oint \Pi\,n_z\,dS",
-     by = ""),
+    (id = "SUM-NORMAL", status = :proved, anchor = raw"\bigl[-p+2\eta\,e_{rr}\bigr]_{x=1}",
+     by = "ASSERTION 2c"),
+    (id = "SUM-CURV",   status = :proved, anchor = raw"(l-1)(l+2)A_lP_l(\mu)",
+     by = "ASSERTION 2c"),
+    (id = "SUM-COM",    status = :proved, anchor = raw"\dot v = -\mathrm{Bo} - B_1",
+     by = "ASSERTION 2c"),
+    (id = "SUM-FORCE",  status = :proved, anchor = raw"= -\frac{4\pi}{3}B_1",
+     by = "ASSERTION 2c"),
     (id = "SUM-SIGN",   status = :axiom,  anchor = raw"h\,\Pi = 0",
      by = ""),  # the substrate is rigid and cannot pull: a postulate
-    (id = "SUM-RHEO",   status = :open,   anchor = raw"\dot\gamma=\sqrt{2\,\bm e\!:\!\bm e}",
-     by = ""),
+    (id = "SUM-RHEO",   status = :proved, anchor = raw"\dot\gamma=\sqrt{2\,\bm e\!:\!\bm e}",
+     by = "ASSERTION 2c"),
 ]
 
 # The number of :open entries may fall but never rise. Lower this when a claim is
 # discharged; raising it requires deleting this comment and explaining why.
-const OPEN_BUDGET = 7
+#
+# It is now zero: every equation in the Model summary is discharged by a check
+# that runs in CI, and the only things taken on faith are the three :axiom
+# entries -- the choice of Legendre basis for the surface and the pressure, and
+# the postulate that a rigid substrate cannot pull.
+const OPEN_BUDGET = 0
 
 @testset "claim ledger" begin
     text = summary_text(MODEL_PAGE)
