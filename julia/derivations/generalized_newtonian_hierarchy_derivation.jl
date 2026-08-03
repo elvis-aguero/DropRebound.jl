@@ -3,6 +3,20 @@
 # In this page we try to extend Reid's work to shear thinning rheologies. These are fluids that have an effective
 # viscosity which is shear-rate dependent, possibly nonlinearly.
 #
+# In the Newtonian theory a drop's surface modes are independent damped
+# oscillators: each ``A_l`` has its own damping ``\lambda_l`` and frequency
+# ``\omega_l``, and the interior flow can be solved once, in advance, for all
+# time. Neither survives a shear-thinning fluid. The viscosity becomes a field
+# over the drop, computed from the very flow it governs; modes that deform
+# different parts of the drop no longer see the same fluid, and so begin to
+# drive one another. The two scalars per mode become matrices, and the interior
+# flow has to be found at every instant.
+#
+# This page derives that system, with no approximation beyond small amplitude
+# and axisymmetry, and states it in full at the end. It does not simplify it:
+# what the model costs to solve, and what may be given up to make it cheaper,
+# is the subject of the companion page *Shear-Thinning Drops: Closures*.
+#
 # ## Notation
 #
 # | symbol | meaning |
@@ -290,16 +304,11 @@ end  #src
 # ``l`` and a constant viscosity are given, whereas here the viscosity is itself
 # a functional of the field being solved for.
 
-# ## The full coupled system
+# ## Where a mode equation comes from
 #
-# This is the rung to remember. Everything below it is a simplification *of*
-# this, and anything you later decide you need, you recover by climbing back
-# here.
-#
-# ### Where a mode equation comes from
-#
-# It is worth being explicit about how a single-mode equation is obtained at
-# all, because that is where the coupling will enter. For a given surface
+# Before deriving anything it is worth being explicit about how a single-mode
+# equation is obtained at all, because that is where the coupling will enter,
+# and because it fixes the order of everything that follows. For a given surface
 # deformation, three things happen in sequence:
 #
 # 1. the interior velocity field is whatever the momentum equation produces
@@ -331,10 +340,15 @@ end  #src
 # Both matrices are diagonal, and that is the entire content of the Newtonian
 # model.
 #
-# ### Which constitutive models this covers
+# Step 1 is therefore the one to derive first, and steps 2 and 3 follow it. The
+# rest of this page is those three steps in order: *The interior problem*, then
+# *The surface projection*, then the constitutive law that ties the second back
+# to the first.
 #
-# The chain below uses exactly three properties of ``\eta``, and isolating them
-# defines the class of fluids it applies to.
+# ## Which constitutive models this covers
+#
+# The derivation below uses exactly three properties of ``\eta``, and isolating
+# them defines the class of fluids it applies to.
 #
 # **(H1) Generalized Newtonian.** ``\eta`` depends on the flow only through the
 # instantaneous local shear-rate invariant, ``\eta=\eta(\dot\gamma)`` with
@@ -364,33 +378,22 @@ end  #src
 # The viscoelastic exclusion is a different physical problem rather than a gap
 # in this argument; it is treated on the Oldroyd-B page.
 #
-# ### Following Reid's route, one step at a time
+# ## The interior problem
 #
-# Reid's derivation has a fixed shape: linearise; take the curl of the momentum
-# equation to eliminate the pressure; reduce what is left to a radial ODE; solve
-# it; impose the three boundary conditions; read off the characteristic
-# equation. The question is not whether a shear-thinning fluid has an analogous
-# route -- it is *where along that route* the extra term
-# ``2(\nabla\eta)\cdot\bm e`` first does damage. Taking the steps in order
-# answers that, and the answer is later than one might expect.
+# The surface equation above needs the matrices, the matrices need the viscosity
+# field, and the viscosity field needs the interior flow. So the interior flow
+# is what has to be found first, and this section derives the equation that
+# determines it. The route is Reid's -- curl the momentum equation to kill the
+# pressure, then reduce what is left -- but it is taken here for a viscosity
+# that varies over the drop from the outset, because that is the physical case
+# and because restricting it early hides where the difficulty actually lies.
 #
-# **(i) The curl still removes the pressure.** That step is indifferent to the
-# rheology: ``\nabla\times\nabla p=0`` whatever ``\eta`` does. Represent the
-# axisymmetric field by the Stokes stream function ``\psi=U(x)\,C_l(\theta)``,
-# where
+# ### The curl still removes the pressure
 #
-# ```math
-# C_l(\theta)\;=\;\frac{\sin^2\!\theta\;P_l'(\cos\theta)}{l(l+1)},
-# \qquad
-# u_r=\frac{1}{x^2\sin\theta}\frac{\partial\psi}{\partial\theta},
-# \qquad
-# u_\theta=-\frac{1}{x\sin\theta}\frac{\partial\psi}{\partial x},
-# ```
-#
-# is the Gegenbauer angular function -- the same field Reid writes as
-# ``u_r=f(x)P_l(\cos\theta)``, since ``\partial_\theta C_l\propto\sin\theta P_l``.
-# Taking the ``\varphi``-component of the curl of the momentum equation kills the
-# pressure, whatever the rheology, and leaves an expression in
+# That step is indifferent to the rheology: ``\nabla\times\nabla p=0`` whatever
+# ``\eta`` does. Take the ``\varphi``-component of the curl of the linearised
+# momentum equation, with the field written through the modal stream function of
+# the previous section. What survives is an expression in
 #
 # ```math
 # \eta,\quad \partial_x\eta,\quad \partial_\theta\eta,\quad
@@ -398,35 +401,71 @@ end  #src
 # \partial^2_{\theta\theta}\eta
 # ```
 #
-# and no derivative of third order or higher.
+# and no derivative of third order or higher -- a fact worth having, because it
+# bounds how much of the viscosity field the interior problem can possibly see.
 #
-# In general ``\eta`` depends on **both** coordinates and on time,
-# ``\eta=\eta(x,\theta,t)``: it is ``\eta(\dot\gamma)`` evaluated on the current
-# strain field, and that field varies over the drop. What follows first is the
-# **restriction** ``\eta=\eta(x)`` -- viscosity stratified in radius only, with
-# no angular structure. That is not the physical case. It is taken first
-# because it is the last case in which the problem still closes as an ordinary
-# differential equation, so it isolates what the extra term does to the
-# *interior operator* before the angular structure is allowed to also destroy
-# separability. Part (iv) removes the restriction; the companion page
-# *Shear-Thinning Drops: Closures* is where it is adopted as a modelling
-# assumption.
+# ### The interior equation
 #
-# With ``\partial_\theta\eta=0`` the curl becomes, exactly,
+# Non-dimensionalising as in the summary below -- lengths by ``R``, time by
+# ``T_\sigma``, viscosity by ``\eta_0`` -- the linearised momentum equation is
 #
 # ```math
-# \bigl[\nabla\times\bm M\bigr]_\varphi
-#   \;=\; -\frac{C_l(\theta)}{x\sin\theta}\;
-#     \Bigl\{\,q^2\,\mathcal D_l[U] \;+\; \mathcal R_l[U;\eta]\,\Bigr\},
-# \qquad
-# \mathcal D_l \equiv \frac{d^2}{dx^2}-\frac{l(l+1)}{x^2},
+# \partial_t\bm u = -\nabla p + \mathrm{Oh}\,\nabla\cdot(2\hat\eta\,\bm e),
+# \qquad \hat\eta=\eta/\eta_0 .
 # ```
 #
-# with the **variable-viscosity radial operator**
+# The vorticity of a Stokes stream function is
+# ``\omega_\varphi=-\sum_l\mathcal D_l[U_l]\,C_l/(x\sin\theta)`` with
+# ``\mathcal D_l=d^2/dx^2-l(l+1)/x^2``. Multiplying the curled equation by
+# ``-x\sin\theta`` and projecting onto ``C_l`` -- the Gegenbauer functions are
+# orthogonal under ``\langle A,B\rangle=\int_0^\pi AB\,d\theta/\sin\theta`` --
+# leaves one equation per mode:
 #
 # ```math
 # \boxed{\;
-# \mathcal R_l[U;\eta] \;=\;
+# \partial_t\,\mathcal D_l[U_l]
+#   \;=\; \mathrm{Oh}\sum_{l''}\mathcal R_{l l''}\bigl[U_{l''};\hat\eta\bigr],
+# \qquad 0<x<1 \;}
+# ```
+#
+# ```math
+# \mathcal R_{l l''}[U_{l''};\hat\eta] \;\equiv\;
+#   \frac{\bigl\langle\,
+#     -x\sin\theta\,\bigl[\nabla\times\nabla\!\cdot\!(2\hat\eta\bm e)\bigr]_\varphi
+#     \bigr|_{\psi=U_{l''}C_{l''}}
+#   ,\;C_l\bigr\rangle}{\langle C_l,C_l\rangle} .
+# ```
+#
+# This is the whole interior problem. Two features of it decide everything that
+# follows.
+#
+# **It is stated in time, not in frequency.** Reid's ``q^2=\sigma/\nu`` is an
+# eigenvalue and presupposes a single normal mode. Nothing in an impacting drop
+# is a normal mode -- ``A_l(t)`` is whatever the impact makes it -- and once
+# ``\eta`` depends on the state there is no time-independent operator to take
+# eigenvalues *of*. The equation above is a parabolic evolution for the interior
+# vorticity and needs no such assumption. Replacing it by an instantaneous
+# eigenproblem is a genuine approximation, made and priced on the companion
+# page.
+#
+# **It couples the modes.** The sum over ``l''`` is the substance of the
+# problem: mode ``l''`` drives mode ``l`` through the viscosity field. That is
+# not a failure of technique. It is the physical statement that a fluid whose
+# viscosity varies from place to place cannot respond to each surface harmonic
+# independently, because the harmonics no longer see the same fluid. *How far
+# the coupling reaches* is the next section.
+#
+# ### The diagonal, and where Reid sits
+#
+# Expand the viscosity in the same angular basis,
+# ``\eta=\sum_{l'}\eta_{l'}(x)P_{l'}(\cos\theta)``. The term ``l'=0`` is the
+# spherically symmetric part, and it contributes only to ``l=l''``. Its
+# contribution is a genuine radial operator, and it is worth having explicitly
+# because it is the one piece of the problem that can be written in closed form:
+#
+# ```math
+# \boxed{\;
+# \mathcal R_{l l}\big|_{l'=0} \;=\; \mathcal R_l[U;\eta] \;=\;
 #   \eta\,\mathcal D_l^{\,2}[U]
 # \;+\; 2\eta'(x)\,\frac{d}{dx}\!\Bigl(\mathcal D_l[U]-\frac{U'}{x}\Bigr)
 # \;+\; \eta''(x)\,\mathcal L_2[U] \;}
@@ -436,37 +475,39 @@ end  #src
 # \mathcal L_2[U]\;\equiv\;U''-\frac{2}{x}U'+\frac{l(l+1)}{x^2}U .
 # ```
 #
-# This is the interior equation, and it is worth reading three things off it.
+# Three things read off it.
 #
 # **Reid is the constant-viscosity case.** Setting ``\eta'=\eta''=0`` leaves
-# ``\eta\mathcal D_l^2[U]+q^2\mathcal D_l[U]``, i.e. Reid's
-# ``\mathcal D_l(\mathcal D_l+q^2)[U]=0`` after dividing by ``\eta`` and
-# absorbing it into ``q^2=\sigma/\nu``. Nothing was assumed to get there; it
-# is recovered.
+# ``\eta\,\mathcal D_l^2[U]``, so the interior equation becomes
+# ``\partial_t\mathcal D_l[U_l]=\mathrm{Oh}\,\mathcal D_l^2[U_l]``: vorticity
+# diffusion. Substituting a normal mode ``U_l\propto e^{-\sigma t}`` gives
+# ``\mathcal D_l(\mathcal D_l+q^2)[U_l]=0`` with ``q^2=\sigma/\mathrm{Oh}``,
+# which is Reid's Eq. 9. Nothing has been added to recover it; the
+# constant-viscosity theory is the diagonal of this one, at one harmonic.
 #
 # **The order of the equation does not change.** The highest derivative is
-# ``\eta U''''`` in the first term; ``\eta'`` reaches only ``U'''`` and
-# ``\eta''`` only ``U''``. So ``\mathcal R_l`` is fourth order in ``U``, exactly
-# as Reid's operator is, the solution space is still four-dimensional, and the
-# problem still closes on the *same number* of boundary conditions. A variable
-# viscosity changes the coefficients of the interior problem; it does not change
-# its type.
+# ``\eta U''''``; ``\eta'`` reaches only ``U'''`` and ``\eta''`` only ``U''``.
+# The operator is fourth order in ``U``, exactly as Reid's is, so the solution
+# space is still four-dimensional and the problem still closes on the same
+# number of boundary conditions. A variable viscosity changes the coefficients
+# of the interior problem; it does not change its type.
 #
-# **``\eta''`` enters through Reid's own tangential-stress operator.** The
-# ``\mathcal L_2`` appearing above is not a new object: it is the operator whose
-# vanishing at the surface *is* Reid's BC2, ``\mathcal L_2[U]|_{x=1}=0``, derived
-# on the page *The Viscous Drop: Reid (1960)*. It appears here because
+# **``\eta''`` enters through the tangential-stress operator.** The
+# ``\mathcal L_2`` above is not a new object: it is the operator whose vanishing
+# at the surface is BC2 below. It appears here because
 # ``\mathcal L_2[U]\propto e_{r\theta}``, and the second radial derivative of the
 # viscosity couples to precisely the shear component of the strain.
 #
-# **(ii) The boundary conditions, one at a time.** Reid closes the problem with
-# three conditions. Under ``\eta=\eta(\dot\gamma)`` they fare as follows.
+# ### The boundary conditions
+#
+# The interior problem is fourth order per mode, so it needs four conditions:
+# two of regularity at ``x=0``, and two at the free surface.
 #
 # ```math
 # \text{BC1 (kinematic):}\qquad u_r\big|_{x=1}=\frac{\partial\zeta}{\partial t}
 # ```
 #
-# contains no viscosity at all, and is **unchanged**.
+# contains no viscosity at all, and is **unchanged** by the rheology.
 #
 # ```math
 # \text{BC2 (tangential):}\qquad \tau_{r\theta}\big|_{x=1}=2\eta\,e_{r\theta}=0
@@ -476,66 +517,17 @@ end  #src
 #
 # where the first equivalence holds because ``\eta(\dot\gamma)\ge\eta_\infty>0``
 # everywhere, so the scalar factor cannot vanish. **BC2 is therefore
-# rheology-agnostic for every generalized Newtonian fluid**, and Reid's whole
-# ``\tau_{r\theta}=0\Rightarrow\mathcal L_2[U]=0`` chain carries over verbatim.
+# rheology-agnostic for every fluid in the admissible class**, and the whole
+# ``\tau_{r\theta}=0\Rightarrow\mathcal L_2[U]=0`` reduction carries over
+# verbatim.
 #
-# ```math
-# \text{BC3 (normal):}\qquad -p_{rr}\big|_{x=1}
-#   = p+\delta p-2\eta_s\frac{\partial u_r}{\partial x}\Big|_{x=1},
-# \qquad \eta_s\equiv\eta\bigl(\dot\gamma|_{x=1}\bigr),
-# ```
-#
-# in which ``\eta`` is genuinely multiplicative, so it survives as the *surface
-# value* ``\eta_s``. The form of the condition is unchanged; one coefficient
-# becomes state-dependent.
-#
-#
-# **(iii) A radially varying viscosity keeps one ODE per mode.** For
-# ``\eta=\eta(x)`` the display above already says it: every ``\theta``-dependence
-# sits in the single factor ``C_l(\theta)``, so dividing it out leaves a pure
-# radial equation,
-#
-# ```math
-# q^2\,\mathcal D_l[U] \;+\; \mathcal R_l[U;\eta] \;=\; 0 ,
-# ```
-#
-# one such equation for each ``l``, with no reference to any other mode.
-# Separability is intact and the modes do not talk to each other. 
-#
-# **(iv) An angularly varying viscosity destroys separability.** Let
-# ``\eta=\eta(x,\theta)``. Now ``\partial_\theta\eta\neq0``, the curl acquires
-# terms in ``\partial_\theta\eta`` and ``\partial^2_{\theta\theta}\eta``, and it
-# no longer factors: the ratio
-# ``[\nabla\times\bm M]_\varphi\big/C_l(\theta)`` is a function of ``\theta``,
-# not a constant. 
-# There is no radial operator to write down, because there is no
-# ``\theta``-independent thing left after dividing out the angular factor.
-# Let ``\mathcal A`` be the linearised operator of
-# the whole problem and ``\Lambda_\theta`` the angular Laplacian, whose
-# eigenfunctions are the ``P_l``. For purely radial viscosity,
-#
-# ```math
-# [\mathcal A,\Lambda_\theta]=0 ,
-# ```
-#
-# so the two commute, share an eigenbasis, and ``\mathcal A`` is *block diagonal*
-# in ``\{P_l\}``:
-#
-# ```math
-# \langle P_l|\mathcal A|P_{l''}\rangle \;=\; 0 \quad\text{for } l\neq l'' .
-# ```
-#
-# Once ``\eta`` depends on
-# ``\theta``, ``[\mathcal A,\Lambda_\theta]\neq0``, no common eigenbasis exists,
-# and those off-diagonal projections are nonzero -- which is not a failure of
-# technique but the statement that mode ``l''`` genuinely drives mode ``l``. The
-# ``\mathcal D`` matrices of the previous section are those projections.
-#
-# The mechanism is therefore located precisely. The extra term
-# ``2(\nabla\eta)\cdot\bm e`` is carried through every one of Reid's steps: it is
-# inert at the curl, it merely re-decorates the radial operator at (iii), and
-# only when ``\eta`` acquires *angular* structure does it break the commutation
-# that the whole construction rests on.
+# The third surface condition -- the balance of normal stress against surface
+# tension -- is **not** a boundary condition on the interior problem. Projected
+# onto ``P_l`` it *is* the equation of motion for ``A_l``, and that projection is
+# what produces the coefficient matrices. It is carried out two sections below.
+# This is where the rheology lands: once ``\eta`` varies with ``\theta``, its
+# value at the surface is a field rather than a number, and projecting that
+# field is the entire origin of the mode coupling.
 #
 @variables rr tt qq hh0 hh1 hh2  #src
 @variables Hgen(..)  #src
@@ -643,107 +635,56 @@ let  #src
     coup = (maximum(v)-minimum(v))/abs(v[1])  #src
     @assert coup > 1e-2 "angular eta failed to break separability; the coupling claim is false"  #src
 
-    println("  ASSERTION 3b OK: following Reid's route with a variable viscosity --")  #src
-    println("    (i) the curl removes the pressure and leaves eta only through its")  #src
-    println("        first and second derivatives, never third or higher;")  #src
-    println("    (ii) constant eta returns D_l(D_l+q^2)U exactly (to $(round(maximum(abs(x-1) for x in rats), sigdigits=2)));")  #src
-    println("    (ii-b) the boxed operator R_l = eta*D_l^2 + 2eta' d/dx(D_l - d/dx /x) + eta''*L2")  #src
-    println("         reproduces the curl for variable eta(x) (to $(round(worst_box, sigdigits=2)));")  #src
-    println("    (iii) eta(r) preserves separability (spread $(round(sep, sigdigits=2))), so one")  #src
-    println("         radial ODE per mode survives -- this is the A7 rung;")  #src
-    println("    (iv) eta(r,theta) destroys it (spread $(round(coup, sigdigits=3))), which is the coupling.")  #src
+    println("  ASSERTION 3b OK: the interior operator, checked in four ways --")  #src
+    println("    the curl removes the pressure and leaves eta only through its")  #src
+    println("      first and second derivatives, never third or higher;")  #src
+    println("    constant eta returns D_l(D_l+q^2)U exactly (to $(round(maximum(abs(x-1) for x in rats), sigdigits=2))), so Reid")  #src
+    println("      is recovered as the diagonal at one harmonic;")  #src
+    println("    the boxed diagonal R_l = eta*D_l^2 + 2eta' d/dx(D_l - d/dx /x) + eta''*L2")  #src
+    println("      reproduces the curl whenever eta carries no angular structure")  #src
+    println("      (to $(round(worst_box, sigdigits=2)));")  #src
+    println("    that case stays diagonal (spread $(round(sep, sigdigits=2))), and an angular eta")  #src
+    println("      does not (spread $(round(coup, sigdigits=3))) -- which is the coupling itself.")  #src
 end  #src
 
-# ### The interior problem without separability
+# ### How far the coupling reaches
 #
-# Part (iv) says there is no *radial operator* once ``\eta`` varies with
-# ``\theta``. It is worth being careful about what that does and does not
-# mean, because the two are easy to conflate: what fails is the reduction to
-# **one independent equation per mode**, not the existence of an interior
-# problem. The problem is still there; it has simply stopped being diagonal.
-#
-# Write the interior unknowns as the modal stream function of the previous
-# section, and the viscosity in the same angular basis:
+# The sum over ``l''`` in the interior equation looks unbounded, and if it were,
+# the problem would be no easier to solve than the original partial differential
+# equation. It is not unbounded. Each viscosity harmonic ``l'`` couples ``l''``
+# to ``l`` only when
 #
 # ```math
-# \psi=\sum_{l\ge2}U_l(x,t)\,C_l(\theta),
-# \qquad
-# \eta(x,\theta,t)=\sum_{l'\ge0}\eta_{l'}(x,t)\,P_{l'}(\cos\theta) .
+# |l-l''|\le l'\le l+l''
+# \qquad\text{and}\qquad
+# l+l'+l'' \ \text{even},
 # ```
 #
-# Non-dimensionalising as in the summary below -- lengths by ``R``, time by
-# ``T_\sigma``, viscosity by ``\eta_0`` -- the linearised momentum equation is
+# which is the same selection rule the surface projection obeys two sections
+# below, and holds for the same reason: every angular integral in the problem is
+# an integral of three Legendre-type factors, and those vanish outside the
+# triangle condition and against the wrong parity.
 #
-# ```math
-# \partial_t\bm u = -\nabla p + \mathrm{Oh}\,\nabla\cdot(2\hat\eta\,\bm e),
-# \qquad \hat\eta=\eta/\eta_0 ,
-# ```
+# The consequence is that a viscosity field whose angular content reaches degree
+# ``L_\eta`` couples each mode to at most its ``L_\eta`` neighbours on either
+# side. The interior problem is then a **banded** system of coupled radial
+# boundary-value problems, of half-bandwidth ``L_\eta`` and dimension ``M``,
+# rather than ``M`` independent ones. That is the entire price of a viscosity
+# that varies over the drop: bandedness, not loss of closure.
 #
-# and taking the ``\varphi``-component of the curl removes the pressure exactly
-# as it did at (i). The vorticity of a Stokes stream function is
-# ``\omega_\varphi=-\sum_l\mathcal D_l[U_l]\,C_l/(x\sin\theta)``, so multiplying
-# through by ``-x\sin\theta`` and projecting onto ``C_l`` -- the ``C_l`` are
-# orthogonal under ``\langle A,B\rangle=\int_0^\pi AB\,d\theta/\sin\theta`` --
-# leaves one equation per ``l``:
+# ``L_\eta`` is a property of the state, not a choice -- it is however far the
+# Legendre series of ``\eta(\dot\gamma)`` actually extends. But it enters the
+# problem in the same way ``M`` does, as the point at which a series is cut, and
+# it can be treated the same way: capping it at some ``L_\eta`` below its true
+# extent is an available approximation, with a cost that is then to be priced
+# rather than assumed. The companion page does exactly that, and finds the price
+# higher than it looks.
 #
-# ```math
-# \boxed{\;
-# \partial_t\,\mathcal D_l[U_l]
-#   \;=\; \mathrm{Oh}\sum_{l''}\mathcal R_{l l''}\bigl[U_{l''};\hat\eta\bigr],
-# \qquad 0<x<1 \;}
-# ```
-#
-# ```math
-# \mathcal R_{l l''}[U_{l''};\hat\eta] \;\equiv\;
-#   \frac{\bigl\langle\,
-#     -x\sin\theta\,\bigl[\nabla\times\nabla\!\cdot\!(2\hat\eta\bm e)\bigr]_\varphi
-#     \bigr|_{\psi=U_{l''}C_{l''}}
-#   ,\;C_l\bigr\rangle}{\langle C_l,C_l\rangle} .
-# ```
-#
-# This is the interior problem, and three things make it usable.
-#
-# **It reduces to everything already derived.** When ``\eta`` has no angular
-# structure only ``l'=0`` survives, the projection is diagonal, and
-# ``\mathcal R_{l l''}=\delta_{l l''}\mathcal R_l[U_l;\eta]`` -- the boxed
-# operator of (ii). When ``\eta`` is additionally constant that collapses to
-# ``\mathcal D_l^2[U_l]``, so the equation becomes ``\partial_t\mathcal D_l[U_l]
-# =\mathrm{Oh}\,\mathcal D_l^2[U_l]``: vorticity diffusion. Substituting a
-# normal mode ``U_l\propto e^{-\sigma t}`` gives
-# ``\mathcal D_l(\mathcal D_l+q^2)[U_l]=0`` with ``q^2=\sigma/\mathrm{Oh}``,
-# which is Reid's Eq. 9. Nothing has been added; the constant-viscosity theory
-# is the diagonal of this one.
-#
-# **It is stated in time, not in frequency.** ``q^2`` is an eigenvalue and
-# presupposes a single normal mode. Nothing in the drop's state is a normal
-# mode -- ``A_l(t)`` is whatever the impact makes it -- and once ``\eta``
-# depends on the state there is no time-independent operator to take
-# eigenvalues *of*. The boxed equation is a parabolic evolution for the
-# interior vorticity and needs no such assumption. Replacing it by an
-# instantaneous eigenproblem is a genuine approximation, and it is made -- and
-# priced -- on the companion page, not here.
-#
-# **It is banded.** The sum over ``l''`` looks unbounded but is not. Each
-# viscosity harmonic ``l'`` couples ``l''`` to ``l`` only when
-#
-# ```math
-# |l-l''|\le l'\le l+l'' \qquad\text{and}\qquad l+l'+l'' \ \text{even},
-# ```
-#
-# the same selection rule the surface projection obeys below, and for the same
-# reason: every angular integral in the problem is a Gaunt integral. So a
-# viscosity carrying harmonics up to ``L_\eta`` couples each mode to at most
-# its ``L_\eta`` neighbours on either side, and the interior problem is a
-# **banded** system of ``M`` coupled radial equations rather than ``M``
-# independent ones. That is the entire price of losing separability.
-#
-# The check below evaluates the projection directly, with no appeal to the
-# rule, and reports which ``l`` survive. A failure would mean the interior
-# coupling reaches further than the surface coupling does -- in which case the
-# truncation proved later would be valid for the surface projection and invalid
-# for the interior one, and the two halves of the model could not be truncated
-# consistently.
-
+# The check below evaluates the projection directly, with no appeal to the rule,
+# and reports which ``l`` survive. A failure would mean the interior coupling
+# reaches further than the surface coupling does -- in which case no single
+# truncation could be consistent for both halves of the model, and any ``L_\eta``
+# chosen for one would silently corrupt the other.
 let  #src
     ## Project the phi-curl of div(2 eta e), driven by a single mode l'', onto  #src
     ## C_l for a range of l, and report the band. eta is taken as the pure      #src
@@ -801,6 +742,12 @@ let  #src
     println("    be consistent for both halves of the model.")  #src
 end  #src
 
+# ## The surface projection
+#
+# The interior problem determines the flow. What turns that flow into an
+# equation of motion for the surface is the remaining boundary condition, and
+# projecting it is where the coefficient matrices come from.
+#
 # ### Carrying the projection through
 #
 # The equation being projected is the **normal-stress balance on the free
@@ -1097,7 +1044,9 @@ end  #src
 # term by term. The Newtonian model is the special case of this one, not a
 # separate theory.
 #
-# ### Closing the system: the constitutive law
+# ## Closing the system
+#
+# ### The constitutive law
 #
 # The matrices need ``\eta_{l'}(x,t)``, which comes from the fluid. Under the
 # Cross law -- the model this repository's validation fluid is characterised
@@ -1312,8 +1261,7 @@ end  #src
 # ```
 #
 # where ``\mathcal D_l=d^2/dx^2-l(l+1)/x^2`` and ``\mathcal R_{l l''}`` is the
-# projection of the curl of the viscous stress onto ``C_l``, defined in *The
-# interior problem without separability*. Coupling is confined to
+# projection of the curl of the viscous stress onto ``C_l``, defined in *The interior equation*. Coupling is confined to
 # ``|l-l''|\le l'\le l+l''`` with ``l+l'+l''`` even, so the system is banded.
 # Closed by regularity at ``x=0`` and, at ``x=1``,
 #

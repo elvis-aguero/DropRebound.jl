@@ -260,12 +260,18 @@ end  #src
 #
 # **Assumption.** ``\eta``'s Legendre content above ``l'=L_\eta`` is negligible.
 #
+# The model page leaves ``L_\eta`` as whatever the state produces. Capping it is
+# the natural first economy, and it makes ``L_\eta`` a free parameter of the
+# scheme in the same way ``M`` is: both are points at which a convergent series
+# is cut, and both should be raised until the answer stops moving rather than
+# fixed by argument. The question is only where that plateau lies.
+#
 # **What it drops.** Coupling between modes further apart than ``L_\eta``. The
 # matrix becomes banded and the cost of applying it falls from ``O(M^2)`` to
 # ``O(M L_\eta)``.
 #
 # **Error.** Exactly the discarded coupling, which is a measurable number. It
-# has been measured, and the measurement rules this rung out.
+# has been measured, and the measurement puts the plateau uncomfortably high.
 #
 # ### Measurement, and the choice of error norm
 #
