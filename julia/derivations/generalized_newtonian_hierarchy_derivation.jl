@@ -333,12 +333,21 @@ end  #src
 # \bm\Omega=\operatorname{diag}(\omega_l^2),
 # ```
 #
-# where ``\lambda_l`` and ``\omega_l^2`` are the two roots of Reid's
-# characteristic equation and ``\bm b`` has entries ``l\,B_l``, the contact
-# pressure the wall applies while the drop is touching it. ``\bm b`` is
-# kinematic and geometric; no rheology enters it, and nothing below changes it.
-# Both matrices are diagonal, and that is the entire content of the Newtonian
-# model.
+# where ``\bm b`` has entries ``l\,B_l``, the contact pressure the wall applies
+# while the drop is touching it. ``\bm b`` is kinematic and geometric; no
+# rheology enters it, and nothing below changes it. Both matrices are diagonal,
+# and that is the entire content of the Newtonian model.
+#
+# ``\lambda_l`` and ``\omega_l^2`` are built from **two** roots of Reid's
+# characteristic equation. That equation has infinitely many roots per mode, so
+# the second-order form above is a *truncation* of the viscous relaxation
+# spectrum, not an identity: the exact response of a mode to forcing is a
+# superposition over all of them. The truncation is a good one when the
+# discarded roots decay fast, and it is what makes a two-coefficient oscillator
+# model possible at all -- but it is an approximation independent of anything to
+# do with rheology, and it is worth knowing it is there before it gets
+# generalised. It does not appear in the model derived below, because that model
+# never eliminates the interior.
 #
 # Step 1 is therefore the one to derive first, and steps 2 and 3 follow it. The
 # rest of this page is those three steps in order: *The interior problem*, then
@@ -748,6 +757,115 @@ end  #src
 # equation of motion for the surface is the remaining boundary condition, and
 # projecting it is where the coefficient matrices come from.
 #
+# ### The pressure has to be recovered, and it is no longer harmonic
+#
+# Taking the curl removed the pressure from the interior problem, which is why
+# that problem closed. But the normal-stress balance contains ``p`` explicitly,
+# so it has to be brought back before the surface equation can be written.
+#
+# Taking the divergence of the momentum equation and using ``\nabla\cdot\bm u=0``
+# gives a Poisson equation for it:
+#
+# ```math
+# \nabla^2 p \;=\; \mathrm{Oh}\;\nabla\cdot\bigl(\nabla\cdot(2\hat\eta\bm e)\bigr) .
+# ```
+#
+# For a **constant** viscosity the right-hand side vanishes identically, because
+# ``\nabla\cdot(\eta\nabla^2\bm u)=\eta\nabla^2(\nabla\cdot\bm u)=0``. The
+# pressure is then harmonic, and the regular axisymmetric solution is
+# ``p\propto x^lP_l`` -- one amplitude per mode, no differential equation to
+# solve. That is the form used throughout the Newtonian theory.
+#
+# For a variable viscosity the source does **not** vanish. Using the identity
+# from the start of this page, ``\nabla\cdot(2\eta\bm e)=\eta\nabla^2\bm u
+# +2(\nabla\eta)\cdot\bm e``, its divergence is
+#
+# ```math
+# \nabla\cdot\bigl(\nabla\cdot(2\eta\bm e)\bigr)
+#   = (\nabla\eta)\cdot(\nabla^2\bm u)
+#   + 2\,\nabla\cdot\bigl((\nabla\eta)\cdot\bm e\bigr),
+# ```
+#
+# both terms carrying a derivative of ``\eta``. So ``p`` is the solution of an
+# elliptic problem with a source built from the current flow, and the closed-form
+# ``x^lP_l`` is not available. This is a real cost of the model and it is easy to
+# miss, because the curl hides it: the interior problem looks no harder, and then
+# the surface condition asks for a quantity that now requires its own solve.
+#
+# It is worth being precise about what does and does not survive. **Radial
+# variation alone is enough to break it** -- the check below finds an ``O(1)``
+# source for ``\eta=\eta(x)``, with no angular structure anywhere. What angular
+# structure additionally costs is the separability of the pressure problem, not
+# its existence. So this is not a consequence of mode coupling; it is a
+# consequence of the viscosity varying at all.
+#
+# A failing check here would mean the source vanishes for the axisymmetric
+# poloidal fields this problem actually produces -- a special cancellation not
+# visible in the identity above -- in which case ``p\propto x^lP_l`` would
+# survive and the surface equation would be markedly cheaper.
+
+let  #src
+    ## The double divergence is evaluated by nested fourth-order central          #src
+    ## differences rather than symbolically: div(div(.)) of a variable-viscosity  #src
+    ## stress expands to an expression large enough that Symbolics takes tens of  #src
+    ## minutes on it, and nothing here needs closed form -- only whether the      #src
+    ## quantity is zero. Four nested differences at h = 1e-2 floor the accuracy   #src
+    ## near 1e-6, which is ample against an O(1) signal.                          #src
+    C2(t) = sin(t)^2*(3cos(t))/6  #src
+    Uf(x) = x^3 + 0.7x^5 - 0.3x^7  #src
+    psi(x,t) = Uf(x)*C2(t)  #src
+    h = 1e-2  #src
+    d1(f, v, i) = (-f(v .+ 2h*i) + 8f(v .+ h*i) - 8f(v .- h*i) + f(v .- 2h*i))/(12h)  #src
+    er_(x,t) =  d1(v -> psi(v[1],v[2]), [x,t], [0.0,1.0])/(x^2*sin(t))  #src
+    et_(x,t) = -d1(v -> psi(v[1],v[2]), [x,t], [1.0,0.0])/(x*sin(t))  #src
+    e_rr(x,t) = d1(v -> er_(v[1],v[2]), [x,t], [1.0,0.0])  #src
+    e_tt(x,t) = d1(v -> et_(v[1],v[2]), [x,t], [0.0,1.0])/x + er_(x,t)/x  #src
+    e_pp(x,t) = er_(x,t)/x + et_(x,t)*cos(t)/(sin(t)*x)  #src
+    e_rt(x,t) = (d1(v -> er_(v[1],v[2]), [x,t], [0.0,1.0])/x  #src
+               + d1(v -> et_(v[1],v[2]), [x,t], [1.0,0.0]) - et_(x,t)/x)/2  #src
+    function divtau(eta, x, t)  #src
+        trr(a,b) = 2eta(a,b)*e_rr(a,b); ttt(a,b) = 2eta(a,b)*e_tt(a,b)  #src
+        tpp(a,b) = 2eta(a,b)*e_pp(a,b); trt(a,b) = 2eta(a,b)*e_rt(a,b)  #src
+        dr = (d1(v -> v[1]^2*trr(v[1],v[2]), [x,t], [1.0,0.0])/x^2  #src
+            + d1(v -> trt(v[1],v[2])*sin(v[2]), [x,t], [0.0,1.0])/(x*sin(t))  #src
+            - (ttt(x,t)+tpp(x,t))/x)  #src
+        dt = (d1(v -> v[1]^2*trt(v[1],v[2]), [x,t], [1.0,0.0])/x^2  #src
+            + d1(v -> ttt(v[1],v[2])*sin(v[2]), [x,t], [0.0,1.0])/(x*sin(t))  #src
+            + trt(x,t)/x - cos(t)/(sin(t)*x)*tpp(x,t))  #src
+        (dr, dt)  #src
+    end  #src
+    function lap_p_source(eta, x, t)  #src
+        ar(a,b) = divtau(eta,a,b)[1]; at(a,b) = divtau(eta,a,b)[2]  #src
+        (d1(v -> v[1]^2*ar(v[1],v[2]), [x,t], [1.0,0.0])/x^2  #src
+       + d1(v -> at(v[1],v[2])*sin(v[2]), [x,t], [0.0,1.0])/(x*sin(t)))  #src
+    end  #src
+    divu(x,t) = (d1(v -> v[1]^2*er_(v[1],v[2]), [x,t], [1.0,0.0])/x^2  #src
+               + d1(v -> et_(v[1],v[2])*sin(v[2]), [x,t], [0.0,1.0])/(x*sin(t)))  #src
+    eta_c(x,t) = 1.7  #src
+    eta_r(x,t) = 1.3 + 0.9x + 0.4x^2  #src
+    eta_a(x,t) = 1.3 + 0.9x*cos(t) + 0.4*(3cos(t)^2 - 1)/2  #src
+    worst_div, worst_const = 0.0, 0.0  #src
+    least_rad, least_ang = Inf, Inf  #src
+    for (x,t) in ((0.61,1.30), (0.43,0.70), (0.82,2.10))  #src
+        worst_div   = max(worst_div, abs(divu(x,t)))  #src
+        worst_const = max(worst_const, abs(lap_p_source(eta_c,x,t)))  #src
+        least_rad   = min(least_rad, abs(lap_p_source(eta_r,x,t)))  #src
+        least_ang   = min(least_ang, abs(lap_p_source(eta_a,x,t)))  #src
+    end  #src
+    @assert worst_div < 1e-10 "the trial field is not divergence free ($worst_div); the probe is invalid"  #src
+    @assert worst_const < 1e-4 "constant eta must leave the pressure harmonic, got $worst_const"  #src
+    @assert least_rad > 1e-2 "a radially varying eta must break harmonicity, got $least_rad"  #src
+    @assert least_ang > 1e-2 "an angularly varying eta must break harmonicity, got $least_ang"  #src
+    @assert least_rad > 1e3*worst_const "the variable-eta source is not clearly above the difference floor"  #src
+    @printf("  ASSERTION 3d OK: lap(p) source is %.1e for constant eta (the finite-\n", worst_const)  #src
+    @printf("    difference floor) but at least %.2e for eta(x) and %.2e for eta(x,theta).\n", least_rad, least_ang)  #src
+    println("    So the pressure is harmonic ONLY at constant viscosity. Radial variation")  #src
+    println("    alone breaks it -- this is not a mode-coupling effect -- and p must be")  #src
+    println("    recovered from an elliptic problem instead of read off as p ~ x^l P_l.")  #src
+    println("    Physical meaning of a failure: p ~ x^l P_l would survive, and the surface")  #src
+    println("    equation would need no pressure solve at all.")  #src
+end  #src
+#
 # ### Carrying the projection through
 #
 # The equation being projected is the **normal-stress balance on the free
@@ -1143,16 +1261,16 @@ end  #src
 
 # ## Model summary
 #
-# Everything above, collected. This section states the model once, completely,
-# and in continuous terms: no truncation, no discretisation, no numerical
-# parameter appears in it.
+# Everything above, collected. The model is stated once, completely, and in
+# continuous terms: no truncation, no discretisation, and no numerical parameter
+# appears in it. Nothing below is an approximation of anything above it.
 #
 # ### Scalings
 #
-# Lengths are scaled by the equilibrium radius ``R``, time by the
-# inertio-capillary time ``T_\sigma=\sqrt{\rho R^3/T_1}``, velocity by
-# ``R/T_\sigma``, pressure by ``T_1/R``, and viscosity by the zero-shear
-# plateau ``\eta_0``. Three groups survive:
+# Lengths by the equilibrium radius ``R``, time by the inertio-capillary time
+# ``T_\sigma=\sqrt{\rho R^3/T_1}``, velocity by ``R/T_\sigma``, pressure by
+# ``T_1/R``, viscosity by the zero-shear plateau ``\eta_0``. Three groups
+# survive:
 #
 # ```math
 # \mathrm{Oh}=\frac{\eta_0}{\sqrt{\rho T_1 R}},
@@ -1163,21 +1281,24 @@ end  #src
 # ```
 #
 # with ``V`` the impact speed. The drop occupies ``0\le x\le1``,
-# ``\theta\in[0,\pi]``, with ``\theta=\pi`` the pole facing the substrate, and
-# ``\mu=\cos\theta``.
+# ``\theta\in[0,\pi]``, with ``\theta=\pi`` facing the substrate, ``\mu=\cos\theta``.
 #
 # ### The unknowns
 #
 # | unknown | domain | what it is |
 # |:--|:--|:--|
-# | ``A_l(t),\ \dot A_l(t)``, ``l\ge2`` | ``t>0`` | surface mode amplitudes and their rates |
+# | ``A_l(t)``, ``l\ge2`` | ``t>0`` | surface mode amplitudes |
+# | ``U_l(x,t)``, ``l\ge2`` | ``0<x<1`` | interior stream function profiles |
+# | ``p(x,\mu,t)`` | inside the drop | pressure |
 # | ``B_n(t)``, ``n\ge0`` | ``t>0`` | Legendre coefficients of the substrate reaction |
-# | ``z(t),\ v(t)`` | ``t>0`` | height of the drop's centre and its velocity |
-# | ``U_l(x,t)``, ``l\ge2`` | ``0<x<1`` | radial profile of the interior stream function |
-# | ``\eta(x,\mu,t)`` | ``0<x<1``, ``-1<\mu<1`` | the viscosity field |
+# | ``z(t),\ v(t)`` | ``t>0`` | height of the drop's centre of mass, and its velocity |
 #
-# The surface, the reaction pressure it carries, and the gap to the substrate
-# are
+# ``\eta`` is not an unknown: it is a function of the others, given by the
+# constitutive law in (5). Note that the interior profiles ``U_l`` **are** part
+# of the state. They are eliminated only by the closure discussed on the
+# companion page; here they are evolved.
+#
+# The surface shape, the reaction pressure, and the gap to the substrate are
 #
 # ```math
 # \zeta(\theta,t)=\sum_{l\ge2}A_l(t)P_l(\mu),
@@ -1185,41 +1306,100 @@ end  #src
 # \Pi(\theta,t)=\sum_{n\ge0}B_n(t)P_n(\mu),
 # ```
 # ```math
-# h(\theta,t)=\mu\,\bigl[1+\zeta(\theta,t)\bigr]+z(t) .
+# h(\theta,t)=\mu\,\bigl[1+\zeta(\theta,t)\bigr]+z(t) ,
 # ```
 #
-# ### (1) Motion of the surface
+# and the velocity follows from the stream function
+# ``\psi=\sum_l U_l(x,t)C_l(\theta)``, with
+# ``C_l=\sin^2\!\theta\,P_l'(\mu)/(l(l+1))``:
 #
 # ```math
-# \dot A_l = \frac{dA_l}{dt},
+# u_r=\frac{1}{x^2\sin\theta}\frac{\partial\psi}{\partial\theta}
+#   =\sum_l F_l(x,t)P_l(\mu),
 # \qquad
-# \ddot A_l + \sum_{l''\ge2}\Bigl[
-#     \mathcal D^{(2)}_{l l''}\,\dot A_{l''}
-#   + \mathcal D^{(1)}_{l l''}\,A_{l''}\Bigr]
-#   + l\,B_l = 0,
-# \qquad l\ge2 .
+# u_\theta=-\frac{1}{x\sin\theta}\frac{\partial\psi}{\partial x}
+#   =\sum_l W_l(x,t)\,\partial_\theta P_l(\mu) .
 # ```
 #
-# The matrices are functionals of the current state, ``\mathcal D^{(i)} =
-# \mathcal D^{(i)}[\bm{\dot A}(t)]``, so this is quasi-linear rather than
-# linear; block (4) says what they are. The term ``l\,B_l`` is the Legendre
-# projection of the substrate traction, and is purely kinematic and geometric --
-# no rheology enters it.
+# ### (1) The interior
 #
-# ### (2) Motion of the drop as a whole
+# ```math
+# \partial_t\,\mathcal D_l[U_l]
+#   = \mathrm{Oh}\sum_{l''\ge2}\mathcal R_{l l''}\bigl[U_{l''};\eta\bigr],
+# \qquad 0<x<1,\quad l\ge2,
+# ```
+#
+# with ``\mathcal D_l=d^2/dx^2-l(l+1)/x^2`` and ``\mathcal R_{l l''}`` the
+# projection onto ``C_l`` defined in *The interior equation*. Coupling is
+# confined to ``|l-l''|\le l'\le l+l''`` with ``l+l'+l''`` even, so the system is
+# banded. Closed by regularity at ``x=0``, which forces ``U_l\sim x^{l+1}``, and
+# at ``x=1`` by
+#
+# ```math
+# \underbrace{F_l\big|_{x=1}=\dot A_l}_{\text{BC1, kinematic}},
+# \qquad
+# \underbrace{\mathcal L_2[U_l]\big|_{x=1}=0}_{\text{BC2, tangential stress}},
+# \qquad
+# \mathcal L_2=\frac{d^2}{dx^2}-\frac{2}{x}\frac{d}{dx}+\frac{l(l+1)}{x^2} .
+# ```
+#
+# Note that ``\mathcal D_l`` annihilates ``x^{l+1}``, so the time derivative
+# above does not act on all of ``U_l``: the harmonic part of each profile is
+# fixed by the boundary conditions at each instant rather than evolved. The
+# interior is a **differential-algebraic** system, not an evolution equation.
+#
+# ### (2) The pressure
+#
+# ```math
+# \nabla^2 p = \mathrm{Oh}\,\nabla\cdot\bigl(\nabla\cdot(2\eta\bm e)\bigr),
+# \qquad\text{regular at } x=0 ,
+# ```
+#
+# an elliptic problem at each instant, whose source vanishes only for constant
+# ``\eta``. It is needed because the curl that closed (1) removed ``p``, while
+# (3) requires it.
+#
+# ### (3) The surface
+#
+# The balance of normal stress against surface tension at ``x=1``, projected onto
+# ``P_l``, is the equation of motion for each mode:
+#
+# ```math
+# \Bigl\langle\,\bigl[-p+2\eta\,e_{rr}\bigr]_{x=1}
+#   - \bigl(\nabla\!\cdot\!\bm n\bigr)\big|_{x=1}
+#   + \Pi \,,\ P_l\Bigr\rangle \;=\; 0,
+# \qquad l\ge2,
+# ```
+#
+# with ``\langle f,P_l\rangle=\tfrac{2l+1}{2}\int_{-1}^{1}fP_l\,d\mu`` and
+# ``\nabla\cdot\bm n`` twice the mean curvature of the deformed surface, whose
+# linearisation supplies the capillary restoring term. Carried out explicitly,
+# the viscous part of this projection is the double sum of *Carrying the
+# projection through*, and it is what the coefficient matrices
+# ``\mathcal D^{(i)}`` collect. Those matrices are functionals of the interior
+# state ``\{U_l\}``, not of ``\bm{\dot A}`` alone.
+#
+# ### (4) The drop as a whole
 #
 # ```math
 # \dot z = v,
 # \qquad
-# \dot v = -\mathrm{Bo} - B_1,
+# \dot v = -\mathrm{Bo} - \mathfrak F,
+# \qquad
+# \mathfrak F(t) = \oint \Pi\,n_z\,dS ,
 # \qquad
 # v(0) = -\sqrt{\mathrm{We}} ,
 # ```
 #
-# the impact speed entering only as this initial condition. The substrate is
-# rigid and cannot pull, so the gap and the reaction satisfy a **Signorini
-# complementarity condition**: at each ``\theta`` the drop either touches and
-# carries pressure, or does not touch and carries none,
+# where ``\mathfrak F`` is the net vertical force the substrate exerts, obtained
+# by integrating the reaction pressure over the contact region. It is a
+# functional of ``\Pi``, and therefore of the ``B_n``; it is **not** ``B_1``,
+# which is one coefficient of that expansion. The impact speed enters only as
+# the initial condition.
+#
+# The substrate is rigid and cannot pull, so the gap and the reaction satisfy a
+# **Signorini complementarity condition**: at each ``\theta`` the drop either
+# touches and carries pressure, or does not touch and carries none,
 #
 # ```math
 # h\ge0,
@@ -1230,117 +1410,40 @@ end  #src
 # \qquad\text{for all }\theta\in[0,\pi] .
 # ```
 #
-# Equivalently, with ``\theta^\ast`` the smallest ``\theta`` at which ``h``
-# vanishes (``\theta^\ast=\pi`` meaning no contact),
-#
-# ```math
-# h=0 \ \text{ on }[\theta^\ast,\pi],
-# \qquad
-# \Pi=0 \ \text{ on }[0,\theta^\ast) .
-# ```
-#
-# ### (3) The interior problem
-#
-# The stream function ``\psi=\sum_{l}U_l(x,t)C_l(\theta)`` generates
-#
-# ```math
-# u_r=\frac{1}{x^2\sin\theta}\frac{\partial\psi}{\partial\theta}
-#     =\sum_l F_l(x,t)P_l(\mu),
-# \qquad
-# u_\theta=-\frac{1}{x\sin\theta}\frac{\partial\psi}{\partial x}
-#     =\sum_l W_l(x,t)\,\partial_\theta P_l(\mu),
-# ```
-#
-# with ``F_l`` and ``W_l`` fixed linear functionals of ``U_l``. The profiles
-# solve
-#
-# ```math
-# \partial_t\,\mathcal D_l[U_l]
-#   = \mathrm{Oh}\sum_{l''\ge2}\mathcal R_{l l''}\bigl[U_{l''};\eta\bigr],
-# \qquad 0<x<1,\quad l\ge2,
-# ```
-#
-# where ``\mathcal D_l=d^2/dx^2-l(l+1)/x^2`` and ``\mathcal R_{l l''}`` is the
-# projection of the curl of the viscous stress onto ``C_l``, defined in *The interior equation*. Coupling is confined to
-# ``|l-l''|\le l'\le l+l''`` with ``l+l'+l''`` even, so the system is banded.
-# Closed by regularity at ``x=0`` and, at ``x=1``,
-#
-# ```math
-# \underbrace{F_l\big|_{x=1}=\dot A_l}_{\text{BC1, kinematic}},
-# \qquad
-# \underbrace{\mathcal L_2[U_l]\big|_{x=1}=0}_{\text{BC2, tangential stress}},
-# \qquad
-# \mathcal L_2=\frac{d^2}{dx^2}-\frac{2}{x}\frac{d}{dx}+\frac{l(l+1)}{x^2} .
-# ```
-#
-# BC2 holds for every fluid in the admissible class, because
-# ``\tau_{r\theta}=2\eta e_{r\theta}=0`` forces ``e_{r\theta}=0`` whenever
-# ``\eta\ge\eta_\infty>0``. The third surface condition -- normal stress -- is
-# not a boundary condition on this problem; projected onto ``P_l`` it *is* the
-# equation of motion (1), and that projection is block (4).
-#
-# ### (4) The constitutive law and the coefficients
-#
-# The viscosity is evaluated pointwise on the strain field the interior
-# solution produces, and resolved into angular harmonics:
+# ### (5) The fluid
 #
 # ```math
 # \bm e=\tfrac12\bigl(\nabla\bm u+\nabla\bm u^{\mathsf T}\bigr),
 # \qquad
 # \dot\gamma=\sqrt{2\,\bm e\!:\!\bm e},
 # \qquad
-# \eta=\eta(\dot\gamma),
-# ```
-# ```math
-# \eta_{l'}(x,t)=\frac{2l'+1}{2}\int_{-1}^{1}\eta(x,\mu,t)\,P_{l'}(\mu)\,d\mu .
+# \eta=\eta(\dot\gamma) ,
 # ```
 #
-# Note that ``\dot\gamma`` is computed from the **whole** field, not mode by
-# mode: ``\bm e`` superposes over modes but its invariant does not. The
-# coefficient matrices are then
-#
-# ```math
-# \mathcal D^{(i)}_{l l''} = \sum_{l'\ge0}\Bigl[\,
-#   G^{l'}_{l l''}A^{(i)}_{l l''}[\eta_{l'}]
-#   \;+\; H^{l'}_{l l''}B^{(i)}_{l l''}[\eta_{l'}]\Bigr],
-# ```
-# ```math
-# G^{l'}_{l l''}=\frac{2l+1}{2}\!\int_{-1}^{1}\!P_lP_{l'}P_{l''}\,d\mu,
-# \qquad
-# H^{l'}_{l l''}=\frac{2l+1}{2}\!\int_{-1}^{1}\!P_l(1-\mu^2)P'_{l'}P'_{l''}\,d\mu,
-# ```
-#
-# both vanishing unless ``|l-l''|\le l'\le l+l''`` with ``l+l'+l''`` even, and
-# the radial factors being
-#
-# ```math
-# A^{(i)}_{l l''}[\eta_{l'}] = \int_0^1\!\Bigl(
-#     \eta_{l'}\,\mathcal L_{l''}[F_{l''}] + \eta'_{l'}F'_{l''}\Bigr)x^2\,dx ,
-# ```
-# ```math
-# B^{(i)}_{l l''}[\eta_{l'}] = \int_0^1\!\frac{\eta_{l'}}{2x}
-#   \Bigl(W'_{l''}-\frac{W_{l''}}{x}-\frac{F_{l''}}{x}\Bigr)x^2\,dx ,
-# ```
-#
-# with ``\mathcal L_{l''}[F]=F''+\tfrac{2}{x}F'-\tfrac{l''(l''+1)}{x^2}F``. The
-# index ``i`` distinguishes the terms carried up to the surface by the velocity,
-# which multiply ``\dot A``, from those carried by the surface value of the
-# stress, which multiply ``A``.
+# evaluated pointwise on the current interior field. ``\dot\gamma`` is computed
+# from the **whole** field: ``\bm e`` superposes over modes, its invariant does
+# not, so there is no such thing as one mode's shear rate. Any
+# ``\eta(\dot\gamma)`` satisfying (H1)-(H3) is admissible; no particular
+# constitutive law is assumed here.
 #
 # ### What kind of system this is
 #
-# Blocks (1)-(2) are ordinary differential equations in ``t`` with a
-# complementarity constraint; block (3) is a banded system of partial
-# differential equations in ``x`` and ``t``; block (4) closes the loop, because
-# the ``\eta`` that block (3) needs is computed from the solution of block (3).
-# The model is therefore a **differential-algebraic system with a fixed point in
-# the viscosity**, and that fixed point is what distinguishes it from the
-# constant-viscosity theory, where blocks (3) and (4) decouple, become diagonal,
-# and can be solved once in advance.
+# Blocks (1) and (2) are partial differential equations in ``x`` at each instant,
+# banded in the mode index; (3) and (4) are ordinary differential equations in
+# ``t`` with a complementarity constraint; (5) closes the loop, because the
+# ``\eta`` that (1) and (2) need is computed from their own solution. So the
+# model is a **differential-algebraic system with a fixed point in the
+# viscosity**.
 #
-# Every unknown listed above is determined by an equation stated above. What is
-# *not* available is a formula: ``\eta(\dot\gamma)`` is not polynomial, so
-# neither ``\eta_{l'}``, nor ``A^{(i)}``, ``B^{(i)}``, nor ``U_l`` has a closed
-# form in elementary functions, and every one of them must be computed. The
-# companion page *Shear-Thinning Drops: Closures* is about what to give up in
-# order to compute them cheaply, and what each concession costs.
+# Two things are worth noting about what is *absent*. There is no eigenvalue
+# anywhere: no ``q^2``, no ``\lambda_l``, no ``\omega_l^2``, and so no truncation
+# of a relaxation spectrum to two roots. And there is no second time derivative
+# of ``A_l``: the inertia that produced ``\ddot A_l`` in the Newtonian modal
+# system lives in (1) here, and the second-order oscillator form is a
+# *consequence* of eliminating the interior rather than a feature of the physics.
+#
+# Every unknown is determined by an equation stated above. What is not available
+# is a formula: ``\eta(\dot\gamma)`` is not polynomial, so nothing in the chain
+# has a closed form and every piece must be computed. The companion page
+# *Shear-Thinning Drops: Closures* is about what may be given up to compute them
+# cheaply, and what each concession costs.
