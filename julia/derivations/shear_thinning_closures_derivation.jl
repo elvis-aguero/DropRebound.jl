@@ -49,18 +49,18 @@ println("="^78)  #src
 # The model page leaves the interior as a parabolic evolution,
 #
 # ```math
-# \partial_t\,\mathcal D_l[U_l]
-#   = \mathrm{Oh}\sum_{l''}\mathcal R_{l l''}[U_{l''};\eta] ,
+# \partial_t\,\mathcal D_l[\psi_l]
+#   = \mathrm{Oh}\sum_{m}\mathcal R_{l m}[\psi_{m};\eta] ,
 # ```
 #
-# which has to be marched alongside the surface amplitudes, with ``U_l`` part of
+# which has to be marched alongside the surface amplitudes, with ``\psi_l`` part of
 # the state. There are two different ways to get rid of that, and only the
 # second is used:
 #
 # | | substitution | result |
 # |:--|:--|:--|
-# | (a) drop the time derivative | ``\partial_t\mathcal D_l[U_l]\to0`` | a Stokes interior: no oscillation, ``\sigma=0`` |
-# | (b) replace it by an eigenvalue | ``\partial_t U_l\to-\sigma U_l`` | Reid's eigenproblem |
+# | (a) drop the time derivative | ``\partial_t\mathcal D_l[\psi_l]\to0`` | a Stokes interior: no oscillation, ``\sigma=0`` |
+# | (b) replace it by an eigenvalue | ``\partial_t \psi_l\to-\sigma \psi_l`` | Reid's eigenproblem |
 #
 # Option (a) is what "quasi-static" sounds like, and it is not what anyone does:
 # it deletes the inertia that makes the drop ring. Option (b) does not discard
@@ -69,7 +69,7 @@ println("="^78)  #src
 # ``\sigma``. Substituting it gives
 #
 # ```math
-# q^2\,\mathcal D_l[U_l] + \mathcal R_l[U_l;\eta] = 0,
+# q^2\,\mathcal D_l[\psi_l] + \mathcal R_l[\psi_l;\eta] = 0,
 # \qquad q^2=\sigma/\mathrm{Oh} ,
 # ```
 #
@@ -86,7 +86,7 @@ println("="^78)  #src
 #    exists for a time-independent operator. Since ``\eta`` varies on the same
 #    timescale as the mode that produces it, this is an assertion about
 #    timescales, not an identity.
-# 3. **``U_l`` stops being a state variable.** It becomes an algebraic function
+# 3. **``\psi_l`` stops being a state variable.** It becomes an algebraic function
 #    of the current ``\eta`` and ``l``. This is the whole point: it is what makes
 #    ``\lambda_l`` and ``\omega_l^2`` *instantaneous numbers* rather than
 #    histories, and so what lets the surface equation stay a second-order ODE.
@@ -107,7 +107,7 @@ println("="^78)  #src
 #
 # !!! note "This closure is optional"
 #     Nothing forces it. If the interior is discretised and marched as the model
-#     page states it -- ``U_l`` in the state, a banded system in ``x`` -- then
+#     page states it -- ``\psi_l`` in the state, a banded system in ``x`` -- then
 #     none of claims 1--3 is needed, no eigenproblem is ever formed, and the
 #     two-root truncation disappears with it. The closure buys a smaller state
 #     and the reuse of tabulated Newtonian coefficients; it is not a
@@ -127,8 +127,8 @@ println("="^78)  #src
 # | choice | what it keeps | status |
 # |:--|:--|:--|
 # | (a) instantaneous ``\eta(t)`` | everything | **quasi-static; unjustified** |
-# | (b) period-averaged | the ``m=0`` channel | justified by the lemma below |
-# | (c) Floquet | ``m=0`` and ``m=2`` | most faithful, most work |
+# | (b) period-averaged | the ``j=0`` channel | justified by the lemma below |
+# | (c) Floquet | ``j=0`` and ``j=2`` | most faithful, most work |
 #
 # ### What the modulation actually does: the amplitude equation
 #
@@ -139,36 +139,37 @@ println("="^78)  #src
 #
 # ```math
 # \lambda(\phi) \;=\; \bar\lambda
-#   \;+\; \sum_{k\ge1}\bigl[\alpha_k\cos 2k\phi + \beta_k\sin 2k\phi\bigr].
+#   \;+\; \sum_{j\ge1}\bigl[\alpha_j\cos 2j\phi + \beta_j\sin 2j\phi\bigr].
 # ```
 #
-# Put ``A=a(t)\cos\theta``, ``\theta=\omega t+\psi``, with ``a`` and ``\psi``
-# slow, into ``\ddot A+2\lambda(t)\dot A+\omega^2A=0``. Krylov--Bogoliubov
-# averaging gives ``\dot a=-2a\,\langle\lambda\sin^2\theta\rangle``, and with
-# ``\sin^2\theta=\tfrac12[1-\cos(2\phi+2\psi)]`` every harmonic ``k\ge2`` is
-# orthogonal to ``\cos(2\phi+2\psi)`` and drops out. What survives is
+# Put ``\zeta_l=a(t)\cos\Theta``, ``\Theta=\omega t+\chi``, with the envelope
+# ``a`` and the phase ``\chi`` slow, into
+# ``\ddot\zeta_l+2\lambda(t)\dot\zeta_l+\omega^2\zeta_l=0``. Krylov--Bogoliubov
+# averaging gives ``\dot a=-2a\,\langle\lambda\sin^2\Theta\rangle``, and with
+# ``\sin^2\Theta=\tfrac12[1-\cos(2\phi+2\chi)]`` every harmonic ``j\ge2`` is
+# orthogonal to ``\cos(2\phi+2\chi)`` and drops out. What survives is
 #
 # ```math
 # \boxed{\;
 # \frac{da}{dt} \;=\; -\,\bar\lambda\,a
-#   \;+\; \frac{a}{2}\bigl(\alpha_1\cos 2\psi - \beta_1\sin 2\psi\bigr) \;}
+#   \;+\; \frac{a}{2}\bigl(\alpha_1\cos 2\chi - \beta_1\sin 2\chi\bigr) \;}
 # ```
 #
 # Three things follow.
 #
 # **The period-average is the whole secular effect.** ``\bar\lambda`` -- the
-# ``m=0`` harmonic -- is the only term that survives without a phase condition.
+# ``j=0`` harmonic -- is the only term that survives without a phase condition.
 # That is what justifies closure (b), and it justifies it *quantitatively*
 # rather than by appeal to plausibility.
 #
-# **The ``m=2`` harmonic is a parametric term, and it sits exactly on
-# resonance.** It enters multiplied by ``\cos2\psi``, so its sign depends on the
+# **The ``j=2`` harmonic is a parametric term, and it sits exactly on
+# resonance.** It enters multiplied by ``\cos2\chi``, so its sign depends on the
 # phase -- and the period-``\pi`` lemma places it at ``2\omega``, precisely the
 # principal parametric resonance of an oscillator at ``\omega``. The lemma is
 # therefore not a reassurance about the second harmonic: it identifies a
 # resonance rather than ruling one out.
 #
-# **A bound settles when that matters.** Since ``|\alpha_1\cos2\psi-\beta_1\sin2\psi|
+# **A bound settles when that matters.** Since ``|\alpha_1\cos2\chi-\beta_1\sin2\chi|
 # \le\sqrt{\alpha_1^2+\beta_1^2}``, the effective decay rate is confined to
 #
 # ```math
@@ -194,9 +195,9 @@ let  #src
     avg(f) = quadgk(ph -> f(ph), 0, 2pi; rtol=1e-12)[1] / (2pi)  #src
     worst = 0.0  #src
     for ps in (0.0, 0.7, 1.9, 3.3, 5.1)  #src
-        ## the m=0 harmonic contributes 1/2, independent of phase  #src
+        ## the j=0 harmonic contributes 1/2, independent of phase  #src
         worst = max(worst, abs(avg(ph -> sin(ph + ps)^2) - 0.5))  #src
-        ## the m=2 harmonics contribute -cos(2psi)/4 and +sin(2psi)/4  #src
+        ## the j=2 harmonics contribute -cos(2psi)/4 and +sin(2psi)/4  #src
         worst = max(worst, abs(avg(ph -> cos(2ph) * sin(ph + ps)^2) + cos(2ps)/4))  #src
         worst = max(worst, abs(avg(ph -> sin(2ph) * sin(ph + ps)^2) - sin(2ps)/4))  #src
         ## every higher even harmonic averages away at this order  #src
@@ -209,7 +210,7 @@ let  #src
     println("  ASSERTION 8b OK: averaging da/dt = -2a<lambda sin^2 theta> gives")  #src
     println("    da/dt = -lbar*a + (a/2)(alpha_1 cos 2psi - beta_1 sin 2psi),")  #src
     println("    with every harmonic k>=2 averaging to zero (worst residual $(round(worst, sigdigits=2))).")  #src
-    println("    => the period-average carries the secular decay; the m=2 harmonic is")  #src
+    println("    => the period-average carries the secular decay; the j=2 harmonic is")  #src
     println("       parametric, bounded by sqrt(alpha_1^2+beta_1^2)/2.")  #src
 end  #src
 
@@ -239,10 +240,10 @@ end  #src
 #
 # * A period-``\pi`` function has **identically zero** content at odd
 #   harmonics. In particular there is no forcing at the mode's own
-#   frequency -- so the leading effect is carried entirely by the ``m=0``
+#   frequency -- so the leading effect is carried entirely by the ``j=0``
 #   (period-averaged) channel. That is choice (b), and the lemma is its
 #   justification.
-# * The surviving ``m=2`` channel modulates the damping at ``2\omega``,
+# * The surviving ``j=2`` channel modulates the damping at ``2\omega``,
 #   which is the *principal parametric resonance* condition. Choice (b)
 #   discards it; whether that is safe is a stability question this file
 #   does not answer.
@@ -250,7 +251,7 @@ end  #src
 # Fourier-decomposing ``S`` over a full ``2\pi`` period, for a strain field
 # with four independent complex components, gives
 #
-# | harmonic | ``m=0`` | ``m=1`` | ``m=2`` |
+# | harmonic | ``j=0`` | ``j=1`` | ``j=2`` |
 # |:--|--:|--:|--:|
 # | coefficient | ``2.2374`` | ``<5\times10^{-16}`` | ``0.2781`` |
 #
@@ -270,7 +271,7 @@ end  #src
 # means sweeping ``\phi`` through a cycle, evaluating ``\lambda`` from the
 # eigenvalue solver at ``\eta(S(\phi))`` at each phase, and Fourier-decomposing
 # *that*. Until that is done the criterion stands as a criterion and the
-# stability of discarding the ``m=2`` channel is open -- which is how the
+# stability of discarding the ``j=2`` channel is open -- which is how the
 # closing section records it.
 #
 #
@@ -292,15 +293,15 @@ let  #src
     c2 = sum(Sof(φ)*cos(2φ) for φ in φs)*2/N  #src
     c0 = sum(Sof(φ) for φ in φs)/N  #src
     @assert abs(c1) < 1e-12 && abs(s1) < 1e-12 "S has content at the mode's OWN frequency"  #src
-    @assert abs(c2) > 1e-3 "the m=2 parametric channel vanished; expected it to survive"  #src
+    @assert abs(c2) > 1e-3 "the j=2 parametric channel vanished; expected it to survive"  #src
     println("  ASSERTION 8 OK: S is period-pi to $(round(worst, sigdigits=2)); its Fourier")  #src
-    println("    content at m=1 is zero to machine precision, while m=0 and m=2 survive.")  #src
+    println("    content at j=1 is zero to machine precision, while j=0 and j=2 survive.")  #src
     println("    (A lemma check on an arbitrary field -- not a physical state.)")  #src
 end  #src
 
 # ## Truncating the viscosity spectrum
 #
-# **Assumption.** ``\eta``'s Legendre content above ``l'=L_\eta`` is negligible.
+# **Assumption.** ``\eta``'s Legendre content above ``k=L_\eta`` is negligible.
 #
 # The model page leaves ``L_\eta`` as whatever the state produces. Capping it is
 # the natural first economy, and it makes ``L_\eta`` a free parameter of the
@@ -317,11 +318,11 @@ end  #src
 #
 # ### Measurement, and the choice of error norm
 #
-# The natural-looking metric, "what fraction of ``\sum_{l'}|\eta_{l'}|^2``
+# The natural-looking metric, "what fraction of ``\sum_{k}|\eta_{k}|^2``
 # lies below ``L_\eta``", says ``L_\eta=2\ldots5`` suffices everywhere. That
 # metric is **misleading**. What controls the banding error is the *summed
 # magnitude* of the discarded coefficients,
-# ``\mathcal T(L)=\sum_{l'>L}|\eta_{l'}|/|\eta_0|``, because those terms enter the
+# ``\mathcal T(L)=\sum_{k>L}|\eta_{k}|/|\eta_0|``, because those terms enter the
 # coupling matrix additively, not in quadrature. The spectrum turns out to
 # have a long, slowly-decaying plateau carrying little *power* but large
 # *summed magnitude*.
@@ -344,7 +345,7 @@ end  #src
 # > matrix is effectively dense, and this rung buys nothing.**
 #
 # The qualifier is doing work. A spectrum that decays *exponentially* -- say
-# ``\dot A_l\propto0.85^{\,l}`` -- keeps ``L_\eta\approx16`` even with fifty
+# ``\dot\zeta_l\propto0.85^{\,l}`` -- keeps ``L_\eta\approx16`` even with fifty
 # modes nominally active, because so little amplitude reaches high ``l`` that
 # the viscosity field stays smooth: its contrast is only ``\approx34\times``
 # rather than the ``100\times`` a real state produces. Banding would work for
@@ -368,7 +369,7 @@ end  #src
 # field is smooth; with a dozen modes beating against each other the nodal
 # set is dense.
 #
-# **Caveat.** Coefficients beyond ``l'=140`` were not measured, so every
+# **Caveat.** Coefficients beyond ``k=140`` were not measured, so every
 # entry above is a *lower* bound on the discarded coupling.
 #
 # The measurement itself, including the high-``l`` eigenfunction evaluator it
@@ -390,12 +391,12 @@ end  #src
 #
 # **Why this rung is special.** A spherically symmetric ``\eta`` commutes
 # with the angular Laplacian. Every mode **decouples again**:
-# ``G^{0}_{l l''}=\delta_{l l''}``, the matrices return to diagonal, and the
+# ``G^{0}_{l m}=\delta_{l m}``, the matrices return to diagonal, and the
 # entire architecture of the solver -- one independent oscillator per mode --
 # is recovered intact.
 #
 # What you give up is *only* the closed form. The radial equation now has an
-# ``r``-dependent coefficient, so it is no longer Bessel's equation and must
+# ``r``-dependent coefficient, so it is no longer Besseks equation and must
 # be solved as a numerical two-point boundary-value problem, once per mode.
 # `julia/src/reid.jl`'s continuation machinery already knows how to track
 # eigenvalue branches through such a solve.
@@ -430,7 +431,7 @@ end  #src
 #   ``\tau_{r\theta}=2\eta\,e_{r\theta}=0``. Since ``\eta\ge\eta_\infty>0``
 #   everywhere, this forces ``e_{r\theta}=0`` *regardless of whether ``\eta``
 #   is constant*. **Unchanged**, and so is the whole
-#   ``\tau_{r\theta}=0\Rightarrow\mathcal L_2[U]=0`` reduction already derived
+#   ``\tau_{r\theta}=0\Rightarrow\mathcal T[\psi]=0`` reduction already derived
 #   in *The Viscous Drop: Reid (1960)*.
 # * **BC3 (normal stress)** carries ``\eta`` multiplicatively, so it becomes
 #   the *surface* value ``\eta_s=\eta(\dot\gamma|_{r=R})``. Same form, one
@@ -473,7 +474,7 @@ end  #src
 # single radial equation. Carrying a variable ``\eta`` through the
 # stream-function form of the momentum equation adds terms proportional to
 # ``\eta'`` and ``\eta''`` and nothing else; setting ``\eta'=0`` returns Reid's
-# operator ``\mathcal D_l(\mathcal D_l+q^2)U=0`` identically, which is how the
+# operator ``\mathcal D_l(\mathcal D_l+q^2)\psi=0`` identically, which is how the
 # construction is checked.
 #
 # What remains is a linear two-point boundary-value eigenproblem with variable
@@ -532,7 +533,7 @@ end  #src
 # ``\mathrm{Oh}_{\mathrm{eff}}=\eta_{\mathrm{eff}}/\sqrt{\rho T_1R}``.
 #
 # **What it buys.** The radial equation becomes constant-coefficient again,
-# i.e. Bessel's equation, and Reid's closed-form characteristic equation
+# i.e. Besseks equation, and Reid's closed-form characteristic equation
 # returns verbatim -- evaluated at a shifted Ohnesorge number.
 #
 # **This is where the current production code sits**, combined with choice (a)
@@ -608,9 +609,9 @@ end  #src
 # its Legendre series does not terminate.
 #
 # That sounds like a barrier and is not one, because the coupling does not see
-# the whole series. The Gaunt rule requires ``l'\le l+l''``, and the shape
+# the whole series. The Gaunt rule requires ``k\le l+m``, and the shape
 # expansion stops at ``l=M``, so **every viscosity harmonic above
-# ``l'=2M`` is orthogonal to every product ``P_lP_{l''}`` and cannot couple
+# ``k=2M`` is orthogonal to every product ``P_lP_{m}`` and cannot couple
 # any pair of modes.** It is not small; it is absent.
 #
 # > The mode-coupling matrix is determined **exactly** by the first ``2M+1``
@@ -620,7 +621,7 @@ end  #src
 # So the infinite series is a property of ``\eta``, not a limitation of the
 # model. For ``M=50`` the coupling is fixed by 101 numbers per radius; for
 # ``M=90``, by 181. Whether the matrix can be further *banded* -- kept to
-# ``l'\le L_\eta`` with ``L_\eta\ll 2M``, for speed -- is a separate and
+# ``k\le L_\eta`` with ``L_\eta\ll 2M``, for speed -- is a separate and
 # genuinely empirical question, and *Truncating the viscosity spectrum*
 # measures it.
 #
@@ -704,7 +705,7 @@ end  #src
 #    ``\Delta\approx1``, as it happens to for this fluid.
 #
 # What Cross does **not** buy: ``X=(K\dot\gamma)^m`` still carries a
-# fractional power of the *field* when ``m`` is not an even integer, so the
+# fractional power of the *field* when ``a`` is not an even integer, so the
 # viscosity spectrum is still formally infinite and ``L_\eta`` is still an
 # empirical truncation. Cross simplifies the outer algebra, not the angular
 # problem.
@@ -839,7 +840,7 @@ end  #src
 # ``\mu\in[-1,1]`` (`STExactParams`). At each node ``\dot\gamma`` is computed
 # from the full superposition of active modes, ``\eta`` follows pointwise from
 # the constitutive law, and a Legendre projection in ``\theta`` at each radius
-# produces the ``\eta_{l'}(x)`` the matrices need.
+# produces the ``\eta_{k}(x)`` the matrices need.
 #
 # The **angular** rule has to scale with the truncation, and this is easy to
 # get wrong. The integrand is a product of two strain bases, hence a polynomial
@@ -865,18 +866,18 @@ end  #src
 # are evaluated not at the unknown state but at a second-order estimate of it,
 #
 # ```math
-# \bm{\dot A}^{\,\ast} = (1+r)\,\bm{\dot A}_n - r\,\bm{\dot A}_{n-1},
+# \bm{\dot\zeta}^{\,\ast} = (1+r)\,\bm{\dot\zeta}_n - r\,\bm{\dot\zeta}_{n-1},
 # \qquad r=\frac{\Delta t_{n+1}}{\Delta t_n},
 # ```
 #
-# exact whenever ``\bm{\dot A}`` is linear in ``t``, for non-uniform steps as
-# well as uniform. Then ``\mathcal D(\bm{\dot A}^{\,\ast})`` is constant within
+# exact whenever ``\bm{\dot\zeta}`` is linear in ``t``, for non-uniform steps as
+# well as uniform. Then ``\mathcal D(\bm{\dot\zeta}^{\,\ast})`` is constant within
 # the step, the system is linear in the unknowns, and the Jacobian is exact.
 # This is an IMEX splitting: implicit in the modal amplitudes, explicit in the
 # coefficients.
 #
 # The extrapolation order is not free. Holding the coefficients at the previous
-# step instead -- ``\bm{\dot A}^{\,\ast}=\bm{\dot A}_n`` -- is a first-order
+# step instead -- ``\bm{\dot\zeta}^{\,\ast}=\bm{\dot\zeta}_n`` -- is a first-order
 # splitting error inside an otherwise second-order BDF2 scheme, and it drags the
 # observed order of the whole integration down to ``\approx1.3`` against a
 # Newtonian control at ``2.0``. The linear extrapolation above restores it.
@@ -972,9 +973,9 @@ end  #src
 # | exact free-surface generalized Newtonian | -- | -- |
 # | linear in amplitude | ``\epsilon\ll1``; drops advection | ``\eta`` still fully nonlinear |
 # | axisymmetric | axisymmetric forcing -- **exact** | ``Y_l^m\to P_l``, no ``m``-coupling ever |
-# | poloidal + modal | change of variables | state is ``\{A_l\}``, ``l=2\ldots M`` |
+# | poloidal + modal | change of variables | state is ``\{\zeta_l\}``, ``l=2\ldots M`` |
 # | **full coupled system** | none beyond the three above | banded interior BVP + dense surface matrices |
-# | instantaneous eigenmode | ``\partial_tU_l\to-\sigma U_l``; ``\eta`` frozen | eliminates ``U_l``; parabolic ``\to`` algebraic |
+# | instantaneous eigenmode | ``\partial_t\psi_l\to-\sigma \psi_l``; ``\eta`` frozen | eliminates ``\psi_l``; parabolic ``\to`` algebraic |
 # | two-root truncation | keep two of infinitely many ``\sigma`` | recovers ``\lambda_l``, ``\omega_l^2`` as two numbers per mode |
 # | temporal closure | instantaneous / period-averaged / Floquet | picks which ``\eta(t)`` channel survives |
 # | truncate at ``L_\eta`` | discarded coupling small -- **measured false** | banded, but needs ``L_\eta\gtrsim M``: no saving |
@@ -991,7 +992,7 @@ end  #src
 #
 # **Free, and permanent.** A generalized Newtonian fluid cannot break
 # axisymmetry, so Legendre polynomials suffice forever. BC1 carries no
-# viscosity at all, and BC2 reduces to ``\mathcal L_2[U]=0`` for every fluid in
+# viscosity at all, and BC2 reduces to ``\mathcal T[\psi]=0`` for every fluid in
 # the admissible class, because ``\eta\ge\eta_\infty>0`` cannot vanish. The
 # normal-stress condition is where the rheology lands: once ``\eta`` varies
 # with ``\theta`` its surface value is a field, and projecting it is what
@@ -1022,8 +1023,8 @@ end  #src
 #
 # **Still open.** Whether the coupled system is affordable at ``M\sim50`` (the
 # Gaunt coefficients are geometry and precompute once; only the radial
-# integrals of ``\eta_{l'}`` change per step); the eigenvalue problem for the
+# integrals of ``\eta_{k}`` change per step); the eigenvalue problem for the
 # variable-``\eta`` radial operator, which is a two-point boundary-value
-# problem rather than a research question; and the ``m=2`` parametric channel,
+# problem rather than a research question; and the ``j=2`` parametric channel,
 # which the period-``\pi`` lemma places at exactly the principal resonance
 # condition and which nothing here evaluates.

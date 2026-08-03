@@ -4,7 +4,7 @@
 # viscosity which is shear-rate dependent, possibly nonlinearly.
 #
 # In the Newtonian theory a drop's surface modes are independent damped
-# oscillators: each ``A_l`` has its own damping ``\lambda_l`` and frequency
+# oscillators: each ``\zeta_l`` has its own damping ``\lambda_l`` and frequency
 # ``\omega_l``, and the interior flow can be solved once, in advance, for all
 # time. Neither survives a shear-thinning fluid. The viscosity becomes a field
 # over the drop, computed from the very flow it governs; modes that deform
@@ -32,38 +32,58 @@
 # | ``\dot\gamma=\sqrt{2\,\bm e\!:\!\bm e}`` | shear-rate invariant (a scalar) |
 # | ``\zeta(\theta,t)`` | radial surface displacement; ``\epsilon=\zeta/R`` |
 # | ``P_l(\mu)``, ``\mu=\cos\theta`` | Legendre polynomial |
-# | ``A_l(t)`` | amplitude of surface mode ``l``; the solver's state vector |
-# | ``C_l(\theta)`` | Gegenbauer angular function ``\sin^2\!\theta\,P_l'(\cos\theta)/(l(l+1))``; the *angular* factor of the stream function -- **not** ``A_l``, which is an amplitude in time |
-# | ``U_l(x)`` | radial factor of mode ``l`` in the stream function ``\psi=\sum_l U_l(x)C_l(\theta)`` |
-# | ``F_l(x),\ W_l(x)`` | radial profiles of ``u_r`` and ``u_\theta`` for mode ``l``; both fixed by ``U_l`` |
+# | ``\zeta_l(t)`` | amplitude of surface mode ``l``; the solver's state vector |
+# | ``C_l(\theta)`` | Gegenbauer angular function ``\sin^2\!\theta\,P_l'(\cos\theta)/(l(l+1))``; the *angular* factor of the stream function -- **not** ``\zeta_l``, which is an amplitude in time |
+# | ``\psi_l(x)`` | radial factor of mode ``l`` in the stream function ``\psi=\sum_l \psi_l(x)C_l(\theta)`` |
+# | ``u_{r,l}(x),\ u_{\theta,l}(x)`` | radial profiles of ``u_r`` and ``u_\theta`` for mode ``l``; both fixed by ``\psi_l`` |
 # | ``\mathcal D_l`` | ``d^2/dx^2-l(l+1)/x^2``; Reid's radial operator |
-# | ``\mathcal L_2`` | ``d^2/dx^2-(2/x)d/dx+l(l+1)/x^2``; Reid's tangential-stress operator, ``\mathcal L_2[U]|_{x=1}=0`` is BC2 |
-# | ``\mathcal L_n`` | ``d^2/dx^2+(2/x)d/dx-n(n+1)/x^2``; the radial Laplacian (**not** ``\mathcal L_2``) |
-# | ``p`` | pressure inside the drop; ``p_n(x,t)`` its Legendre coefficients |
-# | ``p_c(\theta,t)`` | pressure in the air film holding the drop off the substrate; ``B_n`` its coefficients |
-# | ``\mathcal R_l[U;\eta]`` | variable-viscosity radial operator, derived below |
-# | ``\mathcal R_{l l''}`` | its off-diagonal generalisation once ``\eta`` varies with ``\theta`` |
-# | ``l'`` | degree index of the **viscosity field's own** Legendre series |
-# | ``L_\eta`` | highest ``l'`` present -- the *bandwidth* of the coupling |
-# | ``G^{l'}_{l l''},\ H^{l'}_{l l''}`` | Gaunt-type angular integrals; pure numbers |
+# | ``\mathcal T`` | ``d^2/dx^2-(2/x)d/dx+l(l+1)/x^2``; Reid's tangential-stress operator, ``\mathcal T[\psi]|_{x=1}=0`` is BC2 |
+# | ``\mathcal L_l`` | ``d^2/dx^2+(2/x)d/dx-l(l+1)/x^2``; the radial Laplacian (**not** ``\mathcal T``) |
+# | ``p`` | pressure inside the drop; ``p_l(x,t)`` its Legendre coefficients |
+# | ``p_c(\theta,t)`` | pressure in the air film holding the drop off the substrate; ``p_{c,l}`` its coefficients |
+# | ``\mathcal R_l[\psi;\eta]`` | variable-viscosity radial operator, derived below |
+# | ``\mathcal R_{l m}`` | its off-diagonal generalisation once ``\eta`` varies with ``\theta`` |
+# | ``k`` | degree index of the **viscosity field's own** Legendre series |
+# | ``L_\eta`` | highest ``k`` present -- the *bandwidth* of the coupling |
+# | ``G^{k}_{l m},\ H^{k}_{l m}`` | Gaunt-type angular integrals; pure numbers |
 # | ``\mathrm{Oh}=\eta_0/\sqrt{\rho T_1R}`` | Ohnesorge number: viscous over inertio-capillary stress |
 #
-# Two collisions are worth pointing out because the surrounding literature
-# invites them. ``G^{l'}_{l l''}`` below is an *angular* integral of three
-# Legendre polynomials -- a number, not a function; the radial velocity
-# profiles are written ``F_l`` and ``W_l`` here precisely so that nothing
-# called ``G`` carries an ``x``. And ``U_l`` is a radial profile, while ``A_l``
-# is an amplitude in time; Reid's page writes ``G(x)=U(x)/x^2`` for a third
-# object again, which does not appear on this page at all.
+# ### How to read the notation
 #
-# One symbol is easy to misread. ``l`` and ``l''`` label modes of the drop's
-# *shape*, and run ``2\ldots M``, where ``M`` is the truncation of the shape
-# expansion (of order 50--90 in practice). ``l'`` labels harmonics of the
-# *viscosity field* and is a different index entirely: it starts at ``0``, and
-# *The full coupled system* below shows it controls only how far off the
-# diagonal the mode-coupling
-# matrix reaches -- never the size of that matrix, which is always
-# ``M\times M``.
+# Four rules, so that the symbols can be worked out rather than memorised.
+#
+# **Coefficients carry their field's own symbol.** Every field on this page is
+# expanded in the same angular basis, and its coefficients keep its letter:
+# ``\zeta\to\zeta_l``, ``\psi\to\psi_l``, ``p\to p_l``, ``p_c\to p_{c,l}``,
+# ``\eta\to\eta_k``, ``u_r\to u_{r,l}``. If you know the field, you know the
+# coefficient.
+#
+# **Primes are always ``d/dx``.** There are no primed indices anywhere, so
+# ``\eta_k'`` is unambiguously the radial derivative of ``\eta_k``. The only
+# apparent exceptions are ``P_l'`` and ``P_l''``, which are derivatives of the
+# Legendre polynomial with respect to ``\mu`` -- still derivatives, never
+# indices.
+#
+# **Three indices, one job each.** ``l`` is the mode whose equation is being
+# written; ``m`` is the mode driving it; ``k`` is a harmonic of the viscosity
+# field. ``l`` and ``m`` are shape modes and run ``2\ldots M``, where ``M`` is
+# the truncation of the shape expansion (of order 50--90 in practice). ``k``
+# starts at ``0`` and is a different kind of index: it controls only how far off
+# the diagonal the mode-coupling matrix reaches, never the size of that matrix,
+# which is always ``M\times M``. (``m`` also denotes azimuthal order in
+# *Axisymmetry* below, which is the section that proves it vanishes; after that
+# the letter is free.)
+#
+# **Uppercase is a basis function or an operator; lowercase is a field or a
+# coefficient.** ``P_l``, ``C_l`` are basis functions; ``\mathcal D_l``,
+# ``\mathcal T``, ``\mathcal L_l``, ``\mathcal R_{l m}`` are operators;
+# ``G^k_{lm}``, ``H^k_{lm}`` are numbers. ``A^{(i)}_{lm}`` and ``B^{(i)}_{lm}``
+# are the only remaining bare capitals, and they are radial integrals -- always
+# carrying the ``^{(i)}`` superscript, never appearing alone.
+#
+# One cross-page note: the Reid page writes ``G(x)=U(x)/x^2`` and keeps ``U``
+# for the stream-function profile, faithful to the original. Neither symbol is
+# used in that sense here.
 #
 # Some results below are established symbolically, for arbitrary ``l``; others
 # only by evaluation at a spread of concrete points, which is strong numerical
@@ -279,10 +299,10 @@ end  #src
 # scalar. Writing the surface shape as
 #
 # ```math
-# \zeta(\theta,t) = R\sum_{l\ge2} A_l(t)\,P_l(\cos\theta),
+# \zeta(\theta,t) = R\sum_{l\ge2} \zeta_l(t)\,P_l(\cos\theta),
 # ```
 #
-# the state of the drop is the vector of modal amplitudes ``\{A_l(t)\}``,
+# the state of the drop is the vector of modal amplitudes ``\{\zeta_l(t)\}``,
 # ``l=2\ldots M``. This is exactly the state `julia/src/types.jl` carries.
 #
 # An axisymmetric incompressible field is generated by a Stokes stream function,
@@ -290,7 +310,7 @@ end  #src
 # unknowns:
 #
 # ```math
-# \psi(x,\theta,t) \;=\; \sum_{l\ge2} U_l(x,t)\,C_l(\theta),
+# \psi(x,\theta,t) \;=\; \sum_{l\ge2} \psi_l(x,t)\,C_l(\theta),
 # \qquad
 # C_l(\theta)=\frac{\sin^2\!\theta\,P_l'(\cos\theta)}{l(l+1)} ,
 # ```
@@ -309,10 +329,10 @@ end  #src
 #
 # ```math
 # \boxed{\;
-# u_r=\sum_l F_l(x)P_l(\mu),\quad F_l=\frac{U_l}{x^2};
+# u_r=\sum_l u_{r,l}(x)P_l(\mu),\quad u_{r,l}=\frac{\psi_l}{x^2};
 # \qquad
-# u_\theta=\sum_l W_l(x)\,\partial_\theta P_l(\mu),\quad
-# W_l=\frac{U_l'}{x\,l(l+1)} \;}
+# u_\theta=\sum_l u_{\theta,l}(x)\,\partial_\theta P_l(\mu),\quad
+# u_{\theta,l}=\frac{\psi_l'}{x\,l(l+1)} \;}
 # ```
 #
 # Two consequences are used repeatedly below, and both are stated here so that
@@ -320,32 +340,32 @@ end  #src
 # shear strain is proportional to the tangential-stress operator,
 #
 # ```math
-# e_{r\theta}=\frac{\mathcal L_2[U_l]}{2x\,l(l+1)}\,\partial_\theta P_l ,
+# e_{r\theta}=\frac{\mathcal T[\psi_l]}{2x\,l(l+1)}\,\partial_\theta P_l ,
 # \qquad
-# \mathcal L_2=\frac{d^2}{dx^2}-\frac{2}{x}\frac{d}{dx}+\frac{l(l+1)}{x^2} ,
+# \mathcal T=\frac{d^2}{dx^2}-\frac{2}{x}\frac{d}{dx}+\frac{l(l+1)}{x^2} ,
 # ```
 #
-# which is why BC2 reduces to ``\mathcal L_2[U_l]|_{x=1}=0``; and the vorticity
+# which is why BC2 reduces to ``\mathcal T[\psi_l]|_{x=1}=0``; and the vorticity
 # is proportional to Reid's radial operator,
 #
 # ```math
-# \omega_\varphi=-\sum_l\frac{\mathcal D_l[U_l]\,C_l(\theta)}{x\sin\theta},
+# \omega_\varphi=-\sum_l\frac{\mathcal D_l[\psi_l]\,C_l(\theta)}{x\sin\theta},
 # \qquad
 # \mathcal D_l=\frac{d^2}{dx^2}-\frac{l(l+1)}{x^2},
 # ```
 #
 # which is the factor that turns the curl of the momentum equation into the
 # interior problem. The ``C_l`` are orthogonal under
-# ``\langle A,B\rangle=\int_0^\pi AB\,d\theta/\sin\theta``, with
+# ``\langle f,g\rangle=\int_0^\pi fg\,d\theta/\sin\theta``, with
 #
 # ```math
-# \langle C_l,C_{l''}\rangle=\frac{2\,\delta_{l l''}}{(2l+1)\,l(l+1)} ,
+# \langle C_l,C_{m}\rangle=\frac{2\,\delta_{l m}}{(2l+1)\,l(l+1)} ,
 # ```
 #
 # and it is that weight which makes the projection below well defined. The
-# strain-rate tensor is linear in ``\bm u`` and therefore in ``\{U_l\}``.
+# strain-rate tensor is linear in ``\bm u`` and therefore in ``\{\psi_l\}``.
 #
-# What ``U_l`` actually *is* -- the equation that determines it -- is the
+# What ``\psi_l`` actually *is* -- the equation that determines it -- is the
 # interior problem, and it is the substance of this page. Note already that it
 # cannot be quoted from the Newtonian theory: there the profile is fixed once
 # ``l`` and a constant viscosity are given, whereas here the viscosity is itself
@@ -390,10 +410,10 @@ let  #src
             w_F = max(w_F, abs(ev(u_r  - (Uf/xs^2)*Pl_, xv, tv)))  #src
             w_W = max(w_W, abs(ev(u_th - (ed(Dx(Uf))/(xs*l*(l+1)))*dPl, xv, tv)))  #src
         end  #src
-        ## (c) e_rtheta = L2[U] dP_l/dtheta / (2 x l(l+1))  -- the factor BC2 rests on  #src
+        ## (c) e_rtheta = T[psi] dP_l/dtheta / (2 x l(l+1))  -- the factor BC2 rests on  #src
         e_rt = ed((Dt(u_r)/xs + Dx(u_th) - u_th/xs)/2)  #src
         claim_ert = L2(Uf,l)*dPl/(2*xs*l*(l+1))  #src
-        ## (d) omega_phi = -D_l[U] C_l / (x sin theta)  -- the factor the curl rests on  #src
+        ## (d) omega_phi = -D_l[psi] C_l / (x sin theta)  -- the factor the curl rests on  #src
         vort = ed((Dx(xs*u_th) - Dt(u_r))/xs)  #src
         claim_vort = -Dl(Uf,l)*Cl(l)/(xs*sin(ts))  #src
         for (xv,tv) in PTS  #src
@@ -427,17 +447,17 @@ let  #src
     @assert w_dC   < 1e-10 "dC_l/dtheta = sin(theta) P_l failed ($w_dC)"  #src
     @assert w_F    < 1e-10 "u_r radial profile is not U/x^2 ($w_F)"  #src
     @assert w_W    < 1e-10 "u_theta radial profile is not U'/(x l(l+1)) ($w_W)"  #src
-    @assert rel_ert  < 1e-10 "e_rtheta is not L2[U] dP_l / (2 x l(l+1)) (rel $rel_ert)"  #src
-    @assert rel_vort < 1e-10 "vorticity is not -D_l[U] C_l / (x sin theta) (rel $rel_vort)"  #src
+    @assert rel_ert  < 1e-10 "e_rtheta is not T[psi] dP_l / (2 x l(l+1)) (rel $rel_ert)"  #src
+    @assert rel_vort < 1e-10 "vorticity is not -D_l[psi] C_l / (x sin theta) (rel $rel_vort)"  #src
     @assert w_orth < 1e-11 "the C_l are not orthogonal under the stated weight ($w_orth)"  #src
     @assert w_norm < 1e-11 "<C_l,C_l> is not 2/((2l+1) l(l+1)) ($w_norm)"  #src
     println("  ASSERTION 2b OK: every factor in the boxed velocity relations, over l=2..6:")  #src
     @printf("    dC_l/dtheta = sin(theta) P_l                    (%.1e)\n", w_dC)  #src
-    @printf("    F_l = U_l/x^2                                   (%.1e)\n", w_F)  #src
-    @printf("    W_l = U_l'/(x l(l+1))                           (%.1e)\n", w_W)  #src
-    @printf("    e_rtheta = L2[U] dP_l/dtheta / (2 x l(l+1))     (rel %.1e)\n", rel_ert)  #src
-    @printf("    omega_phi = -D_l[U] C_l / (x sin theta)         (rel %.1e)\n", rel_vort)  #src
-    @printf("    <C_l,C_l''> = 2 delta / ((2l+1) l(l+1))          (%.1e, %.1e)\n", w_orth, w_norm)  #src
+    @printf("    u_{r,l} = psi_l/x^2                                   (%.1e)\n", w_F)  #src
+    @printf("    u_{th,l} = psi_l'/(x l(l+1))                           (%.1e)\n", w_W)  #src
+    @printf("    e_rtheta = T[psi] dP_l/dtheta / (2 x l(l+1))     (rel %.1e)\n", rel_ert)  #src
+    @printf("    omega_phi = -D_l[psi] C_l / (x sin theta)         (rel %.1e)\n", rel_vort)  #src
+    @printf("    <C_l,C_m> = 2 delta / ((2l+1) l(l+1))          (%.1e, %.1e)\n", w_orth, w_norm)  #src
     println("    These are the factor-carrying identities the model summary quotes.")  #src
     println("    Physical meaning of a failure: a dropped l(l+1) or 2 would leave the")  #src
     println("    structure of the model intact while making every coefficient wrong.")  #src
@@ -454,17 +474,17 @@ end  #src
 #    when driven by that surface motion;
 # 2. that field carries a viscous normal stress up to the free surface;
 # 3. the stress balance at the surface -- viscous plus pressure against surface
-#    tension -- is projected onto ``P_l`` to give the equation for ``A_l``.
+#    tension -- is projected onto ``P_l`` to give the equation for ``\zeta_l``.
 #
 # With a constant viscosity all three steps preserve the mode. A surface
 # deformation ``\propto P_l`` drives an interior field whose angular dependence
 # is still ``P_l``, its stress at the surface is still ``\propto P_l``, and step 3
 # picks out one equation per mode by orthogonality. That is why Reid obtains one
 # characteristic equation per ``l``. Collecting them into a vector
-# ``\bm A=(A_2,\ldots,A_M)^{\mathsf T}``,
+# ``\bm\zeta=(A_2,\ldots,A_M)^{\mathsf T}``,
 #
 # ```math
-# \bm{\ddot A} \;+\; 2\bm\Lambda\,\bm{\dot A} \;+\; \bm\Omega\,\bm A
+# \bm{\ddot\zeta} \;+\; 2\bm\Lambda\,\bm{\dot\zeta} \;+\; \bm\Omega\,\bm\zeta
 #   \;+\; \bm b \;=\; 0 ,
 # \qquad
 # \bm\Lambda=\operatorname{diag}(\lambda_l),
@@ -472,7 +492,7 @@ end  #src
 # \bm\Omega=\operatorname{diag}(\omega_l^2),
 # ```
 #
-# where ``\bm b`` has entries ``l\,B_l``, the contact pressure the wall applies
+# where ``\bm b`` has entries ``l\,p_{c,l}``, the contact pressure the wall applies
 # while the drop is touching it. ``\bm b`` is kinematic and geometric; no
 # rheology enters it, and nothing below changes it. Both matrices are diagonal,
 # and that is the entire content of the Newtonian model.
@@ -563,24 +583,24 @@ end  #src
 # ```
 #
 # The vorticity of a Stokes stream function is
-# ``\omega_\varphi=-\sum_l\mathcal D_l[U_l]\,C_l/(x\sin\theta)`` with
+# ``\omega_\varphi=-\sum_l\mathcal D_l[\psi_l]\,C_l/(x\sin\theta)`` with
 # ``\mathcal D_l=d^2/dx^2-l(l+1)/x^2``. Multiplying the curled equation by
 # ``-x\sin\theta`` and projecting onto ``C_l`` -- the Gegenbauer functions are
-# orthogonal under ``\langle A,B\rangle=\int_0^\pi AB\,d\theta/\sin\theta`` --
+# orthogonal under ``\langle f,g\rangle=\int_0^\pi fg\,d\theta/\sin\theta`` --
 # leaves one equation per mode:
 #
 # ```math
 # \boxed{\;
-# \partial_t\,\mathcal D_l[U_l]
-#   \;=\; \mathrm{Oh}\sum_{l''}\mathcal R_{l l''}\bigl[U_{l''};\hat\eta\bigr],
+# \partial_t\,\mathcal D_l[\psi_l]
+#   \;=\; \mathrm{Oh}\sum_{m}\mathcal R_{l m}\bigl[\psi_{m};\hat\eta\bigr],
 # \qquad 0<x<1 \;}
 # ```
 #
 # ```math
-# \mathcal R_{l l''}[U_{l''};\hat\eta] \;\equiv\;
+# \mathcal R_{l m}[\psi_{m};\hat\eta] \;\equiv\;
 #   \frac{\bigl\langle\,
 #     -x\sin\theta\,\bigl[\nabla\times\nabla\!\cdot\!(2\hat\eta\bm e)\bigr]_\varphi
-#     \bigr|_{\psi=U_{l''}C_{l''}}
+#     \bigr|_{\psi=\psi_{m}C_{m}}
 #   ,\;C_l\bigr\rangle}{\langle C_l,C_l\rangle} .
 # ```
 #
@@ -589,15 +609,15 @@ end  #src
 #
 # **It is stated in time, not in frequency.** Reid's ``q^2=\sigma/\nu`` is an
 # eigenvalue and presupposes a single normal mode. Nothing in an impacting drop
-# is a normal mode -- ``A_l(t)`` is whatever the impact makes it -- and once
+# is a normal mode -- ``\zeta_l(t)`` is whatever the impact makes it -- and once
 # ``\eta`` depends on the state there is no time-independent operator to take
 # eigenvalues *of*. The equation above is a parabolic evolution for the interior
 # vorticity and needs no such assumption. Replacing it by an instantaneous
 # eigenproblem is a genuine approximation, made and priced on the companion
 # page.
 #
-# **It couples the modes.** The sum over ``l''`` is the substance of the
-# problem: mode ``l''`` drives mode ``l`` through the viscosity field. That is
+# **It couples the modes.** The sum over ``m`` is the substance of the
+# problem: mode ``m`` drives mode ``l`` through the viscosity field. That is
 # not a failure of technique. It is the physical statement that a fluid whose
 # viscosity varies from place to place cannot respond to each surface harmonic
 # independently, because the harmonics no longer see the same fluid. *How far
@@ -606,44 +626,44 @@ end  #src
 # ### The diagonal, and where Reid sits
 #
 # Expand the viscosity in the same angular basis,
-# ``\eta=\sum_{l'}\eta_{l'}(x)P_{l'}(\cos\theta)``. The term ``l'=0`` is the
-# spherically symmetric part, and it contributes only to ``l=l''``. Its
+# ``\eta=\sum_{k}\eta_{k}(x)P_{k}(\cos\theta)``. The term ``k=0`` is the
+# spherically symmetric part, and it contributes only to ``l=m``. Its
 # contribution is a genuine radial operator, and it is worth having explicitly
 # because it is the one piece of the problem that can be written in closed form:
 #
 # ```math
 # \boxed{\;
-# \mathcal R_{l l}\big|_{l'=0} \;=\; \mathcal R_l[U;\eta] \;=\;
-#   \eta\,\mathcal D_l^{\,2}[U]
-# \;+\; 2\eta'(x)\,\frac{d}{dx}\!\Bigl(\mathcal D_l[U]-\frac{U'}{x}\Bigr)
-# \;+\; \eta''(x)\,\mathcal L_2[U] \;}
+# \mathcal R_{l l}\big|_{k=0} \;=\; \mathcal R_l[\psi;\eta] \;=\;
+#   \eta\,\mathcal D_l^{\,2}[\psi]
+# \;+\; 2\eta'(x)\,\frac{d}{dx}\!\Bigl(\mathcal D_l[\psi]-\frac{\psi'}{x}\Bigr)
+# \;+\; \eta''(x)\,\mathcal T[\psi] \;}
 # ```
 #
 # ```math
-# \mathcal L_2[U]\;\equiv\;U''-\frac{2}{x}U'+\frac{l(l+1)}{x^2}U .
+# \mathcal T[\psi]\;\equiv\;\psi''-\frac{2}{x}\psi'+\frac{l(l+1)}{x^2}\psi .
 # ```
 #
 # Three things read off it.
 #
 # **Reid is the constant-viscosity case.** Setting ``\eta'=\eta''=0`` leaves
-# ``\eta\,\mathcal D_l^2[U]``, so the interior equation becomes
-# ``\partial_t\mathcal D_l[U_l]=\mathrm{Oh}\,\mathcal D_l^2[U_l]``: vorticity
-# diffusion. Substituting a normal mode ``U_l\propto e^{-\sigma t}`` gives
-# ``\mathcal D_l(\mathcal D_l+q^2)[U_l]=0`` with ``q^2=\sigma/\mathrm{Oh}``,
+# ``\eta\,\mathcal D_l^2[\psi]``, so the interior equation becomes
+# ``\partial_t\mathcal D_l[\psi_l]=\mathrm{Oh}\,\mathcal D_l^2[\psi_l]``: vorticity
+# diffusion. Substituting a normal mode ``\psi_l\propto e^{-\sigma t}`` gives
+# ``\mathcal D_l(\mathcal D_l+q^2)[\psi_l]=0`` with ``q^2=\sigma/\mathrm{Oh}``,
 # which is Reid's Eq. 9. Nothing has been added to recover it; the
 # constant-viscosity theory is the diagonal of this one, at one harmonic.
 #
 # **The order of the equation does not change.** The highest derivative is
-# ``\eta U''''``; ``\eta'`` reaches only ``U'''`` and ``\eta''`` only ``U''``.
-# The operator is fourth order in ``U``, exactly as Reid's is, so the solution
+# ``\eta \psi''''``; ``\eta'`` reaches only ``\psi'''`` and ``\eta''`` only ``\psi''``.
+# The operator is fourth order in ``\psi``, exactly as Reid's is, so the solution
 # space is still four-dimensional and the problem still closes on the same
 # number of boundary conditions. A variable viscosity changes the coefficients
 # of the interior problem; it does not change its type.
 #
 # **``\eta''`` enters through the tangential-stress operator.** The
-# ``\mathcal L_2`` above is not a new object: it is the operator whose vanishing
+# ``\mathcal T`` above is not a new object: it is the operator whose vanishing
 # at the surface is BC2 below. It appears here because
-# ``\mathcal L_2[U]\propto e_{r\theta}``, and the second radial derivative of the
+# ``\mathcal T[\psi]\propto e_{r\theta}``, and the second radial derivative of the
 # viscosity couples to precisely the shear component of the strain.
 #
 # ### The boundary conditions
@@ -660,18 +680,18 @@ end  #src
 # ```math
 # \text{BC2 (tangential):}\qquad \tau_{r\theta}\big|_{x=1}=2\eta\,e_{r\theta}=0
 # \;\Longleftrightarrow\; e_{r\theta}\big|_{x=1}=0
-# \;\Longleftrightarrow\; \mathcal L_2[U]\big|_{x=1}=0 ,
+# \;\Longleftrightarrow\; \mathcal T[\psi]\big|_{x=1}=0 ,
 # ```
 #
 # where the first equivalence holds because ``\eta(\dot\gamma)\ge\eta_\infty>0``
 # everywhere, so the scalar factor cannot vanish. **BC2 is therefore
 # rheology-agnostic for every fluid in the admissible class**, and the whole
-# ``\tau_{r\theta}=0\Rightarrow\mathcal L_2[U]=0`` reduction carries over
+# ``\tau_{r\theta}=0\Rightarrow\mathcal T[\psi]=0`` reduction carries over
 # verbatim.
 #
 # The third surface condition -- the balance of normal stress against surface
 # tension -- is **not** a boundary condition on the interior problem. Projected
-# onto ``P_l`` it *is* the equation of motion for ``A_l``, and that projection is
+# onto ``P_l`` it *is* the equation of motion for ``\zeta_l``, and that projection is
 # what produces the coefficient matrices. It is carried out two sections below.
 # This is where the rheology lands: once ``\eta`` varies with ``\theta``, its
 # value at the surface is a field rather than a number, and projecting that
@@ -731,7 +751,7 @@ let  #src
     @assert all(abs(x-1) < 1e-9 for x in rats) "constant eta did not return Reid's operator with the right power of eta"  #src
 
     ## (ii-b) the BOXED radial operator itself. The page now states  #src
-    ##     R_l[U;eta] = eta*D_l^2[U] + 2*eta' d/dx(D_l[U] - U'/x) + eta''*L2[U]  #src
+    ##     R_l[psi;eta] = eta*D_l^2[psi] + 2*eta' d/dx(D_l[psi] - psi'/x) + eta''*T[psi]  #src
     ## as an exact result, so it is checked as one -- against the curl computed  #src
     ## from scratch, for several U and several eta(x), at several (r,theta).  #src
     ## A failure here would mean the interior equation printed on the page is  #src
@@ -743,7 +763,7 @@ let  #src
     ## against the largest magnitude over the sweep -- not pointwise. A         #src
     ## pointwise relative error is meaningless wherever the operator genuinely  #src
     ## vanishes, and it does vanish here: for U = x^(l+1) (harmonic, so         #src
-    ## D_l[U] = 0) and eta = 2 - 0.15x^2 the eta' and eta'' terms cancel        #src
+    ## D_l[psi] = 0) and eta = 2 - 0.15x^2 the eta' and eta'' terms cancel        #src
     ## identically, 1.8x - 1.8x = 0. That is a property of the operator, not a  #src
     ## failure, and an earlier pointwise version of this check reported it as   #src
     ## a 100% error.                                                            #src
@@ -797,15 +817,15 @@ end  #src
 
 # ### How far the coupling reaches
 #
-# The sum over ``l''`` in the interior equation looks unbounded, and if it were,
+# The sum over ``m`` in the interior equation looks unbounded, and if it were,
 # the problem would be no easier to solve than the original partial differential
-# equation. It is not unbounded. Each viscosity harmonic ``l'`` couples ``l''``
+# equation. It is not unbounded. Each viscosity harmonic ``k`` couples ``m``
 # to ``l`` only when
 #
 # ```math
-# |l-l''|\le l'\le l+l''
+# |l-m|\le k\le l+m
 # \qquad\text{and}\qquad
-# l+l'+l'' \ \text{even},
+# l+k+m \ \text{even},
 # ```
 #
 # which is the same selection rule the surface projection obeys two sections
@@ -836,7 +856,7 @@ end  #src
 let  #src
     ## Project the phi-curl of div(2 eta e), driven by a single mode l'', onto  #src
     ## C_l for a range of l, and report the band. eta is taken as the pure      #src
-    ## harmonic P_l'(mu) so the (l', l'') pair under test is unambiguous.       #src
+    ## harmonic P_l'(mu) so the (k, m) pair under test is unambiguous.       #src
     ##                                                                          #src
     ## Everything is polynomial in mu once the sin factors are handled          #src
     ## analytically, so FIXED Gauss-Legendre nodes are exact and never land on  #src
@@ -1019,73 +1039,73 @@ end  #src
 # produces an equation of motion -- BC1 fixes the kinematics and BC2 constrains
 # the interior profile. Multiply it by ``P_l(\mu)`` and integrate over
 # ``\mu\in[-1,1]``. Writing the surface motion as
-# ``\dot\zeta=R\sum_{l''}\dot A_{l''}P_{l''}``, so that mode ``l''`` enters with
-# strength ``\dot A_{l''}``, the contribution of the viscous stress to the
-# equation for ``A_l`` is a double sum over the driving mode ``l''`` and the
-# viscosity harmonic ``l'``, of terms
+# ``\dot\zeta=R\sum_{m}\dot\zeta_{m}P_{m}``, so that mode ``m`` enters with
+# strength ``\dot\zeta_{m}``, the contribution of the viscous stress to the
+# equation for ``\zeta_l`` is a double sum over the driving mode ``m`` and the
+# viscosity harmonic ``k``, of terms
 #
 # ```math
-# \sum_{l''}\sum_{l'} \dot A_{l''}\Bigl[\,
-#   G^{l'}_{l l''}\!\!\int_0^1\!\bigl(\eta_{l'}\mathcal L_{l''}[F_{l''}]
-#                                      + \eta'_{l'}F'_{l''}\bigr)x^2dx
+# \sum_{m}\sum_{k} \dot\zeta_{m}\Bigl[\,
+#   G^{k}_{l m}\!\!\int_0^1\!\bigl(\eta_{k}\mathcal L_{m}[u_{r,m}]
+#                                      + \eta'_{k}u_{r,m}'\bigr)x^2dx
 # \;+\;
-#   H^{l'}_{l l''}\!\!\int_0^1\!\frac{\eta_{l'}}{2x}
-#      \Bigl(W'_{l''}-\frac{W_{l''}}{x}-\frac{F_{l''}}{x}\Bigr)x^2dx
+#   H^{k}_{l m}\!\!\int_0^1\!\frac{\eta_{k}}{2x}
+#      \Bigl(u_{\theta,m}'-\frac{u_{\theta,m}}{x}-\frac{u_{r,m}}{x}\Bigr)x^2dx
 # \,\Bigr],
 # ```
 #
 # where the two angular factors are
 #
 # ```math
-# G^{l'}_{l l''}=\frac{2l+1}{2}\!\int_{-1}^{1}\!P_l\,P_{l'}\,P_{l''}\,d\mu ,
+# G^{k}_{l m}=\frac{2l+1}{2}\!\int_{-1}^{1}\!P_l\,P_{k}\,P_{m}\,d\mu ,
 # \qquad
-# H^{l'}_{l l''}=\frac{2l+1}{2}\!\int_{-1}^{1}\!P_l\,(1-\mu^2)\,P'_{l'}\,P'_{l''}\,d\mu ,
+# H^{k}_{l m}=\frac{2l+1}{2}\!\int_{-1}^{1}\!P_l\,(1-\mu^2)\,P'_{k}\,P'_{m}\,d\mu ,
 # ```
 #
 # and the radial factors are exactly the ones the three viscous contributions
 # produce. From ``\eta\nabla^2\bm u``, the radial Laplacian of the driving mode's
 # profile,
-# ``\mathcal L_{l''}[F_{l''}]=F''_{l''}+\tfrac{2}{x}F'_{l''}-\tfrac{l''(l''+1)}{x^2}F_{l''}``,
-# carried by ``\eta_{l'}`` itself. From the radial part of
-# ``2(\nabla\eta)\cdot\bm e``, the radial strain amplitude ``F'_{l''}``, carried by
-# ``\eta'_{l'}``. From its polar part, the ``e_{r\theta}`` amplitude
-# ``\tfrac12(W'_{l''}-W_{l''}/x-F_{l''}/x)``, carried by ``\eta_{l'}/x`` -- and this
+# ``\mathcal L_{m}[u_{r,m}]=F''_{m}+\tfrac{2}{x}u_{r,m}'-\tfrac{m(m+1)}{x^2}u_{r,m}``,
+# carried by ``\eta_{k}`` itself. From the radial part of
+# ``2(\nabla\eta)\cdot\bm e``, the radial strain amplitude ``u_{r,m}'``, carried by
+# ``\eta'_{k}``. From its polar part, the ``e_{r\theta}`` amplitude
+# ``\tfrac12(u_{\theta,m}'-u_{\theta,m}/x-u_{r,m}/x)``, carried by ``\eta_{k}/x`` -- and this
 # is the one term that pairs with ``H`` rather than ``G``, because its angular
 # factor carries the two derivatives.
 #
-# ``F_{l''}`` and ``W_{l''}`` are the radial profiles of ``u_r`` and
+# ``u_{r,m}`` and ``u_{\theta,m}`` are the radial profiles of ``u_r`` and
 # ``u_\theta`` introduced with the modal expansion; both are determined by
-# ``U_{l''}``, hence by the interior problem of the previous section. They are
+# ``\psi_{m}``, hence by the interior problem of the previous section. They are
 # named ``F`` and ``W`` so that the letter ``G`` belongs to the Gaunt
 # coefficient alone.
 #
 # The second angular form is not a new object. Using
-# ``(1-\mu^2)P'_n=\tfrac{n(n+1)}{2n+1}(P_{n-1}-P_{n+1})`` and expanding
-# ``P'_{l''}`` in Legendre polynomials of lower degree turns it into a finite
+# ``(1-\mu^2)P'_l=\tfrac{l(l+1)}{2l+1}(P_{l-1}-P_{l+1})`` and expanding
+# ``P'_{m}`` in Legendre polynomials of lower degree turns it into a finite
 # combination of integrals of the first kind at shifted indices. **Every angular
 # integral in the problem is therefore of one type**, and it is worth a name:
 #
 # ```math
-# G^{l'}_{l l''} \;\equiv\; \frac{2l+1}{2}\int_{-1}^{1}P_l\,P_{l'}\,P_{l''}\,d\mu
+# G^{k}_{l m} \;\equiv\; \frac{2l+1}{2}\int_{-1}^{1}P_l\,P_{k}\,P_{m}\,d\mu
 # ```
 #
 # a Gaunt coefficient, pure geometry, depending on three integers and on
 # nothing about the fluid. Likewise the radial integral depends only on
-# ``(l,l',l'')`` and on the current viscosity profile; write it
-# ``A^{(i)}_{l l''}[\eta_{l'}]`` and ``B^{(i)}_{l l''}[\eta_{l'}]`` -- the two
+# ``(l,k,m)`` and on the current viscosity profile; write it
+# ``A^{(i)}_{l m}[\eta_{k}]`` and ``B^{(i)}_{l m}[\eta_{k}]`` -- the two
 # radial integrals written out above, pairing with ``G`` and ``H`` respectively.
-# The index ``i`` distinguishes the terms that end up multiplying ``\dot A``
+# The index ``i`` distinguishes the terms that end up multiplying ``\dot\zeta``
 # from those multiplying ``A``.
 #
 # ### The result
 #
 # With those names the double sum collapses. Both angular factors obey the same
-# selection rule, proved below, so the sum over ``l'`` terminates. Define
+# selection rule, proved below, so the sum over ``k`` terminates. Define
 #
 # ```math
-# \mathcal D^{(i)}_{l l''} \;=\; \sum_{l'}\Bigl[\,
-#   G^{l'}_{l l''}\,A^{(i)}_{l l''}[\eta_{l'}]
-#   \;+\; H^{l'}_{l l''}\,B^{(i)}_{l l''}[\eta_{l'}]\,\Bigr],
+# \mathcal D^{(i)}_{l m} \;=\; \sum_{k}\Bigl[\,
+#   G^{k}_{l m}\,A^{(i)}_{l m}[\eta_{k}]
+#   \;+\; H^{k}_{l m}\,B^{(i)}_{l m}[\eta_{k}]\,\Bigr],
 # ```
 #
 # and the modal system takes exactly the Newtonian form with the two diagonal
@@ -1093,8 +1113,8 @@ end  #src
 #
 # ```math
 # \boxed{\;
-# \bm{\ddot A} \;+\; \mathcal D^{(2)}\,\bm{\dot A}
-#              \;+\; \mathcal D^{(1)}\,\bm A \;+\; \bm b \;=\; 0 \;}
+# \bm{\ddot\zeta} \;+\; \mathcal D^{(2)}\,\bm{\dot\zeta}
+#              \;+\; \mathcal D^{(1)}\,\bm\zeta \;+\; \bm b \;=\; 0 \;}
 # ```
 #
 # ``\mathcal D^{(2)}`` generalises ``2\bm\Lambda`` and ``\mathcal D^{(1)}``
@@ -1108,17 +1128,17 @@ end  #src
 # ``\eta`` is a field over the drop, yet ``\mathcal D`` carries no ``x`` and no
 # ``\theta``. That is not an inconsistency: **both integrals above are
 # definite**, so the spatial dependence is integrated out and what survives is
-# one number per ``(l,l'')`` pair. ``G`` and ``H`` integrate the angle away over
+# one number per ``(l,m)`` pair. ``G`` and ``H`` integrate the angle away over
 # ``\mu\in[-1,1]``; ``A^{(i)}`` and ``B^{(i)}`` integrate the radius away over
 # ``x\in[0,1]``.
 #
 # What does *not* integrate away is the dependence on the **state**. The
-# coefficients ``\eta_{l'}(x)`` entering those integrals are the Legendre
+# coefficients ``\eta_{k}(x)`` entering those integrals are the Legendre
 # coefficients of ``\eta\bigl(\dot\gamma(x,\theta,t)\bigr)``, and ``\dot\gamma``
 # is built from the current modal velocities. So
 #
 # ```math
-# \mathcal D^{(i)} \;=\; \mathcal D^{(i)}\bigl[\bm{\dot A}(t)\bigr] :
+# \mathcal D^{(i)} \;=\; \mathcal D^{(i)}\bigl[\bm{\dot\zeta}(t)\bigr] :
 # \qquad\text{space integrated out, state dependence retained.}
 # ```
 #
@@ -1167,15 +1187,15 @@ end  #src
 
 # ### The selection rule
 #
-# The angular factor ``G^{l'}_{l l''}`` is not merely small for most index
+# The angular factor ``G^{k}_{l m}`` is not merely small for most index
 # triples -- it is exactly zero for most of them. The rule is
 #
 # ```math
-# G^{l'}_{l l''} = 0
+# G^{k}_{l m} = 0
 # \qquad\text{unless}\qquad
-# |l-l''| \;\le\; l' \;\le\; l+l''
+# |l-m| \;\le\; k \;\le\; l+m
 # \qquad\text{and}\qquad
-# l+l'+l''\ \text{is even}.
+# l+k+m\ \text{is even}.
 # ```
 #
 # It is a statement about three integers, so it holds for every fluid, every
@@ -1191,25 +1211,25 @@ end  #src
 # That is immediate from orthogonality, since any such polynomial is a finite
 # combination of ``P_0,\ldots,P_{N-1}``.
 #
-# Now ``P_l`` has degree exactly ``l``, so the product ``P_lP_{l''}`` is a
-# polynomial of degree exactly ``l+l''``. Therefore:
+# Now ``P_l`` has degree exactly ``l``, so the product ``P_lP_{m}`` is a
+# polynomial of degree exactly ``l+m``. Therefore:
 #
-# * **Upper bound.** If ``l'>l+l''`` then ``P_{l'}`` is orthogonal to
-#   ``P_lP_{l''}``, a polynomial of degree ``l+l''<l'``. Hence
-#   ``G^{l'}_{l l''}=0``.
-# * **Lower bound.** Take ``l\ge l''`` without loss of generality. If
-#   ``l'<l-l''`` then ``P_{l'}P_{l''}`` has degree ``l'+l''<l``, and ``P_l`` is
-#   orthogonal to it. Hence ``G^{l'}_{l l''}=0`` again.
+# * **Upper bound.** If ``k>l+m`` then ``P_{k}`` is orthogonal to
+#   ``P_lP_{m}``, a polynomial of degree ``l+m<k``. Hence
+#   ``G^{k}_{l m}=0``.
+# * **Lower bound.** Take ``l\ge m`` without loss of generality. If
+#   ``k<l-m`` then ``P_{k}P_{m}`` has degree ``k+m<l``, and ``P_l`` is
+#   orthogonal to it. Hence ``G^{k}_{l m}=0`` again.
 # * **Parity.** ``P_l(-\mu)=(-1)^lP_l(\mu)``, so the integrand has parity
-#   ``(-1)^{l+l'+l''}``. An odd integrand over ``[-1,1]`` integrates to zero.
+#   ``(-1)^{l+k+m}``. An odd integrand over ``[-1,1]`` integrates to zero.
 #
-# Together: ``G^{l'}_{l l''}=0`` unless ``|l-l''|\le l'\le l+l''`` **and**
-# ``l+l'+l''`` is even. No special-function machinery is needed -- degree
+# Together: ``G^{k}_{l m}=0`` unless ``|l-m|\le k\le l+m`` **and**
+# ``l+k+m`` is even. No special-function machinery is needed -- degree
 # counting and parity give the whole selection rule, and both bounds are the
 # *same* argument applied to different factors.
 #
 # The consequence for this model is the upper bound. The shape expansion stops
-# at ``l=M``, so ``l+l''\le 2M``, so viscosity harmonics above ``l'=2M`` are
+# at ``l=M``, so ``l+m\le 2M``, so viscosity harmonics above ``k=2M`` are
 # annihilated exactly. The check below is a regression test on that proof, not
 # its justification.
 
@@ -1240,8 +1260,8 @@ end  #src
 
 # ### What the rule does to the matrix
 #
-# Read the upper bound backwards: mode ``l`` reaches mode ``l''`` only through
-# viscosity harmonics with ``l'\ge|l-l''|``. So if ``\eta`` has angular content
+# Read the upper bound backwards: mode ``l`` reaches mode ``m`` only through
+# viscosity harmonics with ``k\ge|l-m|``. So if ``\eta`` has angular content
 # only up to some ``L_\eta``, no pair of modes further apart than ``L_\eta`` is
 # coupled at all, and ``\mathcal D`` is banded with half-bandwidth ``L_\eta``.
 # The middle panel of the figure above is this banded case.
@@ -1288,12 +1308,12 @@ end  #src
 # ### The Newtonian case, as a check
 #
 # A constant viscosity has a single nonzero coefficient, ``\eta_0``, at
-# ``l'=0``. Since ``P_0=1``, the angular factor collapses to the ordinary
+# ``k=0``. Since ``P_0=1``, the angular factor collapses to the ordinary
 # orthogonality relation,
 #
 # ```math
-# G^{0}_{l l''} \;=\; \frac{2l+1}{2}\int_{-1}^{1}P_l\,P_{l''}\,d\mu
-#   \;=\; \delta_{l l''},
+# G^{0}_{l m} \;=\; \frac{2l+1}{2}\int_{-1}^{1}P_l\,P_{m}\,d\mu
+#   \;=\; \delta_{l m},
 # ```
 #
 # the sums lose every off-diagonal term, and the two matrices collapse to the
@@ -1305,7 +1325,7 @@ end  #src
 #
 # ### The constitutive law
 #
-# The matrices need ``\eta_{l'}(x,t)``, which comes from the fluid. Under the
+# The matrices need ``\eta_{k}(x,t)``, which comes from the fluid. Under the
 # Cross law -- the model this repository's validation fluid is characterised
 # with, and its ``p=-1`` slice --
 #
@@ -1313,13 +1333,13 @@ end  #src
 # \frac{\eta(x,\theta,t)}{\eta_0}
 #   \;=\; \varepsilon_\infty
 #       \;+\; \frac{1-\varepsilon_\infty}
-#                  {1+\bigl(K\,\dot\gamma(x,\theta,t)\bigr)^{m}} ,
+#                  {1+\bigl(K\,\dot\gamma(x,\theta,t)\bigr)^{a}} ,
 # \qquad
 # \varepsilon_\infty \equiv \frac{\eta_\infty}{\eta_0},
 # ```
 #
 # where ``K`` is the fluid's time constant (written ``\lambda_c`` in the
-# Carreau-Yasuda parametrisation) and ``m`` its thinning exponent (written
+# Carreau-Yasuda parametrisation) and ``a`` its thinning exponent (written
 # ``a``). The shear rate ``\dot\gamma=\sqrt{2\,\bm e\!:\!\bm e}`` is built from
 # the drop's current state; the next section says exactly how, because that
 # step is where the model is easiest to get wrong.
@@ -1330,34 +1350,34 @@ end  #src
 # before the algebra goes further.
 #
 # **The shear rate is a field, not a per-mode number.** The surface moves at
-# ``\dot\zeta=\sum_l\dot A_lP_l``, so the interior velocity is driven by the
+# ``\dot\zeta=\sum_l\dot\zeta_lP_l``, so the interior velocity is driven by the
 # modal *velocities*, and superposes over modes. Strain rate is linear in
 # velocity, so the strain **tensor** superposes too:
 #
 # ```math
-# \bm e(x,\theta,t) \;=\; \sum_{l=2}^{M}\dot A_l(t)\;\bm e^{(l)}(x,\theta).
+# \bm e(x,\theta,t) \;=\; \sum_{l=2}^{M}\dot\zeta_l(t)\;\bm e^{(l)}(x,\theta).
 # ```
 #
 # The invariant does not:
 #
 # ```math
 # \dot\gamma \;=\; \sqrt{2\,\bm e\!:\!\bm e}
-#   \;=\; \Bigl(2\sum_{l,l''}\dot A_l\dot A_{l''}\;
-#          \bm e^{(l)}\!:\!\bm e^{(l'')}\Bigr)^{1/2}.
+#   \;=\; \Bigl(2\sum_{l,m}\dot\zeta_l\dot\zeta_{m}\;
+#          \bm e^{(l)}\!:\!\bm e^{(m)}\Bigr)^{1/2}.
 # ```
 #
-# It is quadratic in the field and *then* square-rooted, so the ``l\neq l''``
+# It is quadratic in the field and *then* square-rooted, so the ``l\neq m``
 # cross terms do not drop out. Once more than one mode is active there is no
 # such thing as "mode ``l``'s shear rate".
 #
 # Nothing about ``\eta(\dot\gamma)`` is polynomial, so the coefficients
-# ``\eta_{l'}(x)`` have no closed form, and neither do the radial and angular
-# integrals built from them. ``\eta_{l'}`` is defined by its Legendre
+# ``\eta_{k}(x)`` have no closed form, and neither do the radial and angular
+# integrals built from them. ``\eta_{k}`` is defined by its Legendre
 # projection at each radius,
 #
 # ```math
-# \eta_{l'}(x,t)=\frac{2l'+1}{2}\int_{-1}^{1}
-#   \eta\bigl(\dot\gamma(x,\mu,t)\bigr)P_{l'}(\mu)\,d\mu ,
+# \eta_{k}(x,t)=\frac{2k+1}{2}\int_{-1}^{1}
+#   \eta\bigl(\dot\gamma(x,\mu,t)\bigr)P_{k}(\mu)\,d\mu ,
 # ```
 #
 # with ``\dot\gamma`` evaluated from the *full* superposition of active modes
@@ -1376,11 +1396,11 @@ end  #src
 # matrices, and the equation is honestly written
 #
 # ```math
-# \ddot A_l + \sum_{l''}\Bigl[\mathcal D^{(2)}_{l l''}(\bm{\dot A})\,\dot A_{l''}
-#   + \mathcal D^{(1)}_{l l''}(\bm{\dot A})\,A_{l''}\Bigr] + l\,B_l = 0 .
+# \ddot\zeta_l + \sum_{m}\Bigl[\mathcal D^{(2)}_{l m}(\bm{\dot\zeta})\,\dot\zeta_{m}
+#   + \mathcal D^{(1)}_{l m}(\bm{\dot\zeta})\,\zeta_{m}\Bigr] + l\,p_{c,l} = 0 .
 # ```
 #
-# This is *quasi-linear*: linear in ``(A_l,\dot A_l)`` at frozen coefficients,
+# This is *quasi-linear*: linear in ``(\zeta_l,\dot\zeta_l)`` at frozen coefficients,
 # nonlinear through them. No rearrangement turns it into a linear ODE, and
 # saying "the two scalars become matrices" without saying the matrices depend
 # on the state makes it look like one.
@@ -1408,7 +1428,7 @@ end  #src
 # ``F=x-1-\zeta`` and expanding to first order in ``\zeta``,
 #
 # ```math
-# \nabla\cdot\bm n \;=\; 2 \;+\; \sum_{l\ge2}(l-1)(l+2)\,A_l\,P_l(\mu)
+# \nabla\cdot\bm n \;=\; 2 \;+\; \sum_{l\ge2}(l-1)(l+2)\,\zeta_l\,P_l(\mu)
 #   \;+\;O(\zeta^2) .
 # ```
 #
@@ -1427,21 +1447,21 @@ end  #src
 #
 # ```math
 # \mathfrak F \;=\; -2\pi\int_{-1}^{1}p_c(\mu)\,\mu\,d\mu
-#   \;=\; -\frac{4\pi}{3}B_1 ,
+#   \;=\; -\frac{4\pi}{3}p_{c,1} ,
 # ```
 #
-# because ``\mu=P_1`` and every other term in ``p_c=\sum_nB_nP_n`` is orthogonal
+# because ``\mu=P_1`` and every other term in ``p_c=\sum_lp_{c,l}P_l`` is orthogonal
 # to it. So the net force is carried *entirely* by the single coefficient
-# ``B_1``, and every other pressure coefficient is invisible to the centre of
+# ``p_{c,1}``, and every other pressure coefficient is invisible to the centre of
 # mass. Dividing by the drop's non-dimensional mass, which is also ``4\pi/3``,
 #
 # ```math
-# \dot v = -\mathrm{Bo} - B_1 .
+# \dot v = -\mathrm{Bo} - p_{c,1} .
 # ```
 #
 # The two ``4\pi/3`` factors cancelling is why the equation of motion looks as
-# though ``B_1`` *were* the force. It is not -- it is one coefficient of the
-# pressure expansion, and ``\mathfrak F=-\tfrac{4\pi}{3}B_1`` is the relation
+# though ``p_{c,1}`` *were* the force. It is not -- it is one coefficient of the
+# pressure expansion, and ``\mathfrak F=-\tfrac{4\pi}{3}p_{c,1}`` is the relation
 # between them.
 
 let  #src
@@ -1510,7 +1530,7 @@ let  #src
     end  #src
 
     ## SUM-INT: the relative coefficient of the inertial and viscous terms. With   #src
-    ## u ~ exp(-sigma t) the interior equation reads -sigma D_l[U] = Oh R_l[U],     #src
+    ## u ~ exp(-sigma t) the interior equation reads -sigma D_l[psi] = Oh R_l[U],     #src
     ## and at constant eta that must be Reid's D_l(D_l + q^2)U = 0 with            #src
     ## q^2 = sigma/Oh -- which is what fixes the Oh prefactor.                     #src
     @variables sig Ohs  #src
@@ -1518,7 +1538,7 @@ let  #src
     for l in 2:5  #src
         Uf = rr^(l+1) + 0.7rr^(l+3) - 0.3rr^(l+5)  #src
         Dl_(f) = ed2(Dr(Dr(f))) - l*(l+1)*f/rr^2  #src
-        lhs = Ohs*Dl_(Dl_(Uf)) + sig*Dl_(Uf)          # from -sigma D_l[U] = Oh D_l^2[U]  #src
+        lhs = Ohs*Dl_(Dl_(Uf)) + sig*Dl_(Uf)          # from -sigma D_l[psi] = Oh D_l^2[psi]  #src
         rhs = Ohs*Dl_(Dl_(Uf) + (sig/Ohs)*Uf)         # Reid's D_l(D_l + q^2)U, q^2 = sigma/Oh  #src
         for (xv,_) in XT, (sv,ov) in ((0.7,0.031),(2.3,0.9))  #src
             d = Symbolics.value(Symbolics.substitute(ed2(lhs - rhs),  #src
@@ -1629,69 +1649,69 @@ end  #src
 #
 # | unknown | domain | what it is |
 # |:--|:--|:--|
-# | ``A_l(t)``, ``l\ge2`` | ``t>0`` | surface mode amplitudes |
-# | ``U_l(x,t)``, ``l\ge2`` | ``0<x<1`` | interior stream function profiles |
+# | ``\zeta_l(t)``, ``l\ge2`` | ``t>0`` | surface mode amplitudes |
+# | ``\psi_l(x,t)``, ``l\ge2`` | ``0<x<1`` | interior stream function profiles |
 # | ``p(x,\mu,t)`` | inside the drop | pressure |
-# | ``B_n(t)``, ``n\ge0`` | ``t>0`` | Legendre coefficients of the substrate reaction |
+# | ``p_{c,l}(t)``, ``n\ge0`` | ``t>0`` | Legendre coefficients of the substrate reaction |
 # | ``z(t),\ v(t)`` | ``t>0`` | height of the drop's centre of mass, and its velocity |
 #
 # ``\eta`` is not an unknown: it is a function of the others, given by the
-# constitutive law in (5). Note that the interior profiles ``U_l`` **are** part
+# constitutive law in (5). Note that the interior profiles ``\psi_l`` **are** part
 # of the state. They are eliminated only by the closure discussed on the
 # companion page; here they are evolved.
 #
 # The surface shape, the reaction pressure, and the gap to the substrate are
 #
 # ```math
-# \zeta(\theta,t)=\sum_{l\ge2}A_l(t)P_l(\mu),
+# \zeta(\theta,t)=\sum_{l\ge2}\zeta_l(t)P_l(\mu),
 # \qquad
-# p_c(\theta,t)=\sum_{n\ge0}B_n(t)P_n(\mu),
+# p_c(\theta,t)=\sum_{l\ge0}p_{c,l}(t)P_l(\mu),
 # ```
 # ```math
 # h(\theta,t)=\mu\,\bigl[1+\zeta(\theta,t)\bigr]+z(t) ,
 # ```
 #
 # and the velocity follows from the stream function
-# ``\psi=\sum_l U_l(x,t)C_l(\theta)``, with
+# ``\psi=\sum_l \psi_l(x,t)C_l(\theta)``, with
 # ``C_l=\sin^2\!\theta\,P_l'(\mu)/(l(l+1))``:
 #
 # ```math
 # u_r=\frac{1}{x^2\sin\theta}\frac{\partial\psi}{\partial\theta}
-#   =\sum_l F_l\,P_l(\mu),
+#   =\sum_l u_{r,l}\,P_l(\mu),
 # \qquad
 # u_\theta=-\frac{1}{x\sin\theta}\frac{\partial\psi}{\partial x}
-#   =\sum_l W_l\,\partial_\theta P_l(\mu) ,
+#   =\sum_l u_{\theta,l}\,\partial_\theta P_l(\mu) ,
 # ```
 # ```math
-# F_l=\frac{U_l}{x^2},
+# u_{r,l}=\frac{\psi_l}{x^2},
 # \qquad
-# W_l=\frac{U_l'}{x\,l(l+1)} .
+# u_{\theta,l}=\frac{\psi_l'}{x\,l(l+1)} .
 # ```
 #
 # ### (1) The interior
 #
 # ```math
-# \partial_t\,\mathcal D_l[U_l]
-#   = \mathrm{Oh}\sum_{l''\ge2}\mathcal R_{l l''}\bigl[U_{l''};\eta\bigr],
+# \partial_t\,\mathcal D_l[\psi_l]
+#   = \mathrm{Oh}\sum_{m\ge2}\mathcal R_{l m}\bigl[\psi_{m};\eta\bigr],
 # \qquad 0<x<1,\quad l\ge2,
 # ```
 #
-# with ``\mathcal D_l=d^2/dx^2-l(l+1)/x^2`` and ``\mathcal R_{l l''}`` the
+# with ``\mathcal D_l=d^2/dx^2-l(l+1)/x^2`` and ``\mathcal R_{l m}`` the
 # projection onto ``C_l`` defined in *The interior equation*. Coupling is
-# confined to ``|l-l''|\le l'\le l+l''`` with ``l+l'+l''`` even, so the system is
-# banded. Closed by regularity at ``x=0``, which forces ``U_l\sim x^{l+1}``, and
+# confined to ``|l-m|\le k\le l+m`` with ``l+k+m`` even, so the system is
+# banded. Closed by regularity at ``x=0``, which forces ``\psi_l\sim x^{l+1}``, and
 # at ``x=1`` by
 #
 # ```math
-# \underbrace{U_l\big|_{x=1}=\dot A_l}_{\text{BC1, kinematic}},
+# \underbrace{\psi_l\big|_{x=1}=\dot\zeta_l}_{\text{BC1, kinematic}},
 # \qquad
-# \underbrace{\mathcal L_2[U_l]\big|_{x=1}=0}_{\text{BC2, tangential stress}},
+# \underbrace{\mathcal T[\psi_l]\big|_{x=1}=0}_{\text{BC2, tangential stress}},
 # \qquad
-# \mathcal L_2=\frac{d^2}{dx^2}-\frac{2}{x}\frac{d}{dx}+\frac{l(l+1)}{x^2} .
+# \mathcal T=\frac{d^2}{dx^2}-\frac{2}{x}\frac{d}{dx}+\frac{l(l+1)}{x^2} .
 # ```
 #
 # Note that ``\mathcal D_l`` annihilates ``x^{l+1}``, so the time derivative
-# above does not act on all of ``U_l``: the harmonic part of each profile is
+# above does not act on all of ``\psi_l``: the harmonic part of each profile is
 # fixed by the boundary conditions at each instant rather than evolved. The
 # interior is a **differential-algebraic** system, not an evolution equation.
 #
@@ -1708,31 +1728,31 @@ end  #src
 # (1) removed ``p``, while (3) requires it.
 #
 # The pressure is carried in the same angular basis as everything else,
-# ``p(x,\mu,t)=\sum_{n\ge0}p_n(x,t)P_n(\mu)``, and since the ``P_n`` are
+# ``p(x,\mu,t)=\sum_{l\ge0}p_l(x,t)P_l(\mu)``, and since the ``P_l`` are
 # eigenfunctions of the angular Laplacian each coefficient obeys a radial
 # equation:
 #
 # ```math
-# \mathcal L_n[p_n] \;=\; \mathrm{Oh}\,S_n(x,t),
+# \mathcal L_l[p_l] \;=\; \mathrm{Oh}\,S_l(x,t),
 # \qquad
-# \mathcal L_n = \frac{d^2}{dx^2}+\frac{2}{x}\frac{d}{dx}-\frac{n(n+1)}{x^2} ,
+# \mathcal L_l = \frac{d^2}{dx^2}+\frac{2}{x}\frac{d}{dx}-\frac{l(l+1)}{x^2} ,
 # ```
 #
-# with ``S_n`` the ``n``-th Legendre coefficient of
-# ``\nabla\cdot(\nabla\cdot(2\eta\bm e))`` and ``p_n`` regular at ``x=0``, which
-# forces ``p_n\sim x^n``. The operator ``\mathcal L_n`` is the same radial
+# with ``S_l`` the ``l``-th Legendre coefficient of
+# ``\nabla\cdot(\nabla\cdot(2\eta\bm e))`` and ``p_l`` regular at ``x=0``, which
+# forces ``p_l\sim x^l``. The operator ``\mathcal L_l`` is the same radial
 # Laplacian that appears in the projection integrals of *Carrying the projection
 # through*; it is not a new object.
 #
 # Two things follow. First, the general solution is a particular part driven by
-# ``S_n`` plus a **harmonic** part ``c_n(t)\,x^n``, and the ``c_n`` are fixed by
+# ``S_l`` plus a **harmonic** part ``c_l(t)\,x^l``, and the ``c_l`` are fixed by
 # the surface condition (3) rather than by anything here -- which is the sense in
 # which the pressure is coupled to the surface rather than determined
 # independently of it. Second, when ``\eta`` is constant the source vanishes and
 # only the harmonic part survives,
 #
 # ```math
-# p = \sum_n c_n(t)\,x^nP_n(\mu) ,
+# p = \sum_l c_l(t)\,x^lP_l(\mu) ,
 # ```
 #
 # one amplitude per mode and no differential equation at all. That is exactly the
@@ -1747,15 +1767,15 @@ end  #src
 # **In the angle, everything is spectral, and exactly so.** The surface, the film
 # pressure, the stream function and the fluid pressure are all carried as
 # Legendre or Gegenbauer series with no truncation imposed. That is not a
-# discretisation: ``\{P_n\}`` is complete on ``[-1,1]``, so the expansions are
+# discretisation: ``\{P_l\}`` is complete on ``[-1,1]``, so the expansions are
 # changes of variable, from a function of ``\theta`` to a sequence of functions of
-# ``x`` and ``t``. The reason to do it is that the ``P_n`` are the eigenfunctions
+# ``x`` and ``t``. The reason to do it is that the ``P_l`` are the eigenfunctions
 # of the angular Laplacian on the sphere, which is what turns every angular
-# derivative in the problem into an algebraic factor of ``n(n+1)`` and leaves
-# behind the radial operators ``\mathcal D_l``, ``\mathcal L_n``,
-# ``\mathcal L_2``. The geometry supplies that basis; nothing is chosen.
+# derivative in the problem into an algebraic factor of ``l(l+1)`` and leaves
+# behind the radial operators ``\mathcal D_l``, ``\mathcal L_l``,
+# ``\mathcal T``. The geometry supplies that basis; nothing is chosen.
 #
-# **In the radius, nothing is.** ``U_l(x,t)`` and ``p_n(x,t)`` are left as
+# **In the radius, nothing is.** ``\psi_l(x,t)`` and ``p_l(x,t)`` are left as
 # functions of ``x``, and the equations governing them are differential equations
 # in ``x``, not algebraic relations among coefficients. This is not an oversight
 # and not a gap in the model: the radial direction has no distinguished basis --
@@ -1783,21 +1803,21 @@ end  #src
 # curvature supplying the capillary restoring term through
 #
 # ```math
-# \nabla\cdot\bm n = 2 + \sum_{l\ge2}(l-1)(l+2)A_lP_l(\mu) + O(\zeta^2) .
+# \nabla\cdot\bm n = 2 + \sum_{l\ge2}(l-1)(l+2)\zeta_lP_l(\mu) + O(\zeta^2) .
 # ```
 #
 # Carried out explicitly,
 # the viscous part of this projection is the double sum of *Carrying the
 # projection through*, and it is what the coefficient matrices
 # ``\mathcal D^{(i)}`` collect. Those matrices are functionals of the interior
-# state ``\{U_l\}``, not of ``\bm{\dot A}`` alone.
+# state ``\{\psi_l\}``, not of ``\bm{\dot\zeta}`` alone.
 #
 # ### (4) The drop as a whole
 #
 # ```math
 # \dot z = v,
 # \qquad
-# \dot v = -\mathrm{Bo} - B_1,
+# \dot v = -\mathrm{Bo} - p_{c,1},
 # \qquad
 # v(0) = -\sqrt{\mathrm{We}} ,
 # ```
@@ -1806,13 +1826,13 @@ end  #src
 #
 # ```math
 # \mathfrak F = -\!\oint p_c\,n_z\,dS = -2\pi\!\int_{-1}^{1}p_c\,\mu\,d\mu
-#   = -\frac{4\pi}{3}B_1 .
+#   = -\frac{4\pi}{3}p_{c,1} .
 # ```
 #
-# ``B_1`` is one coefficient of the pressure expansion, not the force; the two
+# ``p_{c,1}`` is one coefficient of the pressure expansion, not the force; the two
 # are proportional, and the drop's non-dimensional mass being ``4\pi/3`` as well
-# is what cancels the factor and leaves ``\dot v=-\mathrm{Bo}-B_1``. Every other
-# ``B_n`` is orthogonal to ``\mu`` and so invisible to the centre of mass. The
+# is what cancels the factor and leaves ``\dot v=-\mathrm{Bo}-p_{c,1}``. Every other
+# ``p_{c,l}`` is orthogonal to ``\mu`` and so invisible to the centre of mass. The
 # impact speed enters only as the initial condition.
 #
 # The drop does not wet the substrate: it is held off by a thin intervening air
@@ -1867,7 +1887,7 @@ end  #src
 # Two things are worth noting about what is *absent*. There is no eigenvalue
 # anywhere: no ``q^2``, no ``\lambda_l``, no ``\omega_l^2``, and so no truncation
 # of a relaxation spectrum to two roots. And there is no second time derivative
-# of ``A_l``: the inertia that produced ``\ddot A_l`` in the Newtonian modal
+# of ``\zeta_l``: the inertia that produced ``\ddot\zeta_l`` in the Newtonian modal
 # system lives in (1) here, and the second-order oscillator form is a
 # *consequence* of eliminating the interior rather than a feature of the physics.
 #
