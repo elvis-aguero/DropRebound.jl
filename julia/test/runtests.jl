@@ -21,4 +21,5 @@ using DropSolver
     include("test_carreau_yasuda_exact.jl")
     include("test_oh_eff_quadrature.jl")
     include("test_convergence_order.jl")
+    include("test_claim_ledger.jl")
 end

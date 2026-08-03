@@ -294,15 +294,151 @@ end  #src
 #
 # from which the velocity components follow by differentiation,
 # ``u_r=\partial_\theta\psi/(x^2\sin\theta)`` and
-# ``u_\theta=-\partial_x\psi/(x\sin\theta)``, giving radial profiles ``F_l`` and
-# ``W_l`` that are fixed once ``U_l`` is. The strain-rate tensor is linear in
-# ``\bm u`` and therefore in ``\{U_l\}``.
+# ``u_\theta=-\partial_x\psi/(x\sin\theta)``. Both reduce to something simple,
+# because of one identity: differentiating ``C_l`` and eliminating ``P_l''``
+# through Legendre's equation ``(1-\mu^2)P_l''=2\mu P_l'-l(l+1)P_l`` gives
+#
+# ```math
+# \frac{\partial C_l}{\partial\theta} = \sin\theta\,P_l(\cos\theta) ,
+# ```
+#
+# with no residual ``P_l'``. Hence
+#
+# ```math
+# \boxed{\;
+# u_r=\sum_l F_l(x)P_l(\mu),\quad F_l=\frac{U_l}{x^2};
+# \qquad
+# u_\theta=\sum_l W_l(x)\,\partial_\theta P_l(\mu),\quad
+# W_l=\frac{U_l'}{x\,l(l+1)} \;}
+# ```
+#
+# Two consequences are used repeatedly below, and both are stated here so that
+# every factor in them is on the page rather than in a reader's head. The
+# shear strain is proportional to the tangential-stress operator,
+#
+# ```math
+# e_{r\theta}=\frac{\mathcal L_2[U_l]}{2x\,l(l+1)}\,\partial_\theta P_l ,
+# \qquad
+# \mathcal L_2=\frac{d^2}{dx^2}-\frac{2}{x}\frac{d}{dx}+\frac{l(l+1)}{x^2} ,
+# ```
+#
+# which is why BC2 reduces to ``\mathcal L_2[U_l]|_{x=1}=0``; and the vorticity
+# is proportional to Reid's radial operator,
+#
+# ```math
+# \omega_\varphi=-\sum_l\frac{\mathcal D_l[U_l]\,C_l(\theta)}{x\sin\theta},
+# \qquad
+# \mathcal D_l=\frac{d^2}{dx^2}-\frac{l(l+1)}{x^2},
+# ```
+#
+# which is the factor that turns the curl of the momentum equation into the
+# interior problem. The ``C_l`` are orthogonal under
+# ``\langle A,B\rangle=\int_0^\pi AB\,d\theta/\sin\theta``, with
+#
+# ```math
+# \langle C_l,C_{l''}\rangle=\frac{2\,\delta_{l l''}}{(2l+1)\,l(l+1)} ,
+# ```
+#
+# and it is that weight which makes the projection below well defined. The
+# strain-rate tensor is linear in ``\bm u`` and therefore in ``\{U_l\}``.
 #
 # What ``U_l`` actually *is* -- the equation that determines it -- is the
 # interior problem, and it is the substance of this page. Note already that it
 # cannot be quoted from the Newtonian theory: there the profile is fixed once
 # ``l`` and a constant viscosity are given, whereas here the viscosity is itself
 # a functional of the field being solved for.
+
+@variables xs ts  #src
+let  #src
+    ## Every boxed factor above is checked here, because each one is a place a  #src
+    ## typo would survive review: they are all of the form "operator over       #src
+    ## x*l*(l+1)", and an l(l+1) or a factor of 2 dropped anywhere would leave   #src
+    ## the structure of the model intact while making it wrong.                  #src
+    ##                                                                          #src
+    ## Checks are at concrete l against the field built from a generic U(x), at  #src
+    ## a spread of (x, theta), with the Legendre functions evaluated by          #src
+    ## recurrence -- so nothing here assumes the identities being tested.        #src
+    Dx = Differential(xs); Dt = Differential(ts)  #src
+    ed(e) = Symbolics.expand_derivatives(e)  #src
+    LP(l,m)  = l==0 ? one(m) : l==1 ? m : begin a,b=one(m),m; for n in 1:l-1; b,a=((2n+1)*m*b-n*a)/(n+1),b; end; b end  #src
+    LPp(l,m) = l==0 ? zero(m) : l*(m*LP(l,m)-LP(l-1,m))/(m^2-1)  #src
+    Cl(l) = sin(ts)^2*LPp(l,cos(ts))/(l*(l+1))  #src
+    ev(e,xv,tv) = Symbolics.build_function(ed(e), xs, ts; expression=Val(false))(xv,tv)  #src
+    PTS = ((0.43,0.7),(0.61,1.3),(0.82,2.1),(0.37,2.6),(0.95,0.44))  #src
+    U(l) = xs^(l+1) + 0.7xs^(l+3) - 0.3xs^(l+5) + 0.11xs^(l+2)  #src
+    Dl(f,l) = ed(Dx(Dx(f))) - l*(l+1)*f/xs^2  #src
+    L2(f,l) = ed(Dx(Dx(f))) - 2*ed(Dx(f))/xs + l*(l+1)*f/xs^2  #src
+
+    w_dC, w_F, w_W, w_ert, w_vort = 0.0, 0.0, 0.0, 0.0, 0.0  #src
+    mag_ert, mag_vort = 0.0, 0.0  #src
+    for l in 2:6  #src
+        Uf  = U(l)  #src
+        psi = Uf*Cl(l)  #src
+        Pl_ = LP(l, cos(ts))  #src
+        dPl = ed(Dt(Pl_))                       # d/dtheta of P_l(cos theta)  #src
+        ## (a) dC_l/dtheta = sin(theta) P_l  -- the Legendre-equation identity  #src
+        for (xv,tv) in PTS  #src
+            w_dC = max(w_dC, abs(ev(ed(Dt(Cl(l))) - sin(ts)*Pl_, xv, tv)))  #src
+        end  #src
+        ## (b) u_r = (U/x^2) P_l   and   u_theta = (U'/(x l(l+1))) dP_l/dtheta  #src
+        u_r  =  ed(Dt(psi)/(xs^2*sin(ts)))  #src
+        u_th = -ed(Dx(psi)/(xs*sin(ts)))  #src
+        for (xv,tv) in PTS  #src
+            w_F = max(w_F, abs(ev(u_r  - (Uf/xs^2)*Pl_, xv, tv)))  #src
+            w_W = max(w_W, abs(ev(u_th - (ed(Dx(Uf))/(xs*l*(l+1)))*dPl, xv, tv)))  #src
+        end  #src
+        ## (c) e_rtheta = L2[U] dP_l/dtheta / (2 x l(l+1))  -- the factor BC2 rests on  #src
+        e_rt = ed((Dt(u_r)/xs + Dx(u_th) - u_th/xs)/2)  #src
+        claim_ert = L2(Uf,l)*dPl/(2*xs*l*(l+1))  #src
+        ## (d) omega_phi = -D_l[U] C_l / (x sin theta)  -- the factor the curl rests on  #src
+        vort = ed((Dx(xs*u_th) - Dt(u_r))/xs)  #src
+        claim_vort = -Dl(Uf,l)*Cl(l)/(xs*sin(ts))  #src
+        for (xv,tv) in PTS  #src
+            w_ert = max(w_ert, abs(ev(e_rt - claim_ert, xv, tv)))  #src
+            w_vort = max(w_vort, abs(ev(vort - claim_vort, xv, tv)))  #src
+            mag_ert  = max(mag_ert,  abs(ev(claim_ert, xv, tv)))  #src
+            mag_vort = max(mag_vort, abs(ev(claim_vort, xv, tv)))  #src
+        end  #src
+    end  #src
+    ## (e) orthogonality and the exact norm <C_l,C_l> = 2/((2l+1) l(l+1))  #src
+    nodes, wts = QuadGK.gauss(40, -1.0, 1.0)  #src
+    w_orth, w_norm = 0.0, 0.0  #src
+    for l in 2:6, l2 in 2:6  #src
+        ## <A,B> = int A B dtheta / sin(theta); with C_l = sin^2 P'_l/(l(l+1))  #src
+        ## this is int (1-mu^2) P'_l P'_l2 dmu / (l(l+1) l2(l2+1)).  #src
+        val = sum(w*(1-mu^2)*LPp(l,mu)*LPp(l2,mu) for (mu,w) in zip(nodes,wts)) /  #src
+              (l*(l+1)*l2*(l2+1))  #src
+        if l == l2  #src
+            w_norm = max(w_norm, abs(val - 2/((2l+1)*l*(l+1))))  #src
+        else  #src
+            w_orth = max(w_orth, abs(val))  #src
+        end  #src
+    end  #src
+    ## Errors are normalised by the largest magnitude the sweep produced. A bare  #src
+    ## absolute tolerance is the wrong test here: e_rtheta and the vorticity both  #src
+    ## carry a 1/(2 x l(l+1)) prefactor, so at l=6 they are ~1/50 of the operator  #src
+    ## they are built from, and an absolute threshold either passes vacuously or   #src
+    ## rejects a correct identity depending on which l dominates.                  #src
+    @assert mag_ert > 1e-4 && mag_vort > 1e-4 "the e_rtheta / vorticity sweep never exercised a nonzero quantity ($mag_ert, $mag_vort)"  #src
+    rel_ert, rel_vort = w_ert/mag_ert, w_vort/mag_vort  #src
+    @assert w_dC   < 1e-10 "dC_l/dtheta = sin(theta) P_l failed ($w_dC)"  #src
+    @assert w_F    < 1e-10 "u_r radial profile is not U/x^2 ($w_F)"  #src
+    @assert w_W    < 1e-10 "u_theta radial profile is not U'/(x l(l+1)) ($w_W)"  #src
+    @assert rel_ert  < 1e-10 "e_rtheta is not L2[U] dP_l / (2 x l(l+1)) (rel $rel_ert)"  #src
+    @assert rel_vort < 1e-10 "vorticity is not -D_l[U] C_l / (x sin theta) (rel $rel_vort)"  #src
+    @assert w_orth < 1e-11 "the C_l are not orthogonal under the stated weight ($w_orth)"  #src
+    @assert w_norm < 1e-11 "<C_l,C_l> is not 2/((2l+1) l(l+1)) ($w_norm)"  #src
+    println("  ASSERTION 2b OK: every factor in the boxed velocity relations, over l=2..6:")  #src
+    @printf("    dC_l/dtheta = sin(theta) P_l                    (%.1e)\n", w_dC)  #src
+    @printf("    F_l = U_l/x^2                                   (%.1e)\n", w_F)  #src
+    @printf("    W_l = U_l'/(x l(l+1))                           (%.1e)\n", w_W)  #src
+    @printf("    e_rtheta = L2[U] dP_l/dtheta / (2 x l(l+1))     (rel %.1e)\n", rel_ert)  #src
+    @printf("    omega_phi = -D_l[U] C_l / (x sin theta)         (rel %.1e)\n", rel_vort)  #src
+    @printf("    <C_l,C_l''> = 2 delta / ((2l+1) l(l+1))          (%.1e, %.1e)\n", w_orth, w_norm)  #src
+    println("    These are the factor-carrying identities the model summary quotes.")  #src
+    println("    Physical meaning of a failure: a dropped l(l+1) or 2 would leave the")  #src
+    println("    structure of the model intact while making every coefficient wrong.")  #src
+end  #src
 
 # ## Where a mode equation comes from
 #
@@ -1315,10 +1451,15 @@ end  #src
 #
 # ```math
 # u_r=\frac{1}{x^2\sin\theta}\frac{\partial\psi}{\partial\theta}
-#   =\sum_l F_l(x,t)P_l(\mu),
+#   =\sum_l F_l\,P_l(\mu),
 # \qquad
 # u_\theta=-\frac{1}{x\sin\theta}\frac{\partial\psi}{\partial x}
-#   =\sum_l W_l(x,t)\,\partial_\theta P_l(\mu) .
+#   =\sum_l W_l\,\partial_\theta P_l(\mu) ,
+# ```
+# ```math
+# F_l=\frac{U_l}{x^2},
+# \qquad
+# W_l=\frac{U_l'}{x\,l(l+1)} .
 # ```
 #
 # ### (1) The interior
@@ -1336,7 +1477,7 @@ end  #src
 # at ``x=1`` by
 #
 # ```math
-# \underbrace{F_l\big|_{x=1}=\dot A_l}_{\text{BC1, kinematic}},
+# \underbrace{U_l\big|_{x=1}=\dot A_l}_{\text{BC1, kinematic}},
 # \qquad
 # \underbrace{\mathcal L_2[U_l]\big|_{x=1}=0}_{\text{BC2, tangential stress}},
 # \qquad

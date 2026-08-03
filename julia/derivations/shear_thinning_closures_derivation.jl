@@ -885,17 +885,35 @@ end  #src
 #
 # ### The step-size ceiling
 #
-# The truncation sets a hard cap. The highest retained mode oscillates at
-# ``\omega_M=\sqrt{M(M-1)(M+2)}``, so resolving it at ``N`` samples per period
-# requires
+# There are two distinct constraints here and they are easy to merge by
+# accident, because in the diagonalisable Newtonian model they coincide.
+#
+# **Resolution.** The capillary dispersion relation
+# ``\omega_l^2=l(l-1)(l+2)`` is a statement about surface energy against
+# inertia; it does not depend on the viscous machinery, and it survives every
+# closure on this page. Representing the oscillation of the highest retained
+# mode at ``N`` samples per period therefore requires
 #
 # ```math
-# \Delta t \;\le\; \frac{2\pi}{N\sqrt{M(M-1)(M+2)}} \;\sim\; M^{-3/2} .
+# \Delta t \;\lesssim\; \frac{2\pi}{N\sqrt{M(M-1)(M+2)}} \;\sim\; M^{-3/2} ,
 # ```
 #
-# Raising ``M`` therefore costs twice: more unknowns per step, and more steps.
-# This is why the truncation cannot be raised casually to chase the ``L_\eta``
+# so raising ``M`` costs twice over: more unknowns per step, and more steps.
+# That is why the truncation cannot be raised casually to chase the ``L_\eta``
 # convergence discussed above.
+#
+# **Stability.** This is a different question, and it is *not* answered by the
+# expression above. Within the instantaneous-eigenmode closure the modal system
+# is diagonal, its eigenvalues are exactly ``\lambda_l\pm i\omega_l``, and the
+# stability limit of an explicit treatment coincides with the resolution limit.
+# The general model of the companion page has no such eigenvalues: the interior
+# is a differential-algebraic system, the coefficient matrices are dense, and the
+# stiffness is set by viscous diffusion across the drop rather than by any
+# surface frequency. The step limit there has to be derived for the scheme
+# actually used, and quoting ``M^{-3/2}`` for it would be carrying over a result
+# whose derivation no longer applies.
+#
+# Only the resolution constraint is claimed here.
 #
 # ### The contact set
 #
