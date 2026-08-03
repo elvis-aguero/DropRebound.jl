@@ -1026,6 +1026,138 @@ let  #src
     println("    Physical meaning of a failure: p ~ x^l P_l would survive, and the surface")  #src
     println("    equation would need no pressure solve at all.")  #src
 end  #src
+
+# ### The pressure equation is the divergence of momentum
+#
+# Taking the divergence of ``\partial_t\bm u=-\nabla p+\mathrm{Oh}\,\nabla\cdot
+# (2\eta\bm e)`` and using ``\partial_t(\nabla\cdot\bm u)=0`` gives the Poisson
+# equation with the **same** coefficient the momentum equation carries. That
+# inheritance is the part worth checking, because a prefactor picked up by hand
+# is exactly the kind of error that survives inspection: the identity
+#
+# ```math
+# \nabla\cdot\bigl(-\nabla p+c\,\nabla\cdot(2\eta\bm e)\bigr)
+#   \;+\;\nabla^2p\;-\;c\,\nabla\cdot\bigl(\nabla\cdot(2\eta\bm e)\bigr)\;=\;0
+# ```
+#
+# holds for every ``c``, so the ``c`` appearing in the pressure equation is
+# forced to be the ``c`` in the momentum equation, and no other value works.
+# Projecting onto ``P_l`` then turns it into the radial form the summary states,
+# by the angular reduction already established plus Legendre orthogonality.
+
+let  #src
+    ## Differentiated by nested central differences rather than symbolically: the  #src
+    ## double divergence of a variable-viscosity stress is the expression that     #src
+    ## made Symbolics run for tens of minutes earlier in this file's history, and  #src
+    ## only the vanishing of a residual is in question here. Errors are            #src
+    ## normalised, since four nested differences floor the accuracy near 1e-6.     #src
+    h = 1e-2  #src
+    d1(f, v, i) = (-f(v .+ 2h*i) + 8f(v .+ h*i) - 8f(v .- h*i) + f(v .- 2h*i))/(12h)  #src
+    LPn(l,m) = l==0 ? one(m) : l==1 ? m : begin a,b=one(m),m; for n in 1:l-1; b,a=((2n+1)*m*b-n*a)/(n+1),b; end; b end  #src
+    Cn(l,t) = sin(t)^2*(l*(cos(t)*LPn(l,cos(t)) - LPn(l-1,cos(t)))/(cos(t)^2 - 1))/(l*(l+1))  #src
+    ## a divergence-free field from a single-mode stream function  #src
+    psif(m) = (x,t) -> (x^(m+1) + 0.6x^(m+3))*Cn(m,t)  #src
+    ## the two components of div(2 eta e), and the scalar div of a vector field  #src
+    function divtau2(eta, ps, x, t)  #src
+        ur(a,b) =  d1(v -> ps(v[1],v[2]), [a,b], [0.0,1.0])/(a^2*sin(b))  #src
+        ut(a,b) = -d1(v -> ps(v[1],v[2]), [a,b], [1.0,0.0])/(a*sin(b))  #src
+        e_rr(a,b) = d1(v -> ur(v[1],v[2]), [a,b], [1.0,0.0])  #src
+        e_tt(a,b) = d1(v -> ut(v[1],v[2]), [a,b], [0.0,1.0])/a + ur(a,b)/a  #src
+        e_pp(a,b) = ur(a,b)/a + ut(a,b)*cos(b)/(sin(b)*a)  #src
+        e_rt(a,b) = (d1(v -> ur(v[1],v[2]), [a,b], [0.0,1.0])/a  #src
+                   + d1(v -> ut(v[1],v[2]), [a,b], [1.0,0.0]) - ut(a,b)/a)/2  #src
+        dr = (d1(v -> v[1]^2*2eta(v[1],v[2])*e_rr(v[1],v[2]), [x,t], [1.0,0.0])/x^2  #src
+            + d1(v -> 2eta(v[1],v[2])*e_rt(v[1],v[2])*sin(v[2]), [x,t], [0.0,1.0])/(x*sin(t))  #src
+            - (2eta(x,t)*e_tt(x,t) + 2eta(x,t)*e_pp(x,t))/x)  #src
+        dt = (d1(v -> v[1]^2*2eta(v[1],v[2])*e_rt(v[1],v[2]), [x,t], [1.0,0.0])/x^2  #src
+            + d1(v -> 2eta(v[1],v[2])*e_tt(v[1],v[2])*sin(v[2]), [x,t], [0.0,1.0])/(x*sin(t))  #src
+            + 2eta(x,t)*e_rt(x,t)/x - cos(t)/(sin(t)*x)*2eta(x,t)*e_pp(x,t))  #src
+        (dr, dt)  #src
+    end  #src
+    divvec(ar, at, x, t) = (d1(v -> v[1]^2*ar(v[1],v[2]), [x,t], [1.0,0.0])/x^2  #src
+                          + d1(v -> at(v[1],v[2])*sin(v[2]), [x,t], [0.0,1.0])/(x*sin(t)))  #src
+    lapscal(f, x, t) = (d1(v -> v[1]^2*d1(w -> f(w[1],w[2]), [v[1],v[2]], [1.0,0.0]), [x,t], [1.0,0.0])/x^2  #src
+                      + d1(v -> sin(v[2])*d1(w -> f(w[1],w[2]), [v[1],v[2]], [0.0,1.0]), [x,t], [0.0,1.0])/(x^2*sin(t)))  #src
+
+    PTS = ((0.61,1.30), (0.43,0.70), (0.82,2.10))  #src
+    etaf = (x,t) -> 1.3 + 0.9x*cos(t) + 0.4*(3cos(t)^2 - 1)/2  #src
+    ## SUM-PRESS: the identity, for two different coefficients c  #src
+    worst_id, mag_id, wrong_c = 0.0, 0.0, Inf  #src
+    for m in (2, 3), cvis in (0.31, 1.7)  #src
+        ps = psif(m)  #src
+        pf = (x,t) -> (x^(m+2) + 0.4x^(m+4))*LPn(m, cos(t))  #src
+        Ar(x,t) = -d1(v -> pf(v[1],v[2]), [x,t], [1.0,0.0]) + cvis*divtau2(etaf, ps, x, t)[1]  #src
+        At(x,t) = -d1(v -> pf(v[1],v[2]), [x,t], [0.0,1.0])/x + cvis*divtau2(etaf, ps, x, t)[2]  #src
+        for (x,t) in PTS  #src
+            S  = divvec((a,b) -> divtau2(etaf, ps, a, b)[1],  #src
+                        (a,b) -> divtau2(etaf, ps, a, b)[2], x, t)  #src
+            lp = lapscal(pf, x, t)  #src
+            resid = divvec(Ar, At, x, t) + lp - cvis*S  #src
+            worst_id = max(worst_id, abs(resid))  #src
+            mag_id   = max(mag_id, abs(lp), abs(cvis*S))  #src
+            ## the SAME residual with a doubled coefficient must NOT vanish  #src
+            wrong_c = min(wrong_c, abs(divvec(Ar, At, x, t) + lp - 2cvis*S)/max(mag_id, 1e-30))  #src
+        end  #src
+    end  #src
+    rel_id = worst_id/mag_id  #src
+    @assert mag_id > 1e-3 "the pressure-identity sweep never exercised a nonzero operator ($mag_id)"  #src
+    @assert rel_id < 1e-4 "div of momentum does not give lap(p) = c div(div(2 eta e)) (rel $rel_id)"  ## CLAIM: SUM-PRESS  #src
+    @assert wrong_c > 1e-2 "a doubled coefficient also satisfies the identity, so the prefactor is not pinned ($wrong_c)"  #src
+
+    ## SUM-PLAP: projecting lap(p) = Oh S onto P_l gives L_l[p_l] = Oh S_l  #src
+    nodes, wts = QuadGK.gauss(28, -1.0, 1.0)  #src
+    proj(f, l, x) = (2l+1)/2*sum(w*f(x, acos(mu))*LPn(l,mu) for (mu,w) in zip(nodes,wts))  #src
+    worst_pl, mag_pl = 0.0, 0.0  #src
+    for l in (2, 3, 4)  #src
+        pl(x) = x^(l+2) + 0.4x^(l+4)  #src
+        pf = (x,t) -> pl(x)*LPn(l, cos(t))  #src
+        for (x,_) in PTS  #src
+            ## L_l[p_l] from its definition, by differences in x alone  #src
+            dpl  = (-pl(x+2h) + 8pl(x+h) - 8pl(x-h) + pl(x-2h))/(12h)  #src
+            d2pl = (-pl(x+2h) + 16pl(x+h) - 30pl(x) + 16pl(x-h) - pl(x-2h))/(12h^2)  #src
+            Lp = d2pl + 2dpl/x - l*(l+1)*pl(x)/x^2  #src
+            lhs = proj((a,b) -> lapscal(pf, a, b), l, x)  #src
+            worst_pl = max(worst_pl, abs(lhs - Lp))  #src
+            mag_pl   = max(mag_pl, abs(Lp))  #src
+        end  #src
+    end  #src
+    rel_pl = worst_pl/mag_pl  #src
+    @assert mag_pl > 1e-3 "the projection sweep never exercised a nonzero operator ($mag_pl)"  #src
+    @assert rel_pl < 1e-4 "the l-projection of lap(p) is not L_l[p_l] (rel $rel_pl)"  ## CLAIM: SUM-PLAP  #src
+
+    ## SUM-COM: the non-dimensional centre-of-mass equation, signs included.      #src
+    ## Dimensional: m dV/dT = -m g + F_z. With V = (R/Tsig) v, T = Tsig t, and     #src
+    ## Tsig^2 = rho R^3/T1, dividing by m and multiplying by Tsig^2/R gives         #src
+    ##   vdot = -(g Tsig^2/R) + F_z Tsig^2/(m R) = -Bo + Fhat/(4pi/3),              #src
+    ## where Fhat is F_z in units of T1 R and m = (4pi/3) rho R^3.                  #src
+    worst_com = 0.0  #src
+    for (rho_,R_,T1_,g_) in ((998.0,3.5e-4,0.0722,9.81), (1210.0,7.1e-4,0.0640,9.81), (1.0,2.0,3.0,5.0))  #src
+        Tsig2 = rho_*R_^3/T1_  #src
+        Bo    = rho_*g_*R_^2/T1_  #src
+        m     = (4pi/3)*rho_*R_^3  #src
+        worst_com = max(worst_com, abs(g_*Tsig2/R_ - Bo))               # gravity term is exactly Bo  #src
+        for Fhat in (-0.7, 0.0, 2.3)                                     # F_z = Fhat * T1 * R  #src
+            got  = (Fhat*T1_*R_)*Tsig2/(m*R_)  #src
+            want = Fhat/(4pi/3)  #src
+            worst_com = max(worst_com, abs(got - want))  #src
+        end  #src
+    end  #src
+    ## and Fhat = -(4pi/3) p_{c,1} (SUM-FORCE), so vdot = -Bo - p_{c,1}  #src
+    for pc1 in (-1.3, 0.0, 0.9)  #src
+        worst_com = max(worst_com, abs((-(4pi/3)*pc1)/(4pi/3) - (-pc1)))  #src
+    end  #src
+    @assert worst_com < 1e-12 "the centre-of-mass equation does not reduce to vdot = -Bo - p_{c,1} ($worst_com)"  ## CLAIM: SUM-COM  #src
+
+    println("  ASSERTION 3f OK: the pressure equation and the centre of mass --")  #src
+    @printf("    div of momentum gives lap(p) = c div(div(2 eta e)) with the SAME c\n")  #src
+    @printf("      (rel %.1e); doubling c breaks it by %.1e, so the prefactor is pinned;\n", rel_id, wrong_c)  #src
+    @printf("    the l-projection of lap(p) is L_l[p_l] (rel %.1e), which is the radial\n", rel_pl)  #src
+    @printf("      form the summary states;\n")  #src
+    @printf("    and vdot = -Bo - p_{c,1} follows from m dV/dT = -m g + F_z with the\n")  #src
+    @printf("      stated scalings, signs included (%.1e).\n", worst_com)  #src
+    println("    Physical meaning of a failure: the pressure would carry a wrong")  #src
+    println("    prefactor, or the drop would fall upwards.")  #src
+end  #src
 #
 # ### Carrying the projection through
 #

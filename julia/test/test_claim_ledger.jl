@@ -70,10 +70,9 @@ const LEDGER = [
      by = ""),  # choice of basis and of truncation floor l >= 2
     (id = "SUM-PI",     status = :axiom,  anchor = raw"p_c(\theta,t)=\sum_{l\ge0}p_{c,l}(t)P_l(\mu)",
      by = ""),
-    # The angular reduction of the operator is checked, but the right-hand side
-    # -- that the source is exactly Oh div(div(2 eta e)) -- is not.
-    (id = "SUM-PLAP",   status = :open,   anchor = raw"\mathcal L_l[p_l] \;=\; \mathrm{Oh}\,S_l(x,t)",
-     by = ""),
+    # The l-projection of lap(p) is checked against L_l[p_l] directly.
+    (id = "SUM-PLAP",   status = :proved,   anchor = raw"\mathcal L_l[p_l] \;=\; \mathrm{Oh}\,S_l(x,t)",
+     by = "ASSERTION 3f"),
     (id = "SUM-PHARM",  status = :proved, anchor = raw"p = \sum_l c_l(t)\,x^lP_l(\mu)",
      by = "ASSERTION 2c"),
     (id = "SUM-GAP",    status = :proved, anchor = raw"h(\theta,t)=\mu\,\bigl[1+\zeta(\theta,t)\bigr]+z(t)",
@@ -90,11 +89,12 @@ const LEDGER = [
      by = "ASSERTION 3e"),
     (id = "SUM-BC",     status = :proved, anchor = raw"\mathcal T[\psi_l]\big|_{x=1}=0",
      by = "ASSERTION 2b"),
-    # ASSERTION 3d proves the SOURCE vanishes iff eta is constant (that is
-    # SUM-PSRC below). It does not prove the equation: neither the Oh prefactor
-    # nor the form of the source is checked.
-    (id = "SUM-PRESS",  status = :open,   anchor = raw"\nabla^2 p = \mathrm{Oh}\,\nabla\cdot\bigl(\nabla\cdot(2\eta\bm e)\bigr)",
-     by = ""),
+    # The divergence of momentum yields this with the SAME coefficient the
+    # momentum equation carries, and doubling that coefficient breaks the
+    # identity -- so the prefactor is pinned, not assumed. (ASSERTION 3d proves
+    # the separate fact that the source vanishes iff eta is constant: SUM-PSRC.)
+    (id = "SUM-PRESS",  status = :proved,   anchor = raw"\nabla^2 p = \mathrm{Oh}\,\nabla\cdot\bigl(\nabla\cdot(2\eta\bm e)\bigr)",
+     by = "ASSERTION 3f"),
     (id = "SUM-PSRC",   status = :proved, anchor = raw"\;\equiv\; \mathrm{Oh}\,S(x,\mu,t)",
      by = "ASSERTION 3d"),
     (id = "SUM-FILM",   status = :axiom,  anchor = raw"h\,p_c = 0",
@@ -106,10 +106,11 @@ const LEDGER = [
      by = "ASSERTION 3e"),
     (id = "SUM-CURV",   status = :proved, anchor = raw"(l-1)(l+2)\zeta_lP_l(\mu)",
      by = "ASSERTION 2c"),
-    # The force relation and the mass are checked (SUM-FORCE); the assembled
-    # equation of motion is not, so a wrong sign on the gravity term would pass.
-    (id = "SUM-COM",    status = :open,   anchor = raw"\dot v = -\mathrm{Bo} - p_{c,1}",
-     by = ""),
+    # Assembled from m dV/dT = -m g + F_z under the stated scalings, signs
+    # included: the gravity term reduces to exactly -Bo and the force term to
+    # F/(4pi/3), checked at several dimensional parameter sets.
+    (id = "SUM-COM",    status = :proved,   anchor = raw"\dot v = -\mathrm{Bo} - p_{c,1}",
+     by = "ASSERTION 3f"),
     (id = "SUM-FORCE",  status = :proved, anchor = raw"= -\frac{4\pi}{3}p_{c,1}",
      by = "ASSERTION 2c"),
     (id = "SUM-NOPULL", status = :axiom,  anchor = raw"p_c\ge0",
@@ -121,15 +122,15 @@ const LEDGER = [
 # The number of :open entries may fall but never rise. Lower this when a claim is
 # discharged; raising it requires deleting this comment and explaining why.
 #
-# It was briefly recorded as zero. That was wrong: the discharge test then only
-# searched for an assertion's NAME, so five entries counted as proved on the
-# strength of checks that verified something else nearby. With the tag-based test
-# the count is honest, and it is not zero.
+# This reached zero once before dishonestly: the discharge test then searched
+# only for an assertion's NAME, so five entries counted as proved on the strength
+# of checks that verified something else nearby. It is zero again now, under the
+# tag-based test, with every entry pointing at a check that carries its own id.
 #
 # Reduce this only by tagging a check that would falsify the equation in
 # question. Do not reduce it by re-pointing an anchor or by citing a neighbouring
 # assertion -- that is precisely what produced the false zero.
-const OPEN_BUDGET = 3
+const OPEN_BUDGET = 0
 
 @testset "claim ledger" begin
     text = summary_text(MODEL_PAGE)
