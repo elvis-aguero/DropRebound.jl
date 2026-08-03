@@ -22,4 +22,5 @@ using DropSolver
     include("test_oh_eff_quadrature.jl")
     include("test_convergence_order.jl")
     include("test_claim_ledger.jl")
+    include("test_bessel_discipline.jl")
 end

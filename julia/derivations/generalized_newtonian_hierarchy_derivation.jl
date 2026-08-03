@@ -446,8 +446,8 @@ let  #src
     rel_ert, rel_vort = w_ert/mag_ert, w_vort/mag_vort  #src
     @assert w_dC   < 1e-10 "dC_l/dtheta = sin(theta) P_l failed ($w_dC)"  #src
     @assert w_F    < 1e-10 "u_r radial profile is not U/x^2 ($w_F)"  #src
-    @assert w_W    < 1e-10 "u_theta radial profile is not U'/(x l(l+1)) ($w_W)"  #src
-    @assert rel_ert  < 1e-10 "e_rtheta is not T[psi] dP_l / (2 x l(l+1)) (rel $rel_ert)"  #src
+    @assert w_W    < 1e-10 "u_theta radial profile is not U'/(x l(l+1)) ($w_W)"  ## CLAIM: SUM-FW  #src
+    @assert rel_ert  < 1e-10 "e_rtheta is not T[psi] dP_l / (2 x l(l+1)) (rel $rel_ert)"  ## CLAIM: SUM-BC  #src
     @assert rel_vort < 1e-10 "vorticity is not -D_l[psi] C_l / (x sin theta) (rel $rel_vort)"  #src
     @assert w_orth < 1e-11 "the C_l are not orthogonal under the stated weight ($w_orth)"  #src
     @assert w_norm < 1e-11 "<C_l,C_l> is not 2/((2l+1) l(l+1)) ($w_norm)"  #src
@@ -1013,7 +1013,7 @@ let  #src
     end  #src
     @assert worst_div < 1e-10 "the trial field is not divergence free ($worst_div); the probe is invalid"  #src
     @assert worst_const < 1e-4 "constant eta must leave the pressure harmonic, got $worst_const"  #src
-    @assert least_rad > 1e-2 "a radially varying eta must break harmonicity, got $least_rad"  #src
+    @assert least_rad > 1e-2 "a radially varying eta must break harmonicity, got $least_rad"  ## CLAIM: SUM-PSRC  #src
     @assert least_ang > 1e-2 "an angularly varying eta must break harmonicity, got $least_ang"  #src
     @assert least_rad > 1e3*worst_const "the variable-eta source is not clearly above the difference floor"  #src
     @printf("  ASSERTION 3d OK: lap(p) source is %.1e for constant eta (the finite-\n", worst_const)  #src
@@ -1486,7 +1486,7 @@ let  #src
     w_gap = maximum(abs(Symbolics.value(Symbolics.substitute(  #src
                 ed2(gap_exact - gap_claim), Dict(tt=>tv, zc=>0.3, zeta_=>0.17))))  #src
             for tv in TH)  #src
-    @assert w_gap < 1e-14 "h is not the exact height of the surface point ($w_gap)"  #src
+    @assert w_gap < 1e-14 "h is not the exact height of the surface point ($w_gap)"  ## CLAIM: SUM-GAP  #src
 
     ## SUM-STREAM: the stream-function velocities are divergence free, for a       #src
     ## multi-mode psi (not one mode at a time -- incompressibility must survive    #src
@@ -1496,7 +1496,7 @@ let  #src
     ut_m  = -ed2(Dr(psi_m)/(rr*sin(tt)))  #src
     divu_m = ed2(Dr(rr^2*ur_m)/rr^2 + Dt(ut_m*sin(tt))/(rr*sin(tt)))  #src
     w_div = maximum(abs(f2(divu_m, xv, tv)) for (xv,tv) in XT)  #src
-    @assert w_div < 1e-12 "the stream-function velocity field is not divergence free ($w_div)"  #src
+    @assert w_div < 1e-12 "the stream-function velocity field is not divergence free ($w_div)"  ## CLAIM: SUM-STREAM  #src
 
     ## SUM-GROUPS: the three groups, checked by substituting values rather than    #src
     ## by symbolic simplification -- Symbolics will not cancel T1*(R^3 rho/T1)     #src
@@ -1512,7 +1512,7 @@ let  #src
         w_grp = max(w_grp, abs(rho_*g_/inert            - rho_*g_*R_^2/T1_))      # Bo  #src
         w_grp = max(w_grp, abs((V_/(R_/Tsig))^2         - rho_*R_*V_^2/T1_))      # We  #src
     end  #src
-    @assert w_grp < 1e-10 "the non-dimensional groups do not follow from the stated scalings ($w_grp)"  #src
+    @assert w_grp < 1e-10 "the non-dimensional groups do not follow from the stated scalings ($w_grp)"  ## CLAIM: SUM-GROUPS  #src
 
     ## SUM-RHEO: the factor 2. Build e from a velocity field and contract it in     #src
     ## full; do not assume which components are nonzero. Calibrated on simple      #src
@@ -1526,7 +1526,7 @@ let  #src
     ee   = sum(estr[i,j]^2 for i in 1:3, j in 1:3)  #src
     for Gv in (1.0, 2.5, 7.3)  #src
         got = sqrt(2*Symbolics.value(Symbolics.substitute(ee, Dict(Gs=>Gv))))  #src
-        @assert abs(got - Gv) < 1e-12 "sqrt(2 e:e) is not the shear rate in simple shear ($got vs $Gv)"  #src
+        @assert abs(got - Gv) < 1e-12 "sqrt(2 e:e) is not the shear rate in simple shear ($got vs $Gv)"  ## CLAIM: SUM-RHEO  #src
     end  #src
 
     ## SUM-INT: the relative coefficient of the inertial and viscous terms. With   #src
@@ -1569,7 +1569,7 @@ let  #src
         end  #src
     end  #src
     @assert base_ok "the undeformed sphere's curvature is not 2"  #src
-    @assert w_curv < 1e-12 "the linearised curvature coefficient is not (l-1)(l+2) ($w_curv)"  #src
+    @assert w_curv < 1e-12 "the linearised curvature coefficient is not (l-1)(l+2) ($w_curv)"  ## CLAIM: SUM-CURV  #src
     ## and (l-1)(l+2) must vanish at l=1: translation costs no surface energy  #src
     @assert (1-1)*(1+2) == 0 "the l=1 curvature stiffness must vanish"  #src
 
@@ -1581,7 +1581,7 @@ let  #src
         Fq = -2pi*QuadGK.quadgk(mu -> Pif(mu)*mu, -1, 1; rtol=1e-13)[1]  #src
         w_force = max(w_force, abs(Fq - (-(4pi/3)*Bv[2])))  #src
     end  #src
-    @assert w_force < 1e-10 "the net substrate force is not -(4pi/3) B_1 ($w_force)"  #src
+    @assert w_force < 1e-10 "the net substrate force is not -(4pi/3) B_1 ($w_force)"  ## CLAIM: SUM-FORCE  #src
     @assert abs((-(4pi/3)*1.0)/(4pi/3) + 1.0) < 1e-14 "F/mass must reduce to -B_1"  #src
 
     ## SUM-PLAP: the angular reduction of the pressure Laplacian, and the fact    #src
@@ -1605,7 +1605,7 @@ let  #src
     end  #src
     @assert mag_plap > 1e-3 "the pressure-Laplacian sweep never exercised a nonzero operator ($mag_plap)"  #src
     @assert w_plap < 1e-10 "lap(p_n P_n) is not L_n[p_n] P_n ($w_plap)"  #src
-    @assert w_harm < 1e-10 "x^n is not annihilated by L_n, so the harmonic part is wrong ($w_harm)"  #src
+    @assert w_harm < 1e-10 "x^n is not annihilated by L_n, so the harmonic part is wrong ($w_harm)"  ## CLAIM: SUM-PHARM  #src
 
     println("  ASSERTION 2c OK: the remaining Model summary claims, discharged --")  #src
     @printf("    h = mu(1+zeta)+z is the exact surface height        (%.1e)\n", w_gap)  #src

@@ -67,8 +67,10 @@ const LEDGER = [
      by = ""),  # choice of basis and of truncation floor l >= 2
     (id = "SUM-PI",     status = :axiom,  anchor = raw"p_c(\theta,t)=\sum_{l\ge0}p_{c,l}(t)P_l(\mu)",
      by = ""),
-    (id = "SUM-PLAP",   status = :proved, anchor = raw"\mathcal L_l[p_l] \;=\; \mathrm{Oh}\,S_l(x,t)",
-     by = "ASSERTION 2c"),
+    # The angular reduction of the operator is checked, but the right-hand side
+    # -- that the source is exactly Oh div(div(2 eta e)) -- is not.
+    (id = "SUM-PLAP",   status = :open,   anchor = raw"\mathcal L_l[p_l] \;=\; \mathrm{Oh}\,S_l(x,t)",
+     by = ""),
     (id = "SUM-PHARM",  status = :proved, anchor = raw"p = \sum_l c_l(t)\,x^lP_l(\mu)",
      by = "ASSERTION 2c"),
     (id = "SUM-GAP",    status = :proved, anchor = raw"h(\theta,t)=\mu\,\bigl[1+\zeta(\theta,t)\bigr]+z(t)",
@@ -77,20 +79,33 @@ const LEDGER = [
      by = "ASSERTION 2c"),
     (id = "SUM-FW",     status = :proved, anchor = raw"u_{\theta,l}=\frac{\psi_l'}{x\,l(l+1)}",
      by = "ASSERTION 2b"),
-    (id = "SUM-INT",    status = :proved, anchor = raw"\partial_t\,\mathcal D_l[\psi_l]",
-     by = "ASSERTION 2c"),
+    # Its pieces are checked -- the diagonal operator, the coupling band, the
+    # vorticity factor, q^2 = sigma/Oh -- but the assembled equation is not, so
+    # a wrong Oh or a wrong sign in the summary would survive.
+    (id = "SUM-INT",    status = :open,   anchor = raw"\partial_t\,\mathcal D_l[\psi_l]",
+     by = ""),
     (id = "SUM-BC",     status = :proved, anchor = raw"\mathcal T[\psi_l]\big|_{x=1}=0",
      by = "ASSERTION 2b"),
-    (id = "SUM-PRESS",  status = :proved, anchor = raw"\nabla^2 p = \mathrm{Oh}\,\nabla\cdot\bigl(\nabla\cdot(2\eta\bm e)\bigr)",
+    # ASSERTION 3d proves the SOURCE vanishes iff eta is constant (that is
+    # SUM-PSRC below). It does not prove the equation: neither the Oh prefactor
+    # nor the form of the source is checked.
+    (id = "SUM-PRESS",  status = :open,   anchor = raw"\nabla^2 p = \mathrm{Oh}\,\nabla\cdot\bigl(\nabla\cdot(2\eta\bm e)\bigr)",
+     by = ""),
+    (id = "SUM-PSRC",   status = :proved, anchor = raw"\;\equiv\; \mathrm{Oh}\,S(x,\mu,t)",
      by = "ASSERTION 3d"),
     (id = "SUM-FILM",   status = :axiom,  anchor = raw"h\,p_c = 0",
      by = ""),  # lubrication limit: the film transmits stress with no dynamics of its own
-    (id = "SUM-NORMAL", status = :proved, anchor = raw"\bigl[-p+2\eta\,e_{rr}\bigr]_{x=1}",
-     by = "ASSERTION 2c"),
+    # Never checked. It was marked :proved by an assertion that verified the
+    # curvature term in the same section -- the adjacency hole this test now
+    # closes. Deriving it, with a tagged check, is the next task.
+    (id = "SUM-NORMAL", status = :open,   anchor = raw"\bigl[-p+2\eta\,e_{rr}\bigr]_{x=1}",
+     by = ""),
     (id = "SUM-CURV",   status = :proved, anchor = raw"(l-1)(l+2)\zeta_lP_l(\mu)",
      by = "ASSERTION 2c"),
-    (id = "SUM-COM",    status = :proved, anchor = raw"\dot v = -\mathrm{Bo} - p_{c,1}",
-     by = "ASSERTION 2c"),
+    # The force relation and the mass are checked (SUM-FORCE); the assembled
+    # equation of motion is not, so a wrong sign on the gravity term would pass.
+    (id = "SUM-COM",    status = :open,   anchor = raw"\dot v = -\mathrm{Bo} - p_{c,1}",
+     by = ""),
     (id = "SUM-FORCE",  status = :proved, anchor = raw"= -\frac{4\pi}{3}p_{c,1}",
      by = "ASSERTION 2c"),
     (id = "SUM-NOPULL", status = :axiom,  anchor = raw"p_c\ge0",
@@ -102,11 +117,15 @@ const LEDGER = [
 # The number of :open entries may fall but never rise. Lower this when a claim is
 # discharged; raising it requires deleting this comment and explaining why.
 #
-# It is now zero: every equation in the Model summary is discharged by a check
-# that runs in CI, and the only things taken on faith are the three :axiom
-# entries -- the choice of Legendre basis for the surface and the pressure, and
-# the postulate that a rigid substrate cannot pull.
-const OPEN_BUDGET = 0
+# It was briefly recorded as zero. That was wrong: the discharge test then only
+# searched for an assertion's NAME, so five entries counted as proved on the
+# strength of checks that verified something else nearby. With the tag-based test
+# the count is honest, and it is not zero.
+#
+# Reduce this only by tagging a check that would falsify the equation in
+# question. Do not reduce it by re-pointing an anchor or by citing a neighbouring
+# assertion -- that is precisely what produced the false zero.
+const OPEN_BUDGET = 5
 
 @testset "claim ledger" begin
     text = summary_text(MODEL_PAGE)
@@ -135,19 +154,39 @@ const OPEN_BUDGET = 0
         end
     end
 
-    @testset "discharge: :proved entries name a real assertion" begin
-        sources = join([read(joinpath(DERIV_DIR, f), String)
-                        for f in readdir(DERIV_DIR) if endswith(f, ".jl")], "\n")
-        for e in LEDGER
-            if e.status === :proved
-                @test !isempty(e.by)
-                @test occursin(e.by, sources) ||
-                      error("ledger entry $(e.id) claims to be discharged by " *
-                            "\"$(e.by)\", which appears in no derivation source.")
-            else
-                @test isempty(e.by)  # only :proved entries cite a check
+    @testset "discharge: every :proved claim is tagged at an actual check" begin
+        # A `:proved` entry must point at a check that carries its OWN id as a
+        # `## CLAIM: <id>` tag on the assertion line. An earlier version of this
+        # test merely searched for the assertion's NAME anywhere in the sources,
+        # which is satisfied by any check in the same file -- and that hole was
+        # exploited: SUM-NORMAL was marked proved by an assertion that verified
+        # the curvature term beside it and never touched the normal-stress
+        # balance. Proof by adjacency passes a name search; it cannot pass this.
+        tagged = Dict{String,Vector{String}}()
+        for f in readdir(DERIV_DIR)
+            endswith(f, ".jl") || continue
+            for (i, line) in enumerate(readlines(joinpath(DERIV_DIR, f)))
+                m = match(r"##\s*CLAIM:\s*([A-Z0-9\-]+)", line)
+                m === nothing && continue
+                occursin("@assert", line) ||
+                    error("$f:$i tags CLAIM: $(m.captures[1]) but is not an " *
+                          "assertion line. A tag must sit on the check itself.")
+                push!(get!(tagged, m.captures[1], String[]), "$f:$i")
             end
         end
+        for e in LEDGER
+            if e.status === :proved
+                @test haskey(tagged, e.id) ||
+                      error("ledger entry $(e.id) is marked :proved but no " *
+                            "assertion carries `## CLAIM: $(e.id)`. Either tag " *
+                            "the check that falsifies it, or set it :open.")
+            else
+                @test !haskey(tagged, e.id) ||
+                      error("$(e.id) is tagged at a check but is not marked " *
+                            ":proved -- the ledger understates what is verified.")
+            end
+        end
+        @info "claim tags found" tags = sort(collect(keys(tagged)))
     end
 
     @testset "the open set is not growing" begin
