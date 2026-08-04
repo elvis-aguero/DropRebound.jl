@@ -75,7 +75,8 @@ struct ImpactParams
     dt0::Float64
     dt_min::Float64
     t_max::Float64
-    eta_sweeps::Int
+    eta_tol::Float64             # Picard convergence tolerance on the strain rate
+    eta_max_sweeps::Int
     eta_const::Bool
 end
 
@@ -87,7 +88,8 @@ end
 together deliberately -- that is what makes the contact system square.
 """
 function ImpactParams(; We, Bo, Oh, M::Int = 90, K::Int = 1, eta = gd -> 1.0,
-                      dt0 = nothing, dt_min = 1e-10, t_max = 25.0, eta_sweeps = 1)
+                      dt0 = nothing, dt_min = 1e-10, t_max = 25.0,
+                      eta_tol = 1e-8, eta_max_sweeps = 12)
     ls = collect(2:M)
     # theta = pi plus the zeros of P_M. These cluster at the poles, which is the
     # whole point: contact is resolved where contact happens.
@@ -95,7 +97,8 @@ function ImpactParams(; We, Bo, Oh, M::Int = 90, K::Int = 1, eta = gd -> 1.0,
     nodes = vcat(pi, acos.(clamp.(sort(mus), -1.0, 1.0)))
     dt = something(dt0, 2pi / (8 * sqrt(M * (M + 2) * (M - 1))))
     ec = all(gd -> eta(gd) == eta(0.0), (0.0, 1e-3, 1.0, 1e3))
-    ImpactParams(We, Bo, Oh, ls, K, eta, nodes, dt, dt_min, t_max, eta_sweeps, ec)
+    ImpactParams(We, Bo, Oh, ls, K, eta, nodes, dt, dt_min, t_max, eta_tol,
+                 eta_max_sweeps, ec)
 end
 
 basis(p::ImpactParams) = ModalBasis(p.ls, p.K)
@@ -188,7 +191,11 @@ function initial_state(p::ImpactParams)
 end
 
 """
-    try_step(p, prev, curr, dt, cp; F0, cache) -> (ok, next)
+    try_step(p, prev, curr, dt, cp; F0, cache) -> (status, next)
+
+`status` is `:ok`, `:penetrate` (the surface is below the substrate outside the
+contact, so the contact set is too small) or `:diverge` (the viscosity iteration did
+not converge, which says nothing about the geometry and calls for a smaller step).
 
 One step at a FIXED contact count, as one square linear system in `(a, p_c)`.
 
@@ -198,9 +205,9 @@ because that is the only one that moves the centre of mass. What remains is
 conditions on the contact nodes, and the vanishing of the pressure on the free ones.
 """
 function try_step(p::ImpactParams, prev::ImpactState, curr::ImpactState,
-                  dt::Float64, cp::Int; F0 = nothing, cache = nothing)
+                  dt::Float64, cp::Int; F0 = nothing, cache = nothing, diag = nothing)
     b = basis(p); N = ndof(b); npc = pc_len(p); nn = length(p.nodes)
-    (0 <= cp <= nn) || return (false, curr)
+    (0 <= cp <= nn) || return (:penetrate, curr)
 
     if curr.first
         c0, c1, c2 = 1.0, -1.0, 0.0
@@ -240,8 +247,28 @@ function try_step(p::ImpactParams, prev::ImpactState, curr::ImpactState,
         end
     end
 
-    nsweep = F0 === nothing ? p.eta_sweeps : 0
-    for _ in 0:nsweep
+    # THE PICARD ITERATION IS MONITORED, not counted off.
+    #
+    # The nonlinearity is only eta(gammadot), so the coefficient matrix depends on the
+    # unknown through the strain rate and the system is solved by freezing eta,
+    # solving, re-evaluating eta at the answer, and repeating. That map contracts for
+    # small enough dt, and the reason is structural rather than hopeful: the nonlinear
+    # term enters A = beta^2 M + beta C + G at O(beta) against an inertial O(beta^2),
+    # so the Lipschitz constant scales as dt times the sensitivity of C to the strain
+    # rate and vanishes with dt. At the timestep used here the observed factor is about
+    # 1/200 per sweep, which is why one sweep is indistinguishable from six.
+    #
+    # None of that is a guarantee. "Small enough dt" is unquantified, and eta' is
+    # largest at the Carreau knee, gammadot ~ 1/lambda_c, which is exactly where
+    # near-stagnation points sit; a yield-stress law would have no such reprieve at all.
+    # So the iteration runs to a TOLERANCE and reports how many sweeps it took, and a
+    # step whose iteration will not converge is REJECTED rather than returned. Before
+    # this, a fixed sweep count meant a non-contracting regime would have returned a
+    # silently unconverged state, with every linear solve inside it succeeding.
+    conv = 0.0; used = 0
+    for it in 1:(F0 === nothing ? p.eta_max_sweeps : 1)
+        used = it
+        prev_star = copy(adot_star)
         F = F0 === nothing ?
             assemble_coupled(b, p.Oh; eta = eta_field(p, adot_star)) : F0
         A = β^2 * F.M + β * F.C + F.G
@@ -259,13 +286,34 @@ function try_step(p::ImpactParams, prev::ImpactState, curr::ImpactState,
             lu([A -Qm; Hm Zm])
         end
         sol = fac \ [rhs0; rhs_h]
-        any(!isfinite, sol) && return (false, curr)
+        any(!isfinite, sol) && return (:diverge, curr)
         a_next = sol[1:N]
         pc = sol[N+1:N+npc]
         v_next = (-p.Bo - pc[2] - hv_v) / β
         z_next = (v_next - hv_z) / β
         adot_star = β * a_next + hv_a
+        ## relative to the strain rate's own scale, so the criterion means the same
+        ## thing at every impact energy
+        scale = max(maximum(abs, adot_star), 1e-12)
+        conv = maximum(abs, adot_star .- prev_star) / scale
+        if F0 !== nothing
+            conv = 0.0                               # constant eta: nothing was iterated
+            break
+        end
+        conv < p.eta_tol && break
     end
+    ## A step whose viscosity iteration has not converged is not a worse step, it is
+    ## not a solution. Rejecting it hands control to the dt halving that already
+    ## exists, which is the only lever that can restore the contraction.
+    ## A NON-CONVERGED VISCOSITY ITERATION IS NOT A GEOMETRY SIGNAL. The caller grows
+## the contact set when a step comes back inadmissible, because that is what
+## penetration means -- so returning the same flag for a stalled Picard iteration
+## makes the active set grow for a reason that has nothing to do with the surface.
+## Doing exactly that took CoR from 0.767 to 1.003 and the contact time from 2.72 to
+## 0.44: the contact ran away and the drop left almost elastically. The two are
+## reported separately so the caller can halve dt for one and grow for the other.
+(F0 === nothing && conv > p.eta_tol) && return (:diverge, curr)
+    diag === nothing || (diag[] = (sweeps = used, resid = conv))
 
     adot_next = β * a_next + hv_a
     nxt = ImpactState(curr.t + dt, dt, a_next, adot_next, z_next, v_next, cp,
@@ -289,7 +337,7 @@ function try_step(p::ImpactParams, prev::ImpactState, curr::ImpactState,
     # which needs no objective and therefore has no tie to break. An earlier version of
     # this function still computed and returned the residual after the caller had
     # stopped using it, which reads as a selection rule that is not there.
-    (ok, nxt)
+    (ok ? :ok : :penetrate, nxt)
 end
 
 """
@@ -307,6 +355,8 @@ transition from being straddled.
 function simulate(p::ImpactParams; verbose = false)
     F0 = p.eta_const ? assemble_newtonian(basis(p), p.Oh) : nothing
     cache = Dict{Tuple{Int,Float64,Bool},Any}()
+    dg = Ref((sweeps = 0, resid = 0.0))
+    max_sweeps = 0; max_resid = 0.0
     s0 = initial_state(p)
     prev, curr = s0, s0
     ts = Float64[0.0]; zs = Float64[s0.z]; vs = Float64[s0.v]
@@ -344,7 +394,19 @@ pcs = Vector{Float64}[copy(s0.pc)]
             (0 <= cand <= length(p.nodes)) || break
             cand ∈ seen && break                  # cycling: fall back to dt control
             push!(seen, cand)
-            ok, nxt = try_step(p, prev, curr, dt, cand; F0 = F0, cache = cache)
+            status, nxt = try_step(p, prev, curr, dt, cand;
+                                   F0 = F0, cache = cache, diag = dg)
+            ## A stalled viscosity iteration is not a statement about the surface, so it
+            ## must not drive the contact set. Abandon the active-set search and let the
+            ## step be rejected, which halves dt -- the only lever that restores the
+            ## contraction. Reading this as penetration instead grew the contact for no
+            ## physical reason and returned CoR = 1.003 with a contact time of 0.44.
+            status === :diverge && break
+            ok = status === :ok
+            if ok
+                max_sweeps = max(max_sweeps, dg[].sweeps)
+                max_resid  = max(max_resid, dg[].resid)
+            end
             if !ok
                 cand += 1                          # penetrating: the contact is too small
                 continue
@@ -367,7 +429,15 @@ pcs = Vector{Float64}[copy(s0.pc)]
         push!(ts, curr.t); push!(zs, curr.z); push!(vs, curr.v)
         push!(cps, best_cp); push!(pc1, curr.pc[2])
 push!(as, copy(curr.a)); push!(adots, copy(curr.adot)); push!(pcs, copy(curr.pc))
-        dt = p.dt0                       # no adaptive control while in contact
+        # RECOVER THE STEP THE WAY IT WAS GIVEN UP: by doubling, capped at the nominal
+        # value. Snapping straight back to dt0 after every success makes the solver
+        # rediscover a refinement it just paid for -- if a whole stretch of the
+        # trajectory needs a finer step, each step there costs a wasted rejected attempt
+        # before halving again. Doubling is the symmetric counterpart of the halving on
+        # rejection, so the step size carries a short memory of what the last few steps
+        # needed. dt0 remains a ceiling, not a target: it is the resolution the fastest
+        # retained capillary mode requires, and nothing is gained by exceeding it.
+        dt = min(2 * dt, p.dt0)
         verbose && best_cp != cps[end-1] &&
             @info "contact" t=curr.t cp=best_cp z=curr.z v=curr.v
         # done once the drop has left the substrate and is rising
@@ -376,7 +446,10 @@ push!(as, copy(curr.a)); push!(adots, copy(curr.adot)); push!(pcs, copy(curr.pc)
         end
     end
     (t = ts, z = zs, v = vs, cp = cps, pc1 = pc1, a = as, adot = adots, pc = pcs,
-rejects = nrej,
+     rejects = nrej,
+     ## the Picard iteration's worst behaviour over the whole march, so a regime where
+     ## the map stops contracting announces itself instead of returning quietly
+     eta_sweeps_max = max_sweeps, eta_resid_max = max_resid,
      cor = restitution(vs, cps, p.We), tc = contact_time(ts, cps))
 end
 

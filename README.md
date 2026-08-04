@@ -6,16 +6,16 @@ Julia solver for the impact and rebound of a liquid drop on a flat substrate, wi
 <tr>
 <td align="center" width="50%">
 
-![Oldroyd-B drop impact — Oh = 0.30, De₁ = 0.5, β_s = 0.5](docs/impact_ob.gif)
+![Oldroyd-B drop impact](docs/impact_ob.gif)
 
-*Oldroyd-B (Oh = 0.30, De₁ = 0.5, β_s = 0.5, We = 0.5, M = 90)*
+*Oldroyd-B (Oh = 0.30, De₁ = 0.5, β_s = 0.5, We = 0.5, M = 90) — legacy solver*
 
 </td>
 <td align="center" width="50%">
 
-![Carreau shear-thinning drop impact — Oh = 0.30, ε_ST = 0.15, λ_c = 0.02](docs/impact_st.gif)
+![Carreau shear-thinning drop impact](docs/impact_st.gif)
 
-*Carreau shear-thinning (Oh = 0.30, ε_ST = 0.08, λ_c = 0.02, We = 0.5, M = 90)*
+*Carreau shear-thinning (Oh = 0.30, λ_c = 0.02, We = 0.5, M = 90) — legacy solver*
 
 </td>
 </tr>
@@ -23,9 +23,19 @@ Julia solver for the impact and rebound of a liquid drop on a flat substrate, wi
 
 ## What it does
 
-A spherical drop falls under gravity, deforms on contact with a solid surface, spreads, then rebounds. This package solves the linearized spectral equations governing that process: the drop shape is expanded in Legendre modes around the spherical base state (valid for small deformations, $|A_n| \ll 1$), contact is tracked through a discrete set of collocation points on the drop surface, and the equations are integrated with an adaptive BDF1/BDF2 time-stepper.
+A spherical drop falls under gravity, deforms on contact with a solid surface, spreads, then rebounds. The package solves the linearised spectral equations governing that process, and the model is stated **variationally**: three quadratic functionals — kinetic energy, viscous dissipation, and surface energy — with Lagrange's equations giving the evolution.
+
+What distinguishes it from the usual modal treatment is that **the interior flow is part of the state**. The generalised coordinates are the amplitudes of an interior *displacement* stream function, expanded in Gegenbauer functions in angle and in the Taylor powers $x^{l+1}, x^{l+3}, \dots$ of the exact spherical-Bessel profile in radius. The surface amplitudes are its boundary trace; nothing is eliminated. Keeping the interior is what makes the damping exact rather than Lamb's small-viscosity estimate — at the Ohnesorge of the reference experiments, Lamb over-damps by 37% at $l = 2$ and 143% at $l = 8$, and correcting that moves the coefficient of restitution by 16%.
+
+The same structure carries **shear thinning** without further approximation: the viscosity is evaluated pointwise from the shear-rate invariant of the *full* strain field, and because that invariant does not superpose over modes, $\eta$ acquires angular structure and couples the shape modes within a Gaunt band.
+
+Contact is a unilateral constraint. The gap and the film pressure satisfy a complementarity condition, resolved on a set of Legendre-root collocation angles that cluster at the pole where contact forms; the contact extent is a discrete unknown found by an active-set iteration on the two inequalities.
 
 The Julia module name is `DropSolver` (`using DropSolver`).
+
+**Validated** against Gabbard et al. (2025): coefficient of restitution to 8% median, contact time to 13%, across 935 experiments spanning $\mathrm{Oh} \in [0.014, 0.79]$. And against a 3000 ppm shear-thinning solution whose zero-shear Ohnesorge is 57 — a Newtonian drop that viscous does not rebound at all, so the rebound the experiments measure exists *because* the fluid thins. Restitution agrees to 7%, contact time to 10%, with nothing fitted to the impact data.
+
+![3000 ppm shear-thinning drop: ten simulations against 72 experiments](shear_thinning_overlay.png)
 
 ## Dimensionless parameters
 
@@ -76,6 +86,45 @@ using DropSolver
 Requires Julia 1.12+. No external packages — only `LinearAlgebra` and `Logging` from the standard library.
 
 ## Quick start
+
+```julia
+using DropSolver
+
+# Newtonian, at the parameters of the Gabbard et al. (2025) production sweep.
+# M sets three things at once: shape modes l = 2..M, film-pressure harmonics
+# l = 0..M, and M+1 collocation angles — which is what makes the contact
+# system square. K is the number of radial trial functions per mode.
+p = ImpactParams(We = 1.0, Bo = 0.0189, Oh = 0.3038, M = 45, K = 2)
+r = simulate(p)
+
+r.cor          # coefficient of restitution
+r.tc           # contact time, in units of √(ρR³/σ)
+r.cp           # contact extent (node count) at each step
+r.a, r.adot    # interior amplitudes and their rates
+r.pc           # film-pressure coefficients
+
+# K = 1 is one trial function per mode — potential flow, hence Lamb damping,
+# which is the published Newtonian model. K ≥ 2 resolves the interior and
+# recovers Reid's damping exactly. At this Ohnesorge that is a 16% change in CoR.
+
+# Shear thinning: pass η(γ̇)/η₀. Oh is then the ZERO-SHEAR Ohnesorge, and the
+# viscosity is evaluated pointwise from the full strain field.
+eta = gd -> carreau(gd; lambda_c = 10.0, a = 2.0, n = 0.5, eta_inf_ratio = 0.01)
+rst = simulate(ImpactParams(We = 1.0, Bo = 0.0189, Oh = 0.3038,
+                            M = 14, K = 2, eta = eta))
+rst.eta_sweeps_max    # worst Picard sweep count over the march
+rst.eta_resid_max     # worst converged residual; steps that stall are rejected
+```
+
+A variable viscosity forces the coupled matrices to be rebuilt every step, so
+shear-thinning runs use a smaller `M` than Newtonian ones, where the operator is
+block diagonal and built once.
+
+## Legacy API
+
+The interface below drives the **superseded** solver (`solve_drop!`), which
+eliminates the interior and carries Lamb damping. It is retained because the
+Oldroyd-B extension has not yet been ported to the variational formulation.
 
 ```julia
 using DropSolver

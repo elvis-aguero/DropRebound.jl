@@ -189,7 +189,13 @@ end
         p = carr(10.0, 0.5)
         @test !p.eta_const                       # the probe really sees a variable eta
         r = simulate(p)
-        @test r.rejects == 0                     # it integrates without limping
+        ## A rejected step is no longer a symptom of limping: the viscosity iteration is
+        ## monitored, and a step whose iteration will not converge is rejected so that dt
+        ## halves, which is the only lever that restores the contraction. So what must
+        ## hold is that the iteration DID converge on every accepted step, and that it
+        ## did not need the whole sweep budget to get there on most of them.
+        @test r.eta_resid_max <= p.eta_tol       # every accepted step converged
+        @test r.rejects < 0.05 * length(r.t)     # and rejection stayed occasional
         @test r.cor > rn.cor
         @test 0 < r.cor < 1
     end
@@ -247,7 +253,10 @@ end
     rst = simulate(ImpactParams(; common...,
         eta = gd -> carreau(gd; lambda_c = K_cross/t_cap, a = m_cross,
                             n = 1 - m_cross, eta_inf_ratio = eta_inf/eta_0)))
-    @test rst.rejects == 0
+    ## Convergence of the viscosity iteration, not absence of rejected steps: a step
+    ## whose Picard iteration stalls is now rejected so that dt halves, and for this
+    ## fluid that happens occasionally.
+    @test rst.eta_resid_max <= 1e-8
     @test 0.6 < rst.cor < 0.95
     @test isapprox(rst.cor, 0.80; rtol = 0.20)
     ## and the contact time within the same band as the measurement, ~2.7
