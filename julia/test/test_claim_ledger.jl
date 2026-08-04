@@ -66,6 +66,12 @@ end
 const LEDGER = [
     (id = "SUM-GROUPS", status = :proved, anchor = raw"\mathrm{Oh}=\frac{\eta_0}",
      by = "ASSERTION 2c"),
+    # Bo and We need their own entries: the per-equation coverage test showed that
+    # SUM-GROUPS claimed only Oh, and the other two rode along in the same fence.
+    (id = "SUM-BO",     status = :proved, anchor = raw"\mathrm{Bo}=\frac{\rho g R^2}{T_1}",
+     by = "ASSERTION 2c"),
+    (id = "SUM-WE",     status = :proved, anchor = raw"\mathrm{We}=\frac{\rho R V^2}{T_1}",
+     by = "ASSERTION 2c"),
     (id = "SUM-ZETA",   status = :axiom,  anchor = raw"\zeta(\theta,t)=\sum_{l\ge2}\zeta_l(t)P_l(\mu)",
      by = ""),  # choice of basis and of truncation floor l >= 2
     (id = "SUM-PI",     status = :axiom,  anchor = raw"p_c(\theta,t)=\sum_{l\ge0}p_{c,l}(t)P_l(\mu)",
@@ -76,6 +82,19 @@ const LEDGER = [
      by = "ASSERTION 2c"),
     (id = "SUM-FW",     status = :proved, anchor = raw"u_{\theta,l}=\frac{\psi_l'}{x\,l(l+1)}",
      by = "ASSERTION 2b"),
+    # u_{r,l} had been riding on SUM-FW's anchor in the same fence, while the
+    # assertion that actually checks it (w_F) carried no tag at all.
+    (id = "SUM-URL",    status = :proved, anchor = raw"u_{r,l}=\frac{\psi_l}{x^2}",
+     by = "ASSERTION 2b"),
+    (id = "SUM-UTH",    status = :proved, anchor = raw"u_\theta=-\frac{1}{x\sin\theta}\frac{\partial\psi}{\partial x}",
+     by = "ASSERTION 2b"),
+    # T and V get their own entries. V sharing a fence with Phi is exactly how a
+    # wrong surface energy was carried as :proved by a symmetry check on its
+    # neighbour; SUM-STIFF is the calibration that can falsify it.
+    (id = "SUM-T",      status = :proved, anchor = raw"T[\dot{\bm\xi}]=\tfrac12\int|\bm u|^2\,dV",
+     by = "ASSERTION 5e"),
+    (id = "SUM-STIFF",  status = :proved, anchor = raw"\frac{4\pi}{2l+1}(l-1)(l+2)\,\zeta_l^2",
+     by = "ASSERTION 5e"),
     # The variational statement. Discharged by the identity that makes it the SAME
     # system as the differential form (ASSERTION 5d), plus the dissipation form's
     # symmetry and its exact reproduction of Lamb's damping (ASSERTION 5b).
@@ -98,8 +117,29 @@ const LEDGER = [
      by = "ASSERTION 3f"),
     (id = "SUM-FORCE",  status = :proved, anchor = raw"= -\frac{4\pi}{3}p_{c,1}",
      by = "ASSERTION 2c"),
+    # The generalised force, which the summary previously left undefined -- and it
+    # was the sole coupling between contact and shape, so the model did not exist
+    # without it. Discharged by the consistency the derivation predicts: at l = 1
+    # it must equal the net force F already proved in SUM-FORCE.
+    (id = "SUM-Q",      status = :proved, anchor = raw"Q_{\zeta_l}=-\frac{4\pi}{2l+1}\,p_{c,l}",
+     by = "ASSERTION 2c"),
+    (id = "SUM-VWORK",  status = :proved, anchor = raw"\delta W=-\oint p_c\,\delta\zeta\,dS",
+     by = "ASSERTION 2c"),
+    # The film acts only on the surface, so the interior coordinates take no direct
+    # forcing. A modelling statement about where the traction is applied, not a
+    # derivable one.
+    (id = "SUM-QPSI",   status = :axiom,  anchor = raw"Q_{\psi_l}=0",
+     by = ""),
+    (id = "SUM-ZDOT",   status = :axiom,  anchor = raw"\dot z = v",
+     by = ""),  # definition of v
+    (id = "SUM-V0",     status = :axiom,  anchor = raw"v(0) = -\sqrt{\mathrm{We}}",
+     by = ""),  # the initial condition that defines the impact
     (id = "SUM-NOPULL", status = :axiom,  anchor = raw"p_c\ge0",
      by = ""),  # a gas film cannot sustain tension
+    (id = "SUM-HGE0",   status = :axiom,  anchor = raw"h\ge0",
+     by = ""),  # the substrate is impenetrable
+    (id = "SUM-ETA",    status = :axiom,  anchor = raw"\eta=\eta(\dot\gamma)",
+     by = ""),  # hypothesis (H1): no strain history, no dependence beyond the invariant
     (id = "SUM-RHEO",   status = :proved, anchor = raw"\dot\gamma=\sqrt{2\,\bm e\!:\!\bm e}",
      by = "ASSERTION 2c"),
 ]
@@ -116,6 +156,11 @@ const LEDGER = [
 # question. Do not reduce it by re-pointing an anchor or by citing a neighbouring
 # assertion -- that is precisely what produced the false zero.
 const OPEN_BUDGET = 0
+
+# The number of :axiom entries, budgeted for the same reason. Four things are taken
+# on faith: the Legendre bases for the surface and the film pressure, the rigid
+# unilateral contact law, and that a gas film cannot sustain tension.
+const AXIOM_BUDGET = 9
 
 @testset "claim ledger" begin
     text = summary_text(MODEL_PAGE)
@@ -135,12 +180,51 @@ const OPEN_BUDGET = 0
     end
 
     @testset "coverage: every summary equation is claimed" begin
+        # PER EQUATION, not per fenced block. One anchor used to endorse every
+        # equation sharing its ```math fence, and that is precisely how a wrong
+        # surface energy passed: it sat in the same block as the dissipation form,
+        # whose anchor matched, and inherited its :proved status. An equation here
+        # is a comma- or newline-separated relation containing `=`, `\ge` or `\le`.
         for (k, b) in enumerate(blocks)
-            covering = [e.id for e in LEDGER if occursin(e.anchor, b)]
-            @test !isempty(covering) ||
-                  error("display equation $k of the Model summary is not claimed " *
-                        "by any ledger entry:\n$(first(split(b, '\n')))\n" *
-                        "Register it in LEDGER with a status.")
+            # A \boxed{...} block is one equation by convention, even when it is
+            # wrapped over several lines with the relation symbol on the last of
+            # them. Splitting it leaves a `= Q_a` fragment that no anchor matches.
+            if occursin("\\boxed", b)
+                @test any(e -> occursin(e.anchor, b), LEDGER) ||
+                      error("boxed equation in display block $k is not claimed by " *
+                            "any ledger entry:\n$(first(strip(b), 90))")
+                continue
+            end
+            rels = String[]
+            for chunk in split(b, r",\s*\n|\\\\|\n")
+                # strip only the wide spacing macros. NOT `\,` or `\;` -- those
+                # appear inside anchors, and stripping them makes a registered
+                # equation look unclaimed.
+                c = strip(replace(chunk, r"\\qquad|\\quad" => " "))
+                (isempty(c) || startswith(c, "\\begin") || startswith(c, "\\end")) && continue
+                occursin(r"=|\\ge|\\le", c) || continue
+                # A chunk that STARTS with a relation symbol is the continuation of
+                # a wrapped equation, not a new one. Splitting on newlines alone
+                # turns `u_theta = -...\n = sum_l ...` into two fragments and then
+                # reports the tail as unclaimed.
+                if !isempty(rels) && occursin(r"^(\\;)?=", c)
+                    rels[end] = rels[end] * " " * c
+                else
+                    push!(rels, c)
+                end
+            end
+            isempty(rels) && continue
+            uncovered = [r for r in rels
+                         if !any(e -> occursin(e.anchor, r) ||
+                                      occursin(e.anchor, b) && occursin(e.anchor, r), LEDGER)]
+            # an equation is covered if some anchor appears INSIDE it
+            uncovered = [r for r in rels if !any(e -> occursin(e.anchor, r), LEDGER)]
+            @test isempty(uncovered) ||
+                  error("in display block $k of the Model summary, these relations are " *
+                        "not claimed by any ledger entry:\n" *
+                        join(["    " * first(r, 90) for r in uncovered], "\n") *
+                        "\nRegister each in LEDGER with its own status. Sharing a " *
+                        "block with a claimed equation is not coverage.")
         end
     end
 
@@ -152,6 +236,10 @@ const OPEN_BUDGET = 0
         # exploited: SUM-NORMAL was marked proved by an assertion that verified
         # the curvature term beside it and never touched the normal-stress
         # balance. Proof by adjacency passes a name search; it cannot pass this.
+        # SCOPE: only the model page may discharge a claim about the model. A
+        # SUM-COM tag was living on the closures page -- the file the review brief
+        # designates "NOT the model" -- so an archived alternative route was
+        # endorsing the live statement.
         tagged = Dict{String,Vector{String}}()
         for f in readdir(DERIV_DIR)
             endswith(f, ".jl") || continue
@@ -161,9 +249,14 @@ const OPEN_BUDGET = 0
                 occursin("@assert", line) ||
                     error("$f:$i tags CLAIM: $(m.captures[1]) but is not an " *
                           "assertion line. A tag must sit on the check itself.")
+                f == basename(MODEL_PAGE) ||
+                    error("$f:$i tags CLAIM: $(m.captures[1]), but only the model " *
+                          "page may discharge a model claim. Move the check, or " *
+                          "the claim is not about the model.")
                 push!(get!(tagged, m.captures[1], String[]), "$f:$i")
             end
         end
+        ids = Set(e.id for e in LEDGER)
         for e in LEDGER
             if e.status === :proved
                 @test haskey(tagged, e.id) ||
@@ -176,6 +269,15 @@ const OPEN_BUDGET = 0
                             ":proved -- the ledger understates what is verified.")
             end
         end
+        # ORPHANS: a tag with no ledger entry means an equation was removed from the
+        # summary while its proof was left behind. That is how the open count once
+        # reached zero partly by deletion, and it must not be silent.
+        orphans = setdiff(keys(tagged), ids)
+        @test isempty(orphans) ||
+              error("these checks are tagged but claim nothing in the ledger: " *
+                    join(sort(collect(orphans)), ", ") *
+                    "\nEither the equation left the summary (drop the tag) or its " *
+                    "entry was lost (restore it). A dangling proof is not evidence.")
         @info "claim tags found" tags = sort(collect(keys(tagged)))
     end
 
@@ -183,6 +285,12 @@ const OPEN_BUDGET = 0
         n_open = count(e -> e.status === :open, LEDGER)
         @test n_open <= OPEN_BUDGET
         n_axiom = count(e -> e.status === :axiom, LEDGER)
+        # AXIOMS ARE BUDGETED TOO. Unbudgeted, `:axiom` is an escape hatch that
+        # makes a zero open count unfalsifiable -- any awkward claim can be
+        # relabelled a postulate and the ratchet stays silent. Raising this
+        # requires saying which new thing is being taken on faith and why it
+        # cannot be derived.
+        @test n_axiom <= AXIOM_BUDGET
         @info "claim ledger: $(count(e -> e.status === :proved, LEDGER)) proved, " *
               "$n_axiom axioms, $n_open open (budget $OPEN_BUDGET)"
     end

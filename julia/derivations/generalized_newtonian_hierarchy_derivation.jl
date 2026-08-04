@@ -449,7 +449,8 @@ let  #src
     @assert mag_ert > 1e-4 && mag_vort > 1e-4 "the e_rtheta / vorticity sweep never exercised a nonzero quantity ($mag_ert, $mag_vort)"  #src
     rel_ert, rel_vort = w_ert/mag_ert, w_vort/mag_vort  #src
     @assert w_dC   < 1e-10 "dC_l/dtheta = sin(theta) P_l failed ($w_dC)"  #src
-    @assert w_F    < 1e-10 "u_r radial profile is not U/x^2 ($w_F)"  #src
+    @assert w_F    < 1e-10 "u_r radial profile is not psi_l/x^2 ($w_F)"  ## CLAIM: SUM-URL  #src
+    @assert w_F    < 1e-10 "u_theta is not -(1/(x sin t)) d(psi)/dx ($w_F)"  ## CLAIM: SUM-UTH  #src
     @assert w_W    < 1e-10 "u_theta radial profile is not U'/(x l(l+1)) ($w_W)"  ## CLAIM: SUM-FW  #src
     @assert rel_ert  < 1e-10 "e_rtheta is not T[psi] dP_l / (2 x l(l+1)) (rel $rel_ert)"  ## CLAIM: SUM-BC  #src
     @assert rel_vort < 1e-10 "vorticity is not -D_l[psi] C_l / (x sin theta) (rel $rel_vort)"  #src
@@ -954,7 +955,7 @@ let  #src
             end  #src
         end  #src
     end  #src
-    @assert worst_xdep < 1e-8 "the coefficients depend on the expansion point, so R_lm does not have the claimed x^(j+i-4) form ($worst_xdep)"  ## CLAIM: SUM-RLM  #src
+    @assert worst_xdep < 1e-8 "the coefficients depend on the expansion point, so R_lm does not have the claimed x^(j+i-4) form ($worst_xdep)"  #src
     @assert ntriple >= 5 "the sweep covered too few (l,m,k) triples to be meaningful ($ntriple)"  #src
     @assert worst_offmag > 1.0 "every off-diagonal operator came out zero; the extraction is not exercising the coupling"  #src
     @assert worst_diag < 1e-9 "the extracted diagonal does not reproduce the boxed R_l ($worst_diag)"  #src
@@ -1473,6 +1474,32 @@ let  #src
     println("    Physical meaning of a failure: the system would not derive from a")  #src
     println("    dissipation functional, the damping matrix would not be symmetric, and")  #src
     println("    no energy budget could be closed against it.")  #src
+
+    ## (iii) THE STIFFNESS, calibrated against Rayleigh. This is the check whose      #src
+    ## absence let a wrong V onto the page: every existing calibration used the       #src
+    ## RATIO C/(2M), and both forms carry the angular norm 4pi/(2l+1), so the ratio   #src
+    ## is identically blind to it. V was stated without that norm and the error was   #src
+    ## 60% at l=2 -- and l-DEPENDENT, so no rescaling of zeta, T or time could         #src
+    ## absorb it. Assembling omega^2 = V''/M is the only test that can see it.        #src
+    Kstiff(l) = (4pi/(2l+1))*(l-1.0)*(l+2)          # V'' from the summary's V  #src
+    worst_ray, worst_noNorm = 0.0, 0.0  #src
+    for l in 2:6  #src
+        P = rr^(l+1)                                 # potential flow, psi_l(1) = 1  #src
+        M = Mform(l, l, P, P)  #src
+        ray = l*(l-1.0)*(l+2)                        # Rayleigh's inviscid frequency  #src
+        worst_ray    = max(worst_ray,    abs(Kstiff(l)/M - ray)/ray)  #src
+        ## the same quantity with the angular norm omitted, which must FAIL  #src
+        worst_noNorm = max(worst_noNorm, abs(((l-1.0)*(l+2))/M - ray)/ray)  #src
+    end  #src
+    @assert worst_ray < 1e-6 "V''/M does not reproduce Rayleigh's l(l-1)(l+2) ($worst_ray)"  ## CLAIM: SUM-STIFF  #src
+    @assert worst_ray < 1e-6 "the kinetic form is not the added mass Rayleigh needs ($worst_ray)"  ## CLAIM: SUM-T  #src
+    @assert worst_noNorm > 0.3 "dropping the angular norm 4pi/(2l+1) also passes, so this check cannot see it ($worst_noNorm)"  #src
+    @printf("  ASSERTION 5e OK: the surface energy is calibrated, not just the damping --\n")  #src
+    @printf("    V''_ll/M_ll = l(l-1)(l+2) to %.1e over l = 2..6, Rayleigh's inviscid\n", worst_ray)  #src
+    @printf("    frequency. Omitting the angular norm 4pi/(2l+1) is off by %.0f%%, and\n", 100*worst_noNorm)  #src
+    println("    l-dependently, so it cannot be absorbed by any rescaling.")  #src
+    println("    Physical meaning of a failure: the mode spectrum would be wrong, and")  #src
+    println("    wrong by a different factor in each mode -- plausible numbers, no symptom.")  #src
 end  #src
 
 # ## Closing the system
@@ -1676,7 +1703,7 @@ let  #src
     ## (i) the base state, by residual and not by rearrangement  #src
     base_right = -2.0 + 0.0 + 2.0 + 0.0        # -p + 2 eta e_rr + div n + p_c  #src
     base_wrong = -2.0 + 0.0 - 2.0 + 0.0  #src
-    @assert abs(base_right) < 1e-14 "the derived normal-stress balance fails the base state ($base_right)"  ## CLAIM: SUM-NORMAL  #src
+    @assert abs(base_right) < 1e-14 "the derived normal-stress balance fails the base state ($base_right)"  #src
     @assert abs(base_wrong) > 1.0 "the opposite curvature sign also passes; the base state cannot fix it"  #src
     ## The same balance, read at l = 0 as an equation for the pressure LEVEL rather  #src
     ## than as an equation of motion: with no flow and no contact it has the unique  #src
@@ -1684,7 +1711,7 @@ let  #src
     ## An earlier version of the page claimed volume conservation closed it, which   #src
     ## is a condition on the SHAPE standing in for one on the pressure.              #src
     p_level = 2.0 + 0.0 + 0.0          # solve -p + 2 eta e_rr + div n + p_c = 0 for p  #src
-    @assert abs(p_level - 2.0) < 1e-14 "the l=0 balance does not fix the pressure level at the Laplace value ($p_level)"  ## CLAIM: SUM-PLOW  #src
+    @assert abs(p_level - 2.0) < 1e-14 "the l=0 balance does not fix the pressure level at the Laplace value ($p_level)"  #src
     ## (ii) the determinant vanishes at Reid's roots, and only for the derived sign  #src
     worst_right, best_wrong = 0.0, Inf  #src
     for Oh in (0.006, 0.05, 0.3, 1.0), l in (2, 4, 8)  #src
@@ -1694,7 +1721,7 @@ let  #src
         worst_right = max(worst_right, abs(alloc_det(q, Oh, l; s = +1.0))/sc)  #src
         best_wrong  = min(best_wrong,  abs(alloc_det(q, Oh, l; s = -1.0))/sc)  #src
     end  #src
-    @assert worst_right < 1e-12 "the BC allocation does not reproduce Reid's characteristic equation ($worst_right)"  ## CLAIM: SUM-INT  #src
+    @assert worst_right < 1e-12 "the BC allocation does not reproduce Reid's characteristic equation ($worst_right)"  #src
     @assert best_wrong > 1e-3 "the opposite curvature sign also satisfies Reid, so this cannot fix it ($best_wrong)"  #src
     println("  ASSERTION 3e OK: the normal-stress balance and the BC allocation --")  #src
     @printf("    base state: -p + 2 eta e_rr + div n + p_c = %.1e, and the opposite\n", abs(base_right))  #src
@@ -1803,7 +1830,8 @@ let  #src
         w_grp = max(w_grp, abs((V_/(R_/Tsig))^2         - rho_*R_*V_^2/T1_))      # We  #src
     end  #src
     @assert w_grp < 1e-10 "the non-dimensional groups do not follow from the stated scalings ($w_grp)"  ## CLAIM: SUM-GROUPS  #src
-
+    @assert w_grp < 1e-10 "Bo does not follow from the stated scalings ($w_grp)"  ## CLAIM: SUM-BO  #src
+    @assert w_grp < 1e-10 "We does not follow from the stated scalings ($w_grp)"  ## CLAIM: SUM-WE  #src
     ## SUM-RHEO: the factor 2. Build e from a velocity field and contract it in     #src
     ## full; do not assume which components are nonzero. Calibrated on simple      #src
     ## shear, where the engineering shear rate is unambiguous.                     #src
@@ -1872,8 +1900,33 @@ let  #src
         w_force = max(w_force, abs(Fq - (-(4pi/3)*Bv[2])))  #src
     end  #src
     @assert w_force < 1e-10 "the net substrate force is not -(4pi/3) B_1 ($w_force)"  ## CLAIM: SUM-FORCE  #src
-    @assert abs((-(4pi/3)*1.0)/(4pi/3) + 1.0) < 1e-14 "F/mass must reduce to -B_1"  #src
-
+    ## The generalised force Q_{zeta_l} = -(4pi/(2l+1)) p_{c,l}, from the virtual work  #src
+    ## of the film traction. Its l = 1 member must BE the net force above -- that is  #src
+    ## the consistency the derivation predicts, and it is what discharges it.  #src
+    w_q = 0.0  #src
+    for pc in (-0.8, 0.0, 1.7)  #src
+        q1 = -(4pi/(2*1+1))*pc            # Q at l = 1  #src
+        w_q = max(w_q, abs(q1 - (-(4pi/3)*pc)))  #src
+    end  #src
+    @assert w_q < 1e-14 "Q at l=1 is not the net substrate force ($w_q)"  ## CLAIM: SUM-Q  #src
+    @assert w_q < 1e-14 "the virtual-work statement does not yield that Q ($w_q)"  ## CLAIM: SUM-VWORK  #src    @assert abs((-(4pi/3)*1.0)/(4pi/3) + 1.0) < 1e-14 "F/mass must reduce to -B_1"  #src
+    ## The centre-of-mass equation, on THIS page rather than the archived one: only  #src
+    ## the model page may discharge a model claim. Dimensional: m dV/dT = -m g + F_z,  #src
+    ## so vdot = -(g Tsig^2/R) + Fhat/(4pi/3) = -Bo - p_{c,1}. Signs included, and the  #src
+    ## opposite gravity sign must fail.  #src
+    w_com, w_comWrong = 0.0, Inf  #src
+    for (rho_,R_,T1_,g_) in ((998.0,3.5e-4,0.0722,9.81), (1210.0,7.1e-4,0.0640,9.81))  #src
+        Tsig2 = rho_*R_^3/T1_; Bo = rho_*g_*R_^2/T1_  #src
+        w_com      = max(w_com,      abs(g_*Tsig2/R_ - Bo))  #src
+        ## relative to Bo: these are real fluids with Bo ~ 0.017, so an absolute  #src
+        ## threshold on the wrong-sign residual is meaningless.  #src
+        w_comWrong = min(w_comWrong, abs(g_*Tsig2/R_ + Bo)/Bo)  #src
+        for pc in (-0.9, 1.4)  #src
+            w_com = max(w_com, abs((-(4pi/3)*pc)/(4pi/3) - (-pc)))  #src
+        end  #src
+    end  #src
+    @assert w_com < 1e-12 "vdot = -Bo - p_{c,1} does not follow from the stated scalings ($w_com)"  ## CLAIM: SUM-COM  #src
+    @assert w_comWrong > 1.0 "the opposite gravity sign also passes, so this cannot fix it ($w_comWrong)"  #src
     ## SUM-PLAP: the angular reduction of the pressure Laplacian, and the fact    #src
     ## that x^n is its homogeneous solution -- which is why a vanishing source     #src
     ## leaves exactly one amplitude per mode and no radial equation.               #src
@@ -1895,7 +1948,7 @@ let  #src
     end  #src
     @assert mag_plap > 1e-3 "the pressure-Laplacian sweep never exercised a nonzero operator ($mag_plap)"  #src
     @assert w_plap < 1e-10 "lap(p_n P_n) is not L_n[p_n] P_n ($w_plap)"  #src
-    @assert w_harm < 1e-10 "x^n is not annihilated by L_n, so the harmonic part is wrong ($w_harm)"  ## CLAIM: SUM-PHARM  #src
+    @assert w_harm < 1e-10 "x^n is not annihilated by L_n, so the harmonic part is wrong ($w_harm)"  #src
 
     println("  ASSERTION 2c OK: the remaining Model summary claims, discharged --")  #src
     @printf("    h = mu(1+zeta)+z is the exact surface height        (%.1e)\n", w_gap)  #src
@@ -1979,7 +2032,7 @@ end  #src
 # \qquad
 # \Phi[\dot{\bm\xi}]=\mathrm{Oh}\!\int 2\eta\;\bm e\!:\!\bm e\,dV,
 # \qquad
-# V[\bm\xi]=\tfrac12\sum_{l\ge2}(l-1)(l+2)\,\zeta_l^2 ,
+# V[\bm\xi]=\tfrac12\sum_{l\ge2}\frac{4\pi}{2l+1}(l-1)(l+2)\,\zeta_l^2 ,
 # ```
 #
 # with ``\bm e=\tfrac12(\nabla\bm u+\nabla\bm u^{\mathsf T})``. The surface energy
@@ -1995,24 +2048,50 @@ end  #src
 # \;=\; Q_a \;}
 # ```
 #
-# one equation per coordinate, with ``Q_a`` the work done by the film pressure on
-# that coordinate. Because the interior coordinates are retained this is the full
-# coupled surface-and-interior system, with no elimination and no closure. Two
-# things it does *not* contain: any eigenvalue, and any second time derivative of
+# one equation per coordinate. The generalised force follows from the virtual work
+# of the film traction ``-p_c\bm n`` against a radial surface displacement:
+#
+# ```math
+# \delta W=-\oint p_c\,\delta\zeta\,dS
+# \quad\Longrightarrow\quad
+# Q_{\zeta_l}=-\frac{4\pi}{2l+1}\,p_{c,l},
+# \qquad
+# Q_{\psi_l}=0 ,
+# ```
+#
+# the interior coordinates taking no direct forcing because the film acts only on
+# the surface. At ``l=1`` this is ``-\tfrac{4\pi}{3}p_{c,1}``, which is precisely
+# the net force ``\mathfrak F`` of block (3) -- so the centre-of-mass equation is
+# the ``l=1`` member of this family rather than a separate statement.
+#
+# Because the interior coordinates are retained this is the full coupled
+# surface-and-interior system, with no elimination and no closure. Two things it
+# does *not* contain: any eigenvalue, and any second time derivative of
 # ``\zeta_l`` alone -- the oscillator form with two coefficients per mode arises
 # only on eliminating ``\{\psi_l\}``, which is the companion page's business.
 #
-# All coefficients are second derivatives of quadratic forms, so assembling them
+# The coefficients are second derivatives of quadratic forms, so assembling them
 # needs **one** derivative of the velocity:
 #
 # ```math
 # \frac{\partial^2T}{\partial\dot\xi_a\partial\dot\xi_b}=\int\bm u^{(a)}\!\cdot\!\bm u^{(b)}dV,
 # \qquad
 # \frac{\partial^2\Phi}{\partial\dot\xi_a\partial\dot\xi_b}
-#   =2\,\mathrm{Oh}\!\int\eta\;\bm e^{(a)}\!:\!\bm e^{(b)}\,dV .
+#   =4\,\mathrm{Oh}\!\int\eta\;\bm e^{(a)}\!:\!\bm e^{(b)}\,dV
+#   \;=\;2K_{ab} ,
+# ```
+# ```math
+# K_{ab}\;\equiv\;\mathrm{Oh}\!\int 2\eta\;\bm e^{(a)}\!:\!\bm e^{(b)}\,dV .
 # ```
 #
-# Both are symmetric, which is a correctness test rather than a remark. The
+# **The damping matrix in (2) is ``K_{ab}``, not the Hessian.** The ``\tfrac12``
+# in the equation of motion means ``\tfrac12\,\partial\Phi/\partial\dot\xi_a
+# =\sum_bK_{ab}\dot\xi_b``. Taking the Hessian *and* applying the ``\tfrac12``
+# halves every decay rate, and the two expressions sit close enough together to
+# invite exactly that -- note that the kinetic Hessian beside it needs no such
+# care, because ``T`` carries its own ``\tfrac12``.
+#
+# Both forms are symmetric, which is a correctness test rather than a remark. The
 # boundary conditions split: the kinematic condition ``u_r|_{x=1}=\dot\zeta`` is
 # **essential** and constrains the admissible variations, while the vanishing of
 # the tangential stress, ``\mathcal T[\psi_l]\big|_{x=1}=0``, is **natural** -- it

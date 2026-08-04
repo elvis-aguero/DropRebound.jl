@@ -423,7 +423,7 @@ let  #src
     end  #src
     @assert worst_div < 1e-10 "the trial field is not divergence free ($worst_div); the probe is invalid"  #src
     @assert worst_const < 1e-4 "constant eta must leave the pressure harmonic, got $worst_const"  #src
-    @assert least_rad > 1e-2 "a radially varying eta must break harmonicity, got $least_rad"  ## CLAIM: SUM-PSRC  #src
+    @assert least_rad > 1e-2 "a radially varying eta must break harmonicity, got $least_rad"  #src
     @assert least_ang > 1e-2 "an angularly varying eta must break harmonicity, got $least_ang"  #src
     @assert least_rad > 1e3*worst_const "the variable-eta source is not clearly above the difference floor"  #src
     @printf("  ASSERTION 3d OK: lap(p) source is %.1e for constant eta (the finite-\n", worst_const)  #src
@@ -509,7 +509,7 @@ let  #src
     end  #src
     rel_id = worst_id/mag_id  #src
     @assert mag_id > 1e-3 "the pressure-identity sweep never exercised a nonzero operator ($mag_id)"  #src
-    @assert rel_id < 1e-4 "div of momentum does not give lap(p) = c div(div(2 eta e)) (rel $rel_id)"  ## CLAIM: SUM-PRESS  #src
+    @assert rel_id < 1e-4 "div of momentum does not give lap(p) = c div(div(2 eta e)) (rel $rel_id)"  #src
     @assert wrong_c > 1e-2 "a doubled coefficient also satisfies the identity, so the prefactor is not pinned ($wrong_c)"  #src
 
     ## SUM-PLAP: projecting lap(p) = Oh S onto P_l gives L_l[p_l] = Oh S_l  #src
@@ -531,7 +531,7 @@ let  #src
     end  #src
     rel_pl = worst_pl/mag_pl  #src
     @assert mag_pl > 1e-3 "the projection sweep never exercised a nonzero operator ($mag_pl)"  #src
-    @assert rel_pl < 1e-4 "the l-projection of lap(p) is not L_l[p_l] (rel $rel_pl)"  ## CLAIM: SUM-PLAP  #src
+    @assert rel_pl < 1e-4 "the l-projection of lap(p) is not L_l[p_l] (rel $rel_pl)"  #src
 
     ## SUM-COM: the non-dimensional centre-of-mass equation, signs included.      #src
     ## Dimensional: m dV/dT = -m g + F_z. With V = (R/Tsig) v, T = Tsig t, and     #src
@@ -554,7 +554,7 @@ let  #src
     for pc1 in (-1.3, 0.0, 0.9)  #src
         worst_com = max(worst_com, abs((-(4pi/3)*pc1)/(4pi/3) - (-pc1)))  #src
     end  #src
-    @assert worst_com < 1e-12 "the centre-of-mass equation does not reduce to vdot = -Bo - p_{c,1} ($worst_com)"  ## CLAIM: SUM-COM  #src
+    @assert worst_com < 1e-12 "the centre-of-mass equation does not reduce to vdot = -Bo - p_{c,1} ($worst_com)"  #src
 
     println("  ASSERTION 3f OK: the pressure equation and the centre of mass --")  #src
     @printf("    div of momentum gives lap(p) = c div(div(2 eta e)) with the SAME c\n")  #src
