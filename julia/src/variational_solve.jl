@@ -308,7 +308,11 @@ function simulate(p::ImpactParams; verbose = false)
     s0 = initial_state(p)
     prev, curr = s0, s0
     ts = Float64[0.0]; zs = Float64[s0.z]; vs = Float64[s0.v]
-    cps = Int[0]; pc1 = Float64[0.0]
+cps = Int[0]; pc1 = Float64[0.0]
+## the amplitudes themselves, so energy, volume and the shape can be checked
+## from the trajectory rather than re-derived by a caller re-marching it
+as = Vector{Float64}[copy(s0.a)]; adots = Vector{Float64}[copy(s0.adot)]
+pcs = Vector{Float64}[copy(s0.pc)]
     dt = p.dt0
     nrej = 0
     while curr.t < p.t_max
@@ -360,6 +364,7 @@ function simulate(p::ImpactParams; verbose = false)
         prev, curr = curr, best
         push!(ts, curr.t); push!(zs, curr.z); push!(vs, curr.v)
         push!(cps, best_cp); push!(pc1, curr.pc[2])
+push!(as, copy(curr.a)); push!(adots, copy(curr.adot)); push!(pcs, copy(curr.pc))
         dt = p.dt0                       # no adaptive control while in contact
         verbose && best_cp != cps[end-1] &&
             @info "contact" t=curr.t cp=best_cp z=curr.z v=curr.v
@@ -368,7 +373,8 @@ function simulate(p::ImpactParams; verbose = false)
             break
         end
     end
-    (t = ts, z = zs, v = vs, cp = cps, pc1 = pc1, rejects = nrej,
+    (t = ts, z = zs, v = vs, cp = cps, pc1 = pc1, a = as, adot = adots, pc = pcs,
+rejects = nrej,
      cor = restitution(vs, cps, p.We), tc = contact_time(ts, cps))
 end
 
