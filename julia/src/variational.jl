@@ -324,3 +324,35 @@ function carreau(gd::Real; eta_inf_ratio::Real = 0.01, lambda_c::Real = 1.0,
                  a::Real = 2.0, n::Real = 0.5)
     eta_inf_ratio + (1 - eta_inf_ratio) * (1 + (lambda_c * gd)^a)^((n - 1) / a)
 end
+
+"""
+    assemble_newtonian(b::ModalBasis, Oh) -> (M, C, G)
+
+The constant-viscosity operator, assembled block by block.
+
+At constant `eta` the three forms are block diagonal in `l` -- `eta` carries only its
+`l = 0` harmonic, so it cannot move energy between surface modes -- and they are also
+independent of the state and therefore of time. Both facts are already established:
+the block diagonality is `test_variational.jl`'s "constant viscosity leaves the modes
+uncoupled", and this routine is checked against `assemble_coupled` there too.
+
+Building the blocks separately is what makes a realistic mode count affordable. The
+coupled routine costs `ndof^2` quadratures because it cannot assume the structure;
+at `l` up to 40 that is 78 x 78 pairs on a 40 x 48 grid, per assembly, and the time
+stepper wants an assembly per contact candidate per step. Block by block it is
+`length(ls)` small dense problems, built once before the march begins.
+"""
+function assemble_newtonian(b::ModalBasis, Oh::Real; nx::Int = 40)
+    N = ndof(b)
+    M = zeros(N, N); C = zeros(N, N); G = zeros(N, N)
+    for (i, l) in enumerate(b.ls)
+        F = assemble(RitzBasis(l, b.K), Oh; nx = nx)
+        for ka in 1:b.K, kb in 1:b.K
+            ia = dofindex(b, i, ka); ib = dofindex(b, i, kb)
+            M[ia, ib] = F.M[ka, kb]
+            C[ia, ib] = F.C[ka, kb]
+            G[ia, ib] = F.G[ka, kb]
+        end
+    end
+    (M = M, C = C, G = G)
+end
