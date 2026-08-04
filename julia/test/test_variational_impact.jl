@@ -162,3 +162,56 @@ const REF_ZMIN = 0.63178
         @test rev < 0.05 * length(r.cp)
     end
 end
+
+# Shear thinning, in the time stepper rather than in the assembly.
+#
+# The assembly is already covered by test_variational.jl, where the Gaunt selection
+# rule is verified exactly and Carreau-Yasuda is checked on real states. What is new
+# here is that a state-dependent viscosity survives being integrated through a
+# contact, and that its effect on the KPIs has the sign and the ordering the rheology
+# demands. A shear-thinning drop dissipates less than a Newtonian one with the same
+# zero-shear viscosity, because the viscosity falls exactly where the shear is
+# strongest, so it must rebound HARDER -- and more so the stronger the thinning.
+@testset "shear thinning through a contact" begin
+    # A modest truncation, because a non-constant viscosity forces the full coupled
+    # reassembly -- O(ndof^2) quadratures -- instead of the cached block-diagonal
+    # operator a constant viscosity allows. That is a cost, not an approximation.
+    base = (We = 1.0, Bo = 0.0189, Oh = 0.303767, M = 14, K = 2, t_max = 6.0)
+
+    rn = simulate(ImpactParams(; base...))
+    @test rn.rejects == 0
+    @test 0 < rn.cor < 1
+
+    carr(lam, n) = ImpactParams(; base...,
+        eta = gd -> carreau(gd; lambda_c = lam, a = 2.0, n = n, eta_inf_ratio = 0.01))
+
+    @testset "a shear-thinning drop rebounds harder than a Newtonian one" begin
+        p = carr(10.0, 0.5)
+        @test !p.eta_const                       # the probe really sees a variable eta
+        r = simulate(p)
+        @test r.rejects == 0                     # it integrates without limping
+        @test r.cor > rn.cor
+        @test 0 < r.cor < 1
+    end
+
+    @testset "and harder the stronger the thinning" begin
+        # Two knobs, each with a direction fixed by the rheology and not by fitting:
+        # raising lambda_c thins at a lower shear rate, lowering n thins more steeply.
+        # Both must increase the rebound, monotonically.
+        c_weak   = simulate(carr(1.0,  0.5)).cor
+        c_strong = simulate(carr(10.0, 0.5)).cor
+        c_steep  = simulate(carr(10.0, 0.3)).cor
+        @test rn.cor < c_weak < c_strong < c_steep
+        @test c_steep / rn.cor > 1.5             # measured: +91 per cent
+    end
+
+    @testset "the Newtonian limit is recovered through the stepper" begin
+        # lambda_c -> 0 sends eta -> 1 pointwise, so the whole shear-thinning path --
+        # a coupled reassembly every sweep -- must reproduce the cached constant
+        # viscosity operator it bypasses. This is the check that the two code paths
+        # agree, not merely that each is self-consistent.
+        r = simulate(carr(1e-8, 0.3))
+        @test isapprox(r.cor, rn.cor; rtol = 1e-4)
+        @test isapprox(r.tc,  rn.tc;  rtol = 1e-4)
+    end
+end

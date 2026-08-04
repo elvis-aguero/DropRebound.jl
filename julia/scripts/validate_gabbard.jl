@@ -56,7 +56,10 @@ function bin_of(oh)
 end
 
 const M_RUN = 45      # converged to 1% in CoR against M = 90, and 15x cheaper
-const T_MAX = 6.0
+# Long enough that contact always releases inside the window. At 6.0 the three
+# highest-Weber, lowest-Ohnesorge points were still in contact when the run ended,
+# which reports as a missing CoR rather than as a wrong one.
+const T_MAX = 14.0
 
 results = Any[]
 for bi in 1:(length(OH_EDGES)-1)
@@ -93,16 +96,21 @@ end
 # --- overall agreement -----------------------------------------------------------
 println("\n================ SUMMARY ================")
 for (K, ic, it) in ((1, 4, 5), (2, 7, 8))
-    ec = [r[10] for r in results]; et = [r[11] for r in results]
-    mc = [r[ic] for r in results]; mt = [r[it] for r in results]
-    ok = .!isnan.(ec)
-    rc = abs.(mc[ok] .- ec[ok]) ./ ec[ok]
-    okt = .!isnan.(et)
-    rt = abs.(mt[okt] .- et[okt]) ./ et[okt]
-    @printf("K=%d : CoR  median rel err %.1f%%  mean %.1f%%  (n=%d)\n",
-            K, 100*median(rc), 100*mean(rc), count(ok))
-    @printf("      tc   median rel err %.1f%%  mean %.1f%%  (n=%d)\n",
-            100*median(rt), 100*mean(rt), count(okt))
+    # A model NaN is a run that did not complete, not an agreement of zero, so both
+    # sides have to be finite before a residual means anything -- and how many were
+    # dropped is reported, because a silent drop reads as coverage that was not there.
+    okc = [i for i in eachindex(results)
+           if isfinite(results[i][10]) && isfinite(results[i][ic])]
+    okt = [i for i in eachindex(results)
+           if isfinite(results[i][11]) && isfinite(results[i][it])]
+    rc = [abs(results[i][ic] - results[i][10])/results[i][10] for i in okc]
+    rt = [abs(results[i][it] - results[i][11])/results[i][11] for i in okt]
+    sc = [(results[i][ic] - results[i][10])/results[i][10] for i in okc]
+    st = [(results[i][it] - results[i][11])/results[i][11] for i in okt]
+    @printf("K=%d : CoR  median |err| %.1f%%  mean %.1f%%  median SIGNED %+.1f%%  (n=%d of %d)\n",
+            K, 100*median(rc), 100*mean(rc), 100*median(sc), length(okc), length(results))
+    @printf("      tc   median |err| %.1f%%  mean %.1f%%  median SIGNED %+.1f%%  (n=%d of %d)\n",
+            100*median(rt), 100*mean(rt), 100*median(st), length(okt), length(results))
 end
 
 open(joinpath(@__DIR__, "..", "..", "gabbard_validation.csv"), "w") do io
