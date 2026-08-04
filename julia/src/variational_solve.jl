@@ -58,6 +58,7 @@
 # cost.
 
 using LinearAlgebra
+using LinearAlgebra: I
 
 # Active-set moves allowed per step. Each move is forced by a violated complementarity
 # condition, so the iteration cannot wander; this only bounds pathological cycling,
@@ -162,6 +163,25 @@ function pc_at(p::ImpactParams, pc::AbstractVector, th::Real)
     sum(pc[j] * legendre_angular(pc_l(j), mu).P for j in eachindex(pc))
 end
 
+"""
+The Legendre Vandermonde on the collocation nodes: `V[i,j] = P_{l_j}(cos theta_i)`.
+
+It converts pressure coefficients to nodal pressure values, `nodal = V * coefficients`.
+Square and invertible because there are exactly as many nodes as harmonics and the nodes
+are distinct -- the same fact that makes the contact system square.
+"""
+function legendre_vandermonde(p::ImpactParams)
+    npc = pc_len(p)
+    V = zeros(npc, npc)
+    for i in 1:npc
+        mu = cos(p.nodes[i])
+        for j in 1:npc
+            V[i, j] = legendre_angular(pc_l(j), mu).P
+        end
+    end
+    V
+end
+
 eta_field(p::ImpactParams, adot) = (x, mu) -> p.eta(shear_rate(basis(p), adot, x, mu))
 
 mutable struct ImpactState
@@ -205,7 +225,8 @@ because that is the only one that moves the centre of mass. What remains is
 conditions on the contact nodes, and the vanishing of the pressure on the free ones.
 """
 function try_step(p::ImpactParams, prev::ImpactState, curr::ImpactState,
-                  dt::Float64, cp::Int; F0 = nothing, cache = nothing, diag = nothing)
+                  dt::Float64, cp::Int; F0 = nothing, cache = nothing, diag = nothing,
+                  Vfac = nothing)
     b = basis(p); N = ndof(b); npc = pc_len(p); nn = length(p.nodes)
     (0 <= cp <= nn) || return (:penetrate, curr)
 
@@ -231,19 +252,45 @@ function try_step(p::ImpactParams, prev::ImpactState, curr::ImpactState,
     z0 = ((-p.Bo - hv_v) / β - hv_z) / β
     dz_dpc1 = -1 / β^2
 
+    # THE PRESSURE IS SOLVED FOR AT THE NODES, not as Legendre coefficients.
+    #
+    # The two are related by the Legendre Vandermonde, `nodal = V * coefficients`, so
+    # this is an exact change of variables and the answer cannot move. What moves is the
+    # structure of the system, in two ways that matter:
+    #
+    #   * The free-node condition becomes `v_i = 0` -- a single unit entry -- instead of
+    #     a dense row evaluating M+1 Legendre polynomials. That is a structural
+    #     simplification only. It does NOT improve the conditioning, which was the first
+    #     reason I gave for making the change and was wrong: measured on the same state,
+    #     cond(KKT) goes 8.6e8 -> 7.6e8 at M = 20 but 2.9e12 -> 6.7e12 at M = 90, so it
+    #     is slightly WORSE where it matters. Whatever makes this system ill-conditioned
+    #     is not the pressure rows.
+    #   * The compliance implied by the eliminated system becomes SYMMETRIC. Virtual work
+    #     pairs the nodal gap with the nodal pressure weighted by quadrature, so in this
+    #     basis `W^(1/2) H A^-1 H' W^(1/2)` is symmetric to machine precision and positive
+    #     semi-definite -- measured at 1e-16 asymmetry and no negative eigenvalues for
+    #     every M and K tried. In the coefficient basis it is neither: gaps at nodes
+    #     paired against coefficients of harmonics gave a relative asymmetry of sqrt(2)
+    #     with half the spectrum negative.
+    #
+    # That symmetry is the precondition for treating the contact problem as the linear
+    # complementarity problem it is, rather than searching over candidate contact sets.
+    # Nothing downstream sees the change: the coefficients are recovered before returning,
+    # so `pc` keeps its meaning everywhere else.
+    Vf = Vfac === nothing ? lu(legendre_vandermonde(p)) : Vfac
+    Vinv_row2 = (Vf \ Matrix{Float64}(I, npc, npc))[2, :]   # the l = 1 coefficient
+    Qn = Qm * (Vf \ Matrix{Float64}(I, npc, npc))
+
     Hm = zeros(npc, N); Zm = zeros(npc, npc); rhs_h = zeros(npc)
     for i in 1:npc
         th = p.nodes[i]
         if i <= cp                                   # contact: the gap vanishes
             row, mu = gap_row(p, th)
             Hm[i, :] = row
-            Zm[i, 2] += dz_dpc1
+            Zm[i, :] .+= dz_dpc1 .* Vinv_row2        # z is affine in p_c,1
             rhs_h[i] = -mu - z0
-        else                                         # free: the pressure vanishes
-            mu = cos(th)
-            for j in 1:npc
-                Zm[i, j] = legendre_angular(pc_l(j), mu).P
-            end
+        else                                         # free: the nodal pressure vanishes
+            Zm[i, i] = 1.0
         end
     end
 
@@ -280,15 +327,17 @@ function try_step(p::ImpactParams, prev::ImpactState, curr::ImpactState,
         key = (cp, dt, curr.first)
         fac = if cache !== nothing && F0 !== nothing
             get!(cache, key) do
-                lu([A -Qm; Hm Zm])
+                lu([A -Qn; Hm Zm])
             end
         else
-            lu([A -Qm; Hm Zm])
+            lu([A -Qn; Hm Zm])
         end
         sol = fac \ [rhs0; rhs_h]
         any(!isfinite, sol) && return (:diverge, curr)
         a_next = sol[1:N]
-        pc = sol[N+1:N+npc]
+        ## the solve returns NODAL pressures; the coefficients are recovered here so that
+        ## `pc` keeps the meaning the rest of the code and every test relies on
+        pc = Vf \ sol[N+1:N+npc]
         v_next = (-p.Bo - pc[2] - hv_v) / β
         z_next = (v_next - hv_z) / β
         adot_star = β * a_next + hv_a
@@ -354,6 +403,8 @@ transition from being straddled.
 """
 function simulate(p::ImpactParams; verbose = false)
     F0 = p.eta_const ? assemble_newtonian(basis(p), p.Oh) : nothing
+## depends only on the nodes and the harmonic count, so it is built once
+Vfac = lu(legendre_vandermonde(p))
     cache = Dict{Tuple{Int,Float64,Bool},Any}()
     dg = Ref((sweeps = 0, resid = 0.0))
     max_sweeps = 0; max_resid = 0.0
@@ -395,7 +446,7 @@ pcs = Vector{Float64}[copy(s0.pc)]
             cand ∈ seen && break                  # cycling: fall back to dt control
             push!(seen, cand)
             status, nxt = try_step(p, prev, curr, dt, cand;
-                                   F0 = F0, cache = cache, diag = dg)
+                                   F0 = F0, cache = cache, diag = dg, Vfac = Vfac)
             ## A stalled viscosity iteration is not a statement about the surface, so it
             ## must not drive the contact set. Abandon the active-set search and let the
             ## step be rejected, which halves dt -- the only lever that restores the
@@ -474,4 +525,120 @@ function contact_time(ts, cps)
     end
     run_start !== nothing && (best = max(best, ts[end] - ts[run_start]))
     best
+end
+
+# ============================================================================
+# THE CONTACT PROBLEM AS A LINEAR COMPLEMENTARITY PROBLEM
+#
+# Everything above chooses the contact extent by searching: propose a count, solve, test
+# whether the proposal was consistent, rank the survivors. That is a workaround for not
+# knowing the contact set, and it has cost a great deal -- a tangency ranking that is
+# degenerate once the interior is resolved, a chattering active set that injected forty
+# times the drop's energy, and a sequence of tie-breaking rules none of which is physics.
+#
+# The contact set does not have to be guessed. Eliminating the interior amplitudes and the
+# centre of mass leaves the nodal gaps affine in the nodal pressures,
+#
+#     h = A_c p + b ,
+#
+# and the physics is three conditions at every node: `h >= 0` (no penetration), `p >= 0`
+# (a gas film cannot pull), `h_i p_i = 0` (touching with pressure, or clear of it with
+# none). An affine relation plus those conditions IS a linear complementarity problem, and
+# the contact set is an OUTPUT of solving it -- the nodes where `p_i > 0`.
+#
+# What makes this tractable rather than aspirational is measured, not assumed:
+#
+#   * `A_c` is symmetric to 1e-16 and positive semi-definite at every M and K tried, in
+#     the NODAL pressure basis. In the Legendre coefficient basis it is neither -- gaps at
+#     nodes paired against coefficients of harmonics gave sqrt(2) relative asymmetry with
+#     half the spectrum negative. The change of variables is what buys the structure.
+#   * With `A_c` symmetric PSD the LCP is exactly the KKT system of the convex programme
+#     `min (1/2) p'A_c p + b'p` subject to `p >= 0`, so a solution exists and the
+#     complementarity residual `max_i min(h_i, p_i)` is a certificate rather than a
+#     heuristic stopping rule.
+#   * The affine relation itself was checked against the searching solver's own output:
+#     relative error 0.
+#
+# And what it is worth: the searching solver satisfies `h >= 0` and `h p = 0` by
+# construction but NOT `p >= 0`. Measured over whole runs, the pressure is negative at
+# 0.015 per cent of node-steps in a case that works and 41 per cent in one that does not.
+# The dropped condition is exactly the difference between the two.
+
+"""
+    lcp_pgs(A, b; iters, tol) -> (p, residual, sweeps)
+
+Projected Gauss-Seidel for `h = Ap + b`, `h >= 0`, `p >= 0`, `p'h = 0`, with `A`
+symmetric positive semi-definite.
+
+Each sweep is one pass of Gauss-Seidel followed by projection onto `p >= 0`, which for a
+symmetric PSD matrix is coordinate descent on the equivalent convex programme and so
+cannot increase the objective. Nodes with a non-positive diagonal are skipped: those are
+nodes whose gap does not respond to their own pressure, which cannot carry load.
+
+The returned residual is `max_i min(h_i, p_i)`, scaled. It vanishes exactly when all three
+conditions hold, so it is a certificate of the solution rather than a proxy for one.
+"""
+function lcp_pgs(A::AbstractMatrix, b::AbstractVector; iters::Int = 20000,
+                 tol::Real = 1e-11)
+    n = length(b)
+    p = zeros(n)
+    dg = [A[i, i] for i in 1:n]
+    resid = Inf; sweeps = 0
+    for k in 1:iters
+        sweeps = k
+        for i in 1:n
+            dg[i] <= 0 && continue
+            p[i] = max(0.0, p[i] - (b[i] + dot(view(A, i, :), p)) / dg[i])
+        end
+        h = A * p .+ b
+        resid = maximum(min.(h, p))
+        sc = max(maximum(abs, h), maximum(abs, p), 1.0)
+        abs(resid) / sc < tol && break
+    end
+    (p, resid, sweeps)
+end
+
+"""
+    contact_lcp(p, prev, curr, dt; F0, Vfac) -> (Ac, b, nodes)
+
+Assemble the complementarity problem for one step: the compliance `Ac`, the free-flight
+gaps `b`, and the node indices the problem is posed on.
+
+Restricted to the lower hemisphere. The upper nodes sit a diameter above the substrate and
+carry zero pressure in any solution, and including them only adds null directions -- their
+self-compliance is ~1e-20, which is numerically indistinguishable from a node that cannot
+carry load at all.
+"""
+function contact_lcp(p::ImpactParams, prev::ImpactState, curr::ImpactState,
+                     dt::Float64; F0, Vfac)
+    b = basis(p); N = ndof(b); npc = pc_len(p); nn = length(p.nodes)
+    if curr.first
+        c0, c1, c2 = 1.0, -1.0, 0.0
+    else
+        r = dt / curr.dt
+        c0 = (1 + 2r)/(1 + r); c1 = -(1 + r); c2 = r^2/(1 + r)
+    end
+    β = c0 / dt
+    hv_a  = (c1*curr.a    + c2*prev.a)    / dt
+    hv_ad = (c1*curr.adot + c2*prev.adot) / dt
+    hv_z  = (c1*curr.z    + c2*prev.z)    / dt
+    hv_v  = (c1*curr.v    + c2*prev.v)    / dt
+    A = β^2 * F0.M + β * F0.C + F0.G
+    rhs0 = -F0.M * (β*hv_a + hv_ad) - F0.C * hv_a
+    Vinv = Vfac \ Matrix{Float64}(I, npc, npc)
+    Qn = hcat((force_column(p, j) for j in 1:npc)...) * Vinv
+    H = zeros(nn, N); mu = zeros(nn)
+    for i in 1:nn
+        row, m = gap_row(p, p.nodes[i]); H[i, :] = row; mu[i] = m
+    end
+    z0 = ((-p.Bo - hv_v)/β - hv_z)/β
+    dz = -1/β^2
+    ## h is affine in the nodal pressure through BOTH the shape and the centre of mass
+    Ac_full = H * (A \ Qn) .+ dz .* (ones(nn) * Vinv[2, :]')
+    b_full  = H * (A \ rhs0) .+ mu .+ z0
+    idx = [i for i in 1:nn if p.nodes[i] > pi/2]
+    S = Ac_full[idx, idx]
+    (Matrix(Symmetric(0.5 .* (S .+ S'))), b_full[idx], idx,
+     (A = A, rhs0 = rhs0, Qn = Qn, Vinv = Vinv, β = β, hv_a = hv_a,
+      hv_z = hv_z, hv_v = hv_v, npc = npc, N = N))
 end
