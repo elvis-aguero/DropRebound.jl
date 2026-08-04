@@ -215,3 +215,41 @@ end
         @test isapprox(r.tc,  rn.tc;  rtol = 1e-4)
     end
 end
+
+# The 3000 ppm shear-thinning fluid, and the one thing it settles.
+#
+# This fluid's ZERO-SHEAR Ohnesorge is 57. A Newtonian drop that viscous does not
+# rebound at all -- it arrives, spreads, and stays down. The experiments nonetheless
+# measure restitution coefficients between 0.57 and 0.85. So shear thinning is not a
+# correction to the rebound of this drop; it is the reason there is a rebound to
+# describe. That is a qualitative prediction with nothing fitted to it, and it is the
+# sharpest test the rheology gets: a model that merely adjusted the damping a little
+# would rebound at both viscosities and would be wrong about the physics while looking
+# right on a plot.
+@testset "the 3000 ppm fluid rebounds only because it thins" begin
+    ## Cross fit of the fluid, relabelled to Carreau-Yasuda by lambda_c = K, a = m,
+    ## n = 1 - m -- the correspondence derived on "Cross-Model Fluids".
+    eta_0, eta_inf = 8.433817577956766, 0.0037320997942061666
+    K_cross, m_cross = 18.48081673111359, 0.7430524574330837
+    R, sigma, rho = 0.0003, 0.0728, 1000.0
+    t_cap = sqrt(rho * R^3 / sigma)
+    Oh_0 = eta_0 / sqrt(rho * sigma * R)
+    @test Oh_0 > 50                                   # genuinely, extremely viscous
+
+    common = (We = 0.19, Bo = 0.012, Oh = Oh_0, M = 14, K = 2, t_max = 25.0)
+
+    ## At the zero-shear viscosity the drop must NOT come back.
+    rn = simulate(ImpactParams(; common...))
+    @test isnan(rn.cor) || rn.cor < 0.05              # no rebound to speak of
+
+    ## With the fluid's own thinning it must, and near the measured value: the
+    ## experiments at this Weber number average CoR ~ 0.80.
+    rst = simulate(ImpactParams(; common...,
+        eta = gd -> carreau(gd; lambda_c = K_cross/t_cap, a = m_cross,
+                            n = 1 - m_cross, eta_inf_ratio = eta_inf/eta_0)))
+    @test rst.rejects == 0
+    @test 0.6 < rst.cor < 0.95
+    @test isapprox(rst.cor, 0.80; rtol = 0.20)
+    ## and the contact time within the same band as the measurement, ~2.7
+    @test isapprox(rst.tc, 2.7; rtol = 0.30)
+end

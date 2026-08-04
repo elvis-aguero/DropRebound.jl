@@ -35,15 +35,22 @@ const PUBLISHED = [
 # uses, and publishing them alongside the current theory would only mislead.
 const UNPUBLISHED = [
     "carreau_yasuda_derivation.jl",
-    # Superseded by "Carreau-Yasuda: Multi-Mode", which says so in its own
-    # opening lines -- as does this page, at its end. A page that two published
-    # pages describe as obsolete should not itself be published.
+    # The single-mode closure, superseded twice over: first by the multi-mode
+    # version below, and then by the model itself, which evaluates the viscosity
+    # pointwise rather than through any per-mode characteristic shear rate.
     "carreau_yasuda_nonperturbative_derivation.jl",
     # Its result -- that no small-amplitude expansion of this problem exists,
     # because eps^a is non-analytic at eps=0 for non-integer a -- is now derived
     # in "Shear-Thinning Drops" where it is load-bearing. A chapter whose title
     # is that something does not work is not a chapter.
     "carreauYasuda_firstprinciples_derivation.jl",
+    # It opens "this is the model the validation pipeline runs", and it is not: it
+    # builds each mode's viscosity from that mode's own amplitude through a scalar
+    # characteristic shear rate. The model computes eta pointwise from the shear rate
+    # of the full summed strain field, and that the invariant does NOT superpose over
+    # modes is the reason the coupling exists at all. A page that presents the
+    # superseded closure as the live one is the most misleading kind of stale.
+    "carreau_yasuda_multimode_derivation.jl",
 ]
 
 all_scripts = Set(filter(f -> endswith(f, ".jl"), readdir(DERIVATIONS_SRC)))
@@ -91,12 +98,11 @@ makedocs(
         "Shear-Thinning Fluids" => [
             # Read in this order: the model first, stated completely and
             # without approximation; then the descent from it to something
-            # runnable; then the two constitutive laws that are actually
-            # implemented; and last the measurement that prices the
-            # mode-coupling concessions the descent makes.
+            # runnable; then the constitutive law a real fluid is characterised
+            # by; and last the measurement that prices the mode-coupling
+            # concessions the descent makes.
             "Shear-Thinning Drops"             => PAGE["generalized_newtonian_hierarchy_derivation.jl"],
             "Shear-Thinning Drops: Closures"   => PAGE["shear_thinning_closures_derivation.jl"],
-                    "Carreau-Yasuda: Multi-Mode"       => PAGE["carreau_yasuda_multimode_derivation.jl"],
             "Cross-Model Fluids"               => PAGE["cross_fluid_derivation.jl"],
             "Angular Bandwidth of Viscosity"   => PAGE["eta_spectrum_derivation.jl"],
         ],

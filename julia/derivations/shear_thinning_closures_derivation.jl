@@ -1319,22 +1319,36 @@ let  #src
     println("    Newtonian case it claims to generalise.")  #src
 end  #src
 
+## Switching the thinning off must return the Newtonian operator, and the check has  #src
+## to run through the SHEAR-THINNING code path to mean anything: the whole point is   #src
+## that the expensive path, which rebuilds the coupled matrices from a pointwise      #src
+## viscosity, agrees with the cheap one that assumes a constant viscosity and         #src
+## assembles block by block. Comparing either against itself would prove nothing.     #src
 let  #src
-    M = 5  #src
     Oh0 = 0.05  #src
-    stx = STExactParams(M, Oh0, 0.0, 2.0, 0.5; viscous=:reid)  #src
-    Adot = [0.05, -0.02, 0.031, 0.004]  #src
-    oh_eff = oh_eff_all_coupled(stx, Oh0, Adot)  #src
-    @assert all(o -> isapprox(o, Oh0; rtol=1e-12), oh_eff) "Oh_eff must equal Oh0 when lambda_c = 0"  #src
-    lam_st, om2_st = lambda_omega2_from_oh_eff(stx, oh_eff)  #src
-    lam_n, om2_n = drop_viscous_coeffs(M, Oh0, :reid)  #src
-    worst = maximum(max(abs(lam_st[k]-lam_n[k])/lam_n[k], abs(om2_st[k]-om2_n[k])/om2_n[k])  #src
-                    for k in eachindex(lam_n))  #src
-    @assert worst < 5e-3 "the shear-thinning path does not reduce to Reid at lambda_c=0 ($worst)"  #src
-    println("  ASSERTION 12b OK: with the thinning switched off (lambda_c = 0) the")  #src
-    println("    shear-thinning path returns Oh_eff = Oh0 exactly, and its lambda_l,")  #src
-    println("    omega_l^2 agree with the Newtonian Reid coefficients to")  #src
-    println("    $(round(100*worst, sigdigits=2))% (tabulated-vs-exact interpolation error).")  #src
+    bas = DropSolver.ModalBasis(2:6, 2)  #src
+    st = [0.6/i * (k == 1 ? 1.0 : 0.3) for i in 1:length(bas.ls) for k in 1:bas.K]  #src
+    ## lambda_c -> 0 sends eta -> 1 pointwise, whatever the shear rate is             #src
+    etaf = (x, mu) -> DropSolver.carreau(DropSolver.shear_rate(bas, st, x, mu);  #src
+                                        lambda_c=1e-10, a=2.0, n=0.4)  #src
+    Fth = DropSolver.assemble_coupled(bas, Oh0; eta = etaf)  #src
+    Fnw = DropSolver.assemble_newtonian(bas, Oh0)  #src
+    sc = maximum(abs, Fnw.C)  #src
+    worst = maximum(abs, Fth.C .- Fnw.C) / sc  #src
+    @assert sc > 1.0 "the Newtonian dissipation operator is degenerate ($sc)"  #src
+    @assert worst < 1e-8 "the shear-thinning path does not reduce to the Newtonian operator at lambda_c -> 0 (rel $worst)"  #src
+    ## and the modes must decouple again, since a constant eta carries only l' = 0    #src
+    nl = length(bas.ls)  #src
+    off = maximum(DropSolver.block_norm(bas, Fth.C, i, j) for i in 1:nl, j in 1:nl if i != j)  #src
+    dia = maximum(DropSolver.block_norm(bas, Fth.C, i, i) for i in 1:nl)  #src
+    @assert off < 1e-8 * dia "the thinning path leaves the modes coupled at lambda_c -> 0 ($(off/dia))"  #src
+    @printf("  ASSERTION 12b OK: with the thinning switched off the coupled assembly\n")  #src
+    @printf("    reproduces the constant-viscosity operator to %.1e relative, and the\n", worst)  #src
+    @printf("    off-diagonal blocks vanish to %.1e of the diagonal. So the hierarchy\n", off/dia)  #src
+    println("    contains the Newtonian case it claims to generalise, and contains it")  #src
+    println("    through the same code the shear-thinning runs use.")  #src
+    println("    Physical meaning of a failure: the mode coupling would be an artefact")  #src
+    println("    of the assembly rather than a consequence of the viscosity field.")  #src
 end  #src
 
 # ## Numerical realisation
@@ -1350,7 +1364,7 @@ end  #src
 # None of the integrals in the model has a closed form, because
 # ``\eta(\dot\gamma)`` is not polynomial. They are evaluated on a **product
 # Gauss-Legendre rule**: ``n_r`` nodes in ``x\in[0,1]`` and ``n_x`` nodes in
-# ``\mu\in[-1,1]`` (`STExactParams`). At each node ``\dot\gamma`` is computed
+# ``\mu\in[-1,1]`` (`assemble_coupled`). At each node ``\dot\gamma`` is computed
 # from the full superposition of active modes, ``\eta`` follows pointwise from
 # the constitutive law, and a Legendre projection in ``\theta`` at each radius
 # produces the ``\eta_{k}(x)`` the matrices need.
@@ -1437,29 +1451,41 @@ end  #src
 # nodes in contact -- and the step must decide that integer as well as the
 # amplitudes.
 #
-# Two properties of the resulting search matter, and both are consequences of
-# complementarity rather than of any particular discretisation.
+# **The complementarity conditions determine it, with no objective.** The pair
 #
-# **Infeasible candidates are rejected, not ranked.** A candidate contact set
-# that leaves the surface below the substrate somewhere outside the contact
-# region describes an interpenetrating state. It is not a worse solution than the
-# others, it is not a solution, and it is excluded before any objective is
-# consulted rather than being allowed to compete.
+# ```math
+# h\ge0,\qquad p_c\ge0,\qquad h\,p_c=0
+# ```
 #
-# **The objective must be local to the contact edge.** An objective that
-# integrates a residual over the contact region is biased toward vanishing
-# contact, because shrinking the region also shrinks the domain the residual is
-# measured over. Its minimiser is then the smallest admissible contact set,
-# independently of the physics -- which reproduces the degeneracy at first touch
-# rather than resolving it. The objective must therefore be evaluated *at the
-# edge*.
+# says which way to move whenever the current set is wrong, and the two
+# inequalities fail on opposite sides. If any node outside the contact has
+# ``h<0`` the surface is interpenetrating and the set is too *small*; if the
+# pressure at the outermost contacting node has ``p_c<0`` the film is pulling the
+# drop down and the set is too *large*. So the set is found by iterating within
+# the step -- grow while the first holds, retreat while the second does, stop when
+# neither does. Every move is forced by a violated condition, so the iteration
+# terminates, and no tie ever has to be broken.
 #
-# **The step size is the safety valve.** The contact set is allowed to change by
-# at most one node per step. If no admissible neighbouring set can be found, the
-# correct response is not to accept a worse one but to reject the step and halve
-# ``\Delta t``. This is what keeps the nonsmoothness of the contact transition
-# from being straddled by a single step, and it is why the integration is
-# adaptive in time even though nothing in the model requires it to be.
+# That last point is what makes the difference. Choosing instead among
+# neighbouring candidate sets by minimising a residual requires an objective, and
+# an objective admits ties: two sets score almost equally, the choice flips from
+# step to step, and the reaction pressure oscillates in sign with order-one
+# amplitude until the step size collapses. The failure is worst where the physical
+# damping is weakest, because there the high-order modes ring freely, and it is
+# *sporadic* in the truncation ``M`` rather than monotone in it -- which is the
+# signature of a numerical bistability and not of an unresolved scale. Refining
+# ``\Delta t`` makes it worse, not better.
+#
+# An objective, if one is used at all, must at least be local to the contact edge:
+# one integrated over the contact region is biased toward vanishing contact,
+# because shrinking the region also shrinks the domain the residual is measured
+# over, so its minimiser is the smallest admissible set independently of the
+# physics.
+#
+# **The step size remains the safety valve.** If the iteration cannot find an
+# admissible set at all, the response is to reject the step and halve
+# ``\Delta t`` rather than accept an inadmissible one. This is what keeps the
+# nonsmoothness of the contact transition from being straddled by a single step.
 #
 # ### Two measurement traps
 #
