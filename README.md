@@ -6,14 +6,14 @@ Julia solver for the impact and rebound of a liquid drop on a flat substrate, wi
 <tr>
 <td align="center" width="50%">
 
-![Oldroyd-B drop impact](docs/impact_ob.gif)
+![Oldroyd-B drop impact](docs/figures/impact_ob.gif)
 
 *Oldroyd-B (Oh = 0.30, De₁ = 0.5, β_s = 0.5, We = 0.5, M = 90) — legacy solver*
 
 </td>
 <td align="center" width="50%">
 
-![Carreau shear-thinning drop impact](docs/impact_st.gif)
+![Carreau shear-thinning drop impact](docs/figures/impact_st.gif)
 
 *Carreau shear-thinning (Oh = 0.30, λ_c = 0.02, We = 0.5, M = 90) — legacy solver*
 
@@ -35,7 +35,7 @@ The Julia module name is `DropSolver` (`using DropSolver`).
 
 **Validated** against Gabbard et al. (2025): coefficient of restitution to 8% median, contact time to 13%, across 935 experiments spanning $\mathrm{Oh} \in [0.014, 0.79]$. And against a 3000 ppm shear-thinning solution whose zero-shear Ohnesorge is 57 — a Newtonian drop that viscous does not rebound at all, so the rebound the experiments measure exists *because* the fluid thins. Restitution agrees to 7%, contact time to 10%, with nothing fitted to the impact data.
 
-![3000 ppm shear-thinning drop: ten simulations against 72 experiments](shear_thinning_overlay.png)
+![3000 ppm shear-thinning drop: ten simulations against 72 experiments](docs/figures/shear_thinning_overlay.png)
 
 ## Dimensionless parameters
 

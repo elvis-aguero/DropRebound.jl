@@ -114,7 +114,7 @@ for (K, ic, it) in ((1, 4, 5), (2, 7, 8))
             100*median(rt), 100*mean(rt), 100*median(st), length(okt), length(results))
 end
 
-open(joinpath(@__DIR__, "..", "..", "gabbard_validation.csv"), "w") do io
+open(joinpath(@__DIR__, "..", "..", "results", "gabbard_validation.csv"), "w") do io
     println(io, "We,Oh,Bo,cor_K1,tc_K1,cp_K1,cor_K2,tc_K2,cp_K2,cor_exp,tc_exp,n_exp")
     for r in results
         println(io, join(r, ","))

@@ -69,6 +69,6 @@ fig = plot(p1, p2; layout = (1, 2), size = (980, 420), dpi = 200,
            left_margin = 5Plots.mm, bottom_margin = 5Plots.mm, top_margin = 3Plots.mm,
            plot_title = "3000 ppm drop,  Oh₀ = $(round(OH_0, digits=1))",
            plot_titlefontsize = 10)
-out = joinpath(@__DIR__, "..", "..", "shear_thinning_overlay")
+out = joinpath(@__DIR__, "..", "..", "docs", "figures", "shear_thinning_overlay")
 savefig(fig, out * ".png"); savefig(fig, out * ".svg")
 println("wrote $(out).png and .svg")

@@ -10,3 +10,9 @@ julia/outputs/figures/*
 !julia/outputs/figures/.gitkeep
 docs/build/
 docs/src/derivations/
+
+# Agent instructions live on the developer's machine, not in the published repo.
+CLAUDE.md
+# Transient scratch from analysis sessions.
+scratch_*
+*.ipynb_checkpoints/
