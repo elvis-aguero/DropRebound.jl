@@ -27,4 +27,5 @@ using DropSolver
     include("test_variational.jl")
     include("test_variational_impact.jl")
     include("test_conservation.jl")
+    include("test_lcp_contact.jl")
 end
