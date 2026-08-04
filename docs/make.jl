@@ -51,6 +51,14 @@ const UNPUBLISHED = [
     # modes is the reason the coupling exists at all. A page that presents the
     # superseded closure as the live one is the most misleading kind of stale.
     "carreau_yasuda_multimode_derivation.jl",
+    # The other route to the same equations: the momentum equation written per mode,
+    # its boundary conditions imposed explicitly, and the traction projected onto the
+    # surface harmonics. An independent derivation whose checks still run, but not part
+    # of the model -- the assembly evaluates the three quadratic forms by quadrature on
+    # the strain field and calls none of those operators. Keeping it on the model page
+    # meant seven hundred lines of machinery the model does not use, between the
+    # kinematics and the variational structure that actually follows from them.
+    "differential_formulation_derivation.jl",
 ]
 
 all_scripts = Set(filter(f -> endswith(f, ".jl"), readdir(DERIVATIONS_SRC)))

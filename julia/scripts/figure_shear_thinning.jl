@@ -43,28 +43,31 @@ end
 rn = simulate(ImpactParams(We = 0.19, Bo = BO, Oh = OH_0, M = 14, K = 2, t_max = 25.0))
 @printf("Newtonian at Oh_0 = %.1f : CoR = %s (never releases)\n", OH_0, string(rn.cor))
 
-common = (xscale = :log10, xlabel = "Weber number  We", legend = :topright,
+common = (xscale = :log10, xlabel = "Weber number  We",
           framestyle = :box, grid = true, gridalpha = 0.15, tickfontsize = 8,
           guidefontsize = 9, legendfontsize = 7, titlefontsize = 10)
 
 p1 = scatter(We_e, cor_e; label = "experiment (n=$(length(rows)))",
              mc = :steelblue, ms = 3.5, msw = 0, ma = 0.55,
              ylabel = "coefficient of restitution", title = "Restitution",
-             ylims = (0.0, 1.0), common...)
+             ylims = (0.0, 1.0), legend = :bottomleft, common...)
 plot!(p1, grid, cor_m; label = "model, shear-thinning", lc = :crimson, lw = 2,
       marker = :circle, ms = 4, mc = :crimson)
-hline!(p1, [0.0]; lc = :black, ls = :dash, lw = 1.5,
-       label = "Newtonian at Oh₀ = $(round(OH_0, digits=0)): no rebound")
+## Stated rather than plotted: a Newtonian drop at this viscosity never releases, so
+## it contributes no point, and a legend entry for an empty series is noise.
+annotate!(p1, 0.055, 0.30,
+          text("Newtonian at the same Oh₀:\nno rebound at any We", 7, :center,
+               RGB(0.4, 0.4, 0.4)))
 
 p2 = scatter(We_e, tc_e; label = "experiment", mc = :steelblue, ms = 3.5,
              msw = 0, ma = 0.55, ylabel = "contact time  t_c / √(ρR³/σ)",
-             title = "Contact time", common...)
+             title = "Contact time", legend = :topright, common...)
 plot!(p2, grid, tc_m; label = "model, shear-thinning", lc = :crimson, lw = 2,
       marker = :circle, ms = 4, mc = :crimson)
 
 fig = plot(p1, p2; layout = (1, 2), size = (980, 420), dpi = 200,
            left_margin = 5Plots.mm, bottom_margin = 5Plots.mm, top_margin = 3Plots.mm,
-           plot_title = "3000 ppm shear-thinning drop: Oh₀ = $(round(OH_0, digits=1)), Bo = $BO, nothing fitted",
+           plot_title = "3000 ppm drop,  Oh₀ = $(round(OH_0, digits=1))",
            plot_titlefontsize = 10)
 out = joinpath(@__DIR__, "..", "..", "shear_thinning_overlay")
 savefig(fig, out * ".png"); savefig(fig, out * ".svg")
