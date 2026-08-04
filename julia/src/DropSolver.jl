@@ -57,6 +57,11 @@ include("residual_v1.jl")
 include("timestepper_v1.jl")
 include("postprocessing.jl")
 
+# The variational assembly of the shear-thinning model (see the derivation page
+# "Shear-Thinning Drops"). Kept separate from the eliminated-interior solver above:
+# this one retains the interior as part of the state.
+include("variational.jl")
+export RitzBasis, assemble, decay_rates, dominant_pair
 # Export postprocessing
 export SweepKPIs, extract_kpis, compute_contact_radius, drop_profile
 

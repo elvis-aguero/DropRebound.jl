@@ -1798,12 +1798,29 @@ let  #src
     ## angle theta, not a linearisation -- the vertical Cartesian coordinate of    #src
     ## the point at radius 1+zeta on a centre at height z.                        #src
     @variables zc zeta_  #src
-    gap_exact  = zc + (1 + zeta_)*cos(tt)          # z + r cos(theta), r = 1+zeta  #src
-    gap_claim  = cos(tt)*(1 + zeta_) + zc  #src
-    w_gap = maximum(abs(Symbolics.value(Symbolics.substitute(  #src
-                ed2(gap_exact - gap_claim), Dict(tt=>tv, zc=>0.3, zeta_=>0.17))))  #src
-            for tv in TH)  #src
-    @assert w_gap < 1e-14 "h is not the exact height of the surface point ($w_gap)"  ## CLAIM: SUM-GAP  #src
+    ## SUM-GAP. The previous version compared `zc + (1+zeta)*cos(t)` against  #src
+    ## `cos(t)*(1+zeta) + zc` -- the same expression with terms reordered. It  #src
+    ## verified commutativity of + and *, and could not fail for any input.  #src
+    ## What actually needs checking is the GEOMETRY: that h is the signed  #src
+    ## distance from the substrate plane to the surface point, with the  #src
+    ## orientation the force integral also uses.  #src
+    hfun(zv, zetav, tv) = cos(tv)*(1 + zetav) + zv  #src
+    ## (i) an undeformed sphere resting exactly on the plane touches at the south  #src
+    ##     pole and nowhere else: h(pi) = 0 and h > 0 elsewhere.  #src
+    w_gap = abs(hfun(1.0, 0.0, pi) + 0.0)          # z = 1 puts the pole at h = 0  #src
+    for tv in (0.3, 1.0, 2.0, 3.0)  #src
+        w_gap = max(w_gap, hfun(1.0, 0.0, tv) > 0 ? 0.0 : 1.0)  #src
+    end  #src
+    ## (ii) lowering the drop makes the pole penetrate: h(pi) < 0 for z < 1.  #src
+    w_gap = max(w_gap, hfun(0.9, 0.0, pi) < 0 ? 0.0 : 1.0)  #src
+    ## (iii) the orientation matches the force integral, which uses n_z = mu and  #src
+    ##     lands the contact region at mu < 0. The pole that touches must be mu = -1.  #src
+    w_gap = max(w_gap, isapprox(cos(pi), -1.0; atol=1e-14) ? 0.0 : 1.0)  #src
+    ## (iv) a positive radial bulge AT THE POLE closes the gap rather than opening  #src
+    ##      it -- the outward radial direction there points at the substrate.        #src
+    ##      Expecting the opposite is what this check caught on its first run.       #src
+    w_gap = max(w_gap, hfun(1.0, 0.05, pi) < hfun(1.0, 0.0, pi) ? 0.0 : 1.0)  #src
+    @assert w_gap < 1e-12 "h is not the gap: geometry or orientation is wrong ($w_gap)"  ## CLAIM: SUM-GAP  #src
 
     ## SUM-STREAM: the stream-function velocities are divergence free, for a       #src
     ## multi-mode psi (not one mode at a time -- incompressibility must survive    #src
@@ -1951,7 +1968,7 @@ let  #src
     @assert w_harm < 1e-10 "x^n is not annihilated by L_n, so the harmonic part is wrong ($w_harm)"  #src
 
     println("  ASSERTION 2c OK: the remaining Model summary claims, discharged --")  #src
-    @printf("    h = mu(1+zeta)+z is the exact surface height        (%.1e)\n", w_gap)  #src
+    @printf("    h is the gap, with the orientation the force integral uses (%.1e)\n", w_gap)  #src
     @printf("    the stream-function field is divergence free        (%.1e)\n", w_div)  #src
     @printf("    Oh, Bo, We follow from the stated scalings          (%.1e)\n", w_grp)  #src
     println("    sqrt(2 e:e) is the shear rate in simple shear       (exact)")  #src
@@ -2048,7 +2065,23 @@ end  #src
 # \;=\; Q_a \;}
 # ```
 #
-# one equation per coordinate. The generalised force follows from the virtual work
+# **The coordinates are not independent, and the count works out because of it.**
+# BC1 links them: ``\psi_l(1)=\dot\zeta_l``, so an admissible variation must satisfy
+# ``\delta\psi_l(1)=\delta\zeta_l``. Stationarity then yields exactly two families,
+# not one per symbol:
+#
+# | variation | where | what it gives |
+# |:--|:--|:--|
+# | ``\delta\psi_l`` with ``\delta\psi_l(1)=0`` | interior | one PDE in ``x`` per mode |
+# | ``\delta\zeta_l=\delta\psi_l(1)`` | surface | one scalar equation per mode |
+#
+# So there are ``M-1`` interior equations and ``M-1`` surface equations, and
+# ``\zeta_l`` is advanced by the second family rather than by an equation of its
+# own. Reading (2) as literally one equation per symbol -- independent stationarity
+# in both ``\zeta_l`` and ``\psi_l`` *while* constraining them -- over-determines
+# the system, and that reading is what the essential condition forbids.
+#
+# The generalised force follows from the virtual work
 # of the film traction ``-p_c\bm n`` against a radial surface displacement:
 #
 # ```math
@@ -2103,9 +2136,7 @@ end  #src
 # ```math
 # \dot z = v,
 # \qquad
-# \dot v = -\mathrm{Bo} - p_{c,1},
-# \qquad
-# v(0) = -\sqrt{\mathrm{We}} ,
+# \dot v = -\mathrm{Bo} - p_{c,1} ,
 # ```
 #
 # the net force being ``\mathfrak F=-\oint p_c\,n_z\,dS= -\frac{4\pi}{3}p_{c,1}``
@@ -2121,6 +2152,37 @@ end  #src
 # h\,p_c = 0
 # \qquad\text{for all }\theta\in[0,\pi] .
 # ```
+#
+# **Reduced to a finite system**, because the pointwise form is a continuum of
+# conditions on a finite set of coefficients. Truncate ``p_c`` at the same ``M`` as
+# the shape and impose the triple at ``M+1`` angular collocation nodes
+# ``\{\theta_i\}``:
+#
+# ```math
+# h(\theta_i)\ge0,\quad p_c(\theta_i)\ge0,\quad h(\theta_i)\,p_c(\theta_i)=0,
+# \qquad i=0\ldots M ,
+# ```
+#
+# which is ``M+1`` conditions for the ``M+1`` coefficients ``p_{c,l}``. Note this
+# constrains the *reconstructed field* at the nodes, not the coefficients
+# themselves -- those are different conditions and only the first is the physics.
+# The choice of node set is numerical and belongs on the companion page; what
+# belongs here is that the reduction is by collocation on the field.
+#
+# ### Initial conditions
+#
+# ```math
+# z(0)=1,
+# \qquad
+# v(0)=-\sqrt{\mathrm{We}},
+# \qquad
+# \zeta_l(0)=0,
+# \qquad
+# \psi_l(x,0)=0 ,
+# ```
+#
+# a spherical drop one radius above the substrate, falling at the impact speed with
+# no internal motion relative to its centre of mass.
 #
 # ### (4) The fluid
 #
@@ -2146,12 +2208,23 @@ end  #src
 # loop, because the ``\eta`` that (1) needs is computed from the solution of (2).
 # So it is a **differential-algebraic system with a fixed point in the viscosity**.
 #
-# Two truncations are present and neither is hidden. The shape expansion is cut at
-# ``M``, which is what makes the viscosity's harmonic content terminate at
-# ``k\le2M``. And any expansion of the radial profiles ``\psi_l`` is a numerical
-# choice, not part of the model -- the equations above are differential in ``x``,
-# and choosing a radial basis belongs on the companion page with the quadrature and
-# the time stepping.
+# Three approximations are present and none is hidden.
+#
+# **Linearisation in the surface amplitude** is the largest, and it is what makes
+# ``V`` quadratic and ``\nabla\cdot\bm n`` affine. All the integrals in (1) are
+# taken over the *undeformed* sphere, and volume conservation therefore holds only
+# to ``O(\zeta)``: with ``\zeta`` starting at ``l=2`` there is no ``\zeta_0`` to
+# absorb the ``O(\zeta^2)`` change of volume, so the drop's volume drifts at that
+# order and should be monitored rather than assumed.
+#
+# **The shape expansion is cut at ``M``**, which is what makes the viscosity's
+# harmonic content terminate at ``k\le2M``, and the film pressure is cut at the
+# same ``M``.
+#
+# **Any expansion of the radial profiles ``\psi_l`` is a numerical choice**, not
+# part of the model -- the equations above are differential in ``x``, and choosing a
+# radial basis belongs on the companion page with the quadrature and the time
+# stepping.
 #
 # Every unknown is determined by an equation stated above. What is not available is
 # a formula: ``\eta(\dot\gamma)`` is not polynomial, so nothing in the chain has a

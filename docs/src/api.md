@@ -116,3 +116,23 @@ Public  = false
 Private = true
 Order   = [:type, :constant, :function]
 ```
+
+## Variational assembly
+
+The model of *Shear-Thinning Drops* as stated: three quadratic forms and the
+Euler–Lagrange equations, with the interior retained as part of the state. The
+coordinates are the interior *displacement* amplitudes on a Ritz basis, and the
+surface amplitude is their boundary trace.
+
+Assembling the coefficient matrices needs only one derivative of the velocity, and
+both forms are Hessians of quadratic forms, hence symmetric — which is a
+correctness test rather than a remark. With a constant viscosity the assembly
+reproduces Reid's exact `λ_l` and `ω_l²`.
+
+```@autodocs
+Modules = [DropSolver]
+Pages   = ["variational.jl"]
+Public  = true
+Private = false
+Order   = [:type, :function]
+```

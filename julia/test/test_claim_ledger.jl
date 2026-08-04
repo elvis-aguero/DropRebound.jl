@@ -132,8 +132,21 @@ const LEDGER = [
      by = ""),
     (id = "SUM-ZDOT",   status = :axiom,  anchor = raw"\dot z = v",
      by = ""),  # definition of v
-    (id = "SUM-V0",     status = :axiom,  anchor = raw"v(0) = -\sqrt{\mathrm{We}}",
-     by = ""),  # the initial condition that defines the impact
+    # Initial data and the finite reduction of the contact conditions. All choices,
+    # none derivable, and all previously missing from the summary entirely -- an
+    # implementer had to invent them.
+    (id = "SUM-V0",     status = :axiom,  anchor = raw"v(0)=-\sqrt{\mathrm{We}}",
+     by = ""),
+    (id = "SUM-Z0",     status = :axiom,  anchor = raw"z(0)=1",
+     by = ""),
+    (id = "SUM-ZETA0",  status = :axiom,  anchor = raw"\zeta_l(0)=0",
+     by = ""),
+    (id = "SUM-PSI0",   status = :axiom,  anchor = raw"\psi_l(x,0)=0",
+     by = ""),
+    (id = "SUM-COLLOC", status = :axiom,  anchor = raw"h(\theta_i)\ge0",
+     by = ""),  # collocation on the reconstructed field, M+1 nodes
+    (id = "SUM-NODES",  status = :axiom,  anchor = raw"i=0\ldots M",
+     by = ""),
     (id = "SUM-NOPULL", status = :axiom,  anchor = raw"p_c\ge0",
      by = ""),  # a gas film cannot sustain tension
     (id = "SUM-HGE0",   status = :axiom,  anchor = raw"h\ge0",
@@ -160,7 +173,7 @@ const OPEN_BUDGET = 0
 # The number of :axiom entries, budgeted for the same reason. Four things are taken
 # on faith: the Legendre bases for the surface and the film pressure, the rigid
 # unilateral contact law, and that a gas film cannot sustain tension.
-const AXIOM_BUDGET = 9
+const AXIOM_BUDGET = 14
 
 @testset "claim ledger" begin
     text = summary_text(MODEL_PAGE)
