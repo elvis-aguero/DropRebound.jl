@@ -33,7 +33,7 @@ etaf = gd -> carreau(gd; lambda_c = LAM, a = A_CY, n = N_CY, eta_inf_ratio = RAT
 @printf("eta/eta_0 at gammadot = 1 is %.3f, so Oh_eff there is about %.3f\n\n",
         etaf(1.0), OH_0 * etaf(1.0))
 
-grid = exp.(range(log(0.02), log(3.0); length = 9))
+grid = [0.02 * (3.0/0.02)^(k/8) for k in 0:10]   # the original 9 points, plus two more
 run1(We, Oh; eta = nothing) = eta === nothing ?
     simulate(ImpactParams(We = We, Bo = BO, Oh = Oh, M = M_RUN, K = K_RUN, t_max = 25.0)) :
     simulate(ImpactParams(We = We, Bo = BO, Oh = Oh, M = M_RUN, K = K_RUN,
@@ -41,15 +41,21 @@ run1(We, Oh; eta = nothing) = eta === nothing ?
 
 c0 = Float64[]; t0v = Float64[]; ci = Float64[]; tiv = Float64[]
 cs = Float64[]; tsv = Float64[]
+z0 = Float64[]; zi = Float64[]; zs = Float64[]
+amp(p, r) = maximum(maximum(abs, surface_amplitudes(p, a)) for a in r.a)
 @printf("%-8s | %-22s | %-22s | %s\n", "We", "Newtonian eta_0", "Newtonian eta_inf",
         "Carreau-Yasuda")
 for We in grid
     a = run1(We, OH_0); b = run1(We, OH_INF); c = run1(We, OH_0; eta = etaf)
+    pa = ImpactParams(We=We, Bo=BO, Oh=OH_0, M=M_RUN, K=K_RUN)
+    push!(z0, amp(pa, a)); push!(zi, amp(pa, b)); push!(zs, amp(pa, c))
     push!(c0, a.cor); push!(t0v, a.tc)
     push!(ci, b.cor); push!(tiv, b.tc)
     push!(cs, c.cor); push!(tsv, c.tc)
-    @printf("%-8.4g | CoR %.4f  tc %5.3f | CoR %.4f  tc %5.3f | CoR %.4f  tc %5.3f\n",
-            We, a.cor, a.tc, b.cor, b.tc, c.cor, c.tc)
+    @printf("%-8.4g | CoR %-7s tc %5.3f |z|%.2f | CoR %-7s tc %5.3f |z|%.2f | CoR %-7s tc %5.3f |z|%.2f\n",
+            We, isfinite(a.cor) ? @sprintf("%.4f",a.cor) : "NONE", a.tc, z0[end],
+                isfinite(b.cor) ? @sprintf("%.4f",b.cor) : "NONE", b.tc, zi[end],
+                isfinite(c.cor) ? @sprintf("%.4f",c.cor) : "NONE", c.tc, zs[end])
 end
 
 # --- the bracketing, as a check rather than a claim -------------------------------
@@ -61,26 +67,39 @@ hi = count(i -> cs[i] > ci[i] + 1e-6, eachindex(cs))     # above the eta_inf bou
 @printf("shear-thinning CoR spans %.3f..%.3f, between %.3f..%.3f and %.3f..%.3f\n",
         minimum(cs), maximum(cs), minimum(c0), maximum(c0), minimum(ci), maximum(ci))
 
+## VALIDITY MASK. The shape expansion is linear in the amplitude, so a point with
+## |zeta| approaching one is outside the model regardless of whether the solve
+## converged -- and a run that never released has no restitution at all. Both are
+## excluded rather than drawn, because a plotted point implies a claim.
+ok(c, z) = [isfinite(c[i]) && z[i] < 0.5 ? c[i] : NaN for i in eachindex(c)]
+c0p, cip, csp = ok(c0, z0), ok(ci, zi), ok(cs, zs)
+t0p, tip, tsp = ok(t0v, z0), ok(tiv, zi), ok(tsv, zs)
+for (nm, cc) in (("eta_0", c0p), ("eta_inf", cip), ("Carreau", csp))
+    n_ok = count(!isnan, cc)
+    @printf("%-8s usable at %d of %d We points; drops out above We = %.2f\n", nm, n_ok,
+            length(cc), n_ok == length(cc) ? Inf : grid[n_ok])
+end
+
 common = (xscale = :log10, xlabel = "We", framestyle = :box, grid = true,
           gridalpha = 0.15, tickfontsize = 8, guidefontsize = 9, legendfontsize = 7,
           titlefontsize = 10)
 
-p1 = plot(grid, ci; label = "η∞  (Oh = $OH_INF)", lc = :seagreen, lw = 2,
+p1 = plot(grid, cip; label = "η∞  (Oh = $OH_INF)", lc = :seagreen, lw = 2,
           ls = :dash, marker = :utriangle, ms = 3.5, mc = :seagreen,
           ylabel = "coefficient of restitution", title = "Restitution",
           ylims = (0.0, 1.0), legend = :bottomleft, common...)
-plot!(p1, grid, cs; label = "Carreau–Yasuda", lc = :crimson, lw = 2.5,
+plot!(p1, grid, csp; label = "Carreau–Yasuda", lc = :crimson, lw = 2.5,
       marker = :circle, ms = 4.5, mc = :crimson)
-plot!(p1, grid, c0; label = "η₀  (Oh = $OH_0)", lc = :darkorange, lw = 2,
+plot!(p1, grid, c0p; label = "η₀  (Oh = $OH_0)", lc = :darkorange, lw = 2,
       ls = :dashdot, marker = :dtriangle, ms = 3.5, mc = :darkorange)
 
-p2 = plot(grid, tiv; label = "η∞", lc = :seagreen, lw = 2, ls = :dash,
+p2 = plot(grid, tip; label = "η∞", lc = :seagreen, lw = 2, ls = :dash,
           marker = :utriangle, ms = 3.5, mc = :seagreen,
           ylabel = "contact time  t_c / √(ρR³/σ)", title = "Contact time",
           legend = :topright, common...)
-plot!(p2, grid, tsv; label = "Carreau–Yasuda", lc = :crimson, lw = 2.5,
+plot!(p2, grid, tsp; label = "Carreau–Yasuda", lc = :crimson, lw = 2.5,
       marker = :circle, ms = 4.5, mc = :crimson)
-plot!(p2, grid, t0v; label = "η₀", lc = :darkorange, lw = 2, ls = :dashdot,
+plot!(p2, grid, t0p; label = "η₀", lc = :darkorange, lw = 2, ls = :dashdot,
       marker = :dtriangle, ms = 3.5, mc = :darkorange)
 
 fig = plot(p1, p2; layout = (1, 2), size = (980, 420), dpi = 200,

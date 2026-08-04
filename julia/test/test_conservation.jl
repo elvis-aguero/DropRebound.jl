@@ -14,6 +14,10 @@ using Test
 using DropSolver
 using LinearAlgebra
 
+## the solver keeps these internal; the audits need them
+basis_of(p) = DropSolver.basis(p)
+force_column_of(p, j) = DropSolver.force_column(p, j)
+
 const REF = (We = 1.0, Bo = 0.0189, Oh = 0.303767)
 
 @testset "conservation" begin
@@ -201,8 +205,16 @@ const REF = (We = 1.0, Bo = 0.0189, Oh = 0.303767)
         ## Recorded rather than asserted away: the SECOND-order volume error is itself
         ## large at this Weber number -- the amplitude norm reaches 0.41, so the linear
         ## shape expansion misrepresents the volume by about ten per cent. That is a
-        ## property of linearising in the amplitude, not of the solver, and it is the
-        ## honest ceiling on how far the model can be pushed in We.
+        ## property of linearising in the amplitude rather than of the solver.
+        ##
+        ## It is NOT a hard ceiling on We, and an earlier commit message of mine claimed
+        ## it was -- it attributed two failing high-Weber runs to "linearity breaking
+        ## down". That was wrong, and the correction belongs here because the commit
+        ## message cannot be edited. The reference implementation completes the same
+        ## cases, Oh = 0.03 at We = 5 and 10, releasing cleanly with |zeta| = 0.99 and
+        ## 1.22 -- inside an energy bound computed independently from the surface
+        ## stiffness. Those runs failed here for a solver reason, not a modelling one.
+        ## What the volume error bounds is ACCURACY at large amplitude, not admissibility.
         @test 0.05 < 0.6 * n1^2 < 0.20
     end
 
@@ -321,5 +333,74 @@ end
         @test err_tc > TOL                                 # contact time is not
         @test err_tc < 0.30                                 # and it is this bad, not worse
         @test r.tc < 2.22                                   # below the l = 2 period floor
+    end
+end
+
+# The two guards that came out of diagnosing a run which manufactured forty times the
+# energy it arrived with. Both are cheap, both are physical, and either would have caught
+# that failure the moment it appeared -- where the guards already in this file did not,
+# because `CoR <= 1` only sweeps to We = 2 and the budget audit above switches contact off.
+@testset "energy accounting through contact" begin
+    REF2 = (We = 1.0, Bo = 0.0189, Oh = 0.303767)
+
+    @testset "stored surface energy cannot exceed the energy that arrived" begin
+        # A CEILING, and the cheapest possible statement of the second law for this
+        # problem: the drop cannot deform beyond what its own kinetic energy pays for.
+        # The softest retained mode is the cheapest place to put energy, so
+        #
+        #     max|zeta_l|  <=  sqrt( E_kin / min_l (V per unit zeta_l^2) )
+        #
+        # This is not a tolerance to be tuned -- exceeding it is impossible, so any
+        # exceedance is a defect by construction. A diagnosis that took most of a day
+        # would have been a one-line failure with this in place: the run in question
+        # reached |zeta| = 9.7 against a ceiling of 1.44.
+        for (We, Oh, M, K) in ((1.0, 0.303767, 45, 2), (0.3, 0.05, 30, 2), (2.0, 0.5, 30, 2))
+            p = ImpactParams(We = We, Bo = REF2.Bo, Oh = Oh, M = M, K = K, t_max = 25.0)
+            r = simulate(p)
+            F = assemble_newtonian(basis_of(p), Oh)
+            Ekin = 0.5 * (4pi/3) * We
+            ## surface energy of a unit amplitude in each mode, taken one at a time
+            N = length(r.a[1])
+            cheapest = minimum(begin
+                e = zeros(N); e[i] = 1.0
+                0.5 * dot(e, F.G, e)
+            end for i in 1:N if begin e = zeros(N); e[i] = 1.0; dot(e, F.G, e) end > 0)
+            ceiling = sqrt(Ekin / cheapest)
+            observed = maximum(maximum(abs, surface_amplitudes(p, a)) for a in r.a)
+            @test observed > 0.01                 # the drop really deformed
+            @test observed <= ceiling             # and not beyond what it could pay for
+        end
+    end
+
+    @testset "the film's work accounts for the energy change" begin
+        # The audit that distinguishes "a pulling film did work" from "energy appeared
+        # from outside the equations" -- and it must be run WITH contact, because that is
+        # the only regime where the film contributes at all. Validated at 2.4 per cent on
+        # this case; a failing run missed by a factor of 156, which is what told me the
+        # accounting, not the film, was the thing to look at.
+        p = ImpactParams(; REF2..., M = 30, K = 2, t_max = 25.0)
+        r = simulate(p)
+        b = basis_of(p); F = assemble_newtonian(b, p.Oh); mass = 4pi/3
+        E(a, ad, z, v) = 0.5*dot(ad, F.M, ad) + 0.5*dot(a, F.G, a) +
+                         0.5*mass*v^2 + mass*p.Bo*z
+        function film_power(i)
+            Q = zeros(length(r.a[i]))
+            for j in eachindex(r.pc[i])
+                Q .+= r.pc[i][j] .* force_column_of(p, j)
+            end
+            dot(Q, r.adot[i]) - mass * r.pc[i][2] * r.v[i]
+        end
+        Wf = 0.0; Dis = 0.0
+        for i in 1:(length(r.t)-1)
+            h = r.t[i+1] - r.t[i]
+            Wf  += 0.5*h*(film_power(i) + film_power(i+1))
+            Dis += 0.5*h*(dot(r.adot[i], F.C, r.adot[i]) +
+                          dot(r.adot[i+1], F.C, r.adot[i+1]))
+        end
+        dE = E(r.a[end], r.adot[end], r.z[end], r.v[end]) -
+             E(r.a[1],   r.adot[1],   r.z[1],   r.v[1])
+        @test Dis > 0                                    # it dissipated
+        @test abs(dE) > 0.1                              # and the audit is not vacuous
+        @test isapprox(dE, Wf - Dis; rtol = 0.10)        # measured: 2.4 per cent
     end
 end
