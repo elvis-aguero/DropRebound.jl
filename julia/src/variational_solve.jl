@@ -501,7 +501,8 @@ push!(as, copy(curr.a)); push!(adots, copy(curr.adot)); push!(pcs, copy(curr.pc)
      ## the Picard iteration's worst behaviour over the whole march, so a regime where
      ## the map stops contracting announces itself instead of returning quietly
      eta_sweeps_max = max_sweeps, eta_resid_max = max_resid,
-     cor = restitution(vs, cps, p.We), tc = contact_time(ts, cps))
+     cor = restitution(vs, cps, p.We), tc = contact_time(ts, cps),
+     gap_fraction = contact_gap_fraction(ts, cps))
 end
 
 """Coefficient of restitution: rebound speed over impact speed."""
@@ -513,18 +514,67 @@ function restitution(vs, cps, We)
     abs(vs[end] / vs[max(inc - 1, 1)])
 end
 
-"""Contact time: the longest contiguous interval with a nonempty contact set."""
+"""
+Contact time: from first touch to final separation.
+
+The SPAN, not the longest contiguous run of nonempty contact. Those differ, and the
+difference is not cosmetic. When the contact set is solved for rather than assumed to be a
+disc it comes out annular, and its node count dips briefly to zero as the dimple evolves.
+Nine such dips in a run of 2516 steps split one physical contact into ten runs and reported
+a contact time ten per cent short -- which I then attributed to a ring releasing sooner
+than a disc. It was arithmetic, not physics: measured as a span, that same run gives 2.1830
+against the reference implementation's 2.183.
+
+The span is also what an experiment measures. A camera sees the drop down from first touch
+to final separation and cannot resolve a separation lasting a few timesteps, so merging
+them is the faithful comparison rather than a convenience. `contact_gap_fraction` is
+reported alongside so a span that has quietly merged two genuine bounces cannot pass as one
+contact.
+"""
 function contact_time(ts, cps)
-    best = 0.0; run_start = nothing
-    for i in eachindex(cps)
-        if cps[i] > 0 && run_start === nothing
-            run_start = i
-        elseif cps[i] == 0 && run_start !== nothing
-            best = max(best, ts[i-1] - ts[run_start]); run_start = nothing
+    inc = findfirst(>(0), cps)
+    inc === nothing && return 0.0
+    lastc = findlast(>(0), cps)
+    ## A separation shorter than this cannot be resolved experimentally, so it is a dimple
+    ## transient and the contact continues through it. The threshold is a physical
+    ## timescale rather than a tuned number: one per cent of the l = 2 capillary period,
+    ## 2 pi/sqrt(8) = 2.221. Anything longer ends the contact, because the drop has
+    ## genuinely left -- verified by the centre of mass rising through 95 to 98 per cent of
+    ## those intervals at Oh = 0.03, where a nearly inviscid drop chatters against the wall.
+    merge_tol = 0.01 * 2pi / sqrt(8)
+    i = inc
+    while i < lastc
+        if cps[i] == 0
+            j = i
+            while j <= lastc && cps[j] == 0
+                j += 1
+            end
+            (ts[min(j, length(ts))] - ts[i]) > merge_tol && return ts[i] - ts[inc]
+            i = j
+        else
+            i += 1
         end
     end
-    run_start !== nothing && (best = max(best, ts[end] - ts[run_start]))
-    best
+    ts[lastc] - ts[inc]
+end
+
+"""
+Fraction of the contact span during which the contact set was momentarily empty.
+
+Small means one contact with brief dimple transients. Large means the span has merged
+events that are genuinely separate, and should not be read as a single contact time.
+"""
+function contact_gap_fraction(ts, cps)
+    inc = findfirst(>(0), cps)
+    inc === nothing && return 0.0
+    lastc = findlast(>(0), cps)
+    span = ts[lastc] - ts[inc]
+    span <= 0 && return 0.0
+    empty_t = 0.0
+    for i in inc:(lastc-1)
+        cps[i] == 0 && (empty_t += ts[i+1] - ts[i])
+    end
+    empty_t / span
 end
 
 # ============================================================================
@@ -725,5 +775,6 @@ function simulate_lcp(p::ImpactParams)
     (t = ts, z = zs, v = vs, cp = cps, pc1 = pc1, a = as, adot = adots, pc = pcs,
      rejects = nrej, lcp_resid_max = worst_resid, lcp_sweeps_max = max_sweeps,
      noncontiguous_steps = noncontig,
-     cor = restitution(vs, cps, p.We), tc = contact_time(ts, cps))
+     cor = restitution(vs, cps, p.We), tc = contact_time(ts, cps),
+     gap_fraction = contact_gap_fraction(ts, cps))
 end
