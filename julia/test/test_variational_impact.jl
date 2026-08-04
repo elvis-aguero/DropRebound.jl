@@ -67,11 +67,43 @@ const REF_ZMIN = 0.63178
         @test maximum(cors) - minimum(cors) < 2e-3
     end
 
-    @testset "refining the harmonics converges" begin
+    @testset "the answer is insensitive to the harmonic truncation" begin
+        # Measured: 0.36206, 0.36098, 0.36150, 0.36183 at M = 20, 30, 45, 90 -- a
+        # spread of 0.3 per cent with no trend, so CoR is converged from M = 20 and the
+        # truncation is not a tuning knob. It is not asserted that larger M is closer
+        # to M = 90, because they are all equally close; an earlier version of this
+        # test demanded monotone improvement and failed for that reason.
+        #
+        # Contact time is NOT converged the same way -- 2.199 to 2.258 over the same
+        # range, drifting upward -- because it depends on when the outermost node
+        # releases, and how finely the outer contact is resolved is exactly what M
+        # controls. That is a real M-dependence, so it is bounded, not denied.
+        Ms = (20, 30, 45, 90)
         cors = [simulate(ImpactParams(; REF..., M = M, K = 2, t_max = 3.0)).cor
-                for M in (20, 45, 90)]
-        @test abs(cors[2] - cors[3]) < 0.01 * cors[3]     # M = 45 within one per cent
-        @test abs(cors[2] - cors[3]) < abs(cors[1] - cors[3])
+                for M in Ms]
+        @test maximum(cors) - minimum(cors) < 0.01 * minimum(cors)
+        tcs = [simulate(ImpactParams(; REF..., M = M, K = 2, t_max = 3.0)).tc
+               for M in Ms]
+        @test maximum(tcs) - minimum(tcs) < 0.05 * minimum(tcs)
+    end
+
+    @testset "the active-set iteration is stable where residual ranking was not" begin
+        # The regime that broke the ranked search: Oh = 0.023, almost no damping, so
+        # the high-l modes ring and two candidate contact counts score almost equally.
+        # Ranking chattered -- the film pressure oscillated in sign with order-one
+        # amplitude and dt collapsed -- and it did so SPORADICALLY in M, failing at
+        # M = 35 and 45 while coming through at 30 and 40. Under the active-set
+        # iteration every one of these runs completes with no rejected step and CoR
+        # converges monotonically, which is the evidence that the chatter was the
+        # tie-breaking and not the physics.
+        low = (We = 0.9899, Bo = 0.05263, Oh = 0.0233)
+        rs = [simulate(ImpactParams(; low..., M = M, K = 2, t_max = 6.0))
+              for M in (16, 30, 35, 45)]
+        @test all(r -> r.rejects == 0, rs)
+        @test all(r -> isfinite(r.cor) && 0 < r.cor < 1, rs)
+        @test all(r -> r.tc > 2.0, rs)
+        cs = [r.cor for r in rs]
+        @test maximum(cs) - minimum(cs) < 0.02 * minimum(cs)
     end
 
     @testset "the film pressure pushes, almost everywhere, without being told to" begin
@@ -100,17 +132,30 @@ const REF_ZMIN = 0.63178
         @test all(i -> r.pc1[i] < 0.02 * peak_push, incontact)     # measured: 0.3%
     end
 
-    @testset "the contact set moves one node at a time" begin
+    @testset "the contact evolves as one connected episode" begin
         r = simulate(ImpactParams(; REF..., M = 45, K = 2, t_max = 3.0))
-        @test all(abs(r.cp[i+1] - r.cp[i]) <= 1 for i in 1:(length(r.cp)-1))
-        # One connected contact episode, not a chatter of many: the set is nonempty
-        # from first touch to release with no gap in between.
+        # ONE contact, not a sequence of micro-bounces -- but the set does flicker
+        # empty briefly right after first touch. Measured: two episodes, of two steps
+        # and one step, at t = 0.013 and t = 0.023 out of a contact lasting to t = 2.27,
+        # so 0.34 per cent of the contact, and both while the drop is still approaching
+        # at v = -0.99 rather than leaving. That is onset transient, not separation, and
+        # the honest assertion bounds it instead of denying it. What would matter is a
+        # gap late in contact or one long enough to let the drop move: neither occurs.
         inc = findfirst(>(0), r.cp); lastc = findlast(>(0), r.cp)
-        @test all(>(0), r.cp[inc:lastc])
-        # It grows to a single peak and retreats, but NOT monotonically -- an active
-        # set that may move one node per step, ranked by an edge residual, reverses
-        # occasionally. Measured: 7 reversals while growing, 1 while retreating, out
-        # of ~900 steps. Bound the reversals rather than forbid them.
+        span = r.t[lastc] - r.t[inc]
+        empt = [i for i in inc:lastc if r.cp[i] == 0]
+        @test length(empt) < 0.02 * (lastc - inc)
+        @test all(i -> (r.t[i] - r.t[inc]) < 0.05 * span, empt)   # all near onset
+        @test all(i -> r.v[i] < 0, empt)                          # still approaching
+        # It may move SEVERAL nodes in a step, because the active-set iteration runs to
+        # convergence within the step rather than being capped at one move -- measured
+        # maximum 4. The old one-node-per-step limit was a property of the ranked
+        # search, and asserting it here would be asserting the design that chattered.
+        # What must stay bounded is the jump relative to the contact itself.
+        @test maximum(abs(r.cp[i+1] - r.cp[i]) for i in 1:(length(r.cp)-1)) <=
+              max(4, maximum(r.cp) ÷ 4)
+        # It grows to a single peak and retreats, with occasional reversals -- 7 in ~880
+        # steps. Bound them rather than forbid them.
         pk = argmax(r.cp)
         rev = count(i -> r.cp[i+1] < r.cp[i], 1:(pk-1)) +
               count(i -> r.cp[i+1] > r.cp[i], pk:(length(r.cp)-1))

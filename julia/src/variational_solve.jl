@@ -54,6 +54,11 @@
 
 using LinearAlgebra
 
+# Active-set moves allowed per step. Each move is forced by a violated complementarity
+# condition, so the iteration cannot wander; this only bounds pathological cycling,
+# after which the step is rejected and dt halved.
+const MAX_ACTIVE_SET_ITERS = 40
+
 struct ImpactParams
     We::Float64
     Bo::Float64
@@ -307,12 +312,44 @@ function simulate(p::ImpactParams; verbose = false)
     dt = p.dt0
     nrej = 0
     while curr.t < p.t_max
-        best = nothing; best_et = Inf; best_cp = curr.cp
-        for cand in max(0, curr.cp - 1):min(curr.cp + 1, length(p.nodes))
-            ok, nxt, et = try_step(p, prev, curr, dt, cand; F0 = F0, cache = cache)
-            if ok && et < best_et
-                best, best_et, best_cp = nxt, et, cand
+        # ACTIVE-SET ITERATION ON THE COMPLEMENTARITY PAIR, not a ranked search over
+        # neighbouring contact counts.
+        #
+        # Ranking candidates by an edge residual is what the reference implementation
+        # does, and at its single Ohnesorge it works. It chatters when the damping is
+        # small: two candidates score almost equally, the choice flips step to step,
+        # and the film pressure oscillates in sign with order-one amplitude until dt
+        # collapses. At Oh = 0.023 that killed the run at M = 35 and M = 45 while
+        # M = 30 and M = 40 came through -- sporadic in M, which is the signature of a
+        # numerical bistability rather than of a resolution limit.
+        #
+        # The complementarity conditions themselves say what to do, and say it without
+        # a tie to break: `h >= 0` is violated by too small a contact, `p_c >= 0` by
+        # too large a one. So grow while any free node has penetrated, release while
+        # the pressure at the outermost contacting node pulls, and stop when neither
+        # holds -- the textbook primal active-set method, which terminates because
+        # each move is forced. This is also the first place the pressure sign belongs:
+        # as the RELEASE criterion it exists to be, rather than as the feasibility
+        # filter an earlier version made it, where it rejected admissible steps.
+        best = nothing; best_cp = curr.cp
+        cand = curr.cp
+        seen = Set{Int}()
+        for _ in 1:MAX_ACTIVE_SET_ITERS
+            (0 <= cand <= length(p.nodes)) || break
+            cand ∈ seen && break                  # cycling: fall back to dt control
+            push!(seen, cand)
+            ok, nxt, _ = try_step(p, prev, curr, dt, cand; F0 = F0, cache = cache)
+            if !ok
+                cand += 1                          # penetrating: the contact is too small
+                continue
             end
+            if cand > 0 && pc_at(p, nxt.pc, p.nodes[cand]) < 0
+                best, best_cp = nxt, cand          # keep it in case releasing fails
+                cand -= 1                          # the edge is pulling: too large
+                continue
+            end
+            best, best_cp = nxt, cand
+            break
         end
         if best === nothing
             nrej += 1
