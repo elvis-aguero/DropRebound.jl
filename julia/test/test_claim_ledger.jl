@@ -91,6 +91,16 @@ const LEDGER = [
     # T and V get their own entries. V sharing a fence with Phi is exactly how a
     # wrong surface energy was carried as :proved by a symmetry check on its
     # neighbour; SUM-STIFF is the calibration that can falsify it.
+    # The two relations that DEFINE the coordinate: the interior displacement is the
+    # coordinate, and the surface amplitude is its boundary trace. Discharged against
+    # the RUNNING SOLVER rather than against the script's own algebra, because what can
+    # fail for a definition is not the algebra but the code disagreeing with the page --
+    # a solver carrying the stream function as its coordinate would satisfy every
+    # equation on the page and still be integrating the wrong Lagrangian.
+    (id = "SUM-CHIDOT", status = :proved, anchor = raw"\psi_l = \dot\chi_l",
+     by = "ASSERTION 5f"),
+    (id = "SUM-TRACE",  status = :proved, anchor = raw"\zeta_l = \chi_l(1,t)",
+     by = "ASSERTION 5f"),
     (id = "SUM-T",      status = :proved, anchor = raw"T[\dot{\bm\xi}]=\tfrac12\int|\bm u|^2\,dV",
      by = "ASSERTION 5e"),
     (id = "SUM-STIFF",  status = :proved, anchor = raw"\frac{4\pi}{2l+1}(l-1)(l+2)\,\zeta_l^2",

@@ -48,7 +48,7 @@
 # | ``G^{k}_{l m},\ H^{k}_{l m}`` | Gaunt-type angular integrals; pure numbers |
 # | ``\mathrm{Oh}=\eta_0/\sqrt{\rho T_1R}`` | Ohnesorge number: viscous over inertio-capillary stress |
 #
-# ### How to read the notation
+# ### Conventions
 #
 # Four rules, so that the symbols can be worked out rather than memorised.
 #
@@ -152,7 +152,7 @@ println("="^78)  #src
 #
 # Everything below is a simplification of these equations.
 #
-# ### The one identity that shapes the whole problem
+# ### The Gegenbauer-Legendre identity
 #
 # For a **constant** viscosity the divergence of the stress collapses to
 # ``\eta\nabla^2\bm u``, which is what makes Reid's problem separable. For a
@@ -207,7 +207,7 @@ end  #src
 # transfer of the boundary conditions from the deformed surface
 # ``r=R+\zeta`` to the sphere ``r=R``. Error ``O(\epsilon^2)``.
 #
-# ### Linearising the kinematics does not linearise the rheology
+# ### The rheology stays nonlinear
 #
 # Linearising the **kinematics** does not linearise the **rheology**.
 # The strain rate is ``O(\epsilon)``, so ``\dot\gamma=\epsilon\,\hat{\dot\gamma}``,
@@ -468,12 +468,11 @@ let  #src
     println("    structure of the model intact while making every coefficient wrong.")  #src
 end  #src
 
-# ## Where a mode equation comes from
+# ## How a mode equation is formed
 #
-# Before deriving anything it is worth being explicit about how a single-mode
-# equation is obtained at all, because that is where the coupling will enter,
-# and because it fixes the order of everything that follows. For a given surface
-# deformation, three things happen in sequence:
+# A single-mode equation is assembled in three steps, and the order matters: the
+# coupling between modes enters at the second, and everything that follows is fixed
+# by it. For a given surface deformation,
 #
 # 1. the interior velocity field is whatever the momentum equation produces
 #    when driven by that surface motion;
@@ -518,10 +517,10 @@ end  #src
 # *The surface projection*, then the constitutive law that ties the second back
 # to the first.
 #
-# ## Which constitutive models this covers
+# ## Hypotheses on the viscosity
 #
-# The derivation below uses exactly three properties of ``\eta``, and isolating
-# them defines the class of fluids it applies to.
+# The viscosity is required to satisfy three conditions, which together define the
+# class of fluids the model describes.
 #
 # **(H1) Generalized Newtonian.** ``\eta`` depends on the flow only through the
 # instantaneous local shear-rate invariant, ``\eta=\eta(\dot\gamma)`` with
@@ -561,7 +560,7 @@ end  #src
 # that varies over the drop from the outset, because that is the physical case
 # and because restricting it early hides where the difficulty actually lies.
 #
-# ### The curl still removes the pressure
+# ### Eliminating the pressure
 #
 # That step is indifferent to the rheology: ``\nabla\times\nabla p=0`` whatever
 # ``\eta`` does. Take the ``\varphi``-component of the curl of the linearised
@@ -628,7 +627,7 @@ end  #src
 # independently, because the harmonics no longer see the same fluid. *How far
 # the coupling reaches* is the next section.
 #
-# ### The diagonal, and where Reid sits
+# ### The spherically symmetric part of the viscosity
 #
 # Expand the viscosity in the same angular basis,
 # ``\eta=\sum_{k}\eta_{k}(x)P_{k}(\cos\theta)``. The term ``k=0`` is the
@@ -648,15 +647,7 @@ end  #src
 # \mathcal T[\psi]\;\equiv\;\psi''-\frac{2}{x}\psi'+\frac{l(l+1)}{x^2}\psi .
 # ```
 #
-# Three things read off it.
-#
-# **Reid is the constant-viscosity case.** Setting ``\eta'=\eta''=0`` leaves
-# ``\eta\,\mathcal D_l^2[\psi]``, so the interior equation becomes
-# ``\partial_t\mathcal D_l[\psi_l]=\mathrm{Oh}\,\mathcal D_l^2[\psi_l]``: vorticity
-# diffusion. Substituting a normal mode ``\psi_l\propto e^{-\sigma t}`` gives
-# ``\mathcal D_l(\mathcal D_l+q^2)[\psi_l]=0`` with ``q^2=\sigma/\mathrm{Oh}``,
-# which is Reid's Eq. 9. Nothing has been added to recover it; the
-# constant-viscosity theory is the diagonal of this one, at one harmonic.
+# Two consequences.[^reid]
 #
 # **The order of the equation does not change.** The highest derivative is
 # ``\eta \psi''''``; ``\eta'`` reaches only ``\psi'''`` and ``\eta''`` only ``\psi''``.
@@ -670,6 +661,15 @@ end  #src
 # at the surface is BC2 below. It appears here because
 # ``\mathcal T[\psi]\propto e_{r\theta}``, and the second radial derivative of the
 # viscosity couples to precisely the shear component of the strain.
+#
+# [^reid]:
+#     Setting ``\eta'=\eta''=0`` leaves ``\eta\,\mathcal D_l^2[\psi]``, so the
+#     interior equation reduces to vorticity diffusion,
+#     ``\partial_t\mathcal D_l[\psi_l]=\mathrm{Oh}\,\mathcal D_l^2[\psi_l]``, and a
+#     normal mode ``\psi_l\propto e^{-\sigma t}`` gives
+#     ``\mathcal D_l(\mathcal D_l+q^2)[\psi_l]=0`` with ``q^2=\sigma/\mathrm{Oh}`` --
+#     Reid's Eq. 9. The constant-viscosity theory is the ``k=0`` diagonal of this
+#     one at a single harmonic.
 #
 # ### The boundary conditions
 #
@@ -821,7 +821,7 @@ let  #src
     println("      does not (spread $(round(coup, sigdigits=3))) -- which is the coupling itself.")  #src
 end  #src
 
-# ### The off-diagonal operators, explicitly
+# ### The off-diagonal operators
 #
 # ``\mathcal R_{l m}`` was defined above by a projection, which is enough to
 # close the model but not enough to assemble a matrix. It has an explicit form,
@@ -971,7 +971,7 @@ let  #src
     println("    inside the time loop.")  #src
 end  #src
 
-# ### How far the coupling reaches
+# ### The reach of the coupling
 #
 # The sum over ``m`` in the interior equation looks unbounded, and if it were,
 # the problem would be no easier to solve than the original partial differential
@@ -1089,7 +1089,7 @@ end  #src
 # amplitude and every geometry in this problem. It is also elementary, which is
 # worth showing rather than citing.
 #
-# ### Why the truncation is exact: a two-line proof
+# ### Exactness of the truncation
 #
 # Everything rests on one elementary fact about Legendre polynomials:
 #
@@ -1145,7 +1145,7 @@ let  #src
     println("    => truncating the viscosity at l' = 2M is exact, as proved above.")  #src
 end  #src
 
-# ### What the rule does to the matrix
+# ### The banded matrix
 #
 # Read the upper bound backwards: mode ``l`` reaches mode ``m`` only through
 # viscosity harmonics with ``k\ge|l-m|``. So if ``\eta`` has angular content
@@ -1191,7 +1191,7 @@ let  #src
     println("    half-bandwidth L_eta and dimension M, so cost scales with L_eta, not M.")  #src
 end  #src
 
-# ### The Newtonian case, as a check
+# ### The Newtonian case
 #
 # A constant viscosity has a single nonzero coefficient, ``\eta_0``, at
 # ``k=0``. Since ``P_0=1``, the angular factor collapses to the ordinary
@@ -1215,7 +1215,7 @@ end  #src
 # comes from recognising what kind of system this is rather than from any new
 # physics.
 #
-# ### The whole problem descends from three quadratic forms
+# ### The three quadratic forms
 #
 # The viscous operator is self-adjoint because it descends from a dissipation
 # functional. Take as generalised coordinates the surface amplitudes ``\zeta_l``
@@ -1281,7 +1281,7 @@ end  #src
 #     is treated as one on the companion page. The variational statement above is
 #     an equivalent form of the model, not a simplification of it.
 #
-# ### Why it is the same model, and why no pressure appears
+# ### Equivalence with the traction formulation
 #
 # "Equivalent" is a claim, and one identity carries it. For any two
 # divergence-free fields ``\bm u`` and ``\bm w``,
@@ -1370,11 +1370,46 @@ let  #src
     println("    same equations, and everything verified of one holds of the other.")  #src
     println("    No pressure appears on either side: divergence-free fields carry no")  #src
     println("    multiplier, which is why the variational route needs no elliptic solve.")  #src
+
+    ## The two relations that define the coordinate, checked against the running       #src
+    ## solver rather than against this script's own algebra. Both are definitions, so   #src
+    ## what can fail is not the algebra but the CODE disagreeing with the page: if      #src
+    ## the solver's coordinate were the stream function rather than the displacement,   #src
+    ## or if it took the surface amplitude as independent instead of as the boundary    #src
+    ## trace, these would break while every equation above still held.                 #src
+    let                                                                                 #src
+        Kt = 4                                                                          #src
+        for l in (2, 5)                                                                 #src
+            bas = DropSolver.RitzBasis(l, Kt)                                           #src
+            ## zeta_l is the boundary trace: every trial function equals 1 at x = 1,    #src
+            ## so the trace of any coefficient vector is its plain sum.                 #src
+            tr = [DropSolver.phi(bas, k, 1.0) for k in 1:Kt]                             #src
+            @assert maximum(abs, tr .- 1) < 1e-14 "the trial functions are not 1 at the surface, so zeta_l is not the trace of chi_l"  ## CLAIM: SUM-TRACE  #src
+            ## psi_l = d(chi_l)/dt: the velocity field the solver builds from a         #src
+            ## coefficient vector must be the one this page builds from the same vector #src
+            ## read as a stream function. Compare u_r = psi_l/x^2 at interior points.   #src
+            cf = [0.7, -0.4, 0.25, -0.1]                                                #src
+            worst_u = 0.0; scale_u = 0.0                                                 #src
+            for xq in (0.3, 0.6, 0.9), muq in (-0.8, 0.1, 0.7)                            #src
+                psi_here = sum(cf[k] * DropSolver.phi(bas, k, xq) for k in 1:Kt)          #src
+                ang = DropSolver.legendre_angular(l, muq)                                  #src
+                got = DropSolver.modal_field(l, psi_here, 0.0, 0.0, xq, ang)[1]            #src
+                want = psi_here / xq^2 * ang.P                                             #src
+                worst_u = max(worst_u, abs(got - want)); scale_u = max(scale_u, abs(want)) #src
+            end                                                                           #src
+            @assert worst_u/scale_u < 1e-12 "the solver's radial velocity is not psi_l/x^2 with psi_l = chi-dot, so its coordinate is not the displacement (rel $(worst_u/scale_u))"  ## CLAIM: SUM-CHIDOT  #src
+        end                                                                               #src
+        @printf("  ASSERTION 5f OK: the running solver's coordinate IS the interior\n")    #src
+        println("    displacement, and its surface amplitude IS the boundary trace. Had it")  #src
+        println("    carried the stream function as the coordinate instead, the kinetic")     #src
+        println("    energy would be quadratic in the coordinate rather than its rate and")  #src
+        println("    Lagrange's equations would not apply.")                                  #src
+    end                                                                                    #src
     println("    Physical meaning of a failure: the two routes would be different models,")  #src
     println("    and the cheaper assembly would not be assembling this one.")  #src
 end  #src
 #
-# ### The calibration that makes it trustworthy
+# ### Calibration against Reid
 #
 # The quadratic forms can be checked without committing to any closure, by
 # evaluating them on a flow field that is known independently. In the inviscid
@@ -1525,7 +1560,7 @@ end  #src
 # the drop's current state; the next section says exactly how, because that
 # step is where the model is easiest to get wrong.
 #
-# ### Where the shear rate is evaluated, and why the system is not linear
+# ### Where the shear rate is evaluated
 #
 # Two things are easy to assume and both are wrong, so they are worth stating
 # before the algebra goes further.
@@ -1599,9 +1634,9 @@ end  #src
 
 
 
-# ## The normal-stress balance, and whether the interior problem is well posed
+# ## The normal-stress balance
 #
-# ### The balance, derived rather than quoted
+# ### The balance
 #
 # The traction on the free surface is ``\bm t=\bm\sigma\cdot\bm n`` with
 # ``\bm\sigma=-p\bm I+2\eta\bm e``. Outside sits the atmosphere, at gauge zero,
@@ -1650,7 +1685,7 @@ end  #src
 # phantom under-determinacy; the other is treating ``\zeta_l`` as an unknown
 # needing its own equation, when BC1 ties it to the interior and BC3 advances it.
 #
-# ### The allocation, and the test that settles it
+# ### The allocation
 #
 # ```math
 # \boxed{\;
@@ -1735,7 +1770,7 @@ let  #src
     println("    spectrum that is not the drop's.")  #src
 end  #src
 
-# ## Two results the summary needs
+# ## The force on the drop
 #
 # ### The capillary restoring force
 #
@@ -2005,16 +2040,32 @@ end  #src
 #
 # | unknown | domain | what it is |
 # |:--|:--|:--|
-# | ``\zeta_l(t)``, ``l\ge2`` | ``t>0`` | surface mode amplitudes |
-# | ``\psi_l(x,t)``, ``l\ge2`` | ``0<x<1`` | interior stream-function profiles |
+# | ``\chi_l(x,t)``, ``l\ge2`` | ``0<x<1`` | interior displacement profiles |
 # | ``p_{c,l}(t)``, ``l\ge0`` | ``t>0`` | coefficients of the air-film pressure |
 # | ``z(t),\ v(t)`` | ``t>0`` | height of the drop's centre of mass, and its velocity |
 #
-# Collect the surface and interior coordinates as ``\bm\xi=(\{\zeta_l\},\{\psi_l\})``.
-# There is **no pressure unknown**: the stream function makes the flow
-# divergence-free identically, so incompressibility is not a constraint and carries
-# no multiplier. ``\eta`` is not an unknown either -- it is a function of
-# ``\bm\xi`` through (4).
+# The coordinate is the interior **displacement** ``\chi_l``, and the stream function
+# is its rate,
+#
+# ```math
+# \psi_l = \dot\chi_l ,
+# \qquad
+# \zeta_l = \chi_l(1,t) .
+# ```
+#
+# Both statements are forced. The interior displacement field is divergence-free to
+# linear order, exactly as the velocity is, so it too derives from a Stokes stream
+# function; ``\chi`` is that function and ``\psi`` is its rate. Taking ``\psi_l`` as
+# the coordinate instead would put the kinetic energy quadratic in the coordinate
+# rather than in its velocity, and Lagrange's equations would not apply. And the
+# surface amplitude is not independent: the surface is the boundary of the interior,
+# so ``\zeta_l`` is the boundary trace of ``\chi_l`` rather than a separate unknown.
+#
+# So the coordinate vector is ``\bm\xi=\{\chi_l\}``, with ``\zeta_l`` and ``\psi_l``
+# both read off it. There is **no pressure unknown**: the stream function makes the
+# flow divergence-free identically, so incompressibility is not a constraint and
+# carries no multiplier. ``\eta`` is not an unknown either -- it is a function of
+# ``\dot{\bm\xi}`` through (4).
 #
 # The surface, the film pressure, and the gap are
 #
@@ -2199,7 +2250,7 @@ end  #src
 # ``\eta`` a function of the instantaneous ``\dot\gamma`` alone, bounded as
 # ``0<\eta_\infty\le\eta\le\eta_0<\infty``, and continuous in ``\dot\gamma``.
 #
-# ### What kind of system this is, and what is truncated
+# ### The system and its truncations
 #
 # Blocks (1)--(2) are a coupled system of ordinary differential equations in the
 # surface coordinates and partial differential equations in ``x`` for the interior

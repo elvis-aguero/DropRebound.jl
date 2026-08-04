@@ -56,10 +56,11 @@ function bin_of(oh)
 end
 
 const M_RUN = 45      # converged to 1% in CoR against M = 90, and 15x cheaper
-# Long enough that contact always releases inside the window. At 6.0 the three
-# highest-Weber, lowest-Ohnesorge points were still in contact when the run ended,
-# which reports as a missing CoR rather than as a wrong one.
-const T_MAX = 14.0
+# A cap, not a schedule: the march stops on its own once the drop has left the
+# substrate and is rising, so this only bounds runs that never release. It has to
+# comfortably exceed the longest contact in the data, which reaches 5.4 at the lowest
+# Weber, plus the flight back through z = 1.
+const T_MAX = 25.0
 
 results = Any[]
 for bi in 1:(length(OH_EDGES)-1)

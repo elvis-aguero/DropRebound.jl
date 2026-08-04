@@ -136,3 +136,23 @@ Public  = true
 Private = false
 Order   = [:type, :function]
 ```
+
+## Impact and contact
+
+Time integration of the variational model against a solid substrate. The drop's
+centre of mass and the interior displacement amplitudes advance together under BDF2,
+and the air-film pressure enters as a Legendre series closed by collocation: the gap
+vanishes at the contacting nodes and the pressure vanishes at the free ones.
+
+The collocation nodes are `θ = π` together with the zeros of ``P_M``, which cluster
+near the poles and so resolve the contact where it forms. The contact extent is
+chosen by an active-set iteration on the complementarity pair — the set grows while
+any free node has penetrated and retreats while the pressure at its outer edge pulls.
+
+```@autodocs
+Modules = [DropSolver]
+Pages   = ["variational_solve.jl"]
+Public  = true
+Private = false
+Order   = [:type, :function]
+```

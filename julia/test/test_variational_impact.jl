@@ -38,7 +38,7 @@ const REF_ZMIN = 0.63178
     end
 
     @testset "K = 1 reproduces the reference run" begin
-        p = ImpactParams(; REF..., M = 90, K = 1, t_max = 3.0)
+        p = ImpactParams(; REF..., M = 90, K = 1, t_max = 25.0)
         r = simulate(p)
         @test maximum(r.cp) == REF_CP                     # identical contact extent
         @test isapprox(r.cor, REF_COR; atol = 0.01)
@@ -52,8 +52,8 @@ const REF_ZMIN = 0.63178
         # per cent at l = 8 -- so resolving the interior must REDUCE the damping, and
         # less damping must mean more rebound and deeper penetration. A failure here
         # would mean the interior was feeding energy the wrong way.
-        r1 = simulate(ImpactParams(; REF..., M = 45, K = 1, t_max = 3.0))
-        r2 = simulate(ImpactParams(; REF..., M = 45, K = 2, t_max = 3.0))
+        r1 = simulate(ImpactParams(; REF..., M = 45, K = 1, t_max = 25.0))
+        r2 = simulate(ImpactParams(; REF..., M = 45, K = 2, t_max = 25.0))
         @test r2.cor > r1.cor                             # more rebound
         @test minimum(r2.z) < minimum(r1.z)               # deeper penetration
         @test r2.cor / r1.cor > 1.05                      # and not a small effect
@@ -62,7 +62,7 @@ const REF_ZMIN = 0.63178
     @testset "two radial functions suffice" begin
         # The convergence that makes the extension cheap: the exact interior profile is
         # a spherical Bessel function, these are its Taylor terms, and it truncates fast.
-        cors = [simulate(ImpactParams(; REF..., M = 45, K = K, t_max = 3.0)).cor
+        cors = [simulate(ImpactParams(; REF..., M = 45, K = K, t_max = 25.0)).cor
                 for K in 2:4]
         @test maximum(cors) - minimum(cors) < 2e-3
     end
@@ -79,10 +79,10 @@ const REF_ZMIN = 0.63178
         # releases, and how finely the outer contact is resolved is exactly what M
         # controls. That is a real M-dependence, so it is bounded, not denied.
         Ms = (20, 30, 45, 90)
-        cors = [simulate(ImpactParams(; REF..., M = M, K = 2, t_max = 3.0)).cor
+        cors = [simulate(ImpactParams(; REF..., M = M, K = 2, t_max = 25.0)).cor
                 for M in Ms]
         @test maximum(cors) - minimum(cors) < 0.01 * minimum(cors)
-        tcs = [simulate(ImpactParams(; REF..., M = M, K = 2, t_max = 3.0)).tc
+        tcs = [simulate(ImpactParams(; REF..., M = M, K = 2, t_max = 25.0)).tc
                for M in Ms]
         @test maximum(tcs) - minimum(tcs) < 0.05 * minimum(tcs)
     end
@@ -97,7 +97,7 @@ const REF_ZMIN = 0.63178
         # converges monotonically, which is the evidence that the chatter was the
         # tie-breaking and not the physics.
         low = (We = 0.9899, Bo = 0.05263, Oh = 0.0233)
-        rs = [simulate(ImpactParams(; low..., M = M, K = 2, t_max = 6.0))
+        rs = [simulate(ImpactParams(; low..., M = M, K = 2, t_max = 25.0))
               for M in (16, 30, 35, 45)]
         @test all(r -> r.rejects == 0, rs)
         @test all(r -> isfinite(r.cor) && 0 < r.cor < 1, rs)
@@ -122,7 +122,7 @@ const REF_ZMIN = 0.63178
         # make it intolerable is that number growing. If this test starts failing
         # because the count or the magnitude rose, the film needs a real release
         # criterion, not a looser tolerance.
-        r = simulate(ImpactParams(; REF..., M = 45, K = 2, t_max = 3.0))
+        r = simulate(ImpactParams(; REF..., M = 45, K = 2, t_max = 25.0))
         inc = findfirst(>(0), r.cp); lastc = findlast(>(0), r.cp)
         incontact = [i for i in inc:lastc if r.cp[i] > 2]
         @test !isempty(incontact)
@@ -133,7 +133,7 @@ const REF_ZMIN = 0.63178
     end
 
     @testset "the contact evolves as one connected episode" begin
-        r = simulate(ImpactParams(; REF..., M = 45, K = 2, t_max = 3.0))
+        r = simulate(ImpactParams(; REF..., M = 45, K = 2, t_max = 25.0))
         # ONE contact, not a sequence of micro-bounces -- but the set does flicker
         # empty briefly right after first touch. Measured: two episodes, of two steps
         # and one step, at t = 0.013 and t = 0.023 out of a contact lasting to t = 2.27,
@@ -176,7 +176,7 @@ end
     # A modest truncation, because a non-constant viscosity forces the full coupled
     # reassembly -- O(ndof^2) quadratures -- instead of the cached block-diagonal
     # operator a constant viscosity allows. That is a cost, not an approximation.
-    base = (We = 1.0, Bo = 0.0189, Oh = 0.303767, M = 14, K = 2, t_max = 6.0)
+    base = (We = 1.0, Bo = 0.0189, Oh = 0.303767, M = 14, K = 2, t_max = 25.0)
 
     rn = simulate(ImpactParams(; base...))
     @test rn.rejects == 0

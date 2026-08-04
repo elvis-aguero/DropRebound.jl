@@ -82,7 +82,7 @@ end
 together deliberately -- that is what makes the contact system square.
 """
 function ImpactParams(; We, Bo, Oh, M::Int = 90, K::Int = 1, eta = gd -> 1.0,
-                      dt0 = nothing, dt_min = 1e-10, t_max = 4.0, eta_sweeps = 1)
+                      dt0 = nothing, dt_min = 1e-10, t_max = 25.0, eta_sweeps = 1)
     ls = collect(2:M)
     # theta = pi plus the zeros of P_M. These cluster at the poles, which is the
     # whole point: contact is resolved where contact happens.
