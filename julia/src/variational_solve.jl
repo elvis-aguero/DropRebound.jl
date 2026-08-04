@@ -1,62 +1,56 @@
 # Time integration of the variational model, with contact.
 #
-# !!! STATUS: NOT WORKING. Do not use, and do not read a result out of it. !!!
+# THE CONTACT CLOSURE HERE IS NOT INVENTED. It is the closure of Gabbard et al.
+# (2025), read out of the validated MATLAB implementation and reproduced with one
+# addition: the interior of the drop is part of the state, so each surface mode
+# carries K radial trial functions instead of one. Everything else -- the node
+# distribution, the pressure representation, the square collocation, the feasibility
+# rule, the objective, the timestep -- is theirs, because an earlier version of this
+# file reinvented all of it and got every piece wrong in a way that took a working
+# simulation to see. What that run showed, and what this file therefore does:
 #
-# The assembly this builds on IS verified -- see test_variational.jl, where the
-# Newtonian limit reproduces Reid to machine precision and the shear-thinning
-# coupling obeys the Gaunt selection rule exactly. This file is the time stepper on
-# top of it, and it stalls at contact onset. It is committed with the diagnosis
-# recorded rather than deleted, because the diagnosis is most of the remaining work.
+#   * THE NODES ARE LEGENDRE ROOTS, not uniform. theta = pi together with the zeros
+#     of P_M, which cluster hard at the poles: at M = 90 the second node sits 1.52
+#     degrees from the pole. That clustering is what lets a two-node contact be a
+#     genuinely small patch. On a uniform grid at M = 8 a two-node contact spanned
+#     twenty degrees, the pressure needed to hold it was impulsive, and the drop left
+#     with more energy than it arrived with.
 #
-# WHERE IT STOPS. The drop free-falls, closes the initial gap, and then every
-# candidate contact count is rejected, dt halves to the floor, and the run ends at
-# t ~ 0.03 having never entered contact. So there is no coefficient of restitution
-# and no contact time out of this yet.
+#   * THE PRESSURE IS A GLOBAL LEGENDRE SERIES, l = 0..M, closed by SQUARE
+#     collocation: the gap vanishes at the cp contact nodes and the pressure vanishes
+#     at the remaining M+1-cp nodes. Its coefficients do NOT converge in l -- in the
+#     reference run |p_l| is largest at l = M, the truncation itself -- so the series
+#     is interpolatory rather than spectral, and only the reconstructed field means
+#     anything. That field is smooth and positive on the patch and 1e-12 off it. An
+#     earlier version here read the non-convergent spectrum as proof the design was
+#     broken and replaced it with a patch-supported pressure enforced weakly. The
+#     spectrum is real; the conclusion was not.
 #
-# WHAT IS ALREADY RULED OUT, and each cost a fix:
-#   * p_c indexed by shape mode. It must live on l = 0..Lmax, because p_{c,1} is
-#     what drives the centre of mass and l = 0, 1 are not shape modes. Fixed.
-#   * activating only the lowest cp pressure harmonics. l = 0 does no work on any
-#     shape mode, so a one-node contact could not enforce its own gap condition and
-#     the KKT system was singular. Fixed by following the validated ancestor: ALL
-#     coefficients are unknowns, closed by gap = 0 at contact nodes and p_c = 0 at
-#     free nodes -- a square nodal system.
-#   * testing the sign of the pressure COEFFICIENTS. p_c is concentrated near
-#     mu = -1, so p_{c,1} is negative for a perfectly admissible push; the condition
-#     is on the reconstructed FIELD. Fixed.
-#   * starting with the pole exactly at h = 0. That makes the first contact step
-#     impulsive: the shape must flatten within one dt and the solve answers with
-#     |zeta| ~ 10 and pressure coefficients in the hundreds. Fixed by starting above
-#     contact so the dt control can resolve the onset.
-#   * absolute feasibility tolerances. At first touch the pressure is essentially
-#     zero and its sign is numerically indeterminate -- the physical solution sits ON
-#     the boundary, which is what makes onset degenerate. Made relative. NOT
-#     sufficient: the stall survives this.
+#   * THERE IS NO PRESSURE SIGN CONDITION. The only feasibility test is that the
+#     surface stay above the substrate OUTSIDE the contact. Signorini's inequality is
+#     satisfied by the solution rather than imposed on it, and imposing it here
+#     rejected admissible steps at exactly the wrong moment.
 #
-# WHAT I WOULD LOOK AT NEXT, in order. The surviving suspicion is that the onset
-# step is still over-constrained: a single contact node pins the gap while the
-# square nodal system simultaneously forces p_c to vanish at the other Lmax nodes,
-# which may leave no admissible pressure at all for a nearly-tangent surface.
-# LowWeberDropRebound seeds the first contact from the geometric crossing rather
-# than solving for it, and SpectralKM's provenance records the tangency residual as
-# identically degenerate at onset -- so the first step probably needs its own rule,
-# which is exactly what both ancestors do and what this file does not.
+#   * THE PRESSURE IS LARGEST AT ONSET, not smallest. In the reference run the patch
+#     pressure peaks at 73 at first touch and falls to 7 at maximum contact, while
+#     the net force does the opposite, because the patch area is what is small. Much
+#     of the earlier tolerance fiddling here rested on the opposite belief.
 #
-# The contact machinery otherwise follows LowWeberDropRebound (Gabbard et al. 2025):
+#   * dt IS CONSTANT, 2 pi/(8 sqrt(M(M+2)(M-1))) -- the fastest retained capillary
+#     mode resolved eight times per period. Halving is for startup and rejected
+#     steps only; there is no adaptive control during contact.
 #
-#   * the contact set is an INTEGER -- the number of angular nodes in contact --
-#     and it changes by at most one per step;
-#   * candidates leaving the surface below the substrate outside the contact region
-#     are INFEASIBLE and rejected, not ranked;
-#   * the objective is local to the contact edge, because one integrated over the
-#     patch is biased toward vanishing contact;
-#   * when no admissible neighbouring set exists the step is rejected and dt halved.
-#     That, not event detection, is what stops the nonsmooth transition being
-#     straddled.
+# What is genuinely ours is the state: `a` holds the interior displacement profile
+# coefficients, and the surface amplitudes are their boundary trace. The pressure
+# coupling that results, Q_zeta_l = -(4 pi/(2l+1)) p_c,l, is not a free choice -- it
+# reproduces their forcing coefficient l exactly, because the assembled modal mass
+# reproduces Lamb's added mass 4 pi/(l(2l+1)) to machine precision.
 #
-# BDF2 in both a and adot, with a fixed-point sweep on eta: eta multiplies a stiff
-# dissipation operator, so extrapolating it is a stability risk and not only an
-# accuracy cost.
+# BDF2 in both a and adot, first order on the opening step. With a constant viscosity
+# the operator is built once (block diagonal in l, independent of the state); with a
+# shear-thinning one it is rebuilt per sweep, because eta multiplies a stiff
+# dissipation operator and extrapolating it is a stability risk, not just an accuracy
+# cost.
 
 using LinearAlgebra
 
@@ -72,28 +66,34 @@ struct ImpactParams
     dt_min::Float64
     t_max::Float64
     eta_sweeps::Int
-    gap0::Float64
+    eta_const::Bool
 end
 
-function ImpactParams(; We, Bo, Oh, ls = 2:16, K = 2, eta = gd -> 1.0,
-                      n_nodes = nothing, dt0 = nothing, dt_min = 1e-8,
-                      t_max = 30.0, eta_sweeps = 1, gap0 = 0.02)
-    lsv = collect(ls); Mmax = maximum(lsv)
-    # THE COLLOCATION GRID IS INDEPENDENT OF THE MODE LIST. Tying it to Lmax + 1 was
-# a leftover from the global-pressure design, where one node per pressure
-# coefficient was what made the system square. With the pressure on the patch
-# there is no such constraint, and the grid has a job of its own: it has to
-# resolve how far the contact advances in one step. At Lmax = 8 the nodes were
-# 10 degrees apart -- a patch far coarser than the drop descends per step -- and
-# the shape simply dimpled to keep the neighbouring nodes above the substrate
-# instead of building pressure.
-nn = something(n_nodes, 90)
-    nodes = [pi - (i - 1) * (pi / 2) / nn for i in 1:nn]
-    dt = something(dt0, 2pi / (16 * sqrt(Mmax * (Mmax - 1) * (Mmax + 2))))
-    ImpactParams(We, Bo, Oh, lsv, K, eta, nodes, dt, dt_min, t_max, eta_sweeps, gap0)
+"""
+    ImpactParams(; We, Bo, Oh, M=90, K=1, ...)
+
+`M` is the harmonic truncation: shape modes are `l = 2..M`, the film pressure carries
+`l = 0..M`, and there are `M+1` collocation nodes. Those three counts are tied
+together deliberately -- that is what makes the contact system square.
+"""
+function ImpactParams(; We, Bo, Oh, M::Int = 90, K::Int = 1, eta = gd -> 1.0,
+                      dt0 = nothing, dt_min = 1e-10, t_max = 4.0, eta_sweeps = 1)
+    ls = collect(2:M)
+    # theta = pi plus the zeros of P_M. These cluster at the poles, which is the
+    # whole point: contact is resolved where contact happens.
+    mus, _ = gauss_legendre_nodes(M, -1.0, 1.0)
+    nodes = vcat(pi, acos.(clamp.(sort(mus), -1.0, 1.0)))
+    dt = something(dt0, 2pi / (8 * sqrt(M * (M + 2) * (M - 1))))
+    ec = all(gd -> eta(gd) == eta(0.0), (0.0, 1e-3, 1.0, 1e3))
+    ImpactParams(We, Bo, Oh, ls, K, eta, nodes, dt, dt_min, t_max, eta_sweeps, ec)
 end
 
 basis(p::ImpactParams) = ModalBasis(p.ls, p.K)
+lmax(p::ImpactParams) = maximum(p.ls)
+pc_len(p::ImpactParams) = lmax(p) + 1        # harmonics l = 0..M
+pc_l(j::Int) = j - 1
+
+"""Every trial function equals 1 at the surface, so the trace is a vector of ones."""
 trace_vec(p::ImpactParams, l) = [phi(RitzBasis(l, p.K), k, 1.0) for k in 1:p.K]
 
 """Surface amplitudes from the interior displacements: `zeta_l = chi_l(1)`."""
@@ -103,7 +103,12 @@ function surface_amplitudes(p::ImpactParams, a::AbstractVector)
      for (i, l) in enumerate(b.ls)]
 end
 
-"""Row of the linear map `a -> mu (1 + sum zeta_l P_l)` at one node, and the constant."""
+"""
+Row of the linear map `a -> mu (1 + sum zeta_l P_l)` at one node, plus the constant.
+
+The gap to the substrate is `h = row . a + mu + z`: the surface point at polar angle
+`theta` sits at height `z + r(theta) cos(theta)` with `r = 1 + sum zeta_l P_l`.
+"""
 function gap_row(p::ImpactParams, th::Real)
     b = basis(p); mu = cos(th)
     row = zeros(ndof(b))
@@ -114,78 +119,34 @@ function gap_row(p::ImpactParams, th::Real)
             row[dofindex(b, i, k)] = mu * Pl * tv[k]
         end
     end
-    (row, mu)          # h = row . a + mu + z
+    (row, mu)
 end
 
 gap(p::ImpactParams, a, z, th) = (r = gap_row(p, th); dot(r[1], a) + r[2] + z)
 
-# THE FILM PRESSURE LIVES ON THE CONTACT PATCH, not on the whole sphere.
-#
-# This is the one design decision in the file that had to be got right, and getting
-# it wrong is instructive. The natural-looking alternative is to carry a global
-# pressure `p_c = sum_l p_{c,l} P_l(mu)` with as many coefficients as angular nodes,
-# and to close the system by demanding the gap vanish at the contact nodes and the
-# PRESSURE vanish at the free ones. That system is square and perfectly consistent
-# -- its relative residual is 1e-10 -- and it is physically wrong. A degree-Lmax
-# polynomial forced through zero at every free node is a near-delta spike at the
-# pole: its nodal VALUE is small, but its `l = 1` moment, which is the entire net
-# vertical force, is not. So a one-node contact launched the drop at CoR = 12.
-#
-# A contact of vanishing extent must exert vanishing net force. That is guaranteed
-# only if the pressure's SUPPORT shrinks with the patch, so the pressure is expanded
-# in shifted Legendre polynomials on `mu in [-1, mu_c]` with one coefficient per
-# contact node -- exactly as many unknowns as gap conditions, and no free-node
-# conditions at all, because the support is imposed rather than inferred. SpectralKM
-# makes the same choice for the same reason.
-
-"""Contact-edge cosine: the first FREE node bounds the patch from above."""
-function patch_mu_c(p::ImpactParams, cp::Int)
-    cp <= 0 && return -1.0
-    th_last = p.nodes[cp]
-    th_next = cp < length(p.nodes) ? p.nodes[cp + 1] : 2 * p.nodes[cp] - p.nodes[cp - 1]
-    cos((th_last + th_next) / 2)     # the contact edge lies between the two
-end
-
-"""Shifted Legendre basis function `j = 1..cp` on the patch, as a function of mu."""
-function patch_basis(mu_c::Float64, j::Int, mu::Real)
-    mu > mu_c && return 0.0
-    s = 2 * (mu - (-1.0)) / (mu_c + 1.0) - 1.0        # patch -> [-1, 1]
-    legendre_angular(j - 1, s).P
-end
-
 """
-Coupling of patch pressure mode `j` to the spherical harmonic `l`.
+Generalised force on the interior coordinates from film harmonic `l = pc_l(j)`.
 
-`Q_{zeta_l} = -(4 pi/(2l+1)) p_{c,l}` and `p_{c,l} = ((2l+1)/2) int Q_j P_l dmu`, so
-the `2l+1` cancels and every harmonic -- including `l = 1`, which carries the net
-vertical force `F = -(4 pi/3) p_{c,1}` -- gets the same expression. One formula for
-the shape forcing and the centre-of-mass forcing is not a coincidence: both are the
-work the film pressure does on a surface motion.
+`Q_zeta_l = -(4 pi/(2l+1)) p_c,l`, spread over the `K` trial functions by their trace.
+Only harmonics that coincide with a retained SHAPE mode do work on the surface: `l=0`
+changes volume and `l=1` translates, so both give a zero column. The `l=1` harmonic
+still acts -- through the centre-of-mass equation, where it is the whole net force.
 """
-function patch_moment(p::ImpactParams, mu_c::Float64, j::Int, l::Int; nq = 24)
-    xq, wq = gauss_legendre_nodes(nq, -1.0, mu_c)
-    -2pi * sum(wq[q] * patch_basis(mu_c, j, xq[q]) * legendre_angular(l, xq[q]).P
-               for q in eachindex(xq))
-end
-
-"""Generalised force on the interior coordinates from patch pressure mode `j`."""
-function force_column(p::ImpactParams, mu_c::Float64, j::Int)
-    b = basis(p); Q = zeros(ndof(b))
-    for (i, l) in enumerate(b.ls)
-        c = patch_moment(p, mu_c, j, l)
-        tv = trace_vec(p, l)
-        for k in 1:p.K
-            Q[dofindex(b, i, k)] = c * tv[k]
-        end
+function force_column(p::ImpactParams, j::Int)
+    b = basis(p); Q = zeros(ndof(b)); l = pc_l(j)
+    i = findfirst(==(l), b.ls)
+    i === nothing && return Q
+    tv = trace_vec(p, l)
+    for k in 1:p.K
+        Q[dofindex(b, i, k)] = -(4pi / (2l + 1)) * tv[k]
     end
     Q
 end
 
-"""The film pressure reconstructed at a node -- what the sign condition applies to."""
-function pc_at(p::ImpactParams, pc::AbstractVector, mu_c::Float64, th::Real)
-    isempty(pc) && return 0.0
+"""The film pressure reconstructed at a node. The only meaningful form of `p_c`."""
+function pc_at(p::ImpactParams, pc::AbstractVector, th::Real)
     mu = cos(th)
-    sum(pc[j] * patch_basis(mu_c, j, mu) for j in eachindex(pc))
+    sum(pc[j] * legendre_angular(pc_l(j), mu).P for j in eachindex(pc))
 end
 
 eta_field(p::ImpactParams, adot) = (x, mu) -> p.eta(shear_rate(basis(p), adot, x, mu))
@@ -199,258 +160,200 @@ mutable struct ImpactState
     v::Float64
     cp::Int
     pc::Vector{Float64}
+    first::Bool                  # opening step: BDF1, no two-level history yet
 end
 
+"""
+The drop starts with its pole exactly on the substrate and `cp = 0`.
+
+No artificial standoff gap. An earlier version started above contact to avoid an
+impulsive first step, but the impulse came from the twenty-degree patch a coarse
+uniform grid forced on the first contact, not from the initial condition. On Legendre
+nodes the first contact is two nodes wide, 1.5 degrees, and needs no cushioning.
+"""
 function initial_state(p::ImpactParams)
     N = ndof(basis(p))
-    # Start slightly ABOVE contact and let free flight bring the drop in. Starting
-# with the pole exactly at h = 0 makes the first contact step impulsive: the
-# shape has to flatten within one dt, and the solve answers with |zeta| ~ 10 and
-# pressure coefficients in the hundreds. With a gap to close, the dt-halving
-# control resolves the onset instead.
-ImpactState(0.0, p.dt0, zeros(N), zeros(N), 1.0 + p.gap0, -sqrt(p.We), 0, Float64[])
+    ImpactState(0.0, p.dt0, zeros(N), zeros(N), 1.0, -sqrt(p.We), 0,
+                zeros(pc_len(p)), true)
 end
 
 """
-    try_step(p, prev, curr, dt, cp) -> (ok, next, edge)
+    try_step(p, prev, curr, dt, cp; F0, cache) -> (ok, next, errortan)
 
-One BDF2 step at a FIXED contact count. `cp` pinned gaps supply `cp` conditions on
-the active film-pressure coefficients; the rest are zero, so `p_c` is supported on
-the contact region by construction rather than by a penalty.
+One step at a FIXED contact count, as one square linear system in `(a, p_c)`.
+
+`z` and `v` are eliminated first: both are affine in the single harmonic `p_c,1`,
+because that is the only one that moves the centre of mass. What remains is
+`ndof + M + 1` equations in as many unknowns -- the momentum equations, the gap
+conditions on the contact nodes, and the vanishing of the pressure on the free ones.
 """
 function try_step(p::ImpactParams, prev::ImpactState, curr::ImpactState,
-                  dt::Float64, cp::Int)
-    b = basis(p); N = ndof(b)
-    r = dt / curr.dt
-    c0 = (1 + 2r) / (1 + r); c1 = -(1 + r); c2 = r^2 / (1 + r)
+                  dt::Float64, cp::Int; F0 = nothing, cache = nothing)
+    b = basis(p); N = ndof(b); npc = pc_len(p); nn = length(p.nodes)
+    (0 <= cp <= nn) || return (false, curr, Inf)
+
+    if curr.first
+        c0, c1, c2 = 1.0, -1.0, 0.0
+    else
+        r = dt / curr.dt
+        c0 = (1 + 2r)/(1 + r); c1 = -(1 + r); c2 = r^2/(1 + r)
+    end
     β = c0 / dt
-    hv_a    = (c1 * curr.a    + c2 * prev.a)    / dt     # adot   = β a + hv_a
-    hv_adot = (c1 * curr.adot + c2 * prev.adot) / dt     # addot  = β adot + hv_adot
+    hv_a    = (c1 * curr.a    + c2 * prev.a)    / dt
+    hv_adot = (c1 * curr.adot + c2 * prev.adot) / dt
     hv_z    = (c1 * curr.z    + c2 * prev.z)    / dt
     hv_v    = (c1 * curr.v    + c2 * prev.v)    / dt
 
-    adot_star = (1 + r) * curr.adot - r * prev.adot
-    # A FEW PRESSURE MODES, ENFORCED WEAKLY OVER THE WHOLE PATCH.
-    #
-    # This is the design, and both halves of it are load-bearing. The count of
-    # pressure modes is small and FIXED -- it does not grow with the contact -- while
-    # the gap condition is imposed at EVERY contacting node, so the constraint rows
-    # outnumber the pressure unknowns and the gap is satisfied in least squares rather
-    # than pointwise. Each half fixes a failure the other does not:
-    #
-    #   * one shifted-Legendre mode per contact node is square but over-flexible. The
-    #     true film pressure has a square-root edge singularity, a polynomial chasing
-    #     it oscillates, and the reconstructed pressure ran -263, -4690, -27579 as the
-    #     contact grew to two, three, four nodes.
-    #   * a single amplitude pinning a single node is stable but too weak to hold the
-    #     patch flat. The contact energy went into a local inertial dimple instead of
-    #     decelerating the centre of mass: at z = 0.962 the drop had dimpled PAST the
-    #     substrate, every gap was positive, and the contact released with the drop
-    #     four per cent below the wall and still travelling at its impact speed.
-    #
-    # Three modes against tens of nodes is the ancestor's ratio, and for the same
-    # reason: the pressure needs enough freedom to carry a flattening profile, and
-    # least squares over a fine grid is what keeps that freedom from being spent on
-    # the singular edge.
-    np = min(cp, 3)
     mass = 4pi / 3
-    mu_c = patch_mu_c(p, cp)
-    fz = [patch_moment(p, mu_c, j, 1) for j in 1:np]   # net vertical force per mode
-    Qm = np == 0 ? zeros(N, 0) : hcat((force_column(p, mu_c, j) for j in 1:np)...)
+    adot_star = curr.first ? curr.adot : (1 + r) * curr.adot - r * prev.adot
+    a_next = copy(curr.a); pc = zeros(npc)
+    z_next = curr.z; v_next = curr.v
 
-    a_next = copy(curr.a); pc = zeros(np); z_next = curr.z; v_next = curr.v
+    Qm = hcat((force_column(p, j) for j in 1:npc)...)
+    # the centre of mass is driven by p_c,1 alone: v_dot = -Bo - p_c,1
+    z0 = ((-p.Bo - hv_v) / β - hv_z) / β
+    dz_dpc1 = -1 / β^2
 
-    for _ in 0:p.eta_sweeps
-        F = assemble_coupled(b, p.Oh; eta = eta_field(p, adot_star))
-        A = β^2 * F.M + β * F.C + F.G
-        z0 = ((-p.Bo - hv_v) / β - hv_z) / β        # where the pole falls unforced
-        rhs0 = -F.M * (β * hv_a + hv_adot) - F.C * hv_a
-
-        if np == 0
-            a_next = A \ rhs0
-            pc = Float64[]
-            v_next = (-p.Bo - hv_v) / β
-        else
-            Hm = zeros(cp, N); Zm = zeros(cp, np); rhs_h = zeros(cp)
-            for i in 1:cp
-                row, mu = gap_row(p, p.nodes[i])
-                Hm[i, :] = row
-                for j in 1:np
-                    Zm[i, j] = fz[j] / (mass * β^2)   # z is affine in the pressure
-                end
-                rhs_h[i] = -mu - z0
+    Hm = zeros(npc, N); Zm = zeros(npc, npc); rhs_h = zeros(npc)
+    for i in 1:npc
+        th = p.nodes[i]
+        if i <= cp                                   # contact: the gap vanishes
+            row, mu = gap_row(p, th)
+            Hm[i, :] = row
+            Zm[i, 2] += dz_dpc1
+            rhs_h[i] = -mu - z0
+        else                                         # free: the pressure vanishes
+            mu = cos(th)
+            for j in 1:npc
+                Zm[i, j] = legendre_angular(pc_l(j), mu).P
             end
-            # Eliminate the interior coordinates against the momentum equations, then
-            # solve the OVERDETERMINED gap conditions for the few pressure amplitudes.
-            # a = A^-1 (rhs0 + Qm pc), so the gap residual is affine in pc alone.
-            W = A \ hcat(rhs0, Qm)
-            S = Hm * W[:, 2:end] + Zm
-            rvec = Hm * W[:, 1] - rhs_h
-            # TRUNCATED least squares, and the truncation is physics rather than
-            # hygiene. Over a narrow patch the pressure modes act on the gap almost
-            # collinearly: whatever their profile, a small patch influences the
-            # surface mainly through its net force, so the higher moments change the
-            # gap in nearly the same way and only about one combination of amplitudes
-            # is actually determined. Solving anyway gives the undetermined
-            # combinations enormous values that cancel -- the reconstructed pressure
-            # ran to -1.9e9 while the gap stayed satisfied to 1e-5. Dropping the
-            # directions the gap cannot see sets them to zero instead, which is the
-            # right answer for a quantity no equation constrains: the scheme then
-            # degrades gracefully to a uniform pressure on a narrow patch and takes
-            # up profile structure only once the patch is wide enough to demand it.
-            U, sv, V = svd(S)
-            keep = sv .> 1e-8 * sv[1]
-            pc = -V[:, keep] * ((U[:, keep]' * rvec) ./ sv[keep])
-            a_next = W[:, 1] + W[:, 2:end] * pc
-            v_next = (-p.Bo + dot(fz, pc) / mass - hv_v) / β
         end
+    end
+
+    nsweep = F0 === nothing ? p.eta_sweeps : 0
+    for _ in 0:nsweep
+        F = F0 === nothing ?
+            assemble_coupled(b, p.Oh; eta = eta_field(p, adot_star)) : F0
+        A = β^2 * F.M + β * F.C + F.G
+        rhs0 = -F.M * (β * hv_a + hv_adot) - F.C * hv_a
+        # With a constant viscosity and a constant dt the whole KKT matrix is
+        # constant for a given contact count, so its factorisation is cached -- the
+        # same economy the reference implementation makes, and what makes M = 90
+        # affordable over thousands of steps.
+        key = (cp, dt, curr.first)
+        fac = if cache !== nothing && F0 !== nothing
+            get!(cache, key) do
+                lu([A -Qm; Hm Zm])
+            end
+        else
+            lu([A -Qm; Hm Zm])
+        end
+        sol = fac \ [rhs0; rhs_h]
+        any(!isfinite, sol) && return (false, curr, Inf)
+        a_next = sol[1:N]
+        pc = sol[N+1:N+npc]
+        v_next = (-p.Bo - pc[2] - hv_v) / β
         z_next = (v_next - hv_z) / β
         adot_star = β * a_next + hv_a
     end
-    adot_next = β * a_next + hv_a
-    nxt = ImpactState(curr.t + dt, dt, a_next, adot_next, z_next, v_next, cp, copy(pc))
 
-    # NON-PENETRATION, in absolute units of the drop radius -- a fixed length, and not
-    # the quantity under test. An earlier version scaled every tolerance by the maximum
-    # of the field it was testing, which at onset compared a 1e-4 pressure against a
-    # threshold derived from that same 1e-4: an absolute test at exactly the point
-    # where the physical solution sits ON the boundary.
-    gaps = [gap(p, a_next, z_next, th) for th in p.nodes]
-    ok = all(i -> gaps[i] > -1e-6, (cp+1):length(p.nodes))
-    # The patch interior is held to a looser tolerance because it is held WEAKLY: the
-    # least-squares gap condition leaves a residual there by construction, and
-    # demanding it vanish would be demanding the pressure space be as large as the
-    # contact -- the over-flexible design this replaced.
-    cp > 0 && (ok &= minimum(view(gaps, 1:cp)) > -1e-2)
-    # THE PRESSURE MUST PUSH, tested on the reconstructed field rather than on the
-    # coefficients: p_c is concentrated near mu = -1, so its l = 1 coefficient is
-    # negative for a perfectly admissible push.
-    # ACROSS THE WHOLE PATCH, not only at the contact nodes. The nodes all sit in the
-    # lower part of the patch -- the patch edge lies beyond the last of them -- so
-    # sampling the nodes alone leaves the outer patch unwatched. With more than one
-    # pressure mode the profile then goes positive at every node and strongly negative
-    # outside them, and the net l = 1 moment comes out downward: the contact
-    # ACCELERATED the drop into the wall, from -1.0 to -1.83 in one step, with every
-    # nodal pressure admissible. Signorini is a condition on the field, everywhere the
-    # field is supported.
-    if cp > 0
-        mus = range(-1.0, mu_c; length = 16)
-        pcs = [pc_at(p, pc, mu_c, acos(clamp(m, -1, 1))) for m in mus]
-        ok &= minimum(pcs) > -1e-6 * max(maximum(pcs), 1.0)
+    adot_next = β * a_next + hv_a
+    nxt = ImpactState(curr.t + dt, dt, a_next, adot_next, z_next, v_next, cp,
+                      copy(pc), false)
+
+    # FEASIBILITY, and it is only this: the surface must not be below the substrate
+    # anywhere outside the contact. No condition on the pressure.
+    ok = true
+    for i in (cp+1):nn
+        if gap(p, a_next, z_next, p.nodes[i]) < 0
+            ok = false; break
+        end
     end
-    edge = if !ok
+    # THE OBJECTIVE IS EDGE-LOCAL: the height the surface would have at the first
+    # free node, relative to the last contacting one. One integrated over the patch
+    # is biased toward vanishing contact.
+    et = if !ok
         Inf
     elseif cp == 0
         abs(gap(p, a_next, z_next, p.nodes[1]))
-    elseif cp < length(p.nodes)
-        abs(gap(p, a_next, z_next, p.nodes[cp+1]))
+    elseif cp < nn
+        abs(gap(p, a_next, z_next, p.nodes[cp+1]) -
+            gap(p, a_next, z_next, p.nodes[cp]))
     else
         Inf
     end
-    (ok, nxt, edge)
+    (ok, nxt, et)
 end
 
 """
-    simulate(p) -> NamedTuple
+    simulate(p; verbose=false) -> NamedTuple
 
-March the impact. Returns the trajectory and the two KPIs: coefficient of
-restitution and contact time.
+March the impact. Returns the trajectory and the two KPIs, coefficient of restitution
+and contact time.
+
+The contact count changes by at most one per step and is chosen as the admissible
+candidate with the smallest edge residual. Inadmissible candidates are rejected
+outright rather than ranked, and when no candidate is admissible the step is rejected
+and `dt` halved -- that, rather than event detection, is what keeps the nonsmooth
+transition from being straddled.
 """
 function simulate(p::ImpactParams; verbose = false)
+    F0 = p.eta_const ? assemble_newtonian(basis(p), p.Oh) : nothing
+    cache = Dict{Tuple{Int,Float64,Bool},Any}()
     s0 = initial_state(p)
     prev, curr = s0, s0
-    ts = Float64[0.0]; zs = Float64[s0.z]; vs = Float64[s0.v]; cps = Int[0]
+    ts = Float64[0.0]; zs = Float64[s0.z]; vs = Float64[s0.v]
+    cps = Int[0]; pc1 = Float64[0.0]
     dt = p.dt0
     nrej = 0
     while curr.t < p.t_max
-        moved = false
-        # ACTIVE-SET ORDER: stay, then grow, then release. Not smallest-first. The
-        # two feasibility conditions are one-sided, so the order they are tried in is
-        # part of the rule and not an implementation detail. A candidate with no
-        # contact passes the pressure test vacuously, so smallest-first releases the
-        # drop the instant the pole gap is marginally non-negative, and the contact
-        # can then never grow past one node: the run flip-flops between cp = 0 and
-        # cp = 1 and stalls with the drop already 0.06 below the substrate. Trying the
-        # incumbent set first, growing only against penetration and releasing only
-        # against a suction pressure, is the standard active-set iteration -- and it
-        # is what the complementarity pair actually says.
-        best = nothing; best_cp = curr.cp
-        # Growth of more than one node per step is allowed, because the contact radius
-        # goes like sqrt(penetration) and therefore sweeps arbitrarily fast at onset:
-        # a strict one-node limit there is not a stability safeguard, it just collapses
-        # dt trying to resolve a square-root corner. Release stays one node at a time,
-        # where no such corner exists.
-        # THE CONTACT EXTENT IS SEEDED FROM THE GEOMETRIC CROSSING, not crawled up one
-        # node at a time. This is the single most important thing the stepper gets from
-        # LowWeberDropRebound, and doing it the other way fails in a way that looks
-        # like a solver problem and is not. Growing the set incrementally means the
-        # first contact step engages one node, a one-node contact barely decelerates
-        # anything, so the drop sinks another 0.016 before the next step -- and the
-        # crawl never catches the crossing, which advances like sqrt(penetration). Four
-        # steps in, the drop sat four per cent BELOW the substrate with two nodes in
-        # contact, and the pressure needed to lift the surface back out in a single
-        # step was 1e6. Nothing about that is a conditioning failure; the state was
-        # already wrong. Seeding from where the surface actually crosses the wall keeps
-        # the extent right from first touch, and the crossing then advances on its own.
-        zfree = curr.z + dt * curr.v
-        gx = count(th -> gap(p, curr.a, zfree, th) <= 0, p.nodes)
-        cands = Int[]
-        for c in (gx, gx + 1, gx - 1, gx + 2, gx - 2, curr.cp, 0)
-            0 <= c <= length(p.nodes) && c ∉ cands && push!(cands, c)
-        end
-        for cand in cands
-            ok, nxt, _ = try_step(p, prev, curr, dt, cand)
-            if ok
-                best, best_cp = nxt, cand
-                break
+        best = nothing; best_et = Inf; best_cp = curr.cp
+        for cand in max(0, curr.cp - 1):min(curr.cp + 1, length(p.nodes))
+            ok, nxt, et = try_step(p, prev, curr, dt, cand; F0 = F0, cache = cache)
+            if ok && et < best_et
+                best, best_et, best_cp = nxt, et, cand
             end
         end
         if best === nothing
-            dt /= 2
             nrej += 1
+            dt /= 2
             dt < p.dt_min && break
             continue
         end
         prev, curr = curr, best
-        push!(ts, curr.t); push!(zs, curr.z); push!(vs, curr.v); push!(cps, curr.cp)
-        moved = true
-        # leave once the drop is clear of the wall and rising
-        if curr.cp == 0 && curr.v > 0 && curr.z > 1.0 + p.gap0 && any(>(0), cps)
+        push!(ts, curr.t); push!(zs, curr.z); push!(vs, curr.v)
+        push!(cps, best_cp); push!(pc1, curr.pc[2])
+        dt = p.dt0                       # no adaptive control while in contact
+        verbose && best_cp != cps[end-1] &&
+            @info "contact" t=curr.t cp=best_cp z=curr.z v=curr.v
+        # done once the drop has left the substrate and is rising
+        if best_cp == 0 && curr.v > 0 && curr.z > 1.0 && any(>(0), cps)
             break
         end
-        dt = min(dt * 1.05, p.dt0)
     end
-    (t = ts, z = zs, v = vs, cp = cps,
-     cor = restitution(vs, cps, p), tc = contact_time(ts, cps), rejects = nrej)
+    (t = ts, z = zs, v = vs, cp = cps, pc1 = pc1, rejects = nrej,
+     cor = restitution(vs, cps, p.We), tc = contact_time(ts, cps))
 end
 
 """Coefficient of restitution: rebound speed over impact speed."""
-function restitution(vs, cps, p::ImpactParams)
-    idx = findall(>(0), cps)
-    isempty(idx) && return NaN
-    j = last(idx)
-    j >= length(vs) && return NaN
-    vout = maximum(view(vs, j:length(vs)))
-    vout <= 0 ? NaN : vout / sqrt(p.We)
+function restitution(vs, cps, We)
+    inc = findfirst(>(0), cps)
+    inc === nothing && return NaN
+    lastc = findlast(>(0), cps)
+    lastc >= length(vs) && return NaN
+    abs(vs[end] / vs[max(inc - 1, 1)])
 end
 
-"""
-Contact time as the LONGEST CONTIGUOUS interval, not the first-to-last span.
-
-A marginally resolved run chatters -- brief spurious re-entries just after the
-physical rebound -- and the span then overstates the contact time while the FIRST
-interval understates it badly on exactly those runs. This is recorded in
-SpectralKM's provenance as a defect that survived a dozen call sites.
-"""
+"""Contact time: the longest contiguous interval with a nonempty contact set."""
 function contact_time(ts, cps)
-    best = 0.0; run_start = -1.0
+    best = 0.0; run_start = nothing
     for i in eachindex(cps)
-        if cps[i] > 0 && run_start < 0
-            run_start = ts[i]
-        elseif cps[i] == 0 && run_start >= 0
-            best = max(best, ts[i] - run_start); run_start = -1.0
+        if cps[i] > 0 && run_start === nothing
+            run_start = i
+        elseif cps[i] == 0 && run_start !== nothing
+            best = max(best, ts[i-1] - ts[run_start]); run_start = nothing
         end
     end
-    run_start >= 0 && (best = max(best, ts[end] - run_start))
+    run_start !== nothing && (best = max(best, ts[end] - ts[run_start]))
     best
 end
