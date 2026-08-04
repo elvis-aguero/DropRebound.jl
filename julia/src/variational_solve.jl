@@ -3,11 +3,12 @@
 # THE CONTACT CLOSURE HERE IS NOT INVENTED. It is the closure of Gabbard et al.
 # (2025), read out of the validated MATLAB implementation and reproduced with one
 # addition: the interior of the drop is part of the state, so each surface mode
-# carries K radial trial functions instead of one. Everything else -- the node
-# distribution, the pressure representation, the square collocation, the feasibility
-# rule, the objective, the timestep -- is theirs, because an earlier version of this
-# file reinvented all of it and got every piece wrong in a way that took a working
-# simulation to see. What that run showed, and what this file therefore does:
+# carries K radial trial functions instead of one. The node distribution, the pressure
+# representation, the square collocation and the timestep are theirs, because an earlier
+# version of this file reinvented all of it and got every piece wrong in a way that took
+# a working simulation to see. HOW THE CONTACT COUNT IS CHOSEN is not theirs, and the
+# difference is set out at the active-set iteration in `simulate`. What that run showed,
+# and what this file therefore does:
 #
 #   * THE NODES ARE LEGENDRE ROOTS, not uniform. theta = pi together with the zeros
 #     of P_M, which cluster hard at the poles: at M = 90 the second node sits 1.52
@@ -26,10 +27,14 @@
 #     broken and replaced it with a patch-supported pressure enforced weakly. The
 #     spectrum is real; the conclusion was not.
 #
-#   * THERE IS NO PRESSURE SIGN CONDITION. The only feasibility test is that the
-#     surface stay above the substrate OUTSIDE the contact. Signorini's inequality is
-#     satisfied by the solution rather than imposed on it, and imposing it here
-#     rejected admissible steps at exactly the wrong moment.
+#   * THE PRESSURE SIGN IS NOT A FEASIBILITY TEST. The only thing that makes a step
+#     inadmissible is the surface dropping below the substrate OUTSIDE the contact.
+#     Making the pressure sign a filter, as an earlier version did, rejected admissible
+#     steps at onset and stalled the run. It is used in exactly one place -- at the
+#     outermost contacting node, as the criterion for RELEASE -- which is the role it
+#     has in the complementarity pair. Nothing constrains its sign inside the patch,
+#     and that is why the film is free to pull there, as it measurably does in a small
+#     minority of steps.
 #
 #   * THE PRESSURE IS LARGEST AT ONSET, not smallest. In the reference run the patch
 #     pressure peaks at 73 at first touch and falls to 7 at maximum contact, while
@@ -183,7 +188,7 @@ function initial_state(p::ImpactParams)
 end
 
 """
-    try_step(p, prev, curr, dt, cp; F0, cache) -> (ok, next, errortan)
+    try_step(p, prev, curr, dt, cp; F0, cache) -> (ok, next)
 
 One step at a FIXED contact count, as one square linear system in `(a, p_c)`.
 
@@ -195,7 +200,7 @@ conditions on the contact nodes, and the vanishing of the pressure on the free o
 function try_step(p::ImpactParams, prev::ImpactState, curr::ImpactState,
                   dt::Float64, cp::Int; F0 = nothing, cache = nothing)
     b = basis(p); N = ndof(b); npc = pc_len(p); nn = length(p.nodes)
-    (0 <= cp <= nn) || return (false, curr, Inf)
+    (0 <= cp <= nn) || return (false, curr)
 
     if curr.first
         c0, c1, c2 = 1.0, -1.0, 0.0
@@ -254,7 +259,7 @@ function try_step(p::ImpactParams, prev::ImpactState, curr::ImpactState,
             lu([A -Qm; Hm Zm])
         end
         sol = fac \ [rhs0; rhs_h]
-        any(!isfinite, sol) && return (false, curr, Inf)
+        any(!isfinite, sol) && return (false, curr)
         a_next = sol[1:N]
         pc = sol[N+1:N+npc]
         v_next = (-p.Bo - pc[2] - hv_v) / β
@@ -277,17 +282,14 @@ function try_step(p::ImpactParams, prev::ImpactState, curr::ImpactState,
     # THE OBJECTIVE IS EDGE-LOCAL: the height the surface would have at the first
     # free node, relative to the last contacting one. One integrated over the patch
     # is biased toward vanishing contact.
-    et = if !ok
-        Inf
-    elseif cp == 0
-        abs(gap(p, a_next, z_next, p.nodes[1]))
-    elseif cp < nn
-        abs(gap(p, a_next, z_next, p.nodes[cp+1]) -
-            gap(p, a_next, z_next, p.nodes[cp]))
-    else
-        Inf
-    end
-    (ok, nxt, et)
+    # NO TANGENCY RESIDUAL IS RETURNED. The reference implementation computes one --
+    # the height of the first free node relative to the last contacting one -- and
+    # selects the contact count by minimising it over feasible candidates. This solver
+    # does not: the contact count comes from the active-set iteration in `simulate`,
+    # which needs no objective and therefore has no tie to break. An earlier version of
+    # this function still computed and returned the residual after the caller had
+    # stopped using it, which reads as a selection rule that is not there.
+    (ok, nxt)
 end
 
 """
@@ -342,7 +344,7 @@ pcs = Vector{Float64}[copy(s0.pc)]
             (0 <= cand <= length(p.nodes)) || break
             cand ∈ seen && break                  # cycling: fall back to dt control
             push!(seen, cand)
-            ok, nxt, _ = try_step(p, prev, curr, dt, cand; F0 = F0, cache = cache)
+            ok, nxt = try_step(p, prev, curr, dt, cand; F0 = F0, cache = cache)
             if !ok
                 cand += 1                          # penetrating: the contact is too small
                 continue
