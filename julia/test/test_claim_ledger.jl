@@ -70,53 +70,25 @@ const LEDGER = [
      by = ""),  # choice of basis and of truncation floor l >= 2
     (id = "SUM-PI",     status = :axiom,  anchor = raw"p_c(\theta,t)=\sum_{l\ge0}p_{c,l}(t)P_l(\mu)",
      by = ""),
-    # The l-projection of lap(p) is checked against L_l[p_l] directly.
-    (id = "SUM-PLAP",   status = :proved,   anchor = raw"\mathcal L_l[p_l] \;=\; \mathrm{Oh}\,S_l(x,t)",
-     by = "ASSERTION 3f"),
-    (id = "SUM-PHARM",  status = :proved, anchor = raw"p = \sum_l c_l(t)\,x^lP_l(\mu)",
-     by = "ASSERTION 2c"),
-    # The normal-stress balance holds at EVERY l. For l >= 2 it advances zeta_l;
-    # at l = 0 it fixes the pressure level (at rest: -2 + 2 = 0, the Laplace
-    # condition ASSERTION 3e already checks); at l = 1 it IS the centre-of-mass
-    # equation of block (4). Nothing is postulated -- an earlier version of this
-    # entry claimed volume conservation closed the l = 0 PRESSURE harmonic, which
-    # is a shape condition standing in for a pressure one.
-    (id = "SUM-PLOW",   status = :proved, anchor = raw"the balance at ``l=0`` fixes the pressure level",
-     by = "ASSERTION 3e"),
     (id = "SUM-GAP",    status = :proved, anchor = raw"h(\theta,t)=\mu\,\bigl[1+\zeta(\theta,t)\bigr]+z(t)",
      by = "ASSERTION 2c"),
     (id = "SUM-STREAM", status = :proved, anchor = raw"u_r=\frac{1}{x^2\sin\theta}\frac{\partial\psi}{\partial\theta}",
      by = "ASSERTION 2c"),
     (id = "SUM-FW",     status = :proved, anchor = raw"u_{\theta,l}=\frac{\psi_l'}{x\,l(l+1)}",
      by = "ASSERTION 2b"),
-    # Discharged end to end: the 3x3 determinant built from this equation plus
-    # BC1-BC3 must vanish at roots the solver finds from Reid's characteristic
-    # equation independently, and sigma = Oh q^2 enters through it, so a wrong
-    # Oh prefactor breaks it.
-    (id = "SUM-INT",    status = :proved, anchor = raw"\partial_t\,\mathcal D_l[\psi_l]",
-     by = "ASSERTION 3e"),
+    # The variational statement. Discharged by the identity that makes it the SAME
+    # system as the differential form (ASSERTION 5d), plus the dissipation form's
+    # symmetry and its exact reproduction of Lamb's damping (ASSERTION 5b).
+    (id = "SUM-EL",     status = :proved, anchor = raw"\frac{d}{dt}\frac{\partial T}{\partial\dot\xi_a}",
+     by = "ASSERTION 5d"),
+    (id = "SUM-FORMS",  status = :proved, anchor = raw"\bm e\!:\!\bm e\,dV",
+     by = "ASSERTION 5b"),
+    (id = "SUM-HESS",   status = :proved, anchor = raw"\bm e^{(a)}\!:\!\bm e^{(b)}\,dV",
+     by = "ASSERTION 5b"),
     (id = "SUM-BC",     status = :proved, anchor = raw"\mathcal T[\psi_l]\big|_{x=1}=0",
      by = "ASSERTION 2b"),
-    # The explicit off-diagonal operator: 15 numbers per (l,m,k). Discharged by
-    # extracting them and checking the diagonal against the boxed R_l, which is
-    # the one case independently known in closed form.
-    (id = "SUM-RLM",    status = :proved, anchor = raw"a^{(k)}_{l m,\,ji}\;x^{\,j+i-4}",
-     by = "ASSERTION 3g"),
-    # The divergence of momentum yields this with the SAME coefficient the
-    # momentum equation carries, and doubling that coefficient breaks the
-    # identity -- so the prefactor is pinned, not assumed. (ASSERTION 3d proves
-    # the separate fact that the source vanishes iff eta is constant: SUM-PSRC.)
-    (id = "SUM-PRESS",  status = :proved,   anchor = raw"\nabla^2 p = \mathrm{Oh}\,\nabla\cdot\bigl(\nabla\cdot(2\eta\bm e)\bigr)",
-     by = "ASSERTION 3f"),
-    (id = "SUM-PSRC",   status = :proved, anchor = raw"\;\equiv\; \mathrm{Oh}\,S(x,\mu,t)",
-     by = "ASSERTION 3d"),
     (id = "SUM-FILM",   status = :axiom,  anchor = raw"h\,p_c = 0",
      by = ""),  # lubrication limit: the film transmits stress with no dynamics of its own
-    # Derived from the traction jump, and the sign on the curvature term is fixed
-    # by the base state: p = 2, div n = 2 at rest, and only one combination gives
-    # zero. The form previously on the page failed that test by -4.
-    (id = "SUM-NORMAL", status = :proved, anchor = raw"\bigl[-p+2\eta\,e_{rr}\bigr]_{x=1}",
-     by = "ASSERTION 3e"),
     (id = "SUM-CURV",   status = :proved, anchor = raw"(l-1)(l+2)\zeta_lP_l(\mu)",
      by = "ASSERTION 2c"),
     # Assembled from m dV/dT = -m g + F_z under the stated scalings, signs
