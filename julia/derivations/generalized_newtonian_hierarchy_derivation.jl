@@ -702,6 +702,14 @@ let  #src
             ## so the trace of any coefficient vector is its plain sum.                 #src
             tr = [DropSolver.phi(bas, k, 1.0) for k in 1:Kt]                             #src
             @assert maximum(abs, tr .- 1) < 1e-14 "the trial functions are not 1 at the surface, so zeta_l is not the trace of chi_l"  ## CLAIM: SUM-TRACE  #src
+            ## every trial function equals 1 at x = 1, so the trace is the PLAIN SUM of  #src
+            ## the coefficients -- which is what the summary writes                      #src
+            @assert abs(sum(tr) - Kt) < 1e-13 "zeta_l is not the plain sum of the a_{l,k}"  ## CLAIM: SUM-TRACESUM  #src
+            ## and the exponents are the Taylor powers of j_l: l+1, l+3, l+5, ...        #src
+            for k in 1:Kt                                                                #src
+                pw = log(DropSolver.phi(bas, k, 2.0)) / log(2.0)                          #src
+                @assert abs(pw - (l + 1 + 2(k-1))) < 1e-10 "trial function $k of mode $l is x^$pw, not x^{l+1+2(k-1)}"  ## CLAIM: SUM-RITZ  #src
+            end                                                                          #src
             ## psi_l = d(chi_l)/dt: the velocity field the solver builds from a         #src
             ## coefficient vector must be the one this page builds from the same vector #src
             ## read as a stream function. Compare u_r = psi_l/x^2 at interior points.   #src
@@ -1242,7 +1250,25 @@ end  #src
 # surface amplitude is not independent: the surface is the boundary of the interior,
 # so ``\zeta_l`` is the boundary trace of ``\chi_l`` rather than a separate unknown.
 #
-# So the coordinate vector is ``\bm\xi=\{\chi_l\}``, with ``\zeta_l`` and ``\psi_l``
+# The radial profiles are expanded in ``K`` trial functions per mode,
+#
+# ```math
+# \chi_l(x,t)=\sum_{k=1}^{K}a_{l,k}(t)\,x^{\,l+1+2(k-1)},
+# \qquad
+# \zeta_l=\sum_{k=1}^{K}a_{l,k} ,
+# ```
+#
+# and these powers are not a free choice. The exact interior profile is a spherical
+# Bessel function ``j_l(qx)``, whose Taylor series contains exactly
+# ``x^{l+1},x^{l+3},x^{l+5},\dots``, so truncating at ``K`` truncates that series.
+# ``k=1`` alone is potential flow, and reproduces Lamb's damping and Rayleigh's
+# frequency exactly. Convergence is fast: ``K=3`` gives ``\lambda_2`` to one part in a
+# thousand for ``\mathrm{Oh}\ge0.3``, and ``K=6`` does so down to
+# ``\mathrm{Oh}=10^{-3}``. The basis is Vandermonde-like, though, so
+# ``\mathrm{cond}(M)`` reaches ``4\times10^{10}`` by ``K=8``, and that is the practical
+# ceiling on how far the interior can be resolved in double precision.
+#
+# So the coordinate vector is ``\bm\xi=\{a_{l,k}\}``, with ``\zeta_l`` and ``\psi_l``
 # both read off it. There is **no pressure unknown**: the stream function makes the
 # flow divergence-free identically, so incompressibility is not a constraint and
 # carries no multiplier. ``\eta`` is not an unknown either -- it is a function of
@@ -1395,11 +1421,33 @@ end  #src
 # \qquad i=0\ldots M ,
 # ```
 #
-# which is ``M+1`` conditions for the ``M+1`` coefficients ``p_{c,l}``. Note this
-# constrains the *reconstructed field* at the nodes, not the coefficients
-# themselves -- those are different conditions and only the first is the physics.
-# The choice of node set is numerical and belongs on the companion page; what
-# belongs here is that the reduction is by collocation on the field.
+# which is ``M+1`` conditions for the ``M+1`` coefficients ``p_{c,l}``. These constrain
+# the *reconstructed field* at the nodes, not the coefficients themselves -- those are
+# different conditions, and only the first is the physics.
+#
+# **How the triple closes.** The three conditions are never imposed simultaneously.
+# Because contact occupies a single connected patch about the pole, the set of nodes in
+# contact is described by one integer ``c`` -- the number of them -- and given ``c`` the
+# complementarity triple becomes a system of *equalities*:
+#
+# ```math
+# h(\theta_i)=0 \quad (i\le c),
+# \qquad
+# p_c(\theta_i)=0 \quad (i>c) ,
+# ```
+#
+# square in the ``M+1`` pressure coefficients. So ``c`` is an unknown of a different
+# kind from the amplitudes -- discrete, and not obtainable from any linear solve -- and
+# it is found by the two inequalities, which fail on opposite sides: a node outside the
+# contact with ``h<0`` means ``c`` is too small, and ``p_c<0`` at the outermost
+# contacting node means it is too large. Iterating on that until neither holds
+# terminates, because every move is forced.
+#
+# **The nodes are the zeros of ``P_M``, together with ``\theta=\pi``.** This is not a
+# numerical detail to be delegated. Those nodes cluster at the poles, which is where the
+# contact forms, so the first contact is a genuinely small patch; on a uniformly spaced
+# set of the same size the first contact spans a wide wedge, the pressure needed to hold
+# it is impulsive, and the same equations return a drop leaving faster than it arrived.
 #
 # ### Initial conditions
 #

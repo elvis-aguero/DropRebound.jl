@@ -99,6 +99,23 @@ const LEDGER = [
     # equation on the page and still be integrating the wrong Lagrangian.
     (id = "SUM-CHIDOT", status = :proved, anchor = raw"\psi_l = \dot\chi_l",
      by = "ASSERTION 5f"),
+    # The radial basis, stated concretely because a reader cannot otherwise reproduce
+    # the code from the summary: the powers are the Taylor exponents of the spherical
+    # Bessel function the exact profile is, and the trace is therefore a plain sum.
+    (id = "SUM-RITZ",   status = :proved, anchor = raw"x^{\,l+1+2(k-1)}",
+     by = "ASSERTION 5f"),
+    (id = "SUM-TRACESUM", status = :proved, anchor = raw"\zeta_l=\sum_{k=1}^{K}a_{l,k}",
+     by = "ASSERTION 5f"),
+    # How the complementarity triple closes. These are AXIOMS, and the assumption they
+    # encode is worth naming: that contact occupies a single CONNECTED patch about the
+    # pole, so the contact set is described by one integer rather than by an arbitrary
+    # subset of nodes. Given that, the triple becomes equalities and the system is
+    # square. The assumption is not derived, and it is what fails first if a drop ever
+    # contacts on an annulus -- which a sufficiently deformed drop would.
+    (id = "SUM-CONTACT-H",  status = :axiom, anchor = raw"h(\theta_i)=0",
+     by = "single connected contact patch"),
+    (id = "SUM-CONTACT-P",  status = :axiom, anchor = raw"p_c(\theta_i)=0",
+     by = "single connected contact patch"),
     (id = "SUM-TRACE",  status = :proved, anchor = raw"\zeta_l = \chi_l(1,t)",
      by = "ASSERTION 5f"),
     (id = "SUM-T",      status = :proved, anchor = raw"T[\dot{\bm\xi}]=\tfrac12\int|\bm u|^2\,dV",
@@ -183,7 +200,10 @@ const OPEN_BUDGET = 0
 # The number of :axiom entries, budgeted for the same reason. Four things are taken
 # on faith: the Legendre bases for the surface and the film pressure, the rigid
 # unilateral contact law, and that a gas film cannot sustain tension.
-const AXIOM_BUDGET = 14
+# Raised from 14 to 16 for SUM-CONTACT-H and SUM-CONTACT-P: the summary now states
+# HOW the complementarity triple closes, which rests on contact being a single
+# connected patch. That was previously unstated rather than unassumed.
+const AXIOM_BUDGET = 16
 
 @testset "claim ledger" begin
     text = summary_text(MODEL_PAGE)
