@@ -195,3 +195,132 @@ function dominant_pair(b::RitzBasis, Oh::Real; kwargs...)
     s1, s2 = finite[idx[1]], finite[idx[2]]
     (real(s1 + s2) / 2, real(s1 * s2))
 end
+
+# ---------------------------------------------------------------------------
+# Multi-mode assembly, which is where shear thinning actually bites.
+#
+# For a constant viscosity the modes do not talk to each other: eta has only its
+# l = 0 harmonic, the Gaunt coefficient is a delta, and every block off the
+# diagonal vanishes. That is why the single-mode assembly above is enough for the
+# Newtonian case. A shear-thinning fluid destroys it: eta = eta(gammadot) inherits
+# the angular structure of the strain field, its harmonics k >= 1 are non-zero, and
+# the dissipation form acquires off-diagonal blocks. Those blocks ARE the physics
+# of the shear-thinning problem, so the assembly has to carry them.
+#
+# gammadot is computed from the WHOLE field, never mode by mode: the strain tensor
+# superposes over modes but its invariant does not, so there is no such thing as one
+# mode's shear rate once more than one is active.
+
+"""
+    ModalBasis(ls, K)
+
+Radial trial functions `K` per surface mode, over the modes `ls` (e.g. `2:M`).
+Degrees of freedom are ordered mode-major: `(l, k) -> (i-1)*K + k` for the `i`-th
+mode in `ls`.
+"""
+struct ModalBasis
+    ls::Vector{Int}
+    K::Int
+end
+ModalBasis(ls, K::Int) = ModalBasis(collect(ls), K)
+ndof(b::ModalBasis) = length(b.ls) * b.K
+dofindex(b::ModalBasis, i::Int, k::Int) = (i - 1) * b.K + k
+
+"""
+    strain_at(b::ModalBasis, x, mu) -> Matrix
+
+The six field components of every degree of freedom at one quadrature point, as a
+`ndof x 6` array in the order `(u_r, u_th, e_rr, e_tt, e_pp, e_rt)`. Assembling any
+of the quadratic forms is then a contraction over rows.
+"""
+function strain_at(b::ModalBasis, x::Float64, mu::Float64)
+    F = zeros(ndof(b), 6)
+    for (i, l) in enumerate(b.ls)
+        A = legendre_angular(l, mu)
+        rb = RitzBasis(l, b.K)
+        for k in 1:b.K
+            f, df, d2f = phi(rb, k, x), dphi(rb, k, x), d2phi(rb, k, x)
+            F[dofindex(b, i, k), :] .= modal_field(l, f, df, d2f, x, A)
+        end
+    end
+    F
+end
+
+"""Full double contraction `e:e` of a strain given as `(e_rr, e_tt, e_pp, e_rt)`."""
+ddot_strain(a, c) = a[3]*c[3] + a[4]*c[4] + a[5]*c[5] + 2*a[6]*c[6]
+
+"""
+    shear_rate(b::ModalBasis, a, x, mu) -> Float64
+
+`gammadot = sqrt(2 e:e)` of the superposed field with velocity amplitudes `a`.
+Built from the summed tensor, not from a per-mode sum of invariants.
+"""
+function shear_rate(b::ModalBasis, a::AbstractVector, x::Float64, mu::Float64)
+    F = strain_at(b, x, mu)
+    e = zeros(6)
+    for d in 1:ndof(b), c in 1:6
+        e[c] += a[d] * F[d, c]
+    end
+    sqrt(max(2 * ddot_strain(e, e), 0.0))
+end
+
+"""
+    assemble_coupled(b::ModalBasis, Oh; eta = (x, mu) -> 1.0, nx = 40, nmu = 48)
+
+The three forms over all retained modes. `eta` is the viscosity in units of the
+zero-shear plateau, as a function of position -- for a shear-thinning fluid it is
+`eta(shear_rate(...))` on the current state, which is what makes `C` couple modes.
+"""
+function assemble_coupled(b::ModalBasis, Oh::Real; eta = (x, mu) -> 1.0,
+                          nx::Int = 40, nmu::Int = 48)
+    N = ndof(b)
+    xs, wxs = gauss_legendre_nodes(nx, 0.0, 1.0)
+    mus, wmus = gauss_legendre_nodes(nmu, -1.0, 1.0)
+    Mm, Cm = zeros(N, N), zeros(N, N)
+    for (x, wx) in zip(xs, wxs), (mu, wmu) in zip(mus, wmus)
+        F = strain_at(b, x, mu)
+        w = wx * wmu * 2pi * x^2
+        ev = eta(x, mu)
+        for p in 1:N, q in p:N
+            Mm[p, q] += w * (F[p,1]*F[q,1] + F[p,2]*F[q,2])
+            Cm[p, q] += w * 2 * ev * ddot_strain(view(F, p, :), view(F, q, :))
+        end
+    end
+    for p in 1:N, q in 1:p-1
+        Mm[p, q] = Mm[q, p]; Cm[p, q] = Cm[q, p]
+    end
+    Cm .*= Oh
+    Gm = zeros(N, N)
+    for (i, l) in enumerate(b.ls)
+        rb = RitzBasis(l, b.K)
+        tr = [phi(rb, k, 1.0) for k in 1:b.K]
+        blk = (4pi / (2l + 1)) * (l - 1) * (l + 2) * (tr * tr')
+        rng = dofindex(b, i, 1):dofindex(b, i, b.K)
+        Gm[rng, rng] .= blk
+    end
+    (M = Mm, C = Cm, G = Gm)
+end
+
+"""
+    block_norm(b::ModalBasis, A, i, j) -> Float64
+
+Largest entry of the `(i, j)` mode block of `A`. The measure of whether modes
+`b.ls[i]` and `b.ls[j]` are coupled.
+"""
+function block_norm(b::ModalBasis, A::AbstractMatrix, i::Int, j::Int)
+    ri = dofindex(b, i, 1):dofindex(b, i, b.K)
+    rj = dofindex(b, j, 1):dofindex(b, j, b.K)
+    maximum(abs, view(A, ri, rj))
+end
+
+"""
+    carreau(gammadot; eta_inf_ratio, lambda_c, a, n) -> Float64
+
+Carreau-Yasuda viscosity in units of the zero-shear plateau. `n < 1` is
+shear-thinning; `eta_inf_ratio` is the infinite-shear plateau, which (H2) requires
+to be strictly positive.
+"""
+function carreau(gd::Real; eta_inf_ratio::Real = 0.01, lambda_c::Real = 1.0,
+                 a::Real = 2.0, n::Real = 0.5)
+    eta_inf_ratio + (1 - eta_inf_ratio) * (1 + (lambda_c * gd)^a)^((n - 1) / a)
+end

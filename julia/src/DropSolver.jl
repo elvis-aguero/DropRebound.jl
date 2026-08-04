@@ -62,6 +62,7 @@ include("postprocessing.jl")
 # this one retains the interior as part of the state.
 include("variational.jl")
 export RitzBasis, assemble, decay_rates, dominant_pair
+export ModalBasis, ndof, assemble_coupled, strain_at, shear_rate, block_norm, carreau
 # Export postprocessing
 export SweepKPIs, extract_kpis, compute_contact_radius, drop_profile
 

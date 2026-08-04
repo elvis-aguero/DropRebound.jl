@@ -92,3 +92,101 @@ using LinearAlgebra
         @test cs[end] > 1e9      # so an unbounded K is not safe, by construction
     end
 end
+
+@testset "shear thinning: the coupled assembly" begin
+
+    @testset "constant viscosity leaves the modes uncoupled" begin
+        # The diagonality result: with only its l = 0 harmonic, eta cannot move
+        # energy between surface modes. Every off-diagonal block must be zero, and
+        # this is what makes the single-mode assembly sufficient for Newtonian.
+        b = ModalBasis(2:5, 3)
+        F = assemble_coupled(b, 0.05)
+        nl = length(b.ls)
+        diag_scale = maximum(block_norm(b, F.C, i, i) for i in 1:nl)
+        off = maximum(block_norm(b, F.C, i, j) for i in 1:nl, j in 1:nl if i != j)
+        @test diag_scale > 1.0                 # not vacuous
+        @test off < 1e-12 * diag_scale
+        # the added mass is likewise block diagonal, by angular orthogonality
+        offM = maximum(block_norm(b, F.M, i, j) for i in 1:nl, j in 1:nl if i != j)
+        @test offM < 1e-12 * maximum(block_norm(b, F.M, i, i) for i in 1:nl)
+    end
+
+    @testset "an angular viscosity couples exactly the Gaunt band" begin
+        # eta ~ P_k must couple l and m only when |l-m| <= k <= l+m with l+k+m even.
+        # Checked against the assembled matrix, not against the rule's derivation.
+        b = ModalBasis(2:6, 2)
+        nl = length(b.ls)
+        for k in 1:3
+            F = assemble_coupled(b, 0.05;
+                                 eta = (x, mu) -> DropSolver.legendre_angular(k, mu).P)
+            sc = maximum(block_norm(b, F.C, i, j) for i in 1:nl, j in 1:nl)
+            got = Set((b.ls[i], b.ls[j]) for i in 1:nl, j in 1:nl
+                      if block_norm(b, F.C, i, j) > 1e-8 * sc)
+            want = Set((l, m) for l in b.ls, m in b.ls
+                       if abs(l - m) <= k <= l + m && iseven(l + k + m))
+            @test got == want
+        end
+    end
+
+    @testset "the shear rate does not superpose" begin
+        # e superposes over modes; its invariant does not. So gammadot of a two-mode
+        # state is NOT the sum of the single-mode shear rates -- if it were, "mode
+        # l's shear rate" would be meaningful and the whole coupling would vanish.
+        b = ModalBasis([2, 3], 1)
+        x, mu = 0.7, -0.4
+        g12 = shear_rate(b, [1.0, 1.0], x, mu)
+        g1 = shear_rate(b, [1.0, 0.0], x, mu)
+        g2 = shear_rate(b, [0.0, 1.0], x, mu)
+        @test g1 > 0 && g2 > 0
+        @test !isapprox(g12, g1 + g2; rtol=1e-6)
+        @test !isapprox(g12, hypot(g1, g2); rtol=1e-6)   # nor is it Pythagorean
+    end
+
+    @testset "Carreau-Yasuda on a real state" begin
+        b = ModalBasis(2:6, 2)
+        nl = length(b.ls)
+        a = [0.6 / i * (k == 1 ? 1.0 : 0.3) for i in 1:nl for k in 1:b.K]
+        pts = [(x, mu) for x in (0.3, 0.6, 0.9), mu in (-0.95, -0.5, 0.0, 0.5, 0.95)]
+
+        # the viscosity really does vary over the drop
+        gd = [shear_rate(b, a, x, mu) for (x, mu) in pts]
+        @test maximum(gd) / minimum(gd) > 3
+
+        etaf = (x, mu) -> carreau(shear_rate(b, a, x, mu); lambda_c=8.0, a=2.0, n=0.4)
+        ev = [etaf(x, mu) for (x, mu) in pts]
+        @test all(0 .< ev .<= 1)                 # bounded by the plateaus, (H2)
+        @test maximum(ev) / minimum(ev) > 2
+
+        # and the coupling it induces is a leading-order effect, not a correction
+        F = assemble_coupled(b, 0.05; eta = etaf)
+        dmax = maximum(block_norm(b, F.C, i, i) for i in 1:nl)
+        omax = maximum(block_norm(b, F.C, i, j) for i in 1:nl, j in 1:nl if i != j)
+        @test omax / dmax > 0.05
+        @test F.C ≈ F.C'                          # still a Hessian
+    end
+
+    @testset "the Newtonian limit is recovered" begin
+        # lambda_c -> 0 sends eta -> 1 pointwise, so the coupled assembly must
+        # collapse onto the constant-viscosity one and the modes must decouple again.
+        b = ModalBasis(2:5, 2)
+        nl = length(b.ls)
+        a = fill(0.5, ndof(b))
+        etaf = (x, mu) -> carreau(shear_rate(b, a, x, mu); lambda_c=1e-8, a=2.0, n=0.4)
+        Fth = assemble_coupled(b, 0.05; eta = etaf)
+        Fnw = assemble_coupled(b, 0.05)
+        @test maximum(abs, Fth.C .- Fnw.C) < 1e-6 * maximum(abs, Fnw.C)
+        off = maximum(block_norm(b, Fth.C, i, j) for i in 1:nl, j in 1:nl if i != j)
+        @test off < 1e-6 * maximum(block_norm(b, Fth.C, i, i) for i in 1:nl)
+    end
+
+    @testset "single-mode and multi-mode assemblies agree" begin
+        # Two independent code paths for the same object at constant viscosity.
+        for l in (2, 4), K in (2, 3)
+            Fs = assemble(RitzBasis(l, K), 0.1)
+            Fm = assemble_coupled(ModalBasis([l], K), 0.1)
+            @test Fs.M ≈ Fm.M  rtol=1e-10
+            @test Fs.C ≈ Fm.C  rtol=1e-10
+            @test Fs.G ≈ Fm.G  rtol=1e-10
+        end
+    end
+end
