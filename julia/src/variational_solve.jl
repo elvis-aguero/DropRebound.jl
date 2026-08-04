@@ -642,3 +642,88 @@ function contact_lcp(p::ImpactParams, prev::ImpactState, curr::ImpactState,
      (A = A, rhs0 = rhs0, Qn = Qn, Vinv = Vinv, β = β, hv_a = hv_a,
       hv_z = hv_z, hv_v = hv_v, npc = npc, N = N))
 end
+
+"""
+    try_step_lcp(p, prev, curr, dt; F0, Vfac) -> (status, next, diag)
+
+One step with the contact set determined by complementarity rather than searched for.
+
+There is no contact-count argument, and that is the point: the set is an output. The
+pressure comes from the LCP, the interior amplitudes and the centre of mass follow from it
+by back-substitution, and no candidate is ever proposed, ranked or rejected.
+
+`status` is `:ok`, or `:diverge` if the complementarity residual does not clear tolerance
+-- in which case the caller should halve `dt`, as for any nonlinear solve that fails.
+"""
+function try_step_lcp(p::ImpactParams, prev::ImpactState, curr::ImpactState,
+                      dt::Float64; F0, Vfac, tol::Real = 1e-9)
+    Ac, bv, idx, aux = contact_lcp(p, prev, curr, dt; F0 = F0, Vfac = Vfac)
+    pact, resid, sweeps = lcp_pgs(Ac, bv)
+    h = Ac * pact .+ bv
+    sc = max(maximum(abs, h), maximum(abs, pact), 1.0)
+    abs(resid)/sc > tol && return (:diverge, curr, (resid = resid, sweeps = sweeps,
+                                                   nact = 0, contiguous = true))
+    ## lift back to the full node set: every node outside the LCP carries zero pressure
+    pfull = zeros(aux.npc)
+    pfull[idx] = pact
+    β = aux.β
+    a_next = aux.A \ (aux.rhs0 + aux.Qn * pfull)
+    pc = aux.Vinv * pfull
+    v_next = (-p.Bo - pc[2] - aux.hv_v) / β
+    z_next = (v_next - aux.hv_z) / β
+    adot_next = β * a_next + aux.hv_a
+    ## The active set is whatever the solve says it is. It is NOT constrained to be an
+    ## interval, so whether it comes out contiguous is a RESULT -- and the model page
+    ## carries "contact occupies a single connected patch" as an axiom, which this can
+    ## now check rather than assume.
+    act = [i for i in eachindex(pact) if pact[i] > 1e-10 * max(maximum(pact), 1.0)]
+    nact = length(act)
+    contiguous = isempty(act) || (act == collect(first(act):last(act)) && first(act) == 1)
+    nxt = ImpactState(curr.t + dt, dt, a_next, adot_next, z_next, v_next, nact,
+                      pc, false)
+    (:ok, nxt, (resid = resid, sweeps = sweeps, nact = nact, contiguous = contiguous))
+end
+
+"""
+    simulate_lcp(p) -> NamedTuple
+
+March the impact with the contact set determined by complementarity at every step.
+
+No candidate search, no tangency ranking, no `±2` probe, no contact-count limit. `dt`
+halves only when the complementarity solve itself fails to converge.
+"""
+function simulate_lcp(p::ImpactParams)
+    p.eta_const || error("simulate_lcp currently requires a constant viscosity")
+    F0 = assemble_newtonian(basis(p), p.Oh)
+    Vfac = lu(legendre_vandermonde(p))
+    s0 = initial_state(p)
+    prev, curr = s0, s0
+    ts = Float64[0.0]; zs = Float64[s0.z]; vs = Float64[s0.v]
+    cps = Int[0]; pc1 = Float64[0.0]
+    as = Vector{Float64}[copy(s0.a)]; adots = Vector{Float64}[copy(s0.adot)]
+    pcs = Vector{Float64}[copy(s0.pc)]
+    dt = p.dt0; nrej = 0; worst_resid = 0.0; max_sweeps = 0; noncontig = 0
+    while curr.t < p.t_max
+        st, nxt, dg = try_step_lcp(p, prev, curr, dt; F0 = F0, Vfac = Vfac)
+        if st !== :ok
+            nrej += 1; dt /= 2
+            dt < p.dt_min && break
+            continue
+        end
+        worst_resid = max(worst_resid, abs(dg.resid))
+        max_sweeps = max(max_sweeps, dg.sweeps)
+        dg.contiguous || (noncontig += 1)
+        prev, curr = curr, nxt
+        push!(ts, curr.t); push!(zs, curr.z); push!(vs, curr.v)
+        push!(cps, dg.nact); push!(pc1, curr.pc[2])
+        push!(as, copy(curr.a)); push!(adots, copy(curr.adot)); push!(pcs, copy(curr.pc))
+        dt = min(2*dt, p.dt0)
+        if dg.nact == 0 && curr.v > 0 && curr.z > 1.0 && any(>(0), cps)
+            break
+        end
+    end
+    (t = ts, z = zs, v = vs, cp = cps, pc1 = pc1, a = as, adot = adots, pc = pcs,
+     rejects = nrej, lcp_resid_max = worst_resid, lcp_sweeps_max = max_sweeps,
+     noncontiguous_steps = noncontig,
+     cor = restitution(vs, cps, p.We), tc = contact_time(ts, cps))
+end
