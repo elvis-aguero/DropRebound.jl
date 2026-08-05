@@ -120,11 +120,48 @@ A variable viscosity forces the coupled matrices to be rebuilt every step, so
 shear-thinning runs use a smaller `M` than Newtonian ones, where the operator is
 block diagonal and built once.
 
-## Legacy API
+## The four solvers
 
-The interface below drives the **superseded** solver (`solve_drop!`), which
-eliminates the interior and carries Lamb damping. It is retained because the
-Oldroyd-B extension has not yet been ported to the variational formulation.
+Two formulations, two contact closures, all four live:
+
+|                    | ranked search   | complementarity    |
+| ------------------ | --------------- | ------------------ |
+| **variational**    | `simulate`      | `simulate_lcp`     |
+| **nonvariational** | `solve_drop!`   | `solve_drop_lcp!`  |
+
+Within a row the two take identical arguments and return identical types, so
+switching closures is a one-word change.
+
+All four are kept because a disagreement between any two can then be
+attributed: agreement down a column clears the formulation, agreement across a
+row clears the closure. Measured over five cases, restitution agrees across
+**all four cells to within 0.8 %** — no shared contact logic, same rebound
+speed. Contact time is where they part, and only in one place: the closure
+changes it by 7.5 % in the variational formulation and by 0.0 % in the
+nonvariational one, so that difference belongs to the formulation rather than
+to complementarity in general.
+
+Picking one:
+
+- **shear-thinning viscosity** — variational only; the nonvariational
+  formulation has no interior state to evaluate `η(γ̇)` against
+- **Oldroyd-B** — nonvariational search only; polymer stress makes the system
+  non-affine, and `solve_drop_lcp!` refuses those parameters rather than
+  quietly solving an approximation
+- **exact linear damping with nothing to tune** — nonvariational; Reid's
+  coefficients are built in, where the variational solver needs `K ≥ 2`
+- **robustness across a sweep** — either complementarity solver; neither can
+  reject a step for want of an admissible candidate
+- **cross-checking** — run `simulate` against `solve_drop_lcp!`; they share
+  neither formulation nor closure
+
+Full tradeoffs, including why the two closures need different LCP algorithms,
+are in the *Choosing a Solver* page of the documentation.
+
+### Nonvariational interface
+
+The interface below drives the nonvariational solvers, which eliminate the
+interior and advance each surface mode with Reid's exact per-mode coefficients.
 
 ```julia
 using DropSolver

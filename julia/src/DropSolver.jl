@@ -38,6 +38,8 @@ export drop_height, contact_error, update_theta_star!
 
 # Export time-steppers
 export solve_drop!, solve_drop_v1!
+export solve_drop_lcp!, nv_compliance, nv_gap, nv_nodal_pressure
+export lcp_active_set, lcp_residual
 
 # Export v1 (continuous θ*) residual/Jacobian
 export build_residual_v1!, build_jacobian_v1, integral_at_theta_star
@@ -56,6 +58,7 @@ include("timestepper.jl")
 include("residual_v1.jl")
 include("timestepper_v1.jl")
 include("postprocessing.jl")
+include("nonvariational_lcp.jl")
 
 # The variational assembly of the shear-thinning model (see the derivation page
 # "Shear-Thinning Drops"). Kept separate from the eliminated-interior solver above:
