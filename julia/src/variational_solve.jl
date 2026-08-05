@@ -802,3 +802,60 @@ function simulate_lcp(p::ImpactParams)
      cor = restitution(vs, cps, p.We), tc = contact_time(ts, cps),
      gap_fraction = contact_gap_fraction(ts, cps))
 end
+
+# ============================================================================
+# EXPERIMENT-LIKE CONTACT METRICS
+#
+# A camera does not see "the pressure is positive at a collocation node". It sees the drop
+# arrive at the wall within the resolution of the image, and it sees it leave. So contact is
+# defined here the way the measurement defines it: contact exists whenever ANY point of the
+# surface is below a threshold height above the substrate, contact time runs from the first
+# such frame to the last, and restitution compares the centre-of-mass speed at those two
+# instants.
+#
+# The threshold matters for more than fidelity. Judging contact by the pressure being
+# nonzero makes a separation of 0.001R end the contact, which fragments one physical
+# impact into several and made a contact time read three times short. At a threshold of
+# 0.02R those separations are simply not resolved -- which is exactly what a camera does --
+# and the metric stops depending on the solver's internal notion of a contact set.
+
+"""
+    proximity_metrics(p, r; h_thresh = 0.02, nang = 240) -> NamedTuple
+
+Contact time and restitution measured by proximity, the way an experiment measures them.
+
+Contact exists at a step when the minimum gap over the whole surface is below `h_thresh`
+(in units of the drop radius). `tc` is the interval between the first and last such step;
+`cor` is the ratio of centre-of-mass speeds at those two steps.
+
+The surface is sampled on `nang` angles rather than at the collocation nodes, because the
+criterion is about the surface and not about the discretisation -- "a single point below the
+line", not "a node below the line".
+"""
+function proximity_metrics(p::ImpactParams, r; h_thresh::Real = 0.02, nang::Int = 240)
+    ls = p.ls
+    ths = range(pi, pi/2; length = nang)          # the lower hemisphere, where contact is
+    mus = cos.(ths)
+    ## precompute the Legendre matrix once: the per-step cost is then one matrix-vector
+    ## product rather than tens of thousands of polynomial evaluations
+    P = [legendre_angular(l, mu).P for mu in mus, l in ls]
+    detected = falses(length(r.t))
+    minh = fill(Inf, length(r.t))
+    for i in eachindex(r.t)
+        z = surface_amplitudes(p, r.a[i])
+        rad = 1 .+ P * z                          # surface radius at each sampled angle
+        h = r.z[i] .+ mus .* rad                  # height above the substrate
+        minh[i] = minimum(h)
+        detected[i] = minh[i] < h_thresh
+    end
+    i1 = findfirst(detected); i2 = findlast(detected)
+    if i1 === nothing
+        return (tc = 0.0, cor = NaN, i_first = 0, i_last = 0,
+                v_in = NaN, v_out = NaN, min_gap = minimum(minh), n_detected = 0,
+                h_thresh = h_thresh)
+    end
+    (tc = r.t[i2] - r.t[i1],
+     cor = abs(r.v[i2] / r.v[i1]),
+     i_first = i1, i_last = i2, v_in = r.v[i1], v_out = r.v[i2],
+     min_gap = minimum(minh), n_detected = count(detected), h_thresh = h_thresh)
+end
