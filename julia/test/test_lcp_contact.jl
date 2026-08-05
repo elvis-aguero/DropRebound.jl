@@ -106,3 +106,65 @@ const LREF = (We = 1.0, Bo = 0.0189, Oh = 0.303767)
         @test 5.0 < a90 < 25.0                         # a real angular extent, not a node
     end
 end
+
+# Shear thinning through the complementarity solve.
+#
+# A variable viscosity makes the problem NONLINEAR: eta depends on the strain rate, the
+# dissipation operator on eta, and the compliance on that operator -- so A_c is a function
+# of the velocity the solve produces. It is closed by the same Picard iteration the
+# searching solver uses, freezing eta at an extrapolated strain rate and re-evaluating at
+# the answer. Each iterate is a genuine LCP with a symmetric PSD compliance, so
+# complementarity holds exactly at every sweep and only eta lags.
+@testset "shear thinning through the LCP" begin
+    ## the 3000 ppm fluid, from its own Cross fit -- nothing fitted to the impact data
+    eta_0, eta_inf = 8.433817577956766, 0.0037320997942061666
+    K_cross, m_cross = 18.48081673111359, 0.7430524574330837
+    R, sigma, rho = 0.0003, 0.0728, 1000.0
+    t_cap = sqrt(rho * R^3 / sigma)
+    Oh_0 = eta_0 / sqrt(rho * sigma * R)
+    etaf = gd -> carreau(gd; lambda_c = K_cross/t_cap, a = m_cross,
+                         n = 1 - m_cross, eta_inf_ratio = eta_inf/eta_0)
+
+    @testset "it integrates, and complementarity still holds exactly" begin
+        p = ImpactParams(We = 0.1912, Bo = 0.012, Oh = Oh_0, M = 14, K = 2,
+                         eta = etaf, t_max = 25.0)
+        @test !p.eta_const                        # the probe really sees a variable eta
+        r = simulate_lcp(p)
+        ## the LCP residual is unaffected by the nonlinearity: every Picard iterate is a
+        ## genuine complementarity solve, so this stays at machine level
+        @test r.lcp_resid_max < 1e-10
+        ## and the viscosity iteration converged on every accepted step
+        @test r.eta_resid_max <= p.eta_tol
+        @test r.rejects < 0.05 * length(r.t)
+        @test 0 < r.cor < 1
+    end
+
+    @testset "and it agrees with experiment at least as well as the search" begin
+        # Measured at We = 0.1912, where the experiments average CoR 0.804 and tc 2.693:
+        #   LCP    CoR 0.7872 (2.1%)   tc 2.4597 (8.7%)
+        #   search CoR 0.7673 (4.6%)   tc 2.7180 (0.9%)
+        # So the LCP is better on restitution and worse on contact time -- the same split
+        # as the Newtonian comparison, which is itself evidence that the difference is in
+        # the contact model rather than in the rheology.
+        p = ImpactParams(We = 0.1912, Bo = 0.012, Oh = Oh_0, M = 14, K = 2,
+                         eta = etaf, t_max = 25.0)
+        rl = simulate_lcp(p); rs = simulate(p)
+        @test abs(rl.cor - 0.804)/0.804 < 0.10        # within ten per cent on restitution
+        @test abs(rl.cor - 0.804) < abs(rs.cor - 0.804)   # and closer than the search
+        @test abs(rl.tc - 2.693)/2.693 < 0.15         # contact time within fifteen
+    end
+
+    @testset "the Newtonian limit is recovered through the LCP path" begin
+        # lambda_c -> 0 sends eta -> 1 pointwise, so the expensive path -- a coupled
+        # reassembly and a fresh compliance every sweep -- must reproduce the cached
+        # constant-viscosity one. This checks the two code paths against each other rather
+        # than each against itself.
+        base = (We = 1.0, Bo = 0.0189, Oh = 0.303767, M = 14, K = 2, t_max = 25.0)
+        rn = simulate_lcp(ImpactParams(; base...))
+        rt = simulate_lcp(ImpactParams(; base...,
+                eta = gd -> carreau(gd; lambda_c = 1e-10, a = 2.0, n = 0.4,
+                                    eta_inf_ratio = 0.01)))
+        @test isapprox(rt.cor, rn.cor; rtol = 1e-3)
+        @test isapprox(rt.tc,  rn.tc;  rtol = 1e-3)
+    end
+end
