@@ -137,9 +137,15 @@ types, so switching closures there is a one-word change.
 All three are kept because a disagreement between any two can be attributed.
 `simulate` and `simulate_lcp` differ only in the closure; `simulate` and
 `solve_drop!` differ only in the formulation. One solver alone cannot separate
-the two. Measured over five cases, restitution agrees across **all three to
-within 0.8 %** — no shared contact logic, same rebound speed. Contact time is
-where they part: the closure moves it 7.5 %, the formulation 3.3 %.
+the two.
+
+Measured over 35 cases spanning `Oh ∈ [0.023, 0.685]` and `We ∈ [0.05, 3]`, the
+**closure makes no difference**: contact time is bit-identical in all 35 and
+restitution agrees to 2.4e-4 at worst. The formulation is the only axis that
+moves anything — 3.3 % in contact time, 0.6 % in restitution. So the value of
+having the complementarity closure is robustness, not different physics: it runs
+cases the search cannot, and it never rejects a step for want of an admissible
+candidate.
 
 Picking one:
 

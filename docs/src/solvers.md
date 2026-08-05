@@ -67,35 +67,41 @@ restitution compares centre-of-mass speed at those two instants.
 
 | ``We`` | ``Oh`` | ``t_c`` var/srch | var/lcp | nonvar/srch | CoR var/srch | var/lcp | nonvar/srch |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0.2 | 0.0373 | 2.7113 | 2.4336 | 2.8003 | 0.8227 | 0.8602 | 0.8179 |
-| 0.5 | 0.0373 | 2.4901 | 2.0523 | 2.5512 | 0.7462 | 0.7394 | 0.7450 |
-| 1.0 | 0.0767 | 2.3677 | 1.8217 | — | 0.5777 | 0.5162 | — |
-| 1.0 | 0.3038 | 2.2735 | 2.2735 | — | 0.3610 | 0.3602 | — |
-| 2.0 | 0.3038 | 2.1323 | 2.1323 | 2.2164 | 0.3026 | 0.3023 | 0.2978 |
+| 0.2 | 0.0373 | 2.7113 | 2.7113 | 2.8003 | 0.8227 | 0.8227 | 0.8179 |
+| 0.5 | 0.0373 | 2.4901 | 2.4901 | 2.5512 | 0.7462 | 0.7462 | 0.7450 |
+| 1.0 | 0.0767 | 2.3677 | 2.3677 | — | 0.5777 | 0.5777 | — |
+| 1.0 | 0.3038 | 2.2735 | 2.2735 | — | 0.3610 | 0.3610 | — |
+| 2.0 | 0.3038 | 2.1323 | 2.1323 | 2.2164 | 0.3026 | 0.3026 | 0.2978 |
 
 Reading it along the axes:
 
-- **Restitution is largely insensitive to both choices.** The closure moves it by 0.9 per cent
-  and the formulation by 0.6 per cent in the median. Two formulations and two contact
-  algorithms that share no contact logic land on nearly the same rebound speed, which is the
-  strongest available evidence that the rebound speed is a property of the physics rather than
-  of an implementation. The exception is instructive: at the lowest Weber number the two
-  closures differ by 4.5 per cent, and at ``\mathrm{Oh} = 0.3038`` they agree to four decimals.
-  The disagreement lives at low Ohnesorge and low Weber, not everywhere.
-- **Contact time is sensitive to the closure**, by 10.2 per cent within the variational
-  formulation, with `simulate_lcp` consistently the shorter and the gap widening as Ohnesorge
-  falls. Complementarity permits a contact set that is not an interval, and the runs use one:
-  contact detaches at the pole and leaves an annulus, grid-converged at an arc of about 11
-  degrees. A ranked search cannot represent that, because it only ever proposes a contiguous
-  patch grown from the pole, and a patch that stays attached at the centre releases later.
-- **The formulation matters least of the three effects**, 3.3 per cent in contact time under a
-  shared closure.
+- **The closure makes no difference.** Over a wider grid — 35 cases spanning
+  ``\mathrm{Oh}\in[0.023,\,0.685]`` and ``We\in[0.05,\,3]`` — contact time is bit-identical in
+  all 35 and restitution agrees to 2.4e-4 in the worst case, growing with ``We`` at low
+  ``\mathrm{Oh}`` and vanishing elsewhere. Contact time agrees exactly because ``dt`` is
+  constant and ``t_c`` is a difference of step times, so two closures that flag the same steps
+  return the same number. On the 3000 ppm shear-thinning fluid the two agree to 3.5e-6.
+- **So the formulation is the only axis that moves anything**: 3.3 per cent in contact time and
+  0.6 per cent in restitution, under a shared closure.
+- **The contact set comes out a single patch**, even though complementarity does not require
+  one. At ``M = 90`` the free arc at the pole is exactly zero. Non-contiguity survives only as a
+  transient at the release edge, in a minority of steps that shrinks with resolution — 12 of 530
+  accepted steps at ``M = 30``, 4 of 967 at ``M = 45``, none at ``M = 90``.
 - **The searching closure is the less robust of the two.** `solve_drop!` completed three of the
-  five cases; both variational cells completed all five, and `simulate_lcp` also runs cases at
-  which `simulate` fails outright.
+  five cases above; both variational cells completed all five, and `simulate_lcp` also runs
+  cases at which `simulate` fails outright.
 
-Wallclock over these cases: the variational solvers take 0.2–1.7 s; the nonvariational search
-takes 0.0–7.3 s, erratic because its cost is dominated by rejected steps.
+Wallclock over these cases: the variational solvers take 0.2–2.6 s; the nonvariational search
+takes 0.0–7.5 s, erratic because its cost is dominated by rejected steps.
+
+!!! note "An earlier version of this page said otherwise"
+    It reported the closure changing contact time by 7.5 to 10.2 per cent, and an annular
+    contact grid-converged at an arc of about 11 degrees. Both were artefacts. `contact_lcp`
+    was symmetrising a compliance that is asymmetric by about forty per cent before handing it
+    to a sweep that assumes symmetry, so the pressures were not a solution of the contact
+    problem and the accepted states had the drop up to 4.7 per cent of a radius inside the
+    substrate. An unresolved penetration looks like a dimple from the outside. Solved against
+    the true compliance, the difference is gone.
 
 ### Cost of the complementarity solve
 
@@ -123,23 +129,37 @@ Measured against its own searching closure it agreed to 0.0 per cent on both con
 restitution — the two closures select the same contact set at every step, so the cell never
 disagreed with `solve_drop!` and bought no information.
 
-It also needed a *different* complementarity algorithm. The variational compliance matrix is
-symmetric, structurally: it is a Hessian of an energy. That makes the problem equivalent to the
-convex quadratic program
+The work is preserved on the `archive/nonvariational-lcp` branch.
+
+## Neither compliance is symmetric, and what that costs
+
+It would be convenient if the gap-versus-pressure map were symmetric, because the
+complementarity problem would then be exactly the KKT system of the convex programme
 
 ```math
 \min_{p \ge 0} \; \tfrac{1}{2} p^{\mathsf T} A_c\, p + b^{\mathsf T} p,
 ```
 
-which a projected Gauss–Seidel sweep solves. The nonvariational model is assembled from
-per-mode damping coefficients and is the second derivative of nothing, so its compliance comes
-out asymmetric — by more than half its own magnitude — and that equivalence fails. Existence
-survives, since positive definiteness makes the matrix a P-matrix and a P-matrix
-complementarity problem has exactly one solution for every right-hand side, but the sweep must
-be replaced by active-set pivoting. Two closures whose answers never differ are not worth two
-algorithms.
+with a guaranteed solution, uniqueness when the matrix is definite, and a projected
+Gauss–Seidel sweep to find it. It is not symmetric in either formulation — by about forty per
+cent in the variational one and more than fifty in the nonvariational — so both use active-set
+pivoting, which assumes nothing about symmetry.
 
-The work is preserved on the `archive/nonvariational-lcp` branch.
+The reason is the same in both cases and it is structural rather than accidental. Symmetry of
+``A_c = H A^{-1} Q_n`` requires the forcing to be the transpose of the constraint Jacobian,
+``Q_n = -H^{\mathsf T} W`` for some positive diagonal — that is what makes a constraint and its
+multiplier conjugate. The solver constrains the **vertical** gap at **collocation nodes** but
+forces the drop with a **radial** pressure projected in the **Legendre** basis, which departs
+from conjugacy in two independent ways at once. Measured, the shipped forcing is 95 per cent
+orthogonal to any conjugate one, so this is not a small correction.
+
+Nothing is wrong as a result: the problem is still a well-posed complementarity problem with a
+unique solution, and active-set pivoting solves it exactly, which is why the two closures agree
+to the precision reported above. What is given up is the convexity, and with it the option of
+the cheaper sweep and a uniqueness proof.
+
+The derivation of what conjugacy would require, and what adopting it would cost the model, is
+in `julia/derivations/contact_conjugacy_derivation.jl`.
 
 ## Which to use
 
