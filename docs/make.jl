@@ -99,6 +99,7 @@ makedocs(
         #
         # (The hand-authored `reid1960/` and `carreau_yasuda_fp/` chapters were
         # removed: they restated, in a second voice, what these scripts derive.)
+        "Choosing a Solver" => "solvers.md",
         "Newtonian Theory" => [
             "The Viscous Drop: Reid (1960)"    => PAGE["reid1960_full_derivation.jl"],
             "Finite-Ohnesorge Coefficients"    => PAGE["reid_finite_oh_derivation.jl"],

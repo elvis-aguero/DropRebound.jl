@@ -120,11 +120,46 @@ A variable viscosity forces the coupled matrices to be rebuilt every step, so
 shear-thinning runs use a smaller `M` than Newtonian ones, where the operator is
 block diagonal and built once.
 
-## Legacy API
+## The three solvers
 
-The interface below drives the **superseded** solver (`solve_drop!`), which
-eliminates the interior and carries Lamb damping. It is retained because the
-Oldroyd-B extension has not yet been ported to the variational formulation.
+Two axes — how the model is formulated, and how the contact set is found:
+
+|                    | ranked search   | complementarity  |
+| ------------------ | --------------- | ---------------- |
+| **variational**    | `simulate`      | `simulate_lcp`   |
+| **nonvariational** | `solve_drop!`   | —                |
+
+`simulate` and `simulate_lcp` take identical arguments and return identical
+types, so switching closures there is a one-word change.
+
+All three are kept because a disagreement between any two can be attributed.
+`simulate` and `simulate_lcp` differ only in the closure; `simulate` and
+`solve_drop!` differ only in the formulation. One solver alone cannot separate
+the two. Measured over five cases, restitution agrees across **all three to
+within 0.8 %** — no shared contact logic, same rebound speed. Contact time is
+where they part: the closure moves it 7.5 %, the formulation 3.3 %.
+
+Picking one:
+
+- **shear-thinning viscosity** — variational only; the nonvariational
+  formulation has no interior state to evaluate `η(γ̇)` against
+- **Oldroyd-B** — nonvariational only; not yet ported to the variational
+  formulation
+- **exact linear damping with nothing to tune** — nonvariational; Reid's
+  coefficients are built in, where the variational solver needs `K ≥ 2`
+- **robustness across a sweep** — `simulate_lcp`; it cannot reject a step for
+  want of an admissible candidate, and runs cases where `simulate` fails
+- **cross-checking** — `simulate_lcp` against `solve_drop!`; they share neither
+  formulation nor closure
+
+Full tradeoffs are in the *Choosing a Solver* page of the documentation;
+`julia/scripts/compare_solvers.jl` regenerates the table.
+
+### Nonvariational interface
+
+The interface below drives the nonvariational solver, which eliminates the
+interior and advances each surface mode with Reid's exact per-mode
+coefficients. It also carries the Oldroyd-B extension.
 
 ```julia
 using DropSolver
