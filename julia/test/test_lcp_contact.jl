@@ -1,9 +1,18 @@
 # The contact set solved for rather than searched over.
 #
 # `simulate_lcp` determines which nodes are in contact by solving the complementarity
-# problem `h = A_c p + b`, `h >= 0`, `p >= 0`, `p'h = 0` at every step. The tests below
-# are about the two things that makes possible and the searching solver cannot do: it
-# satisfies the pressure inequality, and it is not restricted to a disc.
+# problem `h = A_c p + b`, `h >= 0`, `p >= 0`, `p'h = 0` at every step. The tests below are
+# about what that makes possible and the searching solver cannot do: it satisfies the
+# pressure inequality everywhere rather than only at the patch edge, it is not restricted
+# to a disc, and it runs cases the search cannot.
+#
+# `A_c` is NOT symmetric -- it is asymmetric by about forty per cent, because the film
+# pressure is carried as a Legendre field whose forcing is not the transpose of the gap
+# Jacobian. So the problem is not a convex programme and the projected Gauss-Seidel sweep
+# does not apply to it; `lcp_active_set` solves it without assuming symmetry. An earlier
+# version symmetrised the matrix and swept it anyway, which produced states with the drop
+# inside the substrate and is the origin of every claim these tests used to make about the
+# two closures disagreeing.
 
 using Test
 using DropSolver
@@ -63,23 +72,32 @@ const LREF = (We = 1.0, Bo = 0.0189, Oh = 0.303767)
         end
     end
 
-    @testset "the contact is ANNULAR, and it converges in M" begin
-        # The axiom on the model page -- "contact occupies a single connected patch about
-        # the pole" -- is false. Solved without that restriction, the pressure is exactly
-        # zero at the pole and order ten on a ring a few nodes out: a dimple with air
-        # trapped under it, which is a known feature of drop impact and which the interval
-        # parametrisation cannot represent at all.
+    @testset "the contact comes out a single patch, though nothing requires it to" begin
+        # The model page carries "contact occupies a single connected patch about the pole" as
+        # an axiom. The complementarity closure does not impose it -- the active set is
+        # whatever the solve returns -- so this test asks whether the axiom is earned.
         #
-        # That it is not a discretisation artefact is the point of this test. An artefact
-        # would span a fixed NUMBER of nodes and its angular extent would shrink with the
-        # node spacing. Measured instead: the free arc at the pole converges to about 11
-        # degrees (10.90, 11.17, 11.44 at M = 45, 60, 90) while the nodes spanning it grow
-        # (3, 4, 6). The angle is the invariant, so the feature is resolved rather than
-        # created by the grid.
+        # It is. And an earlier version of this test claimed the opposite.
         #
-        # What this does NOT establish is that a dimple survives NONLINEAR kinematics.
-        # These amplitudes reach |zeta| ~ 0.4, where a linear shape expansion is stretched,
-        # and settling that needs a nonlinear reference rather than a finer grid.
+        # THE ANNULUS WAS A DISCRETISATION ARTEFACT. The earlier version
+        # asserted the opposite -- that the free arc converged to about 11 degrees while the
+        # nodes spanning it grew, so the angle was the invariant and the dimple was resolved
+        # rather than created. That measurement was taken while `contact_lcp` handed a
+        # symmetrised copy of a forty-per-cent-asymmetric compliance to a sweep that assumes
+        # symmetry, so the pressures were not a solution of the contact problem at all and the
+        # states they produced had the drop up to 4.7 per cent of a radius inside the
+        # substrate. A dimple is exactly what an unresolved penetration looks like from the
+        # outside.
+        #
+        # Solved against the true compliance the free arc is ZERO at M = 90: contact comes out
+        # a single patch anchored at the pole. Non-contiguity survives only as a transient at
+        # the release edge, in a minority of steps that SHRINKS with resolution -- 12 of 530
+        # accepted steps at M = 30, 4 of 967 at M = 45, none at M = 90 -- which is the
+        # signature of an artefact rather than a feature.
+        #
+        # The test is kept, inverted, because the complementarity closure genuinely does not
+        # constrain the contact set to be an interval, so whether it comes out as one is a
+        # result worth pinning. It comes out as one.
         function free_arc(M)
             p = ImpactParams(; LREF..., M = M, K = 2, t_max = 25.0)
             F0 = assemble_newtonian(DropSolver.basis(p), p.Oh)
@@ -92,18 +110,28 @@ const LREF = (We = 1.0, Bo = 0.0189, Oh = 0.303767)
                 prev, curr = curr, nxt; dt = min(2dt, p.dt0)
             end
             Ac, bv, idx, _ = DropSolver.contact_lcp(p, prev, curr, dt; F0=F0, Vfac=Vf)
-            pv, _, _ = DropSolver.lcp_pgs(Ac, bv)
+            pv, resid, _ = DropSolver.lcp_active_set(Ac, bv)
+            @test resid < 1e-9                         # a real solution, not a surrogate's
             act = [i for i in eachindex(pv) if pv[i] > 1e-10*max(maximum(pv), 1)]
             isempty(act) && return (NaN, 0)
             (180 - rad2deg(p.nodes[idx[first(act)]]), first(act) - 1)
         end
         a45, n45 = free_arc(45)
-        a60, n60 = free_arc(60)
         a90, n90 = free_arc(90)
-        @test all(isfinite, (a45, a60, a90))
-        @test n45 > 0 && n90 > n45                    # more nodes resolve the same arc
-        @test isapprox(a90, a60; rtol = 0.10)          # and the ARC is what converges
-        @test 5.0 < a90 < 25.0                         # a real angular extent, not a node
+        ## at production resolution the contact set is a single patch at the pole
+        @test n90 == 0
+        @test a90 == 0.0
+        ## and the free arc does not grow as the grid coarsens into a converged feature
+        @test n45 >= n90
+
+        ## the same statement over a whole march: non-contiguity is a shrinking minority
+        frac(M) = let r = simulate_lcp(ImpactParams(We = 0.5, Bo = 0.017, Oh = 0.0373,
+                                                    M = M, K = 2, t_max = 25.0))
+            r.noncontiguous_steps / length(r.t)
+        end
+        f30, f45 = frac(30), frac(45)
+        @test f30 < 0.05                               # measured 2.3 per cent
+        @test f45 < f30                                # measured 0.4 per cent
     end
 end
 
@@ -113,8 +141,8 @@ end
 # dissipation operator on eta, and the compliance on that operator -- so A_c is a function
 # of the velocity the solve produces. It is closed by the same Picard iteration the
 # searching solver uses, freezing eta at an extrapolated strain rate and re-evaluating at
-# the answer. Each iterate is a genuine LCP with a symmetric PSD compliance, so
-# complementarity holds exactly at every sweep and only eta lags.
+# the answer. Each iterate is a genuine LCP -- asymmetric, like the constant-viscosity one --
+# so complementarity holds exactly at every sweep and only eta lags.
 @testset "shear thinning through the LCP" begin
     ## the 3000 ppm fluid, from its own Cross fit -- nothing fitted to the impact data
     eta_0, eta_inf = 8.433817577956766, 0.0037320997942061666
@@ -139,19 +167,28 @@ end
         @test 0 < r.cor < 1
     end
 
-    @testset "and it agrees with experiment at least as well as the search" begin
-        # Measured at We = 0.1912, where the experiments average CoR 0.804 and tc 2.693:
-        #   LCP    CoR 0.7872 (2.1%)   tc 2.4597 (8.7%)
-        #   search CoR 0.7673 (4.6%)   tc 2.7180 (0.9%)
-        # So the LCP is better on restitution and worse on contact time -- the same split
-        # as the Newtonian comparison, which is itself evidence that the difference is in
-        # the contact model rather than in the rheology.
+    @testset "it agrees with experiment, and with the search to six digits" begin
+        # An earlier version of this asserted the LCP was CLOSER to experiment than the search
+        # -- LCP CoR 0.7872 against search 0.7673, at a measured 0.804 -- and read the split
+        # (better on restitution, worse on contact time) as evidence about the contact model.
+        # There was no split. Those numbers came from a compliance that had been symmetrised
+        # before solving, so the LCP was answering a different question; corrected, the two
+        # closures agree to 3.5e-6 relative on a shear-thinning fluid, and the earlier difference
+        # was the bug.
+        #
+        # That agreement is now the stronger claim, so it is what gets asserted. The two
+        # closures share the assembly and nothing about how they choose the contact set, so
+        # this pins the rheology and the contact treatment against each other on a fluid whose
+        # zero-shear Ohnesorge number is 57.
         p = ImpactParams(We = 0.1912, Bo = 0.012, Oh = Oh_0, M = 14, K = 2,
                          eta = etaf, t_max = 25.0)
         rl = simulate_lcp(p); rs = simulate(p)
         @test abs(rl.cor - 0.804)/0.804 < 0.10        # within ten per cent on restitution
-        @test abs(rl.cor - 0.804) < abs(rs.cor - 0.804)   # and closer than the search
         @test abs(rl.tc - 2.693)/2.693 < 0.15         # contact time within fifteen
+        ## measured 3.47e-6 on restitution; contact time is a multiple of the fixed dt, so
+        ## it comes out bit-identical whenever both closures flag the same steps
+        @test isapprox(rl.cor, rs.cor; rtol = 1e-5)
+        @test rl.tc == rs.tc
     end
 
     @testset "the Newtonian limit is recovered through the LCP path" begin

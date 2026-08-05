@@ -64,6 +64,7 @@ include("variational.jl")
 export RitzBasis, assemble, decay_rates, dominant_pair
 export ModalBasis, ndof, assemble_coupled, assemble_newtonian, strain_at, shear_rate, block_norm, carreau
 include("variational_solve.jl")
+export lcp_residual, lcp_active_set
 export ImpactParams, ImpactState, simulate, simulate_lcp, proximity_metrics, try_step_lcp, lcp_pgs, initial_state, surface_amplitudes
 # Export postprocessing
 export SweepKPIs, extract_kpis, compute_contact_radius, drop_profile

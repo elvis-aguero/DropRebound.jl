@@ -39,7 +39,21 @@ git_commit() = try
     strip(read(`git -C $(joinpath(@__DIR__,"..","..")) rev-parse --short HEAD`, String))
 catch; "unknown" end
 
-"""The identity of a run: everything that changes its numbers, and nothing that does not."""
+"""
+The identity of a run: everything that changes its numbers, and nothing that does not.
+
+A KNOWN HOLE, worth stating because it has already cost a set of results. The key covers the
+parameters but not the SOLVER'S OWN VERSION, so a row stays valid-looking after the algorithm
+behind it changes. When the complementarity closure was corrected -- it had been solving a
+symmetrised surrogate of an asymmetric compliance -- all 38 stored `lcp` rows became wrong
+while still matching their keys exactly, and a rerun would have reused every one of them. They
+were deleted by hand.
+
+Adding the commit to the key would fix it and also invalidate the whole store on every commit,
+which defeats the point. The workable version is a per-solver algorithm tag bumped only when
+the numbers can move; until that exists, delete the affected rows by hand after a solver
+change and say so in the commit.
+"""
 key(row) = join((row.solver, @sprintf("%.10g",row.We), @sprintf("%.10g",row.Bo),
                  @sprintf("%.10g",row.Oh), row.M, row.K, row.rheology,
                  @sprintf("%.10g",row.t_max), @sprintf("%.10g",row.h_thresh)), "|")

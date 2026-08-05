@@ -583,16 +583,29 @@ end
 #
 # What makes this tractable rather than aspirational is measured, not assumed:
 #
-#   * `A_c` is symmetric to 1e-16 and positive semi-definite at every M and K tried, in
-#     the NODAL pressure basis. In the Legendre coefficient basis it is neither -- gaps at
-#     nodes paired against coefficients of harmonics gave sqrt(2) relative asymmetry with
-#     half the spectrum negative. The change of variables is what buys the structure.
-#   * With `A_c` symmetric PSD the LCP is exactly the KKT system of the convex programme
-#     `min (1/2) p'A_c p + b'p` subject to `p >= 0`, so a solution exists and the
-#     complementarity residual `max_i min(h_i, p_i)` is a certificate rather than a
-#     heuristic stopping rule.
 #   * The affine relation itself was checked against the searching solver's own output:
 #     relative error 0.
+#   * `A_c` is NOT symmetric. It is asymmetric by about forty per cent at every M and K
+#     tried, so the LCP is not the KKT system of a convex programme and a projected
+#     Gauss-Seidel sweep does not solve it. `lcp_active_set` does, without assuming
+#     symmetry, and the residual it reports is measured against this map rather than a
+#     symmetrised copy of it.
+#
+# TWO EARLIER CLAIMS HERE WERE WRONG, and they cost real results, so they are recorded
+# rather than deleted:
+#
+#   * "`A_c` is symmetric to 1e-16 in the NODAL pressure basis; the change of variables is
+#     what buys the structure." The measurement behind this was of `H A^-1 H'`, which is
+#     symmetric for ANY `H` whenever `A` is symmetric -- it could not have come out
+#     otherwise, so it tested nothing. The matrix actually assembled is `H A^-1 Q_n`, gap
+#     Jacobian against force operator, and those are not transposes of each other. Moving to
+#     nodal variables WAS necessary -- `p >= 0` is not a sign condition on Legendre
+#     coefficients -- but necessary is not sufficient, and symmetry needs `Q_n = -H' W`.
+#   * "the residual `max_i min(h_i, p_i)` is a certificate." It is small whenever one of
+#     each pair is small, so it certifies penetration. Combined with the symmetrised
+#     surrogate it passed states with the drop 4.7 per cent of a radius inside the wall, and
+#     those states are where the annular contact and the closure-dependent contact time both
+#     came from. Both retracted; see `julia/test/test_lcp_contact.jl`.
 #
 # And what it is worth: the searching solver satisfies `h >= 0` and `h p = 0` by
 # construction but NOT `p >= 0`. Measured over whole runs, the pressure is negative at
@@ -602,16 +615,35 @@ end
 """
     lcp_pgs(A, b; iters, tol) -> (p, residual, sweeps)
 
-Projected Gauss-Seidel for `h = Ap + b`, `h >= 0`, `p >= 0`, `p'h = 0`, with `A`
+Projected Gauss-Seidel for `h = Ap + b`, `h >= 0`, `p >= 0`, `p'h = 0`, requiring `A`
 symmetric positive semi-definite.
+
+NOT USED BY THE VARIATIONAL CONTACT SOLVER, whose compliance is asymmetric -- see
+`contact_lcp`. Retained because the requirement is worth stating explicitly and because a
+symmetric problem is cheaper to sweep than to pivot. Use [`lcp_active_set`](@ref) unless you
+have checked that your `A` is symmetric.
 
 Each sweep is one pass of Gauss-Seidel followed by projection onto `p >= 0`, which for a
 symmetric PSD matrix is coordinate descent on the equivalent convex programme and so
 cannot increase the objective. Nodes with a non-positive diagonal are skipped: those are
 nodes whose gap does not respond to their own pressure, which cannot carry load.
 
-The returned residual is `max_i min(h_i, p_i)`, scaled. It vanishes exactly when all three
-conditions hold, so it is a certificate of the solution rather than a proxy for one.
+The returned residual is TWO-SIDED: it measures violation of `h >= 0` and of `p >= 0`
+separately as well as complementarity, so it vanishes only for an actual solution. See
+[`lcp_residual`](@ref).
+
+THIS USED TO BE `max_i min(h_i, p_i)`, AND THAT WAS WRONG. `min(h_i, p_i)` is small whenever
+EITHER entry is small, so a node with a gap of -0.012 and a pressure of 3 scores -0.012 and
+the maximum over nodes returns something negligible. The quantity measures "are both positive
+at once" and never "is each one positive at all". Used as the stopping test it ended the
+iteration after a single sweep on every step of every run -- the one-sided residual was
+already at 1e-13 by then -- and the accepted states had the drop penetrating the substrate by
+up to 1.2 per cent of a radius, which is comparable to the 0.02R threshold the contact metrics
+are measured at. The iteration was never converging; it was being told it had.
+
+Iterating properly is free. The complementarity solve is 0.1 to 0.6 per cent of the cost of a
+step at M from 20 to 90, where assembling the compliance is the rest, so there was no
+performance reason for the early exit either.
 """
 function lcp_pgs(A::AbstractMatrix, b::AbstractVector; iters::Int = 20000,
                  tol::Real = 1e-11)
@@ -625,12 +657,89 @@ function lcp_pgs(A::AbstractMatrix, b::AbstractVector; iters::Int = 20000,
             dg[i] <= 0 && continue
             p[i] = max(0.0, p[i] - (b[i] + dot(view(A, i, :), p)) / dg[i])
         end
-        h = A * p .+ b
-        resid = maximum(min.(h, p))
-        sc = max(maximum(abs, h), maximum(abs, p), 1.0)
-        abs(resid) / sc < tol && break
+        resid = lcp_residual(A, b, p)
+        resid < tol && break
     end
     (p, resid, sweeps)
+end
+
+"""
+    lcp_active_set(A, b; tol, maxpivots) -> (p, residual, pivots)
+
+Solve `h = Ap + b`, `h >= 0`, `p >= 0`, `p_i h_i = 0` by active-set pivoting, WITHOUT assuming
+`A` is symmetric.
+
+This is the solver the variational contact problem actually needs. [`lcp_pgs`](@ref) is
+Gauss-Seidel on the convex programme `min ½pᵀAp + bᵀp`, which is equivalent to the
+complementarity problem only when `A` is symmetric; the assembled compliance is asymmetric by
+about forty per cent, for the reason given in `contact_lcp`. Sweeping it anyway converges to
+something that is not a solution, and the symmetrised surrogate it was previously handed
+admitted states with the drop inside the substrate.
+
+Guess a contact set, solve the equality problem on it, then repair the guess: drop any node
+that came out pulling, add any node the surface has passed through. Each move is forced, so
+the iteration cannot cycle between two sets for the same reason the searching closure's
+cannot.
+"""
+function lcp_active_set(A::AbstractMatrix, b::AbstractVector;
+                        tol::Real = 1e-12, maxpivots::Int = 400)
+    n = length(b)
+    active = falses(n)
+    p = zeros(n)
+    pivots = 0
+    for _ in 1:maxpivots
+        pivots += 1
+        p .= 0.0
+        idx = findall(active)
+        if !isempty(idx)
+            sub = A[idx, idx]
+            ps = try
+                sub \ (-b[idx])
+            catch
+                pinv(Matrix(sub)) * (-b[idx])       # a rank-deficient set is not fatal
+            end
+            p[idx] .= ps
+        end
+        sc = max(maximum(abs, b), maximum(abs, p), 1.0)
+        ## a node that came out pulling cannot be carrying load -- release the worst
+        if !isempty(idx)
+            j = argmin(p[idx])
+            if p[idx[j]] < -tol*sc
+                active[idx[j]] = false
+                continue
+            end
+        end
+        h = A*p .+ b
+        ## a free node the surface has passed through must be in contact -- seize the worst
+        free = findall(.!active)
+        if !isempty(free)
+            j = argmin(h[free])
+            if h[free[j]] < -tol*sc
+                active[free[j]] = true
+                continue
+            end
+        end
+        break
+    end
+    (p, lcp_residual(A, b, p), pivots)
+end
+
+"""
+    lcp_residual(A, b, p) -> Float64
+
+How badly `p` fails to solve `h = Ap + b`, `h >= 0`, `p >= 0`, `p_i h_i = 0`, scaled and
+counting all three conditions. Zero only for a solution.
+
+Each condition is measured on its own, which is the whole point: a measure that combines them
+can be small while one of them is badly violated, and the combination `max_i min(h_i, p_i)`
+does exactly that.
+"""
+function lcp_residual(A::AbstractMatrix, b::AbstractVector, p::AbstractVector)
+    h = A*p .+ b
+    sc = max(maximum(abs, h), maximum(abs, p), 1.0)
+    max(maximum(max.(-h, 0.0)),          # the drop must not enter the substrate
+        maximum(max.(-p, 0.0)),          # the substrate must not pull
+        maximum(abs.(h .* p))) / sc      # pressure only where there is contact
 end
 
 """
@@ -672,8 +781,28 @@ function contact_lcp(p::ImpactParams, prev::ImpactState, curr::ImpactState,
     Ac_full = H * (A \ Qn) .+ dz .* (ones(nn) * Vinv[2, :]')
     b_full  = H * (A \ rhs0) .+ mu .+ z0
     idx = [i for i in 1:nn if p.nodes[i] > pi/2]
-    S = Ac_full[idx, idx]
-    (Matrix(Symmetric(0.5 .* (S .+ S'))), b_full[idx], idx,
+    ## THE COMPLIANCE IS RETURNED AS ASSEMBLED, NOT SYMMETRISED.
+    ##
+    ## It is asymmetric by about forty per cent, and this used to be forced symmetric with
+    ## `Symmetric(0.5(S + S'))` before being handed to the projected Gauss-Seidel sweep. That
+    ## made the sweep solve a DIFFERENT problem from the one this map defines, and the residual
+    ## -- computed against the symmetrised surrogate -- reported 1e-11 while the state it
+    ## returned had the drop 4.7 per cent of a radius inside the substrate.
+    ##
+    ## WHY IT IS ASYMMETRIC, since the obvious guesses are wrong. It is not a missing cos(theta)
+    ## between a vertical gap and a radial pressure: that would predict perfect alignment at the
+    ## pole, where the two directions coincide, and the misalignment is WORST there (cosine
+    ## similarity between the force column and its own gap row is 0.23 at the pole and 0.99 at
+    ## the equator). The cause is that the film pressure is carried as a degree-M Legendre FIELD
+    ## with forcing Q_l = -(4pi/(2l+1)) p_{c,l}, so a unit nodal pressure enters as the Galerkin
+    ## force of the polynomial interpolating a delta at that node -- an oscillation spread over
+    ## the whole sphere rather than a load at one place. A complementarity problem needs the
+    ## constraint and its multiplier to be dual, and interpolation does not make them dual.
+    ##
+    ## So the contact problem here is genuinely NOT the convex programme a symmetric compliance
+    ## would give. It is still a well-posed complementarity problem, and `lcp_active_set` solves
+    ## it without assuming symmetry.
+    (Ac_full[idx, idx], b_full[idx], idx,
      (A = A, rhs0 = rhs0, Qn = Qn, Vinv = Vinv, β = β, hv_a = hv_a,
       hv_z = hv_z, hv_v = hv_v, npc = npc, N = N))
 end
@@ -700,7 +829,8 @@ function try_step_lcp(p::ImpactParams, prev::ImpactState, curr::ImpactState,
     ## linear, and it is closed the same way the searching solver closes its own
     ## nonlinearity: freeze eta at an extrapolated strain rate, solve the resulting LINEAR
     ## complementarity problem, re-evaluate eta at the answer, repeat. Each iterate is a
-    ## genuine LCP with a symmetric PSD compliance, so complementarity holds exactly at
+    ## genuine LCP -- asymmetric, as in the constant-viscosity case -- so complementarity
+    ## holds exactly at
     ## every sweep and only eta lags.
     ##
     ## The cost is real: a variable viscosity needs a fresh coupled assembly AND a fresh
@@ -716,10 +846,10 @@ function try_step_lcp(p::ImpactParams, prev::ImpactState, curr::ImpactState,
         F = F0 === nothing ?
             assemble_coupled(basis(p), p.Oh; eta = eta_field(p, adot_star)) : F0
         Ac, bv, idx, aux = contact_lcp(p, prev, curr, dt; F0 = F, Vfac = Vfac)
-        pact, resid, sweeps = lcp_pgs(Ac, bv)
-        h = Ac * pact .+ bv
-        sc = max(maximum(abs, h), maximum(abs, pact), 1.0)
-        abs(resid)/sc > tol && return (:diverge, curr,
+        pact, resid, sweeps = lcp_active_set(Ac, bv)
+        ## `resid` is already the two-sided measure, so this rejects a step whose gap or
+        ## pressure has the wrong sign as well as one that is not complementary
+        resid > tol && return (:diverge, curr,
             (resid = resid, sweeps = sweeps, nact = 0, contiguous = true,
              eta_sweeps = used, eta_resid = conv))
         pfull = zeros(aux.npc); pfull[idx] = pact
