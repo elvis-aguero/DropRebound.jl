@@ -2,7 +2,7 @@
 
 julia_version = "1.12.1"
 manifest_format = "2.0"
-project_hash = "def7438a1a4b71bc6ce9bae90fcdf1f9a01036d3"
+project_hash = "d14815a726164d22d5801fccd2a67f5bd112c856"
 
 [[deps.Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
@@ -18,14 +18,8 @@ deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 version = "1.11.0"
 
-[[deps.DelimitedFiles]]
-deps = ["Mmap"]
-git-tree-sha1 = "9e2f36d3c96a820c678f2f1f1782582fcf685bae"
-uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
-version = "1.9.1"
-
 [[deps.DropSolver]]
-deps = ["Dates", "DelimitedFiles", "LinearAlgebra", "Logging", "Printf", "Statistics"]
+deps = ["Dates", "LinearAlgebra", "Logging", "Printf", "Statistics"]
 path = "."
 uuid = "c7e3b8a1-f2d4-4e9a-8b5c-1d6f3a2e7c04"
 version = "0.1.0"
@@ -41,10 +35,6 @@ version = "1.12.0"
 
 [[deps.Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
-version = "1.11.0"
-
-[[deps.Mmap]]
-uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 version = "1.11.0"
 
 [[deps.OpenBLAS_jll]]
