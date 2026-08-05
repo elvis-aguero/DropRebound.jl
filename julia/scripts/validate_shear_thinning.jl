@@ -11,8 +11,9 @@
 
 using Pkg; Pkg.activate(joinpath(@__DIR__, ".."))
 using DropSolver
+include(joinpath(@__DIR__, "_stats.jl"))
 using Random
-using Statistics
+
 using Logging
 global_logger(ConsoleLogger(stderr, Logging.Warn))
 

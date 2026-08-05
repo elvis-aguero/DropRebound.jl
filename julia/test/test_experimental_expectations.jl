@@ -17,9 +17,11 @@
 using Test
 using DropSolver
 using LinearAlgebra
-using Statistics
 
 basis_of_exp(p) = DropSolver.basis(p)
+
+## Statistics is not a bundled stdlib in Julia 1.12, and only the mean is needed here
+mean(v) = sum(v) / length(v)
 
 """Least-squares slope of log y against log x -- the exponent of a power law."""
 function logslope(x, y)

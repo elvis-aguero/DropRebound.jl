@@ -9,8 +9,9 @@
 # the capillary time sqrt(rho R^3 / sigma) before it can be compared with anything.
 # The Weber number and the restitution are already dimensionless.
 
-using Printf, Statistics
+using Printf
 using DropSolver
+include(joinpath(@__DIR__, "_stats.jl"))
 
 const DATA = joinpath(@__DIR__, "..", "derivations", "data", "metrics_3000ppm.csv")
 
