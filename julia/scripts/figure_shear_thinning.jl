@@ -2,8 +2,9 @@
 # both KPIs. Ten simulations spanning the measured Weber range, one fluid, nothing
 # fitted: Oh, Bo and the Carreau-Yasuda parameters all come from the fluid's own
 # Cross characterisation.
-using Printf, Statistics, Plots
+using Printf, Plots
 using DropSolver
+include(joinpath(@__DIR__, "_stats.jl"))
 gr()
 
 const DATA = joinpath(@__DIR__, "..", "derivations", "data", "metrics_3000ppm.csv")

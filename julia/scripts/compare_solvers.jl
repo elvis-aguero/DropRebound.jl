@@ -14,8 +14,9 @@
 #
 # Usage: julia --project=julia julia/scripts/compare_solvers.jl
 
-using Printf, LinearAlgebra, Statistics
+using Printf, LinearAlgebra
 using DropSolver
+include(joinpath(@__DIR__, "_stats.jl"))
 
 const H_THRESH = 0.02
 const NANG     = 240

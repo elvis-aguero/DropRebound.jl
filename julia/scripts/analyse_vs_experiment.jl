@@ -13,7 +13,8 @@
 # standard deviation -- and if both sit outside it, the difference between them is not the
 # interesting quantity.
 
-using Printf, Statistics
+using Printf
+include(joinpath(@__DIR__, "_stats.jl"))
 
 const ROOT = joinpath(@__DIR__, "..", "..")
 const STORE = joinpath(ROOT, "results", "runs.csv")

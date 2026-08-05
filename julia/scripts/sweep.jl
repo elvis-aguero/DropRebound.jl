@@ -24,8 +24,9 @@
 # Usage:
 #   julia --project=julia -t auto julia/scripts/sweep.jl [--budget-mb N] [--force]
 
-using Printf, Dates, Statistics, Base.Threads
+using Printf, Dates, Base.Threads
 using DropSolver
+include(joinpath(@__DIR__, "_stats.jl"))
 
 const RESULTS = joinpath(@__DIR__, "..", "..", "results")
 const STORE   = joinpath(RESULTS, "runs.csv")
