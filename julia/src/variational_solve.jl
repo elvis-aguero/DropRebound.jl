@@ -534,28 +534,13 @@ contact.
 function contact_time(ts, cps)
     inc = findfirst(>(0), cps)
     inc === nothing && return 0.0
-    lastc = findlast(>(0), cps)
-    ## A separation shorter than this cannot be resolved experimentally, so it is a dimple
-    ## transient and the contact continues through it. The threshold is a physical
-    ## timescale rather than a tuned number: one per cent of the l = 2 capillary period,
-    ## 2 pi/sqrt(8) = 2.221. Anything longer ends the contact, because the drop has
-    ## genuinely left -- verified by the centre of mass rising through 95 to 98 per cent of
-    ## those intervals at Oh = 0.03, where a nearly inviscid drop chatters against the wall.
-    merge_tol = 0.01 * 2pi / sqrt(8)
-    i = inc
-    while i < lastc
-        if cps[i] == 0
-            j = i
-            while j <= lastc && cps[j] == 0
-                j += 1
-            end
-            (ts[min(j, length(ts))] - ts[i]) > merge_tol && return ts[i] - ts[inc]
-            i = j
-        else
-            i += 1
-        end
-    end
-    ts[lastc] - ts[inc]
+    ## FIRST TOUCH TO LAST RELEASE, unconditionally. Contact is contact: as long as one
+    ## point is touching, the drop is in contact, and intervening separations do not start
+    ## a new measurement. An earlier version of mine reported only the first episode,
+    ## merging separations below a threshold -- which is a definition I invented, and it
+    ## understated the contact time by up to a factor of three on runs where the drop
+    ## genuinely bounces mid-contact.
+    ts[findlast(>(0), cps)] - ts[inc]
 end
 
 """
@@ -706,16 +691,53 @@ by back-substitution, and no candidate is ever proposed, ranked or rejected.
 -- in which case the caller should halve `dt`, as for any nonlinear solve that fails.
 """
 function try_step_lcp(p::ImpactParams, prev::ImpactState, curr::ImpactState,
-                      dt::Float64; F0, Vfac, tol::Real = 1e-9)
-    Ac, bv, idx, aux = contact_lcp(p, prev, curr, dt; F0 = F0, Vfac = Vfac)
-    pact, resid, sweeps = lcp_pgs(Ac, bv)
-    h = Ac * pact .+ bv
-    sc = max(maximum(abs, h), maximum(abs, pact), 1.0)
-    abs(resid)/sc > tol && return (:diverge, curr, (resid = resid, sweeps = sweeps,
-                                                   nact = 0, contiguous = true))
-    ## lift back to the full node set: every node outside the LCP carries zero pressure
-    pfull = zeros(aux.npc)
-    pfull[idx] = pact
+                      dt::Float64; F0 = nothing, Vfac, tol::Real = 1e-9)
+    ## SHEAR THINNING MAKES THE COMPLEMENTARITY PROBLEM NONLINEAR.
+    ##
+    ## eta depends on the strain rate, the dissipation operator depends on eta, and the
+    ## compliance A_c = H A^-1 Q depends on that operator -- so with a variable viscosity
+    ## A_c is a function of the very velocity the solve produces. The LCP is no longer
+    ## linear, and it is closed the same way the searching solver closes its own
+    ## nonlinearity: freeze eta at an extrapolated strain rate, solve the resulting LINEAR
+    ## complementarity problem, re-evaluate eta at the answer, repeat. Each iterate is a
+    ## genuine LCP with a symmetric PSD compliance, so complementarity holds exactly at
+    ## every sweep and only eta lags.
+    ##
+    ## The cost is real: a variable viscosity needs a fresh coupled assembly AND a fresh
+    ## compliance -- M+1 back-substitutions -- on every sweep, where the constant-viscosity
+    ## path reuses both.
+    adot_star = curr.first ? curr.adot : (1 + dt/curr.dt) * curr.adot - (dt/curr.dt) * prev.adot
+    conv = 0.0; used = 0
+    Ac = zeros(0,0); bv = Float64[]; idx = Int[]; aux = nothing
+    pact = Float64[]; resid = Inf; sweeps = 0
+    for it in 1:(F0 === nothing ? p.eta_max_sweeps : 1)
+        used = it
+        prev_star = copy(adot_star)
+        F = F0 === nothing ?
+            assemble_coupled(basis(p), p.Oh; eta = eta_field(p, adot_star)) : F0
+        Ac, bv, idx, aux = contact_lcp(p, prev, curr, dt; F0 = F, Vfac = Vfac)
+        pact, resid, sweeps = lcp_pgs(Ac, bv)
+        h = Ac * pact .+ bv
+        sc = max(maximum(abs, h), maximum(abs, pact), 1.0)
+        abs(resid)/sc > tol && return (:diverge, curr,
+            (resid = resid, sweeps = sweeps, nact = 0, contiguous = true,
+             eta_sweeps = used, eta_resid = conv))
+        pfull = zeros(aux.npc); pfull[idx] = pact
+        a_try = aux.A \ (aux.rhs0 + aux.Qn * pfull)
+        adot_star = aux.β * a_try + aux.hv_a
+        if F0 !== nothing
+            conv = 0.0
+            break
+        end
+        scv = max(maximum(abs, adot_star), 1e-12)
+        conv = maximum(abs, adot_star .- prev_star) / scv
+        conv < p.eta_tol && break
+    end
+    (F0 === nothing && conv > p.eta_tol) && return (:diverge, curr,
+        (resid = resid, sweeps = sweeps, nact = 0, contiguous = true,
+         eta_sweeps = used, eta_resid = conv))
+
+    pfull = zeros(aux.npc); pfull[idx] = pact
     β = aux.β
     a_next = aux.A \ (aux.rhs0 + aux.Qn * pfull)
     pc = aux.Vinv * pfull
@@ -723,15 +745,13 @@ function try_step_lcp(p::ImpactParams, prev::ImpactState, curr::ImpactState,
     z_next = (v_next - aux.hv_z) / β
     adot_next = β * a_next + aux.hv_a
     ## The active set is whatever the solve says it is. It is NOT constrained to be an
-    ## interval, so whether it comes out contiguous is a RESULT -- and the model page
-    ## carries "contact occupies a single connected patch" as an axiom, which this can
-    ## now check rather than assume.
+    ## interval, so whether it comes out contiguous is a RESULT rather than an assumption.
     act = [i for i in eachindex(pact) if pact[i] > 1e-10 * max(maximum(pact), 1.0)]
     nact = length(act)
     contiguous = isempty(act) || (act == collect(first(act):last(act)) && first(act) == 1)
-    nxt = ImpactState(curr.t + dt, dt, a_next, adot_next, z_next, v_next, nact,
-                      pc, false)
-    (:ok, nxt, (resid = resid, sweeps = sweeps, nact = nact, contiguous = contiguous))
+    nxt = ImpactState(curr.t + dt, dt, a_next, adot_next, z_next, v_next, nact, pc, false)
+    (:ok, nxt, (resid = resid, sweeps = sweeps, nact = nact, contiguous = contiguous,
+                eta_sweeps = used, eta_resid = conv))
 end
 
 """
@@ -743,8 +763,9 @@ No candidate search, no tangency ranking, no `±2` probe, no contact-count limit
 halves only when the complementarity solve itself fails to converge.
 """
 function simulate_lcp(p::ImpactParams)
-    p.eta_const || error("simulate_lcp currently requires a constant viscosity")
-    F0 = assemble_newtonian(basis(p), p.Oh)
+    ## A constant viscosity lets the operator be built once; a variable one is rebuilt
+    ## inside the Picard loop, which is what makes the shear-thinning path expensive.
+    F0 = p.eta_const ? assemble_newtonian(basis(p), p.Oh) : nothing
     Vfac = lu(legendre_vandermonde(p))
     s0 = initial_state(p)
     prev, curr = s0, s0
@@ -753,6 +774,7 @@ function simulate_lcp(p::ImpactParams)
     as = Vector{Float64}[copy(s0.a)]; adots = Vector{Float64}[copy(s0.adot)]
     pcs = Vector{Float64}[copy(s0.pc)]
     dt = p.dt0; nrej = 0; worst_resid = 0.0; max_sweeps = 0; noncontig = 0
+    eta_sw = 0; eta_rs = 0.0
     while curr.t < p.t_max
         st, nxt, dg = try_step_lcp(p, prev, curr, dt; F0 = F0, Vfac = Vfac)
         if st !== :ok
@@ -762,6 +784,7 @@ function simulate_lcp(p::ImpactParams)
         end
         worst_resid = max(worst_resid, abs(dg.resid))
         max_sweeps = max(max_sweeps, dg.sweeps)
+        eta_sw = max(eta_sw, dg.eta_sweeps); eta_rs = max(eta_rs, dg.eta_resid)
         dg.contiguous || (noncontig += 1)
         prev, curr = curr, nxt
         push!(ts, curr.t); push!(zs, curr.z); push!(vs, curr.v)
@@ -774,6 +797,7 @@ function simulate_lcp(p::ImpactParams)
     end
     (t = ts, z = zs, v = vs, cp = cps, pc1 = pc1, a = as, adot = adots, pc = pcs,
      rejects = nrej, lcp_resid_max = worst_resid, lcp_sweeps_max = max_sweeps,
+     eta_sweeps_max = eta_sw, eta_resid_max = eta_rs,
      noncontiguous_steps = noncontig,
      cor = restitution(vs, cps, p.We), tc = contact_time(ts, cps),
      gap_fraction = contact_gap_fraction(ts, cps))
