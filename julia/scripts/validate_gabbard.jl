@@ -13,7 +13,7 @@
 # 16 per cent shift in CoR at We = 1 moves the model toward the measurements or away
 # from them is the thing worth knowing, and it cannot be argued, only run.
 
-using DelimitedFiles, Printf, Statistics
+using Printf, Statistics
 using DropSolver
 
 const DATA = joinpath(@__DIR__, "..", "data")
