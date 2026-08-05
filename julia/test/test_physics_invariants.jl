@@ -132,5 +132,3 @@ mean_(v) = sum(v) / length(v)
         @test m.min_gap < 0.005
     end
 end
-
-mean_(v) = sum(v) / length(v)

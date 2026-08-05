@@ -83,7 +83,9 @@ Pkg.activate("/path/to/km-viscous-drop/julia")
 using DropSolver
 ```
 
-Requires Julia 1.12+. No external packages — only `LinearAlgebra` and `Logging` from the standard library.
+Requires Julia 1.12+. No external packages — only the standard library
+(`LinearAlgebra` and `Logging` for the solver; `Statistics`, `Printf`, `Dates`
+and `DelimitedFiles` for the tests and the sweep scripts).
 
 ## Quick start
 
