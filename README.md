@@ -29,7 +29,7 @@ What distinguishes it from the usual modal treatment is that **the interior flow
 
 The same structure carries **shear thinning** without further approximation: the viscosity is evaluated pointwise from the shear-rate invariant of the *full* strain field, and because that invariant does not superpose over modes, $\eta$ acquires angular structure and couples the shape modes within a Gaunt band.
 
-Contact is a unilateral constraint. The gap and the film pressure satisfy a complementarity condition, resolved on a set of Legendre-root collocation angles that cluster at the pole where contact forms; the contact extent is a discrete unknown found by an active-set iteration on the two inequalities.
+Contact is a unilateral constraint: the gap and the film pressure cannot both be non-zero, neither may be negative, and the contact extent is an unknown rather than an input. It is resolved on Legendre-root collocation angles that cluster at the pole where contact forms. Two closures are available — a ranked search over candidate contact counts, and a linear complementarity solve that treats the contact set as an output and does not require it to be contiguous.
 
 The Julia module name is `DropSolver` (`using DropSolver`).
 

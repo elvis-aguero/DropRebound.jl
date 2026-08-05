@@ -145,9 +145,15 @@ and the air-film pressure enters as a Legendre series closed by collocation: the
 vanishes at the contacting nodes and the pressure vanishes at the free ones.
 
 The collocation nodes are `θ = π` together with the zeros of ``P_M``, which cluster
-near the poles and so resolve the contact where it forms. The contact extent is
-chosen by an active-set iteration on the complementarity pair — the set grows while
-any free node has penetrated and retreats while the pressure at its outer edge pulls.
+near the poles and so resolve the contact where it forms.
+
+Two closures find the contact extent, and they are interchangeable. [`simulate`](@ref) ranks
+candidate contact counts, discards any that would let the surface pass through the substrate,
+and accepts the survivor with the smallest edge residual; the count changes by at most one node
+per accepted step, and a step with no admissible candidate is rejected and `dt` halved.
+[`simulate_lcp`](@ref) proposes nothing: it assembles the affine map from nodal pressure to gap
+and solves ``h \ge 0``, ``p \ge 0``, ``p_i h_i = 0``, so the contact set is an output and is
+not required to be an interval. See *Choosing a Solver* for what the difference is worth.
 
 ```@autodocs
 Modules = [DropSolver]

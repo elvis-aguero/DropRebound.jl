@@ -67,30 +67,52 @@ restitution compares centre-of-mass speed at those two instants.
 
 | ``We`` | ``Oh`` | ``t_c`` var/srch | var/lcp | nonvar/srch | CoR var/srch | var/lcp | nonvar/srch |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0.2 | 0.0373 | 2.7113 | 2.5089 | 2.8003 | 0.8227 | 0.8237 | 0.8179 |
-| 0.5 | 0.0373 | 2.4901 | 2.2406 | 2.5512 | 0.7462 | 0.7406 | 0.7450 |
-| 1.0 | 0.0767 | 2.3677 | 2.0853 | — | 0.5777 | 0.5687 | — |
-| 1.0 | 0.3038 | 2.2735 | 2.2735 | — | 0.3610 | 0.3611 | — |
-| 2.0 | 0.3038 | 2.1323 | 2.1323 | 2.2164 | 0.3026 | 0.3027 | 0.2978 |
+| 0.2 | 0.0373 | 2.7113 | 2.4336 | 2.8003 | 0.8227 | 0.8602 | 0.8179 |
+| 0.5 | 0.0373 | 2.4901 | 2.0523 | 2.5512 | 0.7462 | 0.7394 | 0.7450 |
+| 1.0 | 0.0767 | 2.3677 | 1.8217 | — | 0.5777 | 0.5162 | — |
+| 1.0 | 0.3038 | 2.2735 | 2.2735 | — | 0.3610 | 0.3602 | — |
+| 2.0 | 0.3038 | 2.1323 | 2.1323 | 2.2164 | 0.3026 | 0.3023 | 0.2978 |
 
 Reading it along the axes:
 
-- **Restitution is insensitive to both choices.** Every cell agrees within 0.8 per cent. Two
-  formulations and two contact algorithms sharing no contact logic land on the same rebound
-  speed, which is the strongest available evidence that the rebound speed is a property of the
-  physics rather than of an implementation.
-- **Contact time is sensitive to the closure**, by 7.5 per cent within the variational
-  formulation, with `simulate_lcp` consistently the shorter. It is consistent with contact
-  detaching at the centre and leaving an annulus — a configuration the search cannot represent,
-  because it only ever proposes a contiguous patch grown from the pole.
+- **Restitution is largely insensitive to both choices.** The closure moves it by 0.9 per cent
+  and the formulation by 0.6 per cent in the median. Two formulations and two contact
+  algorithms that share no contact logic land on nearly the same rebound speed, which is the
+  strongest available evidence that the rebound speed is a property of the physics rather than
+  of an implementation. The exception is instructive: at the lowest Weber number the two
+  closures differ by 4.5 per cent, and at ``\mathrm{Oh} = 0.3038`` they agree to four decimals.
+  The disagreement lives at low Ohnesorge and low Weber, not everywhere.
+- **Contact time is sensitive to the closure**, by 10.2 per cent within the variational
+  formulation, with `simulate_lcp` consistently the shorter and the gap widening as Ohnesorge
+  falls. Complementarity permits a contact set that is not an interval, and the runs use one:
+  contact detaches at the pole and leaves an annulus, grid-converged at an arc of about 11
+  degrees. A ranked search cannot represent that, because it only ever proposes a contiguous
+  patch grown from the pole, and a patch that stays attached at the centre releases later.
 - **The formulation matters least of the three effects**, 3.3 per cent in contact time under a
   shared closure.
 - **The searching closure is the less robust of the two.** `solve_drop!` completed three of the
   five cases; both variational cells completed all five, and `simulate_lcp` also runs cases at
   which `simulate` fails outright.
 
-Wallclock over these cases: the variational solvers take 0.2–1.5 s; the nonvariational search
-takes 0.0–6.4 s, erratic because its cost is dominated by rejected steps.
+Wallclock over these cases: the variational solvers take 0.2–1.7 s; the nonvariational search
+takes 0.0–7.3 s, erratic because its cost is dominated by rejected steps.
+
+### Cost of the complementarity solve
+
+Per step the compliance ``A_c = H A^{-1} Q_n`` costs ``M+1`` back-substitutions against
+``A = \beta^2\bm M + \beta\bm C + \bm G``, and that assembly, not the complementarity solve,
+is where the time goes:
+
+| ``M`` | degrees of freedom | LCP size | compliance | LCP solve | whole step |
+| --- | --- | --- | --- | --- | --- |
+| 20 | 38 | 11 | 0.20 ms | 0.007 ms | 0.27 ms |
+| 45 | 88 | 24 | 0.91 ms | 0.005 ms | 1.05 ms |
+| 90 | 178 | 46 | 6.41 ms | 0.025 ms | 7.19 ms |
+
+The solve is 0.3 to 2.6 per cent of a step and converges in a handful of sweeps, so
+complementarity is not what makes a run expensive. A variable viscosity is: it forces a fresh
+coupled assembly *and* a fresh compliance on every inner sweep, where the constant-viscosity
+path reuses both.
 
 ## Why there is no nonvariational complementarity solver
 

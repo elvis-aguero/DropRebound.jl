@@ -34,6 +34,10 @@ const PUBLISHED = [
 # not part of the documentation: they describe code paths the solver no longer
 # uses, and publishing them alongside the current theory would only mislead.
 const UNPUBLISHED = [
+    # The conjugacy question is open: it states what symmetry of the contact compliance
+    # would require and what adopting it would cost the model. Not a manual page until
+    # the choice is made.
+    "contact_conjugacy_derivation.jl",
     "carreau_yasuda_derivation.jl",
     # The single-mode closure, superseded twice over: first by the multi-mode
     # version below, and then by the model itself, which evaluates the viscosity
