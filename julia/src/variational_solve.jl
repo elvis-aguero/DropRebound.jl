@@ -780,7 +780,18 @@ function contact_lcp(p::ImpactParams, prev::ImpactState, curr::ImpactState,
     ## h is affine in the nodal pressure through BOTH the shape and the centre of mass
     Ac_full = H * (A \ Qn) .+ dz .* (ones(nn) * Vinv[2, :]')
     b_full  = H * (A \ rhs0) .+ mu .+ z0
-    idx = [i for i in 1:nn if p.nodes[i] > pi/2]
+    ## Lower hemisphere only, selected with a TOLERANCE rather than by the sign of cos(theta).
+    ##
+    ## At odd M the polynomial P_M has a root at mu = 0, so one collocation node lands exactly
+    ## on the equator -- and there the gap row is identically zero, because every entry carries
+    ## a factor cos(theta). Such a node cannot be in contact and its pressure does nothing, but
+    ## if it is admitted it puts a zero row and column into the compliance and the matrix is
+    ## singular. Whether `cos(theta) < 0` admitted it was decided by rounding: at M = 45 and
+    ## M = 61 the root evaluates to about -3e-16 and the node was kept, at M = 21, 31 and 91 it
+    ## evaluates positive and the node was dropped. M = 45 is the truncation the validation
+    ## sweeps use, which is where the otherwise unexplained 1e-35 smallest eigenvalue came from.
+    EQUATOR_TOL = 1e-8
+    idx = [i for i in 1:nn if cos(p.nodes[i]) < -EQUATOR_TOL]
     ## THE COMPLIANCE IS RETURNED AS ASSEMBLED, NOT SYMMETRISED.
     ##
     ## It is asymmetric by about forty per cent, and this used to be forced symmetric with
