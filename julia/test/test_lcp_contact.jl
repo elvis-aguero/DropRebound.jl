@@ -205,3 +205,51 @@ end
         @test isapprox(rt.tc,  rn.tc;  rtol = 1e-3)
     end
 end
+
+# The equator node.
+#
+# At odd M the polynomial P_M has a root at mu = 0, so one collocation node sits exactly on the
+# equator. Every entry of its gap row carries a factor cos(theta), so that row is identically
+# zero: the node's gap does not depend on the drop's shape and its pressure does no work. It
+# can never legitimately be in contact.
+#
+# It used to be admitted or not according to the sign that mu = 0 happened to evaluate to --
+# about -3e-16 at M = 45 and M = 61, positive at M = 21, 31 and 91. When admitted it put a zero
+# row and column into the compliance, which is where the 1e-35 smallest eigenvalue at M = 45
+# came from. M = 45 is the truncation the validation sweeps use.
+@testset "the equator node is excluded at every truncation" begin
+    for M in (20, 21, 30, 31, 44, 45, 60, 61, 90, 91)
+        p = ImpactParams(We = 0.5, Bo = 0.0189, Oh = 0.0373, M = M, K = 1)
+        F0 = assemble_newtonian(DropSolver.basis(p), p.Oh)
+        Vf = lu(DropSolver.legendre_vandermonde(p))
+        s0 = DropSolver.initial_state(p)
+        _, _, idx, _ = DropSolver.contact_lcp(p, s0, s0, p.dt0; F0 = F0, Vfac = Vf)
+        ## every retained node is genuinely below the equator, so no gap row is degenerate
+        @test all(cos(p.nodes[i]) < -1e-9 for i in idx)
+        @test all(norm(DropSolver.gap_row(p, p.nodes[i])[1]) > 1e-6 for i in idx)
+    end
+end
+
+# Full rank of the retained constraint set.
+#
+# With the equator excluded the lower-hemisphere gap rows are independent, so the CONJUGATE
+# compliance H A^-1 H' is positive definite rather than merely semi-definite. The shipped
+# compliance is not that matrix -- it is asymmetric, see `contact_lcp` -- but the rank of H is
+# what decides whether a unique contact force exists at all, so it is worth pinning here.
+@testset "the retained gap constraints are independent" begin
+    for (M, K) in ((20, 2), (30, 2), (45, 2), (61, 1), (90, 1))
+        p = ImpactParams(We = 0.5, Bo = 0.0189, Oh = 0.0373, M = M, K = K)
+        b = DropSolver.basis(p)
+        F0 = assemble_newtonian(b, p.Oh); beta = 1 / p.dt0
+        A = beta^2 * F0.M + beta * F0.C + F0.G
+        nn = length(p.nodes)
+        H = zeros(nn, DropSolver.ndof(b))
+        for i in 1:nn; H[i, :] = DropSolver.gap_row(p, p.nodes[i])[1]; end
+        low = findall(<(-1e-8), cos.(p.nodes))
+        Hl = H[low, :]
+        @test rank(Hl; rtol = 1e-10) == length(low)          # no redundant constraint
+        W = Hl * (A \ transpose(Hl))
+        @test maximum(abs, W - W') / maximum(abs, W) < 1e-12  # conjugate pairing IS symmetric
+        @test minimum(eigvals(Symmetric(0.5 .* (W .+ W')))) > 0   # and positive definite
+    end
+end
