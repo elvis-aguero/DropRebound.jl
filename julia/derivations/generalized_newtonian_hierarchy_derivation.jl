@@ -728,7 +728,11 @@ let  #src
     let                                                                                 #src
         Kt = 4                                                                          #src
         for l in (2, 5)                                                                 #src
-            bas = DropSolver.RitzBasis(l, Kt)                                           #src
+            ## The monomial family is the ansatz this page writes, x^(l+1+2(k-1)). #src
+            ## The solver's default is the Legendre-shifted family, which spans the #src
+            ## same space with far better conditioning; the checks below are on the #src
+            ## powers themselves, so they name the family they are about.    #src
+            bas = DropSolver.RitzBasis(l, Kt, :monomial)                                #src
             ## zeta_l is the boundary trace: every trial function equals 1 at x = 1,    #src
             ## so the trace of any coefficient vector is its plain sum.                 #src
             tr = [DropSolver.phi(bas, k, 1.0) for k in 1:Kt]                             #src

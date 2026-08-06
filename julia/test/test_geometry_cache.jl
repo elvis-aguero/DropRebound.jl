@@ -272,7 +272,16 @@ end
               maximum(maximum(abs, surface_amplitudes(p, a)) for a in r.a))
     am = try amp(ImpactParams(; short..., basis_kind = :monomial)) catch; Inf end
     al = try amp(ImpactParams(; short..., basis_kind = :legendre)) catch; Inf end
-    @test am > 5.0                     # monomials: nonphysical, measured 23
-    @test al < 1.0                     # reconditioned: measured 0.436
-    @test al < am / 20
+    ## The claim is qualitative on purpose: monomials leave the physical range at this
+    ## configuration and the reconditioned basis stays inside it. Only `al` is a
+    ## reproducible number (0.436 on every machine tried). How FAR the monomial run
+    ## diverges is not reproducible, because it is the output of a computation whose
+    ## conditioning has already failed: 23 locally against 6.6 on CI, same commit. An
+    ## earlier version asserted `al < am/20` and went red on that difference alone.
+    ##
+    ## Physical meaning of a failure: either the ill-conditioned basis has stopped being
+    ## ill-conditioned, or the reconditioned one has stopped keeping the surface
+    ## amplitude below a radius, and only the second would be a regression.
+    @test am > 5.0                     # monomials: nonphysical (surface past the radius)
+    @test al < 1.0                     # reconditioned: physical, 0.436
 end
