@@ -79,6 +79,7 @@ struct ImpactParams
     eta_tol::Float64             # Picard convergence tolerance on the strain rate
     eta_max_sweeps::Int
     eta_const::Bool
+    basis_kind::Symbol           # :legendre (well conditioned) or :monomial (historical)
     force_mode::Symbol           # :legendre (radial spectral field) or :nodal (conjugate loads)
 end
 
@@ -99,7 +100,8 @@ the headroom is close to free.
 """
 function ImpactParams(; We, Bo, Oh, M::Int = 90, K::Int = 1, eta = gd -> 1.0,
                       dt0 = nothing, dt_min = 1e-10, t_max = 25.0,
-                      eta_tol = 1e-8, eta_max_sweeps = 100, force_mode::Symbol = :legendre)
+                      eta_tol = 1e-8, eta_max_sweeps = 100, force_mode::Symbol = :legendre,
+                      basis_kind::Symbol = :legendre)
     ls = collect(2:M)
     # theta = pi plus the zeros of P_M. These cluster at the poles, which is the
     # whole point: contact is resolved where contact happens.
@@ -109,17 +111,19 @@ function ImpactParams(; We, Bo, Oh, M::Int = 90, K::Int = 1, eta = gd -> 1.0,
     ec = all(gd -> eta(gd) == eta(0.0), (0.0, 1e-3, 1.0, 1e3))
     force_mode in (:legendre, :nodal) ||
         error("force_mode must be :legendre or :nodal, got $force_mode")
+    basis_kind in (:legendre, :monomial) ||
+        error("basis_kind must be :legendre or :monomial, got $basis_kind")
     ImpactParams(We, Bo, Oh, ls, K, eta, nodes, dt, dt_min, t_max, eta_tol,
-                 eta_max_sweeps, ec, force_mode)
+                 eta_max_sweeps, ec, basis_kind, force_mode)
 end
 
-basis(p::ImpactParams) = ModalBasis(p.ls, p.K)
+basis(p::ImpactParams) = ModalBasis(p.ls, p.K, p.basis_kind)
 lmax(p::ImpactParams) = maximum(p.ls)
 pc_len(p::ImpactParams) = lmax(p) + 1        # harmonics l = 0..M
 pc_l(j::Int) = j - 1
 
 """Every trial function equals 1 at the surface, so the trace is a vector of ones."""
-trace_vec(p::ImpactParams, l) = [phi(RitzBasis(l, p.K), k, 1.0) for k in 1:p.K]
+trace_vec(p::ImpactParams, l) = [phi(RitzBasis(l, p.K, p.basis_kind), k, 1.0) for k in 1:p.K]
 
 """Surface amplitudes from the interior displacements: `zeta_l = chi_l(1)`."""
 function surface_amplitudes(p::ImpactParams, a::AbstractVector)

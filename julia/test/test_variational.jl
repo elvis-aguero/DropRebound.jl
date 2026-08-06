@@ -86,10 +86,16 @@ using LinearAlgebra
         # buys usable room, but the limit is real and a caller must be able to see
         # it rather than discover it as a silently wrong answer -- which is what
         # happened before the whitening, with omega^2 collapsing to 1e-9 at K = 8.
-        cs = [decay_rates(RitzBasis(2, K), 0.05).cond_M for K in 2:8]
+        cs = [decay_rates(RitzBasis(2, K, :monomial), 0.05).cond_M for K in 2:8]
         @test issorted(cs)
         @test cs[1] < 1e3
         @test cs[end] > 1e9      # so an unbounded K is not safe, by construction
+        ## THE DEFAULT BASIS IS NO LONGER THIS ONE. `:legendre` spans the same space with the
+        ## same K=1 potential-flow limit and stays usable an order of magnitude further in K,
+        ## which is why it is the default; the monomial ceiling above is what it replaced.
+        cl = [decay_rates(RitzBasis(2, K, :legendre), 0.05).cond_M for K in 2:8]
+        @test issorted(cl)
+        @test cl[end] < cs[end] / 1e4
     end
 end
 
