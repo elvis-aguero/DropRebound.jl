@@ -1,10 +1,7 @@
 # # Oscillations of a Viscous Liquid Drop
 #
 # A from-scratch, CAS-verified derivation of W. H. Reid's (1960) exact
-# characteristic equation for the free oscillations of a viscous liquid
-# drop -- the physics underneath every rheology model in DropSolver. The
-# other derivations here (Oldroyd-B, Carreau-Yasuda) are corrections on top
-# of what follows, so this page is the one to read first.
+# characteristic equation for the free oscillations of a viscous liquid drop.
 #
 # **What problem are we solving?** Take a small liquid drop (water in air,
 # say) that has been slightly deformed from its equilibrium spherical
@@ -23,10 +20,39 @@
 # 3. the coupling between surface deformation, internal flow, and pressure,
 #    all of which must be mutually consistent *at the boundary*.
 #
-# **Why does this matter for a numerical solver?** `julia/src/timestepper.jl`
-# needs, for every surface mode ``l``, a damping rate and an oscillation
-# frequency to put into that mode's equation of motion. Those two numbers
-# are exactly the two roots of the equation derived here.
+# ## A note on method, coming from Part I
+#
+# The previous part built an approximation scheme. Trial fields were chosen,
+# three functionals were reduced to matrices, and the free-surface conditions
+# were satisfied in the limit rather than exactly.
+#
+# This part does none of that. Reid attacks the strong form directly: he
+# solves the linearised Navier-Stokes equations by separation of variables,
+# imposes the two stress conditions exactly at ``r = R``, and obtains a
+# transcendental equation whose roots are the growth rates. There is no trial
+# space and no residual. The answer is exact for every Ohnesorge number.
+#
+# Nothing is being contradicted. The two parts do different jobs, and this one
+# does two jobs for the other:
+#
+# - **It is the benchmark.** A variational solver has a truncation error that
+#   only a known answer can measure. The decay rates derived below are that
+#   known answer, and *Resolution and Convergence* reports the variational
+#   scheme reproducing them once the radial basis is deep enough.
+# - **It supplies the trial functions.** The exact interior profile that comes
+#   out of Section 4 is a polynomial plus a spherical Bessel function. That
+#   structure is what the radial basis of Part I approximates, and it is why
+#   the basis is built the way it is rather than from generic polynomials.
+#
+# Read this part, then, as the exactly solvable case: the one configuration in
+# which the drop is free, the modes decouple, and no discretisation is needed.
+# Part III puts the wall back and Part IV puts the rheology back, and both
+# destroy the separability that makes what follows possible.
+#
+# **Why does this matter for a numerical solver?** For every surface mode
+# ``l``, the nonvariational timestepper needs a damping rate and an
+# oscillation frequency to put into that mode's equation of motion. Those two
+# numbers are exactly the two roots of the equation derived here.
 #
 # ## Where this sits historically
 #
