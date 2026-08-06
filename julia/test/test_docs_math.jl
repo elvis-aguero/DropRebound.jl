@@ -12,7 +12,6 @@
 
 using Test
 using LinearAlgebra
-using Random
 using DropSolver
 using DropSolver: RitzBasis, ModalBasis, phi, dphi, d2phi, legendre_angular,
                   modal_field, strain_at, stiffness_matrix, assemble_newtonian,
@@ -25,6 +24,18 @@ using DropSolver: RitzBasis, ModalBasis, phi, dphi, d2phi, legendre_angular,
 const LS  = (2, 3, 5, 12)
 const XS  = (0.17, 0.43, 0.88, 1.0)
 const MUS = (-0.93, -0.31, 0.22, 0.77)
+
+# Arbitrary but reproducible numbers, from a linear congruential generator written
+# here rather than drawn from `Random`. Two reasons: the test target carries no
+# stdlib beyond `Test`, and a seeded global stream is reproducible only until
+# something else in the suite draws from it first.
+mutable struct Lcg; s::UInt64; end
+Lcg() = Lcg(0x2545f4914f6cdd1d)
+function nextu(g::Lcg)                    # uniform on [-1, 1)
+    g.s = (6364136223846793005 * g.s + 1442695040888963407) % UInt64
+    2.0 * (Float64(g.s >> 11) / Float64(1 << 53)) - 1.0
+end
+spread(g::Lcg, dims...) = [nextu(g) for _ in CartesianIndices(dims)]
 
 @testset "docs math: variational.md" begin
 
@@ -197,8 +208,7 @@ end
     # clearance while zeta is a radial displacement. Both are used later in the
     # conjugacy argument, so an error here would propagate to that conclusion.
     @testset "the published clearance is the one imposed" begin
-        Random.seed!(20260806)
-        a = 0.01 .* randn(ndof(b)); z = 1.4
+        g = Lcg(); a = 0.01 .* spread(g, ndof(b)); z = 1.4
         for th in (pi, 2.7, 2.1, 1.6)
             mu = cos(th)
             zeta = [dot(trace_vec(p, l),
@@ -249,28 +259,64 @@ end
         end
     end
 
-    # PAGE CLAIM: "A_c = H A^-1 Q_n = -H A^-1 H^T is symmetric for any H, because A is."
+    # PAGE CLAIM: "A_c = -H A^-1 H^T is symmetric for any H, because A is."
     #
-    # This is the pivot of the whole convexity section: it says asymmetry of the
-    # compliance is a statement about conjugacy of the forcing, not about the
-    # discretisation being sloppy. Stated as pure linear algebra, so it is checkable
-    # without running a step.
-    @testset "conjugate forcing would give a symmetric compliance" begin
-        Random.seed!(20260806)
+    # The algebraic half of the convexity argument: asymmetry of the compliance is a
+    # statement about conjugacy of the forcing, not about the discretisation being
+    # sloppy. Pure linear algebra, so it needs no step.
+    @testset "a conjugate forcing gives a symmetric compliance" begin
         n, m = 9, 4
-        S = randn(n, n); A = S * S' + n * I          # symmetric positive definite
-        H = randn(m, n)
-        W = Diagonal(rand(m) .+ 0.5)                 # any positive diagonal
-        Ac_conj = H * (A \ (-H' * W))
-        # Symmetric up to the weighting: W^(1/2) scales it to an exactly symmetric form.
-        Wh = sqrt.(W)
-        sym = Wh * Ac_conj * inv(Wh)
-        @test norm(sym - sym') <= 1e-8 * norm(sym)
+        g = Lcg()
+        S = spread(g, n, n); A = S * S' + n * I     # symmetric positive definite
+        H = spread(g, m, n)
+        Ac_conj = -H * (A \ transpose(H))
+        @test norm(Ac_conj - Ac_conj') <= 1e-10 * norm(Ac_conj)
+    end
 
-        # And a NON-conjugate forcing generally does not. This is the control: without
-        # it the test above would pass for a reason unrelated to conjugacy.
-        Qn = randn(n, m)
-        Ac_free = H * (A \ Qn)
-        @test norm(Ac_free - Ac_free') > 1e-6 * norm(Ac_free)
+    # PAGE CLAIM: "A_c departs from symmetry by 0.43 at M = 20 and 0.37 at M = 45."
+    #
+    # The published numbers, measured on the shipped compliance rather than restated.
+    # Nothing else in the suite pins them, and the whole convexity section rests on
+    # the departure being large. A drift here means either the page is stale or the
+    # forcing changed; either way a reader is being told the wrong thing.
+    @testset "the shipped compliance is asymmetric by the published amount" begin
+        for (M, expected) in ((20, 0.43), (45, 0.37))
+            q = ImpactParams(We = 0.5, Bo = 0.0189, Oh = 0.05, M = M, K = 2)
+            F0 = assemble_newtonian(DropSolver.basis(q), q.Oh)
+            Vf = lu(DropSolver.legendre_vandermonde(q))
+            s0 = DropSolver.initial_state(q)
+            Ac, _, idx, _ = DropSolver.contact_lcp(q, s0, s0, q.dt0; F0 = F0, Vfac = Vf)
+            asym = norm(Ac - Ac') / norm(Ac)
+            @test isapprox(asym, expected; atol = 0.03)
+            # And the published LCP size, which excludes the degenerate equator node.
+            M == 45 && @test length(idx) == 23
+            M == 20 && @test length(idx) == 11
+        end
+    end
+
+    # PAGE CLAIM: the asymmetry is NOT a missing cos(theta) between a vertical
+    # constraint and a radial pressure. That explanation predicts perfect alignment at
+    # the pole, where the two directions coincide. The page asserts the opposite trend,
+    # so the trend is what to test: alignment is WORST at the pole.
+    #
+    # If this ever flipped, the page's stated mechanism (interpolation, not geometry)
+    # would be the wrong one and the section would need rewriting.
+    @testset "force/constraint alignment is worst at the pole" begin
+        q = ImpactParams(We = 0.5, Bo = 0.0189, Oh = 0.05, M = 20, K = 2)
+        F0 = assemble_newtonian(DropSolver.basis(q), q.Oh)
+        Vf = lu(DropSolver.legendre_vandermonde(q))
+        s0 = DropSolver.initial_state(q)
+        _, _, _, aux = DropSolver.contact_lcp(q, s0, s0, q.dt0; F0 = F0, Vfac = Vf)
+        H, Qn, Vinv = aux.H, aux.Qn, aux.Vinv
+        Qnodal = Qn * Vinv                       # nodal pressure -> generalised force
+        align(i) = abs(dot(H[i, :], Qnodal[:, i])) /
+                   (norm(H[i, :]) * norm(Qnodal[:, i]))
+        pole = align(1)                          # theta = pi is the first node
+        far  = align(size(H, 1))
+        # The direction is the falsifiable part, and it is the opposite of what a
+        # missing cos(theta) would give.
+        @test pole < far
+        @test pole < 0.05
+        @test far > 0.2
     end
 end

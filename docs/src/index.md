@@ -169,6 +169,10 @@ the fluid thins. The Carreau–Yasuda parameters come from that fluid's own rheo
 
 The material is ordered so that each part supplies what the next one needs.
 
+**Variational mechanics** turns the statement above into matrices: how a trial space is chosen so
+that incompressibility costs nothing, and what the three operators inherit from the functionals
+they differentiate.
+
 **The free viscous drop** solves the linearised problem exactly, by separation of variables.
 It supplies the target the discretisation is checked against, and its radial structure supplies
 the trial functions.

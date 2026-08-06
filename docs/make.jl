@@ -24,7 +24,6 @@ const PUBLISHED = [
     "reid_finite_oh_derivation.jl",
     "generalized_newtonian_hierarchy_derivation.jl",
     "shear_thinning_closures_derivation.jl",
-    "carreau_yasuda_multimode_derivation.jl",
     "cross_fluid_derivation.jl",
     "eta_spectrum_derivation.jl",
     "oldroyd_b_derivation.jl",
@@ -34,9 +33,10 @@ const PUBLISHED = [
 # not part of the documentation: they describe code paths the solver no longer
 # uses, and publishing them alongside the current theory would only mislead.
 const UNPUBLISHED = [
-    # The conjugacy question is open: it states what symmetry of the contact compliance
-    # would require and what adopting it would cost the model. Not a manual page until
-    # the choice is made.
+    # A design record rather than a chapter: it derives what symmetry of the contact
+    # compliance requires and what adopting it costs. Both routes now ship
+    # (`force_mode = :legendre` and `:nodal`) and the trade-off is stated on the
+    # Contact page, so the script is kept for its algebra rather than published.
     "contact_conjugacy_derivation.jl",
     "carreau_yasuda_derivation.jl",
     # The single-mode closure, superseded twice over: first by the multi-mode

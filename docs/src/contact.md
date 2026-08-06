@@ -84,14 +84,13 @@ Suppose the contact set were known. Then the choice at each node is known, the s
 and linear, and one solve advances the step. Both available closures exploit this, and they
 differ in how they arrive at the set.
 
-**Ranked search** treats the number of contacting nodes as the quantity to determine. It proposes
-candidate counts, discards any candidate whose solution would put part of the surface below the
-substrate, and accepts the survivor whose edge residual is smallest. The count is allowed to move
-by at most one node per step, which encodes the physical expectation that a contact patch grows
-and retreats continuously. If no candidate is admissible the step is rejected and the step size
-halves.
+**A primal active set** reads the answer off the two inequalities. A free node that has penetrated
+says the contact is too small, and a contacting node whose pressure pulls says it is too large.
+So grow while any free node lies below the substrate, release while the outermost contacting node
+pulls, and stop when neither holds. Each move is forced by a violated condition rather than chosen
+by scoring candidates, so there is no tie to break and the iteration terminates.
 
-**Complementarity** proposes nothing. Eliminating the interior state from the step equations
+**Complementarity** proposes nothing at all. Eliminating the interior state from the step equations
 leaves the nodal clearances affine in the nodal pressures,
 
 ```math
@@ -108,20 +107,21 @@ pressure at node ``j``. Solving
 \bm h \ge 0 , \qquad \bm p \ge 0 , \qquad p_i h_i = 0
 ```
 
-for ``\bm p`` is a linear complementarity problem, and its solution determines the contact set as
-a by-product. There is no candidate to reject, so a step is never refused for lack of an
-admissible guess, and the contact region is not required to be a single patch.
+for ``\bm p`` is a linear complementarity problem, solved by pivoting. Both closures therefore
+determine the contact set from the same two inequalities. They differ in that the active set walks
+to it one node at a time from the previous step's answer, while the complementarity solve treats
+every node's status as an independent unknown and is free to return a contact region that is not a
+single patch.
 
 The two agree. Over 35 cases spanning ``\mathrm{Oh}\in[0.023,\,0.685]`` and
 ``\mathrm{We}\in[0.05,\,3]``, contact time is identical in all 35 and restitution agrees to
 ``2.4\times10^{-4}`` at worst. On a shear-thinning fluid they agree to ``3.5\times10^{-6}``.
 
-The agreement is informative rather than trivial. Complementarity is free to return an annular
-contact, with the pole released while a ring still presses, and it does not. At ``M = 90`` the
-free arc at the pole is exactly zero. Non-contiguous sets appear only as brief transients at the
-release edge, in a minority of steps that shrinks with resolution: 12 of 530 accepted steps at
-``M = 30``, 4 of 967 at ``M = 45``, none at ``M = 90``. The single-patch assumption built into
-the search is a consequence of the dynamics rather than an approximation imposed on it.
+The agreement carries information. Complementarity is free to return an annular contact, with the
+pole released while a ring still presses, and it does not: at ``M = 90`` the free arc at the pole
+is exactly zero, and non-contiguous sets survive only as brief transients at the release edge,
+vanishing as resolution rises. A contact patch that stays a patch is therefore a result of the
+dynamics rather than an assumption imposed on them.
 
 ## Is the contact problem convex?
 
@@ -152,24 +152,61 @@ with ``\bm\lambda`` the multiplier, and then
 is symmetric for any ``\bm H``, because ``\bm A`` is. Symmetry of the contact operator is
 therefore equivalent to the pressure being the multiplier conjugate to the clearance.
 
-Here it is not, and the two expressions above show why. The constraint Jacobian has entries
+Here it is not, and the reason rewards a moment's care, because the obvious explanation is wrong.
 
-```math
-H_{il} \;=\; \cos\theta_i\,P_l(\cos\theta_i)
-```
+The constraint is read at nodes: ``H_{il} = \cos\theta_i\,P_l(\cos\theta_i)``. The forcing is
+read from harmonics: ``Q_l = -\tfrac{4\pi}{2l+1}p_{c,l}``. One might guess the mismatch is the
+factor ``\cos\theta_i``, present in the clearance because the constraint is vertical and absent
+from the forcing because the pressure acts along the radius. That guess makes a prediction. At the
+south pole the vertical and radial directions coincide, so the two should align there and diverge
+toward the equator.
 
-read off the clearance, while the forcing has entries ``-\tfrac{4\pi}{2l+1}\delta_{jl}`` read off
-the generalised force. These differ in two independent ways. The clearance carries
-``\cos\theta_i`` and the forcing does not, because the constraint is vertical while the pressure
-acts along the radius. And the clearance is sampled at nodes while the pressure is expanded in
-harmonics, so even the index sets do not match.
+The measurement runs the other way. Take the cosine between a node's constraint row
+``\bm H_{i\cdot}`` and the generalised force that a unit pressure at that same node produces. At
+``M = 45`` it is 0.02 at the pole and 0.28 at the far end of the film. Alignment is worst exactly
+where the geometric argument says it should be perfect, so that is not the cause.
 
-The consequence is measurable: ``\bm A_c`` departs from symmetry by about forty per cent, and the
-shipped forcing is 95 per cent orthogonal to any conjugate one. This is not a small correction to
-be absorbed by a tolerance.
+The cause is interpolation. The film pressure is carried as a degree-``M`` Legendre field, so a
+unit pressure at one node does not enter the equations as a load at that node. It enters as the
+Galerkin force of the polynomial that interpolates a spike there, and that polynomial oscillates
+over the whole sphere. The constraint is local and its supposed multiplier is global. Duality
+fails not because the directions disagree but because the pressure variable is not attached to a
+place.
+
+Measured, ``\bm A_c`` departs from symmetry by 0.43 at ``M = 20`` and 0.37 at ``M = 45``, in the
+norm ``\|\bm A_c - \bm A_c^{\mathsf T}\|/\|\bm A_c\|``.
 
 Nothing is broken. The problem remains a well-posed linear complementarity problem with a
 solution, and active-set pivoting finds it exactly, which is why the two closures agree to the
 precision quoted above. What is given up is convexity, and with it the cheap sweep and the
-uniqueness argument. Recovering it would mean constraining the radial clearance at the nodes and
-forcing with nodal pressures, which changes the model rather than the code.
+uniqueness argument.
+
+## Recovering convexity
+
+Since the failure is that the multiplier is not attached to a place, the repair is to make it so.
+Take the contact unknown to be the vertical **load** at each node rather than a pressure field.
+Differentiating the constraint then leaves no freedom in the forcing, because ``\bm H^{\mathsf T}``
+and ``\bm 1^{\mathsf T}`` are by definition the derivatives of the clearance with respect to the
+shape and to the centre of mass:
+
+```math
+\bm A\bm\xi = \bm f + \bm H^{\mathsf T}\bm\lambda , \qquad
+m\ddot z = -mBo + \bm 1^{\mathsf T}\bm\lambda .
+```
+
+Eliminating both gives
+
+```math
+\bm h = \bm W\bm\lambda + \bm b , \qquad
+\bm W = \bm H\bm A^{-1}\bm H^{\mathsf T} + \frac{1}{m\beta^2}\,\bm 1\bm 1^{\mathsf T} ,
+```
+
+and every term is symmetric positive semidefinite: the first because ``\bm A`` is, the second
+because it is a positive multiple of an outer square. The problem is then exactly the convex
+programme written above, with a solution always and a unique one when ``\bm W`` is definite.
+
+This route is implemented and selectable as `force_mode = :nodal`. Its price is that the
+multiplier is a load rather than a pointwise pressure, so pressure is recoverable only as a
+diagnostic, and not at the pole at all, because the quadrature weight there vanishes to machine
+precision. The default remains the Legendre field, which gives the pressure directly and solves
+without needing symmetry.
