@@ -42,4 +42,5 @@ using DropSolver
     include("test_bessel_discipline.jl")
     include("test_src_markers.jl")
     include("test_claim_ledger.jl")
+    include("test_docs_math.jl")
 end
