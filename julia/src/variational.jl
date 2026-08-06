@@ -40,24 +40,115 @@ using LinearAlgebra
 # dependency -- it is already used by the contact quadrature.
 
 """
-    RitzBasis(l, K)
+    RitzBasis(l, K, kind = :legendre)
 
-Radial trial functions for mode `l`: `phi_k(x) = x^(l+1+2(k-1))`, `k = 1..K`.
+Radial trial functions for mode `l`, `k = 1..K`.
 
-The factor `x^(l+1)` builds in regularity at the origin, which is what the model
-requires of `psi_l`, so no boundary condition has to be imposed there. `phi_1` is
-the potential-flow profile, so `K = 1` reproduces the inviscid limit exactly and
-larger `K` adds interior structure. Even increments keep every member regular.
+    :monomial   phi_k(x) = x^(l+1+2(k-1))
+    :legendre   phi_k(x) = x^(l+1) * P_{k-1}(2x^2 - 1)
+
+THE TWO SPAN THE SAME SPACE. Both are `x^(l+1)` times a polynomial of degree `k-1` in `x^2`,
+so every statement about what the model can represent is identical, and both give the same
+answer wherever both are numerically sound. What differs is conditioning, and by a lot.
+
+The factor `x^(l+1)` builds in regularity at the origin, which is what the model requires of
+`psi_l`, so no boundary condition has to be imposed there. `phi_1` is the potential-flow
+profile in either kind -- `P_0 = 1` -- so `K = 1` reproduces Lamb exactly and larger `K` adds
+interior structure. Every member equals one at the surface, since `P_j(1) = 1`, so the trace
+vector is all ones either way and nothing downstream changes.
+
+WHY THE DEFAULT IS `:legendre`. The monomials are a Vandermonde family: the per-mode mass
+matrix loses about one and a half digits per added function at `l = 2` and two and a half at
+`l = 90`, so double precision is exhausted at `K` between 3 and 8 depending on the mode. Past
+that the solver does not degrade gracefully -- at `M = 45, K = 6` it returns a restitution of
+102, and on a shear-thinning fluid `K >= 4` gives NaN or a plausible-looking 0.998. The
+radial resolution needed to resolve the vortical field grows like `|q| ~ l^{3/4}/sqrt(Oh)`,
+so the requirement and the monomial ceiling collide well inside the range of a generic
+shear-thinning fluid.
 """
 struct RitzBasis
     l::Int
     K::Int
+    kind::Symbol
 end
+RitzBasis(l::Int, K::Int) = RitzBasis(l, K, :legendre)
 
 npow(b::RitzBasis, k::Int) = b.l + 1 + 2 * (k - 1)
-phi(b::RitzBasis, k::Int, x::Real) = x^npow(b, k)
-dphi(b::RitzBasis, k::Int, x::Real) = (n = npow(b, k); n * x^(n - 1))
-d2phi(b::RitzBasis, k::Int, x::Real) = (n = npow(b, k); n * (n - 1) * x^(n - 2))
+
+"""
+    radial_window(l; margin = 0.9) -> Int
+
+How many radial functions mode `l` can carry before its block stops being solvable.
+
+The `x^(l+1)` factor confines every trial function to a layer of thickness `~1/l` at the
+surface, so at high `l` they crowd together no matter what polynomial multiplies them and the
+mode's mass matrix loses conditioning. That ceiling is a property of the mode, and it is what
+makes a single global `K` wasteful: a `K` small enough for `l = 90` starves `l = 2`, and a `K`
+large enough for `l = 2` makes `l = 90` singular.
+
+MEASURED, on the `:legendre` basis, as the largest `K` keeping the normalised condition number
+of the mode's mass matrix below 1e10 -- six digits of headroom in double precision:
+
+    l       2   3   4   5   6   8  10  12  16  20  25  30  40  50  60  75  90
+    K_max  40  29  21  16  14  11   9   8   7   6   5   5   4   4   4   4   3
+
+A power law fits that to within one function everywhere:
+
+    K(l) = 47.2 * l^(-0.642)
+
+and the `margin` shaves it so the law never exceeds the measured ceiling -- at `margin = 0.9`
+it overshoots at none of the seventeen truncations above. The exponent is the useful part: the
+window closes like `l^(-0.64)`, much more slowly than the `1/l^2` one might guess, which is why
+a staircase has real room to redistribute at low `l`.
+
+The requirement runs the other way -- resolving the vortical field needs `K ~ |q| ~
+l^{3/4}/sqrt(Oh)`, which GROWS with `l`. So the two curves cross, and past the crossing the
+high modes are under-resolved by construction. That is tolerable only because those modes carry
+almost none of the energy: the top mode holds about 3e-5 of the surface energy in a
+representative run.
+"""
+radial_window(l::Integer; margin::Real = 0.9, kmin::Int = 1, kmax::Int = 40) =
+    clamp(floor(Int, margin * 47.2 * float(l)^(-0.642)), kmin, kmax)
+
+"""Legendre `P_j(u)` and its first two derivatives, by the standard recurrences."""
+function legendre_uderivs(j::Int, u::Real)
+    j == 0 && return (1.0, 0.0, 0.0)
+    p0, p1 = 1.0, float(u)
+    d0, d1 = 0.0, 1.0
+    for n in 1:(j-1)
+        p0, p1 = p1, ((2n + 1) * u * p1 - n * p0) / (n + 1)
+        d0, d1 = d1, ((2n + 1) * (u * d1 + p0) - n * d0) / (n + 1)
+    end
+    ## P_j'' from the Legendre equation: (1-u^2)P'' - 2u P' + j(j+1) P = 0
+    dd = abs(1 - u^2) < 1e-12 ? j*(j+1)*(j+1)*j/8 * one(p1) :
+         (2u * d1 - j*(j+1) * p1) / (1 - u^2)
+    (p1, d1, dd)
+end
+
+function phi(b::RitzBasis, k::Int, x::Real)
+    b.kind === :monomial && return x^npow(b, k)
+    m = b.l + 1
+    P, _, _ = legendre_uderivs(k - 1, 2x^2 - 1)
+    x^m * P
+end
+
+function dphi(b::RitzBasis, k::Int, x::Real)
+    if b.kind === :monomial
+        n = npow(b, k); return n * x^(n - 1)
+    end
+    m = b.l + 1
+    P, dP, _ = legendre_uderivs(k - 1, 2x^2 - 1)
+    m * x^(m - 1) * P + 4 * x^(m + 1) * dP
+end
+
+function d2phi(b::RitzBasis, k::Int, x::Real)
+    if b.kind === :monomial
+        n = npow(b, k); return n * (n - 1) * x^(n - 2)
+    end
+    m = b.l + 1
+    P, dP, ddP = legendre_uderivs(k - 1, 2x^2 - 1)
+    m * (m - 1) * x^(m - 2) * P + 4 * (2m + 1) * x^m * dP + 16 * x^(m + 2) * ddP
+end
 
 """Legendre `P_l(mu)`, and the theta-derivatives the strain components need."""
 function legendre_angular(l::Int, mu::Float64)
@@ -221,8 +312,9 @@ mode in `ls`.
 struct ModalBasis
     ls::Vector{Int}
     K::Int
+    kind::Symbol
 end
-ModalBasis(ls, K::Int) = ModalBasis(collect(ls), K)
+ModalBasis(ls, K::Int, kind::Symbol = :legendre) = ModalBasis(collect(ls), K, kind)
 ndof(b::ModalBasis) = length(b.ls) * b.K
 dofindex(b::ModalBasis, i::Int, k::Int) = (i - 1) * b.K + k
 
@@ -237,7 +329,7 @@ function strain_at(b::ModalBasis, x::Float64, mu::Float64)
     F = zeros(ndof(b), 6)
     for (i, l) in enumerate(b.ls)
         A = legendre_angular(l, mu)
-        rb = RitzBasis(l, b.K)
+        rb = RitzBasis(l, b.K, b.kind)
         for k in 1:b.K
             f, df, d2f = phi(rb, k, x), dphi(rb, k, x), d2phi(rb, k, x)
             F[dofindex(b, i, k), :] .= modal_field(l, f, df, d2f, x, A)
@@ -288,7 +380,11 @@ struct CoupledGeometry
     mus::Vector{Float64}        # (nq) angular coordinate
 end
 
-const COUPLED_CACHE = Dict{Tuple{Vector{Int},Int,Int,Int},CoupledGeometry}()
+## The key MUST include the basis kind. It did not, and a monomial-populated cache was served
+## to a :legendre run -- which made two different bases return identical numbers and looked
+## exactly like a confirmation that they span the same space. Same failure as keying a results
+## store on parameters but not on what produced them.
+const COUPLED_CACHE = Dict{Tuple{Vector{Int},Int,Symbol,Int,Int},CoupledGeometry}()
 
 """
 Rough footprint of the cached geometry, in bytes.
@@ -306,10 +402,10 @@ const COUPLED_CACHE_BUDGET = 500_000_000
 """Footprints above this are reported once, because a silent 300 MB allocation is a surprise."""
 const COUPLED_CACHE_WARN = 100_000_000
 
-const COUPLED_CACHE_ANNOUNCED = Set{Tuple{Vector{Int},Int,Int,Int}}()
+const COUPLED_CACHE_ANNOUNCED = Set{Tuple{Vector{Int},Int,Symbol,Int,Int}}()
 
 function coupled_geometry(b::ModalBasis, nx::Int, nmu::Int)
-    key = (b.ls, b.K, nx, nmu)
+    key = (b.ls, b.K, b.kind, nx, nmu)
     haskey(COUPLED_CACHE, key) && return COUPLED_CACHE[key]
     N = ndof(b)
     xs, wxs = gauss_legendre_nodes(nx, 0.0, 1.0)
@@ -376,7 +472,7 @@ end
 function stiffness_matrix(b::ModalBasis)
     Gm = zeros(ndof(b), ndof(b))
     for (i, l) in enumerate(b.ls)
-        rb = RitzBasis(l, b.K)
+        rb = RitzBasis(l, b.K, b.kind)
         tr = [phi(rb, k, 1.0) for k in 1:b.K]
         blk = (4pi / (2l + 1)) * (l - 1) * (l + 2) * (tr * tr')
         rng = dofindex(b, i, 1):dofindex(b, i, b.K)
