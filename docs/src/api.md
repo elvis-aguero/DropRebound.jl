@@ -2,7 +2,7 @@
 
 Everything the `DropSolver` module exports, grouped by the order a run meets it:
 build a configuration, integrate a trajectory, then measure the bounce. The
-later groups are for readers extending the model — the damping and frequency
+later groups are for readers extending the model: the damping and frequency
 coefficients, the non-Newtonian closures, and the residual and Jacobian blocks
 those closures modify.
 
@@ -16,8 +16,8 @@ page. They are implementation detail and may change without notice.
 
 ## Setting up a run
 
-`SimConstants` holds everything fixed for a run — mode count, Ohnesorge and Bond
-numbers, the collocation grid, the quadrature tables — and `DropState` holds
+`SimConstants` holds everything fixed for a run, meaning mode count, Ohnesorge and Bond
+numbers, the collocation grid and the quadrature tables. `DropState` holds
 everything that evolves. Both are built once, before the time loop.
 
 ```@autodocs
@@ -45,8 +45,8 @@ Order   = [:type, :constant, :function]
 
 ## Measuring the bounce
 
-Reduce a completed trajectory to the quantities an experiment reports — contact
-time, coefficient of restitution, contact radius — or reconstruct the drop
+Reduce a completed trajectory to the quantities an experiment reports, namely contact
+time, coefficient of restitution and contact radius, or reconstruct the drop
 outline for plotting.
 
 ```@autodocs
@@ -125,7 +125,7 @@ coordinates are the interior *displacement* amplitudes on a Ritz basis, and the
 surface amplitude is their boundary trace.
 
 Assembling the coefficient matrices needs only one derivative of the velocity, and
-both forms are Hessians of quadratic forms, hence symmetric — which is a
+both forms are Hessians of quadratic forms, hence symmetric, which is a
 correctness test rather than a remark. With a constant viscosity the assembly
 reproduces Reid's exact `λ_l` and `ω_l²`.
 
@@ -158,6 +158,35 @@ not required to be an interval. See *Choosing a Solver* for what the difference 
 ```@autodocs
 Modules = [DropSolver]
 Pages   = ["variational_solve.jl"]
+Public  = true
+Private = false
+Order   = [:type, :function]
+```
+
+## Choosing a backend
+
+The three solver paths differ in two independent choices: how the momentum equation
+is assembled, and how the contact set is found. [`Backend`](@ref) names a combination
+of the two, so a study can be swept over solvers without rewriting the call.
+
+```julia
+using DropSolver
+
+for b in (Backend(formulation = :variational, contact = :search),
+          Backend(formulation = :nodal,       contact = :lcp))
+    r = run_impact(b; We = 0.5, Oh = 0.0373, Bo = 0.0189, M = 45, K = 3)
+    println(label(b), "  CoR = ", r.cor)
+end
+```
+
+[`run_impact`](@ref) returns a named tuple carrying `ok`, which is `false` when the
+run terminated early rather than throwing, so a sweep over many parameter sets does
+not stop at the first failure. [`drop_outline`](@ref) reconstructs the interface shape
+from a stored mode vector, for animation or for eyeballing a suspect run.
+
+```@autodocs
+Modules = [DropSolver]
+Pages   = ["backends.jl"]
 Public  = true
 Private = false
 Order   = [:type, :function]

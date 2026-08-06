@@ -96,33 +96,43 @@ makedocs(
     modules = [DropSolver],
     repo = Remotes.GitHub("elvis-aguero", "DropRebound.jl"),
     pages = [
+        # Ordered as a course rather than as a filesystem. Each part supplies
+        # what the next one needs: the framework, then the exactly solvable
+        # problem it is checked against, then the wall, then the rheology.
+        # The derivation chapters execute in CI, so the physics on the site
+        # runs rather than being transcribed.
         "Home" => "index.md",
-        # Grouped by the question a reader arrives with, not by filename or by
-        # the order things happened to be written. Each page is a derivation
-        # that also runs in CI, so the physics on the site is executable.
-        #
-        # (The hand-authored `reid1960/` and `carreau_yasuda_fp/` chapters were
-        # removed: they restated, in a second voice, what these scripts derive.)
-        "Choosing a Solver" => "solvers.md",
-        "Newtonian Theory" => [
+        "I. Foundations" => [
+            "Variational Mechanics"            => "variational.md",
+        ],
+        "II. The Free Viscous Drop" => [
             "The Viscous Drop: Reid (1960)"    => PAGE["reid1960_full_derivation.jl"],
             "Finite-Ohnesorge Coefficients"    => PAGE["reid_finite_oh_derivation.jl"],
         ],
-        "Shear-Thinning Fluids" => [
-            # Read in this order: the model first, stated completely and
-            # without approximation; then the descent from it to something
-            # runnable; then the constitutive law a real fluid is characterised
-            # by; and last the measurement that prices the mode-coupling
-            # concessions the descent makes.
+        "III. Contact" => [
+            "Contact"                          => "contact.md",
+        ],
+        "IV. Shear-Thinning Fluids" => [
+            # The model first, stated without approximation; then the descent
+            # from it to something runnable.
             "Shear-Thinning Drops"             => PAGE["generalized_newtonian_hierarchy_derivation.jl"],
             "Shear-Thinning Drops: Closures"   => PAGE["shear_thinning_closures_derivation.jl"],
+        ],
+        "V. Viscoelastic Fluids" => [
+            "Oldroyd-B"                        => PAGE["oldroyd_b_derivation.jl"],
+        ],
+        "VI. Using It" => [
+            "Choosing a Solver"                => "solvers.md",
+            "Resolution and Convergence"       => "resolution.md",
+            "API Reference"                    => "api.md",
+        ],
+        # Supporting derivations that are not part of the main line of argument:
+        # a constitutive-law mapping, and a measurement of the viscosity field's
+        # angular spectrum.
+        "Supplementary" => [
             "Cross-Model Fluids"               => PAGE["cross_fluid_derivation.jl"],
             "Angular Bandwidth of Viscosity"   => PAGE["eta_spectrum_derivation.jl"],
         ],
-        "Viscoelastic Fluids" => [
-            "Oldroyd-B"                        => PAGE["oldroyd_b_derivation.jl"],
-        ],
-        "API Reference" => "api.md",
     ],
     format = Documenter.HTML(
         prettyurls = get(ENV, "CI", "false") == "true",
