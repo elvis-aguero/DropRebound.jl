@@ -1,21 +1,52 @@
 # # Shear-Thinning Drops
 #
-# In this page we try to extend Reid's work to shear thinning rheologies. These are fluids that have an effective
-# viscosity which is shear-rate dependent, possibly nonlinearly.
+# A shear-thinning liquid has no single viscosity. Its resistance to
+# deformation depends on how fast it is being deformed, so the constitutive
+# law is a function ``\eta(\dot\gamma)`` rather than a number. This part asks
+# what such a fluid does to the drop of Parts I to III.
 #
-# In the Newtonian theory a drop's surface modes are independent damped
-# oscillators: each ``\zeta_l`` has its own damping ``\lambda_l`` and frequency
-# ``\omega_l``, and the interior flow can be solved once, in advance, for all
-# time. Neither survives a shear-thinning fluid. The viscosity becomes a field
-# over the drop, computed from the very flow it governs; modes that deform
-# different parts of the drop no longer see the same fluid, and so begin to
-# drive one another. The two scalars per mode become matrices, and the interior
-# flow has to be found at every instant.
+# ## What breaks
 #
-# This page derives that system, with no approximation beyond small amplitude
-# and axisymmetry, and states it in full at the end. It does not simplify it:
-# what the model costs to solve, and what may be given up to make it cheaper,
-# is the subject of the companion page *Shear-Thinning Drops: Closures*.
+# In the Newtonian theory the surface modes are independent damped
+# oscillators. Each ``\zeta_l`` carries its own damping ``\lambda_l`` and
+# frequency ``\omega_l``, and the interior flow can be solved once, in advance,
+# for all time. That is what made Part II tractable in closed form.
+#
+# Neither property survives. The viscosity becomes a field over the drop,
+# computed from the very flow it governs. Modes that deform different parts of
+# the drop no longer see the same fluid, so they begin to drive one another.
+# Two scalars per mode become matrices, and the interior flow has to be found
+# afresh at every instant.
+#
+# The variational structure of Part I is what carries this without
+# modification. Nothing in the Rayleighian assumed a constant viscosity: the
+# dissipation functional is ``\mathcal R = \int \eta\,\bm e\!:\!\bm e\,dV``
+# whatever ``\eta`` is, and a state-dependent ``\eta`` simply moves inside the
+# integral. The formulation does not change. What changes is that its damping
+# operator must be rebuilt as the solution evolves.
+#
+# ## What "no approximation" means here
+#
+# This page derives the system with no approximation beyond small amplitude and
+# axisymmetry, and states it in full at the end. That phrase deserves unpacking,
+# because the important part is what is *not* approximated.
+#
+# Three things happen below, and only the first is an approximation.
+# Linearising in the surface amplitude drops advection, which is the single
+# physical approximation the whole package rests on. Axisymmetry is exact for
+# axisymmetric forcing: it removes the azimuthal index rather than approximating
+# it. The poloidal and modal expansion is a change of variables.
+#
+# The rheology is not touched. ``\eta`` is evaluated pointwise from the shear
+# rate of the whole summed strain field, never expanded in the amplitude and
+# never reduced to one number per mode. That is the expensive choice, and it is
+# deliberate: the shear-rate invariant does not superpose over modes, so any
+# per-mode viscosity is already a closure rather than a rearrangement.
+#
+# The price is a system that asks, at every instant, for a coupled set of
+# radial problems whose coefficients depend on their own solution. What that
+# costs, and what may be given up to make it cheaper, is the subject of the
+# companion page *Shear-Thinning Drops: Closures*.
 #
 # ## Notation
 #

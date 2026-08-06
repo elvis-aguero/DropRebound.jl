@@ -1541,7 +1541,10 @@ end  #src
 # and can be taken at any row. The numerical realisation is not in the table at
 # all: it is not a rung, because it does not change the model.
 #
-# ## What this file establishes
+# ## Which concessions are affordable
+#
+# Reading the descent backwards, some of its rungs cost nothing and others cost
+# more than they save.
 #
 # **Free, and permanent.** A generalized Newtonian fluid cannot break
 # axisymmetry, so Legendre polynomials suffice forever. BC1 carries no
@@ -1588,84 +1591,84 @@ end  #src
 # which the period-``\pi`` lemma places at exactly the principal resonance
 # condition and which nothing here evaluates.
 
-# ## Open direction: the interior as a boundary impedance
-#
-# This section is analysis rather than a closure: it says what object the interior
-# problem is *for*, and that identification reorganises the choices above. Nothing
-# here is yet checked, and it is marked as structure for that reason.
-#
-# ### The interior enters only as a boundary impedance
-#
-# The surface equation needs one thing from the interior: the viscous normal
-# traction at ``x=1``, given the surface motion. It never needs the field itself.
-# Define, mode by mode, the map from surface velocity to surface traction,
-#
-# ```math
-# \bigl[2\eta\,e_{rr}\bigr]_{x=1} \;=\; -\,\mathcal Z_l\bigl[\dot\zeta_l\bigr] ,
-# ```
-#
-# which is a **Dirichlet-to-Neumann** map for the interior problem -- the same
-# object that appears as a mobility in Stokes flow, an impedance in acoustics, and
-# an absorbing boundary condition in wave propagation. The whole content of the
-# interior is compressed into ``\mathcal Z_l``.
-#
-# For a normal mode ``\propto e^{-\sigma t}`` and constant viscosity,
-# ``\mathcal Z_l`` is a known function of ``\sigma``: solving
-# ``\mathcal D_l(\mathcal D_l+q^2)[\psi_l]=0`` with regularity and BC2 leaves one
-# free constant, and the ratio of traction to velocity is a rational function of
-# ``\sigma`` and the Bessel ratio ``Q=j_{l+1}(q)/j_l(q)``. Reid's characteristic
-# equation is then just the statement that the total impedance vanishes,
-#
-# ```math
-# \underbrace{\sigma^2}_{\text{inertia}}
-# \;+\;\underbrace{\mathcal Z_l(\sigma)}_{\text{viscous}}
-# \;+\;\underbrace{\omega_{l,0}^2}_{\text{capillary}} \;=\;0 ,
-# ```
-#
-# with ``\omega_{l,0}^2=l(l-1)(l+2)`` the inviscid frequency. Read this way, the
-# infinitely many roots are not a peculiarity: they are the poles of an impedance,
-# and there are always infinitely many because the interior is a diffusion
-# problem.
-#
-# ### The two-root truncation is a two-pole fit, and that is the useful way to see it
-#
-# ``\lambda_l`` and ``\omega_l^2`` describe an oscillator with two poles. Since
-# ``\mathcal Z_l`` has infinitely many, the Newtonian modal model is a **two-pole
-# rational approximation** of the exact impedance. That reframes the truncation
-# from a defect into the first member of a convergent family: keep ``N_p`` poles,
-#
-# ```math
-# \mathcal Z_l(\sigma)\;\approx\;\sum_{p=1}^{N_p}\frac{c_p\,\sigma}{\sigma+s_p} ,
-# ```
-#
-# and each pole is **one auxiliary scalar ODE per mode**,
-#
-# ```math
-# \dot g_p = -s_p\,g_p + \dot\zeta_l ,
-# \qquad
-# \mathcal Z_l\bigl[\dot\zeta_l\bigr]=\sum_p c_p\bigl(\dot\zeta_l - s_p g_p\bigr) ,
-# ```
-#
-# which is a Prony, or diffusive, representation of the viscous memory. The cost
-# comparison is the point: marching the interior on a radial grid carries tens of
-# unknowns per mode, and a few poles carry a handful -- for the same object,
-# because the grid was only ever a device for computing ``\mathcal Z_l``.
-#
-# ### The small-Ohnesorge limit has a name
-#
-# At small ``\mathrm{Oh}`` the interior is potential flow plus a vortical layer of
-# thickness ``\sqrt{\mathrm{Oh}}`` at the surface. A layer of that kind, driven by
-# an oscillating boundary, contributes an impedance scaling as
-# ``\sqrt\sigma`` -- a **half-order derivative in time**, which is the
-# Basset--Boussinesq history term familiar from particle dynamics. So the regime
-# where the instantaneous-eigenmode closure is *worst* is the regime whose memory
-# kernel is best understood, and ``\sqrt\sigma`` is exactly the kernel that Prony
-# sums represent efficiently.
-#
-# **What would have to be checked before any of this is used.** That
-# ``\mathcal Z_l`` assembled from the interior solution reproduces Reid's
-# characteristic equation through the balance above; that a two-pole fit of it
-# returns ``\lambda_l`` and ``\omega_l^2``; and that the pole count converges. Each
-# is a concrete test against a quantity the solver already computes, which is why
-# this is written down as a route rather than adopted as one.
+# ## Open direction: the interior as a boundary impedance #src
+# #src
+# This section is analysis rather than a closure: it says what object the interior #src
+# problem is *for*, and that identification reorganises the choices above. Nothing #src
+# here is yet checked, and it is marked as structure for that reason. #src
+# #src
+# ### The interior enters only as a boundary impedance #src
+# #src
+# The surface equation needs one thing from the interior: the viscous normal #src
+# traction at ``x=1``, given the surface motion. It never needs the field itself. #src
+# Define, mode by mode, the map from surface velocity to surface traction, #src
+# #src
+# ```math #src
+# \bigl[2\eta\,e_{rr}\bigr]_{x=1} \;=\; -\,\mathcal Z_l\bigl[\dot\zeta_l\bigr] , #src
+# ``` #src
+# #src
+# which is a **Dirichlet-to-Neumann** map for the interior problem -- the same #src
+# object that appears as a mobility in Stokes flow, an impedance in acoustics, and #src
+# an absorbing boundary condition in wave propagation. The whole content of the #src
+# interior is compressed into ``\mathcal Z_l``. #src
+# #src
+# For a normal mode ``\propto e^{-\sigma t}`` and constant viscosity, #src
+# ``\mathcal Z_l`` is a known function of ``\sigma``: solving #src
+# ``\mathcal D_l(\mathcal D_l+q^2)[\psi_l]=0`` with regularity and BC2 leaves one #src
+# free constant, and the ratio of traction to velocity is a rational function of #src
+# ``\sigma`` and the Bessel ratio ``Q=j_{l+1}(q)/j_l(q)``. Reid's characteristic #src
+# equation is then just the statement that the total impedance vanishes, #src
+# #src
+# ```math #src
+# \underbrace{\sigma^2}_{\text{inertia}} #src
+# \;+\;\underbrace{\mathcal Z_l(\sigma)}_{\text{viscous}} #src
+# \;+\;\underbrace{\omega_{l,0}^2}_{\text{capillary}} \;=\;0 , #src
+# ``` #src
+# #src
+# with ``\omega_{l,0}^2=l(l-1)(l+2)`` the inviscid frequency. Read this way, the #src
+# infinitely many roots are not a peculiarity: they are the poles of an impedance, #src
+# and there are always infinitely many because the interior is a diffusion #src
+# problem. #src
+# #src
+# ### The two-root truncation is a two-pole fit, and that is the useful way to see it #src
+# #src
+# ``\lambda_l`` and ``\omega_l^2`` describe an oscillator with two poles. Since #src
+# ``\mathcal Z_l`` has infinitely many, the Newtonian modal model is a **two-pole #src
+# rational approximation** of the exact impedance. That reframes the truncation #src
+# from a defect into the first member of a convergent family: keep ``N_p`` poles, #src
+# #src
+# ```math #src
+# \mathcal Z_l(\sigma)\;\approx\;\sum_{p=1}^{N_p}\frac{c_p\,\sigma}{\sigma+s_p} , #src
+# ``` #src
+# #src
+# and each pole is **one auxiliary scalar ODE per mode**, #src
+# #src
+# ```math #src
+# \dot g_p = -s_p\,g_p + \dot\zeta_l , #src
+# \qquad #src
+# \mathcal Z_l\bigl[\dot\zeta_l\bigr]=\sum_p c_p\bigl(\dot\zeta_l - s_p g_p\bigr) , #src
+# ``` #src
+# #src
+# which is a Prony, or diffusive, representation of the viscous memory. The cost #src
+# comparison is the point: marching the interior on a radial grid carries tens of #src
+# unknowns per mode, and a few poles carry a handful -- for the same object, #src
+# because the grid was only ever a device for computing ``\mathcal Z_l``. #src
+# #src
+# ### The small-Ohnesorge limit has a name #src
+# #src
+# At small ``\mathrm{Oh}`` the interior is potential flow plus a vortical layer of #src
+# thickness ``\sqrt{\mathrm{Oh}}`` at the surface. A layer of that kind, driven by #src
+# an oscillating boundary, contributes an impedance scaling as #src
+# ``\sqrt\sigma`` -- a **half-order derivative in time**, which is the #src
+# Basset--Boussinesq history term familiar from particle dynamics. So the regime #src
+# where the instantaneous-eigenmode closure is *worst* is the regime whose memory #src
+# kernel is best understood, and ``\sqrt\sigma`` is exactly the kernel that Prony #src
+# sums represent efficiently. #src
+# #src
+# **What would have to be checked before any of this is used.** That #src
+# ``\mathcal Z_l`` assembled from the interior solution reproduces Reid's #src
+# characteristic equation through the balance above; that a two-pole fit of it #src
+# returns ``\lambda_l`` and ``\omega_l^2``; and that the pole count converges. Each #src
+# is a concrete test against a quantity the solver already computes, which is why #src
+# this is written down as a route rather than adopted as one. #src
 
