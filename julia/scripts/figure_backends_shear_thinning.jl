@@ -42,14 +42,17 @@ We_e = [r[1] for r in rows]; cor_e = [r[2] for r in rows]; tc_e = [r[3] for r in
 
 eta_st = gd -> carreau(gd; lambda_c = LAM, a = A_CY, n = N_CY, eta_inf_ratio = ETA_RATIO)
 
-## Truncations differ by necessity, not by preference: a variable viscosity forces the coupled
-## operator to be rebuilt every Picard sweep, so the variational runs use a smaller M than the
-## nonvariational one, whose closure is diagonal.
+## RESOLUTION. The variational curves run at M = 30, K = 3, which is where the shear-thinning
+## restitution converges: K = 2 is 0.8 per cent low and K = 4 and 5 agree with K = 3 to four
+## decimals. Earlier versions of this figure used M = 14, K = 2 because a run cost minutes;
+## caching the assembly geometry made it seconds, so there is no longer a reason to publish the
+## coarser number. The nonvariational curve keeps M = 20 -- its closure is diagonal and it has
+## no K at all.
 const CURVES = [
     (b = Backend(formulation = :nonvariational, contact = :tangency),
-     M = 20, colour = :darkorange, marker = :diamond, dash = :dash),
-    (b = Backend(),                          M = 14, colour = :crimson,   marker = :circle, dash = :solid),
-    (b = Backend(forcing = :nodal),          M = 14, colour = :seagreen,  marker = :utriangle, dash = :dot),
+     M = 20, K = 2, colour = :darkorange, marker = :diamond, dash = :dash),
+    (b = Backend(),                 M = 30, K = 3, colour = :crimson,  marker = :circle,    dash = :solid),
+    (b = Backend(forcing = :nodal), M = 30, K = 3, colour = :seagreen, marker = :utriangle, dash = :dot),
 ]
 
 ## The grid spans the 5th to 95th percentile of the measured Weber numbers, NOT their raw
@@ -62,9 +65,9 @@ grid = exp.(range(log(quantile(We_e, 0.05)), log(quantile(We_e, 0.95)); length =
 results = Dict{String,Any}()
 for c in CURVES
     nm = label(c.b); cor_m = Float64[]; tc_m = Float64[]; wes = Float64[]; wall = 0.0
-    @printf("\n%s (M = %d)\n", nm, c.M); flush(stdout)
+    @printf("\n%s (M = %d, K = %d)\n", nm, c.M, c.K); flush(stdout)
     for We in grid
-        r = run_impact(c.b; We = We, Bo = BO, Oh = OH_0, M = c.M, K = 2, t_max = 25.0,
+        r = run_impact(c.b; We = We, Bo = BO, Oh = OH_0, M = c.M, K = c.K, t_max = 25.0,
                        eta = c.b.formulation === :variational ? eta_st : nothing,
                        eta_nonvar = c.b.formulation === :variational ? nothing :
                            STExactParams(c.M, OH_0, LAM, A_CY, EPS_ST;

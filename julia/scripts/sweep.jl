@@ -30,7 +30,7 @@ include(joinpath(@__DIR__, "_stats.jl"))
 
 const RESULTS = joinpath(@__DIR__, "..", "..", "results")
 const STORE   = joinpath(RESULTS, "runs.csv")
-const COLS = ["solver","We","Bo","Oh","M","K","rheology","t_max","h_thresh",
+const COLS = ["solver","basis","We","Bo","Oh","M","K","rheology","t_max","h_thresh",
               "cor","tc","cor_internal","tc_internal","min_gap","n_detected",
               "maxcp","rejects","gap_fraction","lcp_resid","eta_sweeps","wall_s",
               "commit","stamp"]
@@ -54,7 +54,7 @@ which defeats the point. The workable version is a per-solver algorithm tag bump
 the numbers can move; until that exists, delete the affected rows by hand after a solver
 change and say so in the commit.
 """
-key(row) = join((row.solver, @sprintf("%.10g",row.We), @sprintf("%.10g",row.Bo),
+key(row) = join((row.solver, row.basis, @sprintf("%.10g",row.We), @sprintf("%.10g",row.Bo),
                  @sprintf("%.10g",row.Oh), row.M, row.K, row.rheology,
                  @sprintf("%.10g",row.t_max), @sprintf("%.10g",row.h_thresh)), "|")
 
@@ -65,8 +65,8 @@ function load_manifest()
     for ln in eachline(STORE)
         f = split(chomp(ln), ',')
         if hdr === nothing; hdr = f; continue; end
-        length(f) < 9 && continue
-        push!(seen, join(f[1:9], "|"))
+        length(f) < 10 && continue
+        push!(seen, join(f[1:10], "|"))
     end
     seen
 end
@@ -91,7 +91,7 @@ function run_one(c)
                    eta = c.backend.formulation === :variational ? c.eta : nothing,
                    eta_nonvar = c.backend.formulation === :variational ? nothing : c.eta_nonvar)
     ## reduce to scalars HERE, so the trajectory is collectable before the next case
-    (solver=c.solver, We=c.We, Bo=c.Bo, Oh=c.Oh, M=c.M, K=c.K, rheology=c.rheology,
+    (solver=c.solver, basis=c.basis, We=c.We, Bo=c.Bo, Oh=c.Oh, M=c.M, K=c.K, rheology=c.rheology,
      t_max=c.t_max, h_thresh=c.h_thresh,
      cor=r.cor, tc=r.tc, cor_internal=r.diag.cor_internal, tc_internal=r.diag.tc_internal,
      min_gap=r.diag.min_gap, n_detected=r.diag.n_detected,
@@ -149,9 +149,11 @@ end
 
 """A case, with the rheology carried as both a label (for provenance) and a function."""
 function case(; backend::Backend = Backend(), We, Bo, Oh, M, K, t_max = 25.0,
-              h_thresh = 0.02, rheology = "newtonian", eta = gd -> 1.0, eta_nonvar = nothing)
-    (solver=label(backend), backend=backend, We=We, Bo=Bo, Oh=Oh, M=M, K=K, t_max=t_max,
-     h_thresh=h_thresh, rheology=rheology, eta=eta, eta_nonvar=eta_nonvar)
+              h_thresh = 0.02, rheology = "newtonian", eta = gd -> 1.0, eta_nonvar = nothing,
+              basis_kind::Symbol = :legendre)
+    (solver=label(backend), basis=String(basis_kind), backend=backend, We=We, Bo=Bo, Oh=Oh, M=M, K=K, t_max=t_max,
+     h_thresh=h_thresh, rheology=rheology, eta=eta, eta_nonvar=eta_nonvar,
+     basis_kind=basis_kind)
 end
 
 ## Carreau-Yasuda for the 3000 ppm fluid, from its own Cross fit

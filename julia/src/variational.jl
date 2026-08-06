@@ -106,6 +106,14 @@ l^{3/4}/sqrt(Oh)`, which GROWS with `l`. So the two curves cross, and past the c
 high modes are under-resolved by construction. That is tolerable only because those modes carry
 almost none of the energy: the top mode holds about 3e-5 of the surface energy in a
 representative run.
+
+WHAT THIS DOES NOT PROMISE. It bounds the conditioning of the mode's MASS matrix and nothing
+else. It is not a guarantee that a run will complete: on the 3000 ppm shear-thinning fluid,
+`M = 60, K = 3` fails outright even though `radial_window(60) = 3` says that truncation is
+within the window, while `M = 45, K = 3` runs. Whatever ends that run is not the conditioning
+this law measures -- a variable viscosity makes the dissipation operator state-dependent and
+the Picard closure nonlinear, neither of which enters here. Treat the window as a ceiling that
+must not be exceeded, not as a licence to go up to it.
 """
 radial_window(l::Integer; margin::Real = 0.9, kmin::Int = 1, kmax::Int = 40) =
     clamp(floor(Int, margin * 47.2 * float(l)^(-0.642)), kmin, kmax)
@@ -587,7 +595,7 @@ function assemble_newtonian(b::ModalBasis, Oh::Real; nx::Int = 40)
     N = ndof(b)
     M = zeros(N, N); C = zeros(N, N); G = zeros(N, N)
     for (i, l) in enumerate(b.ls)
-        F = assemble(RitzBasis(l, b.K), Oh; nx = nx)
+        F = assemble(RitzBasis(l, b.K, b.kind), Oh; nx = nx)
         for ka in 1:b.K, kb in 1:b.K
             ia = dofindex(b, i, ka); ib = dofindex(b, i, kb)
             M[ia, ib] = F.M[ka, kb]

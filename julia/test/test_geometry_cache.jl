@@ -234,3 +234,45 @@ end
         @test isapprox(a, b; rtol = 1e-8)
     end
 end
+
+# The basis kind must reach every assembly path.
+#
+# It did not. `assemble_newtonian` built `RitzBasis(l, b.K)` without `b.kind`, so every
+# Newtonian run used the default basis whatever was asked for -- and a comparison of the two
+# bases then compared one basis with itself, agreed perfectly, and read as confirmation. That
+# is the third place today the same omission appeared (the geometry cache key, the results
+# store key, and here), and in all three the symptom was two configurations returning identical
+# numbers, which is exactly what the correctness property predicts.
+#
+# So the thing to assert first is that the arms DIFFER. Agreement is only evidence once that is
+# established.
+@testset "the basis kind reaches the assembly" begin
+    b_mono = ModalBasis(collect(2:20), 6, :monomial)
+    b_leg  = ModalBasis(collect(2:20), 6, :legendre)
+    Fm = assemble_newtonian(b_mono, 0.05)
+    Fl = assemble_newtonian(b_leg, 0.05)
+    ## the arms are genuinely different matrices
+    @test maximum(abs, Fm.M .- Fl.M) > 1e-6 * maximum(abs, Fm.M)
+    @test cond(Fm.M) > 100 * cond(Fl.M)
+    ## and only then is their agreement on the physics meaningful
+    for l in (2, 8, 20), K in (1, 2, 3)
+        a = DropSolver.dominant_pair(RitzBasis(l, K, :monomial), 0.05)[1]
+        c = DropSolver.dominant_pair(RitzBasis(l, K, :legendre), 0.05)[1]
+        @test isapprox(a, c; rtol = 1e-7)
+    end
+    ## The failure this fixed: at M = 45, K = 6 the monomial basis manufactures a surface
+    ## amplitude of 23 -- a drop twenty-three times its own radius -- and a restitution of 102.
+    ##
+    ## Detected on the AMPLITUDE after a SHORT march rather than the restitution after a full
+    ## one. The divergence is fully present by t = 2, so marching to t_max costs four times as
+    ## much and establishes nothing further. Written the expensive way this testset ran for
+    ## nearly four minutes, which is not a price a unit test should charge.
+    short = (We = 0.5, Bo = 0.0188, Oh = 0.0373, M = 45, K = 6, t_max = 2.0)
+    amp(p) = (r = simulate_lcp(p);
+              maximum(maximum(abs, surface_amplitudes(p, a)) for a in r.a))
+    am = try amp(ImpactParams(; short..., basis_kind = :monomial)) catch; Inf end
+    al = try amp(ImpactParams(; short..., basis_kind = :legendre)) catch; Inf end
+    @test am > 5.0                     # monomials: nonphysical, measured 23
+    @test al < 1.0                     # reconditioned: measured 0.436
+    @test al < am / 20
+end
