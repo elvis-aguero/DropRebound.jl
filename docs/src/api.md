@@ -147,13 +147,12 @@ vanishes at the contacting nodes and the pressure vanishes at the free ones.
 The collocation nodes are `θ = π` together with the zeros of ``P_M``, which cluster
 near the poles and so resolve the contact where it forms.
 
-Two closures find the contact extent, and they are interchangeable. [`simulate`](@ref) ranks
-candidate contact counts, discards any that would let the surface pass through the substrate,
-and accepts the survivor with the smallest edge residual; the count changes by at most one node
-per accepted step, and a step with no admissible candidate is rejected and `dt` halved.
-[`simulate_lcp`](@ref) proposes nothing: it assembles the affine map from nodal pressure to gap
-and solves ``h \ge 0``, ``p \ge 0``, ``p_i h_i = 0``, so the contact set is an output and is
-not required to be an interval. See *Choosing a Solver* for what the difference is worth.
+Two closures find the contact extent, and they are interchangeable. [`simulate`](@ref) runs a
+primal active set: it grows the contact while a free node has penetrated, releases while the
+outermost contacting node's pressure pulls, and stops when neither holds. [`simulate_lcp`](@ref)
+assembles the affine map from nodal pressure to gap and solves ``h \ge 0``, ``p \ge 0``,
+``p_i h_i = 0`` by pivoting, so no node's status is assumed and the contact set need not be an
+interval. See *Choosing a Solver* for what the difference is worth.
 
 ```@autodocs
 Modules = [DropSolver]
@@ -172,8 +171,9 @@ of the two, so a study can be swept over solvers without rewriting the call.
 ```julia
 using DropSolver
 
-for b in (Backend(formulation = :variational, contact = :search),
-          Backend(formulation = :nodal,       contact = :lcp))
+for b in (Backend(formulation = :variational,    contact = :active_set),
+          Backend(formulation = :variational,    contact = :lcp, forcing = :nodal),
+          Backend(formulation = :nonvariational, contact = :tangency))
     r = run_impact(b; We = 0.5, Oh = 0.0373, Bo = 0.0189, M = 45, K = 3)
     println(label(b), "  CoR = ", r.cor)
 end

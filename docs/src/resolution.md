@@ -63,13 +63,17 @@ as potential flow exactly, and where both are numerically sound they agree to ei
 places. The difference is conditioning, which improves by up to ten orders of magnitude at low
 ``l``. See [`RitzBasis`](@ref).
 
-[`radial_window`](@ref) reports the largest ``K`` a mode can carry,
+[`radial_window`](@ref) reports how many functions a mode may carry,
 
 ```math
-K(l) \;=\; 47.2\,l^{-0.642} ,
+K(l) \;=\; \left\lfloor 0.9 \times 47.2\,l^{-0.642} \right\rfloor ,
 ```
 
-fitted to the measured ceiling at a normalised condition number of ``10^{10}``. The window
+a power law fitted to the measured ceiling at a normalised condition number of ``10^{10}``, then
+shaved by ten per cent so that it sits below that ceiling rather than on it. The window bounds the
+conditioning of the mass matrix, which is a necessary condition for a run to be trustworthy and
+not a sufficient one: a pair ``(M, K)`` inside the window can still fail for reasons that have
+nothing to do with conditioning. The window
 closes as ``l^{-0.64}`` while the requirement grows as ``l^{3/4}``, so the two cross. Above the
 crossing the high modes are under-resolved by construction, which is tolerable because they
 carry little: the highest retained mode holds about ``3\times10^{-5}`` of the surface energy in
