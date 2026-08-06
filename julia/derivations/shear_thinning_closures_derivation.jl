@@ -1049,8 +1049,22 @@ end  #src
 # i.e. Bessel's equation, and Reid's closed-form characteristic equation
 # returns verbatim -- evaluated at a shifted Ohnesorge number.
 #
-# **This is where the current production code sits**, combined with choice (a)
-# of the temporal closure.
+# **This is where the nonvariational solver sits**, combined with choice (a) of
+# the temporal closure: `solve_drop!` with an `STExactParams`. It has no
+# interior state, so it cannot evaluate a viscosity that varies through the
+# drop, and the whole descent above exists to reduce that variation to one
+# number per mode.
+#
+# The variational solvers do not descend this far. `simulate` and
+# `simulate_lcp` carry the full coupled system at the top of the table, with
+# `eta` evaluated pointwise on the summed strain field.
+#
+# The gap between the two is not academic. On the 3000 ppm fluid this rung
+# gives a median restitution error of 19 per cent against experiment, and
+# reports contact times of 21 to 25 capillary times where the measurement is
+# 3.7 to 4.2, which is to say the drop never releases. The coupled system gives
+# 6 per cent. At that fluid's operating Ohnesorge number the effective-viscosity
+# closure is outside its range, and the rest of this page is the account of why.
 #
 # Its error is the one measured in the previous section: for a realistic
 # multi-mode state the
@@ -1513,13 +1527,13 @@ end  #src
 # | linear in amplitude | ``\epsilon\ll1``; drops advection | ``\eta`` still fully nonlinear |
 # | axisymmetric | axisymmetric forcing -- **exact** | ``Y_l^m\to P_l``, no ``m``-coupling ever |
 # | poloidal + modal | change of variables | state is ``\{\zeta_l\}``, ``l=2\ldots M`` |
-# | **full coupled system** | none beyond the three above | banded interior BVP + dense surface matrices |
+# | **full coupled system** | none beyond the three above | **what the VARIATIONAL solvers run** |
 # | instantaneous eigenmode | ``\partial_t\psi_l\to-\sigma \psi_l``; ``\eta`` frozen | eliminates ``\psi_l``; parabolic ``\to`` algebraic |
 # | two-root truncation | keep two of infinitely many ``\sigma`` | recovers ``\lambda_l``, ``\omega_l^2`` as two numbers per mode |
 # | temporal closure | instantaneous / period-averaged / Floquet | picks which ``\eta(t)`` channel survives |
 # | truncate at ``L_\eta`` | discarded coupling small -- **measured false** | banded, but needs ``L_\eta\gtrsim M``: no saving |
 # | ``\eta=\eta(x)`` | viscosity spherically symmetric -- **leading-order error** | **diagonal**; numerical radial BVP per mode |
-# | ``\eta\to\eta_{\rm eff}`` | radial variation small | closed form -- **what the solver runs** |
+# | ``\eta\to\eta_{\rm eff}`` | radial variation small | closed form -- **what the NONVARIATIONAL solver runs** |
 # | ``\eta=\eta_0`` | no thinning | Reid |
 # | ``\mathrm{Oh}\to0`` | inviscid | Lamb |
 #
@@ -1560,9 +1574,15 @@ end  #src
 # options are to carry the coupled system and pay for it, or to quote the error
 # alongside the result.
 #
-# **Still open.** Whether the coupled system is affordable at ``M\sim50`` (the
-# Gaunt coefficients are geometry and precompute once; only the radial
-# integrals of ``\eta_{k}`` change per step); the eigenvalue problem for the
+# **Affordability of the coupled system.** It is affordable at ``M\sim45``. The
+# pairwise strain contractions are geometry: only the scalar ``\eta`` at each
+# quadrature point changes between Picard sweeps, so caching them turns each
+# reassembly into a weighted sum. That takes a shear-thinning impact from 145
+# seconds to 1.4, and the same run at ``M=45, K=3`` costs about 250 seconds. No
+# Gaunt precomputation is involved; the assembly quadratures the dof pairs
+# directly.
+#
+# **Still open.** The eigenvalue problem for the
 # variable-``\eta`` radial operator, which is a two-point boundary-value
 # problem rather than a research question; and the ``j=2`` parametric channel,
 # which the period-``\pi`` lemma places at exactly the principal resonance
