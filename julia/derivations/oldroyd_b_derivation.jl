@@ -4,7 +4,31 @@
 # its constitutive law, checking each result both symbolically and against
 # numbers produced by `DropSolver` itself.
 #
-# The route is short. The constitutive law becomes a complex,
+# ## Why this part takes a different route from the last
+#
+# Part IV and this one both leave the Newtonian fluid behind, and they leave it
+# in different directions.
+#
+# A shear-thinning liquid has a viscosity that depends on the local rate of
+# deformation. That makes ``\eta`` a field over the drop, computed from the flow
+# it governs, which couples every mode to every other and forces the interior to
+# be carried in the state. Hence the variational treatment of Part IV.
+#
+# A viscoelastic liquid has memory instead. Its stress depends on the deformation
+# history rather than on the instantaneous rate, and for a linear constitutive
+# law that history is a convolution. Under the ansatz ``e^{-\sigma t}`` a
+# convolution becomes multiplication, so the whole rheology collapses into a
+# single complex, frequency-dependent viscosity. No field appears, no modes
+# couple, and each ``l`` remains independent.
+#
+# That is why this part reuses Reid's machinery rather than the variational
+# assembly, and why it lives in the nonvariational solver: with the modes still
+# separable there is nothing for an interior state to buy. The memory is carried
+# instead by one auxiliary variable per mode, derived in §3.
+#
+# ## The route
+#
+# It is short. The constitutive law becomes a complex,
 # frequency-dependent viscosity (§1), which enters Reid's Newtonian problem
 # through a single modified wavenumber (§2). §3 derives the time-domain
 # auxiliary variable ``S_n`` the solver integrates and identifies it as the
