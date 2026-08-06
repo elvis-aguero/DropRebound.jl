@@ -78,23 +78,26 @@ function est_bytes(M, K, t_max, dt0)
     nsteps * (2*ndof + (M+1) + 6) * 8
 end
 
+"""
+One case, through the backend API rather than through a solver-specific call.
+
+The `solver` column now holds `label(Backend)`, so a row says which formulation, which contact
+closure and which forcing produced it. That is also what keys the store, which closes half of
+the hole described above: switching backend can no longer be mistaken for the same run.
+"""
 function run_one(c)
-    p = ImpactParams(We=c.We, Bo=c.Bo, Oh=c.Oh, M=c.M, K=c.K, t_max=c.t_max,
-                     eta = c.eta)
-    t0 = time()
-    r = c.solver == "lcp" ? simulate_lcp(p) : simulate(p)
-    wall = time() - t0
-    m = proximity_metrics(p, r; h_thresh = c.h_thresh)
+    r = run_impact(c.backend; We=c.We, Bo=c.Bo, Oh=c.Oh, M=c.M, K=c.K, t_max=c.t_max,
+                   h_thresh=c.h_thresh,
+                   eta = c.backend.formulation === :variational ? c.eta : nothing,
+                   eta_nonvar = c.backend.formulation === :variational ? nothing : c.eta_nonvar)
     ## reduce to scalars HERE, so the trajectory is collectable before the next case
     (solver=c.solver, We=c.We, Bo=c.Bo, Oh=c.Oh, M=c.M, K=c.K, rheology=c.rheology,
      t_max=c.t_max, h_thresh=c.h_thresh,
-     cor=m.cor, tc=m.tc, cor_internal=r.cor, tc_internal=r.tc,
-     min_gap=m.min_gap, n_detected=m.n_detected,
-     maxcp=maximum(r.cp), rejects=r.rejects,
-     gap_fraction=hasproperty(r,:gap_fraction) ? r.gap_fraction : NaN,
-     lcp_resid=hasproperty(r,:lcp_resid_max) ? r.lcp_resid_max : NaN,
-     eta_sweeps=hasproperty(r,:eta_sweeps_max) ? r.eta_sweeps_max : 0,
-     wall_s=wall, commit=git_commit(), stamp=string(now()))
+     cor=r.cor, tc=r.tc, cor_internal=r.diag.cor_internal, tc_internal=r.diag.tc_internal,
+     min_gap=r.diag.min_gap, n_detected=r.diag.n_detected,
+     maxcp=isempty(r.cp) ? 0 : maximum(r.cp), rejects=r.diag.rejects,
+     gap_fraction=NaN, lcp_resid=r.diag.lcp_resid, eta_sweeps=r.diag.eta_sweeps,
+     wall_s=r.wall, commit=git_commit(), stamp=string(now()))
 end
 
 fmt(v) = v isa AbstractFloat ? (isfinite(v) ? @sprintf("%.10g", v) : "NaN") : string(v)
@@ -145,10 +148,10 @@ function sweep(cases; budget_mb::Int = 4000, force::Bool = false)
 end
 
 """A case, with the rheology carried as both a label (for provenance) and a function."""
-function case(; solver, We, Bo, Oh, M, K, t_max = 25.0, h_thresh = 0.02,
-              rheology = "newtonian", eta = gd -> 1.0)
-    (solver=solver, We=We, Bo=Bo, Oh=Oh, M=M, K=K, t_max=t_max,
-     h_thresh=h_thresh, rheology=rheology, eta=eta)
+function case(; backend::Backend = Backend(), We, Bo, Oh, M, K, t_max = 25.0,
+              h_thresh = 0.02, rheology = "newtonian", eta = gd -> 1.0, eta_nonvar = nothing)
+    (solver=label(backend), backend=backend, We=We, Bo=Bo, Oh=Oh, M=M, K=K, t_max=t_max,
+     h_thresh=h_thresh, rheology=rheology, eta=eta, eta_nonvar=eta_nonvar)
 end
 
 ## Carreau-Yasuda for the 3000 ppm fluid, from its own Cross fit
@@ -170,13 +173,15 @@ if abspath(PROGRAM_FILE) == @__FILE__
     cases = Any[]
     ## Newtonian: the Gabbard bands
     for (Oh,Bo) in ((0.0233,0.0526),(0.0373,0.0188),(0.0767,0.0178),(0.2889,0.0158),(0.6849,0.0271))
-        for We in exp.(range(log(0.02), log(3.0); length=6)), s in ("search","lcp")
-            push!(cases, case(solver=s, We=We, Bo=Bo, Oh=Oh, M=45, K=2))
+        for We in exp.(range(log(0.02), log(3.0); length=6)),
+            bk in (Backend(contact=:active_set), Backend(), Backend(forcing=:nodal))
+            push!(cases, case(backend=bk, We=We, Bo=Bo, Oh=Oh, M=45, K=2))
         end
     end
     ## shear thinning: the 3000 ppm fluid
-    for We in exp.(range(log(0.02), log(2.0); length=6)), s in ("search","lcp")
-        push!(cases, case(solver=s, We=We, Bo=ST.Bo, Oh=ST.Oh, M=14, K=2,
+    for We in exp.(range(log(0.02), log(2.0); length=6)),
+        bk in (Backend(contact=:active_set), Backend(), Backend(forcing=:nodal))
+        push!(cases, case(backend=bk, We=We, Bo=ST.Bo, Oh=ST.Oh, M=14, K=2,
                           rheology=ST.label, eta=ST.eta))
     end
     n = sweep(cases; budget_mb=budget, force=force)

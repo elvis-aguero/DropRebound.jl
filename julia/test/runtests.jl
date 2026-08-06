@@ -3,10 +3,12 @@ using DropSolver
 
 @testset "DropSolver" begin
     ## ---- the variational formulation, both contact closures --------------------------
+    include("test_geometry_cache.jl")      # the cached assembly, and the radial basis ceiling
     include("test_variational.jl")            # assembly structure, Reid/Lamb limits, Gaunt band
     include("test_variational_impact.jl")     # the searching closure against the ancestor
     include("test_conservation.jl")           # energy, impulse, volume on the trajectory
     include("test_lcp_contact.jl")            # the complementarity closure
+    include("test_backends.jl")              # the unified solver entry point
     include("test_nodal_forcing.jl")          # the conjugate forcing, and why it is not production
     include("test_physics_invariants.jl")     # analytic targets and two-solver agreement
     include("test_experimental_expectations.jl")  # what the high-speed video shows

@@ -62,8 +62,11 @@ include("postprocessing.jl")
 # this one retains the interior as part of the state.
 include("variational.jl")
 export RitzBasis, assemble, decay_rates, dominant_pair
+export shear_rate_at, coupled_cache_bytes
 export ModalBasis, ndof, assemble_coupled, assemble_newtonian, strain_at, shear_rate, block_norm, carreau
 include("variational_solve.jl")
+include("backends.jl")
+export Backend, run_impact, drop_outline, label
 export lcp_residual, lcp_active_set
 export ImpactParams, ImpactState, simulate, simulate_lcp, proximity_metrics, try_step_lcp, lcp_pgs, initial_state, surface_amplitudes
 # Export postprocessing
