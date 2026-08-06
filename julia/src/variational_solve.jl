@@ -79,6 +79,7 @@ struct ImpactParams
     eta_tol::Float64             # Picard convergence tolerance on the strain rate
     eta_max_sweeps::Int
     eta_const::Bool
+    force_mode::Symbol           # :legendre (radial spectral field) or :nodal (conjugate loads)
 end
 
 """
@@ -90,7 +91,7 @@ together deliberately -- that is what makes the contact system square.
 """
 function ImpactParams(; We, Bo, Oh, M::Int = 90, K::Int = 1, eta = gd -> 1.0,
                       dt0 = nothing, dt_min = 1e-10, t_max = 25.0,
-                      eta_tol = 1e-8, eta_max_sweeps = 12)
+                      eta_tol = 1e-8, eta_max_sweeps = 12, force_mode::Symbol = :legendre)
     ls = collect(2:M)
     # theta = pi plus the zeros of P_M. These cluster at the poles, which is the
     # whole point: contact is resolved where contact happens.
@@ -98,8 +99,10 @@ function ImpactParams(; We, Bo, Oh, M::Int = 90, K::Int = 1, eta = gd -> 1.0,
     nodes = vcat(pi, acos.(clamp.(sort(mus), -1.0, 1.0)))
     dt = something(dt0, 2pi / (8 * sqrt(M * (M + 2) * (M - 1))))
     ec = all(gd -> eta(gd) == eta(0.0), (0.0, 1e-3, 1.0, 1e3))
+    force_mode in (:legendre, :nodal) ||
+        error("force_mode must be :legendre or :nodal, got $force_mode")
     ImpactParams(We, Bo, Oh, ls, K, eta, nodes, dt, dt_min, t_max, eta_tol,
-                 eta_max_sweeps, ec)
+                 eta_max_sweeps, ec, force_mode)
 end
 
 basis(p::ImpactParams) = ModalBasis(p.ls, p.K)
@@ -777,7 +780,7 @@ function contact_lcp(p::ImpactParams, prev::ImpactState, curr::ImpactState,
     end
     z0 = ((-p.Bo - hv_v)/β - hv_z)/β
     dz = -1/β^2
-    ## h is affine in the nodal pressure through BOTH the shape and the centre of mass
+    ## h is affine in the contact unknown through BOTH the shape and the centre of mass
     Ac_full = H * (A \ Qn) .+ dz .* (ones(nn) * Vinv[2, :]')
     b_full  = H * (A \ rhs0) .+ mu .+ z0
     ## Lower hemisphere only, selected with a TOLERANCE rather than by the sign of cos(theta).
@@ -813,9 +816,89 @@ function contact_lcp(p::ImpactParams, prev::ImpactState, curr::ImpactState,
     ## So the contact problem here is genuinely NOT the convex programme a symmetric compliance
     ## would give. It is still a well-posed complementarity problem, and `lcp_active_set` solves
     ## it without assuming symmetry.
+    ##
+    ## THE CONJUGATE ALTERNATIVE, selected by `force_mode = :nodal`. Take the contact unknown to
+    ## be the vertical LOAD at each node rather than a pressure field. Differentiating the
+    ## constraint then gives the forcing with no freedom left in it,
+    ##
+    ##     A xi = f + H' lam,      m zddot = -m Bo + 1' lam,
+    ##
+    ## because H' and 1' ARE the derivatives of h with respect to xi and z. Eliminating both,
+    ##
+    ##     h = W lam + b,   W = H A^-1 H' + (1/(m beta^2)) 1 1',
+    ##
+    ## and every term is symmetric positive semi-definite: the first because A is, the second
+    ## because it is a positive multiple of an outer square. The problem is then exactly the KKT
+    ## system of min (1/2) lam' W lam + b' lam over lam >= 0 -- a convex programme, with a
+    ## solution always and a unique one when W is definite, which it is once the degenerate
+    ## equator node is excluded.
+    ##
+    ## The price is that the multiplier is a load and not a pointwise pressure. The pressure is
+    ## recoverable only as a diagnostic, and not at the pole at all, because the quadrature
+    ## weight there is zero to machine precision.
+    if p.force_mode === :nodal
+        Hl = H[idx, :]
+        m_drop = 4pi/3
+        W = Hl * (A \ transpose(Hl)) .+ (1/(m_drop*β^2)) .* (ones(length(idx)) * ones(length(idx))')
+        return (W, b_full[idx], idx,
+                (A = A, rhs0 = rhs0, Qn = Qn, Vinv = Vinv, β = β, hv_a = hv_a,
+                 hv_z = hv_z, hv_v = hv_v, npc = npc, N = N, H = H, Hl = Hl,
+                 m_drop = m_drop))
+    end
     (Ac_full[idx, idx], b_full[idx], idx,
      (A = A, rhs0 = rhs0, Qn = Qn, Vinv = Vinv, β = β, hv_a = hv_a,
-      hv_z = hv_z, hv_v = hv_v, npc = npc, N = N))
+      hv_z = hv_z, hv_v = hv_v, npc = npc, N = N, H = H, Hl = H[idx, :],
+      m_drop = 4pi/3))
+end
+
+"""
+    shape_from_contact(p, aux, idx, x) -> Vector
+
+Interior amplitudes implied by a contact solution.
+
+In `:legendre` mode `x` is the nodal pressure and enters through `Q_n`. In `:nodal` mode it is
+the vector of vertical loads and enters through `H'` -- the transpose of the very constraint it
+is dual to, which is what makes the compliance symmetric.
+"""
+function shape_from_contact(p::ImpactParams, aux, idx, x::AbstractVector)
+    if p.force_mode === :nodal
+        return aux.A \ (aux.rhs0 + transpose(aux.Hl) * x)
+    end
+    pfull = zeros(aux.npc); pfull[idx] = x
+    aux.A \ (aux.rhs0 + aux.Qn * pfull)
+end
+
+"""
+    equivalent_pressure(p, aux, idx, x) -> Vector
+
+Film-pressure harmonics `l = 0..M`, for reporting.
+
+In `:legendre` mode these are the solved unknowns. In `:nodal` mode they are a DIAGNOSTIC and
+nothing more: the unknowns there are loads, and what is reported is the harmonic content that
+would produce the same generalised force,
+
+    p_{c,l} = -(2l+1)/(4 pi) * (Q . tv_l) / (tv_l . tv_l),
+
+together with `p_{c,1} = -sum(lam)/m`, which makes the net vertical force exact rather than
+fitted. A pointwise pressure is not recoverable at the pole in this mode at all, because the
+quadrature weight there is zero to machine precision -- the load is finite and the area it acts
+over is not resolved.
+"""
+function equivalent_pressure(p::ImpactParams, aux, idx, x::AbstractVector)
+    if p.force_mode !== :nodal
+        pfull = zeros(aux.npc); pfull[idx] = x
+        return aux.Vinv * pfull
+    end
+    b = basis(p)
+    Q = transpose(aux.Hl) * x
+    pc = zeros(aux.npc)
+    for (i, l) in enumerate(b.ls)
+        tv = trace_vec(p, l)
+        rng = dofindex(b, i, 1):dofindex(b, i, p.K)
+        pc[l + 1] = -(2l + 1)/(4pi) * dot(view(Q, rng), tv) / dot(tv, tv)
+    end
+    pc[2] = -sum(x) / aux.m_drop            # exact net vertical force
+    pc
 end
 
 """
@@ -863,8 +946,7 @@ function try_step_lcp(p::ImpactParams, prev::ImpactState, curr::ImpactState,
         resid > tol && return (:diverge, curr,
             (resid = resid, sweeps = sweeps, nact = 0, contiguous = true,
              eta_sweeps = used, eta_resid = conv))
-        pfull = zeros(aux.npc); pfull[idx] = pact
-        a_try = aux.A \ (aux.rhs0 + aux.Qn * pfull)
+        a_try = shape_from_contact(p, aux, idx, pact)
         adot_star = aux.β * a_try + aux.hv_a
         if F0 !== nothing
             conv = 0.0
@@ -878,10 +960,12 @@ function try_step_lcp(p::ImpactParams, prev::ImpactState, curr::ImpactState,
         (resid = resid, sweeps = sweeps, nact = 0, contiguous = true,
          eta_sweeps = used, eta_resid = conv))
 
-    pfull = zeros(aux.npc); pfull[idx] = pact
     β = aux.β
-    a_next = aux.A \ (aux.rhs0 + aux.Qn * pfull)
-    pc = aux.Vinv * pfull
+    a_next = shape_from_contact(p, aux, idx, pact)
+    pc = equivalent_pressure(p, aux, idx, pact)
+    ## Centre-of-mass acceleration is -Bo plus the film force per unit mass, which is -p_{c,1}
+    ## for a spectral pressure and sum(lam)/m for nodal loads. `equivalent_pressure` puts the
+    ## second into the same slot, so this line is identical in both modes.
     v_next = (-p.Bo - pc[2] - aux.hv_v) / β
     z_next = (v_next - aux.hv_z) / β
     adot_next = β * a_next + aux.hv_a
