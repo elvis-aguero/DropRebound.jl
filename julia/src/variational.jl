@@ -265,15 +265,168 @@ function shear_rate(b::ModalBasis, a::AbstractVector, x::Float64, mu::Float64)
 end
 
 """
+Cached geometry for the coupled assembly, keyed by basis and quadrature.
+
+WHY THIS EXISTS. With a variable viscosity the operator is rebuilt on every Picard sweep, and
+profiling put essentially the entire cost of a shear-thinning run there: 101 ms per sweep
+against 0.1 ms for the whole contact solve, so a single impact spent 145 of its 145 seconds
+assembling. But almost nothing in the assembly depends on the state. `strain_at` is geometry,
+the mass matrix has no `eta` in it at all, and the stiffness is a closed form. The only thing
+that changes between sweeps is the scalar `eta` at each quadrature point.
+
+So the pairwise contractions `e^p : e^q` are computed once per basis and stored, and a sweep
+becomes a weighted sum over quadrature points -- `npairs * nq` multiply-adds, no tensor
+algebra and no allocation.
+"""
+struct CoupledGeometry
+    M::Matrix{Float64}          # mass, state-independent
+    G::Matrix{Float64}          # stiffness, state-independent
+    D::Matrix{Float64}          # (npairs x nq) contractions e^p:e^q at each quadrature point
+    F::Array{Float64,3}         # (N x 6 x nq) the strain basis itself
+    w::Vector{Float64}          # (nq) quadrature weights, including the 2 pi x^2 Jacobian
+    xs::Vector{Float64}         # (nq) radial coordinate of each point
+    mus::Vector{Float64}        # (nq) angular coordinate
+end
+
+const COUPLED_CACHE = Dict{Tuple{Vector{Int},Int,Int,Int},CoupledGeometry}()
+
+"""
+Rough footprint of the cached geometry, in bytes.
+
+Two tables: the pair contractions, `npairs x nq`, which dominate, and the strain basis itself,
+`N x 6 x nq`, which is smaller but is what lets the viscosity be evaluated without rebuilding
+anything.
+"""
+coupled_cache_bytes(N::Int, nx::Int, nmu::Int) =
+    ((N*(N+1) ÷ 2) + 6N) * nx * nmu * 8
+
+"""Above this the geometry is not cached and the direct loop is used instead."""
+const COUPLED_CACHE_BUDGET = 500_000_000
+
+"""Footprints above this are reported once, because a silent 300 MB allocation is a surprise."""
+const COUPLED_CACHE_WARN = 100_000_000
+
+const COUPLED_CACHE_ANNOUNCED = Set{Tuple{Vector{Int},Int,Int,Int}}()
+
+function coupled_geometry(b::ModalBasis, nx::Int, nmu::Int)
+    key = (b.ls, b.K, nx, nmu)
+    haskey(COUPLED_CACHE, key) && return COUPLED_CACHE[key]
+    N = ndof(b)
+    xs, wxs = gauss_legendre_nodes(nx, 0.0, 1.0)
+    mus, wmus = gauss_legendre_nodes(nmu, -1.0, 1.0)
+    nq = nx * nmu; npairs = N*(N+1) ÷ 2
+    bytes = coupled_cache_bytes(N, nx, nmu)
+    if bytes >= COUPLED_CACHE_WARN && !(key in COUPLED_CACHE_ANNOUNCED)
+        push!(COUPLED_CACHE_ANNOUNCED, key)
+        @warn "caching the coupled geometry: this is a large allocation" *
+              " (raise the truncation further and it will be dropped for the slow path)" ndof=N nx nmu megabytes=round(bytes/1e6, digits=1) budget_MB=COUPLED_CACHE_BUDGET÷1_000_000
+    end
+    D = Matrix{Float64}(undef, npairs, nq)
+    Fs = Array{Float64,3}(undef, N, 6, nq)
+    w = Vector{Float64}(undef, nq)
+    xv = Vector{Float64}(undef, nq); muv = Vector{Float64}(undef, nq)
+    Mm = zeros(N, N)
+    q = 0
+    for (ix, x) in enumerate(xs), (im, mu) in enumerate(mus)
+        q += 1
+        F = strain_at(b, x, mu)
+        ww = wxs[ix] * wmus[im] * 2pi * x^2
+        w[q] = ww; xv[q] = x; muv[q] = mu
+        @inbounds for d in 1:N, c in 1:6
+            Fs[d, c, q] = F[d, c]
+        end
+        k = 0
+        for p in 1:N, r in p:N
+            k += 1
+            D[k, q] = ddot_strain(view(F, p, :), view(F, r, :))
+            Mm[p, r] += ww * (F[p,1]*F[r,1] + F[p,2]*F[r,2])
+        end
+    end
+    for p in 1:N, r in 1:p-1
+        Mm[p, r] = Mm[r, p]
+    end
+    g = CoupledGeometry(Mm, stiffness_matrix(b), D, Fs, w, xv, muv)
+    COUPLED_CACHE[key] = g
+    g
+end
+
+"""
+    shear_rate_at(g::CoupledGeometry, a, q) -> Float64
+
+Shear-rate invariant at cached quadrature point `q`, from the stored strain basis.
+
+This is the half of the assembly the first cache missed. `shear_rate` rebuilds `strain_at` --
+the whole `N x 6` tensor basis -- on every call, and the viscosity closure calls it once per
+quadrature point per Picard sweep, so the geometry that was cached out of the pair loop was
+still being rebuilt on the way in. Here it is a mat-vec against a table that already exists.
+"""
+function shear_rate_at(g::CoupledGeometry, a::AbstractVector, q::Int)
+    N = length(a)
+    e1 = e2 = e3 = e4 = e5 = e6 = 0.0
+    @inbounds for d in 1:N
+        ad = a[d]
+        ad == 0 && continue
+        e1 += ad*g.F[d,1,q]; e2 += ad*g.F[d,2,q]; e3 += ad*g.F[d,3,q]
+        e4 += ad*g.F[d,4,q]; e5 += ad*g.F[d,5,q]; e6 += ad*g.F[d,6,q]
+    end
+    sqrt(max(2 * ddot_strain((e1,e2,e3,e4,e5,e6), (e1,e2,e3,e4,e5,e6)), 0.0))
+end
+
+"""The surface-energy Hessian, which has a closed form and no quadrature."""
+function stiffness_matrix(b::ModalBasis)
+    Gm = zeros(ndof(b), ndof(b))
+    for (i, l) in enumerate(b.ls)
+        rb = RitzBasis(l, b.K)
+        tr = [phi(rb, k, 1.0) for k in 1:b.K]
+        blk = (4pi / (2l + 1)) * (l - 1) * (l + 2) * (tr * tr')
+        rng = dofindex(b, i, 1):dofindex(b, i, b.K)
+        Gm[rng, rng] .= blk
+    end
+    Gm
+end
+
+"""
     assemble_coupled(b::ModalBasis, Oh; eta = (x, mu) -> 1.0, nx = 40, nmu = 48)
 
 The three forms over all retained modes. `eta` is the viscosity in units of the
 zero-shear plateau, as a function of position -- for a shear-thinning fluid it is
 `eta(shear_rate(...))` on the current state, which is what makes `C` couple modes.
+
+The pairwise strain contractions are cached per basis (see [`CoupledGeometry`](@ref)), so a
+repeated call with a different `eta` costs a weighted sum rather than a fresh quadrature.
 """
 function assemble_coupled(b::ModalBasis, Oh::Real; eta = (x, mu) -> 1.0,
+                          eta_rate = nothing, state = nothing,
                           nx::Int = 40, nmu::Int = 48)
     N = ndof(b)
+    ## Cache the geometry when it fits the budget; fall back to the direct loop when it does
+    ## not, so a very large truncation degrades in speed rather than in memory.
+    if coupled_cache_bytes(N, nx, nmu) <= COUPLED_CACHE_BUDGET
+        g = coupled_geometry(b, nx, nmu)
+        npairs = N*(N+1) ÷ 2
+        acc = zeros(npairs)
+        ## `eta_rate` + `state` is the fast path: the shear rate comes from the cached strain
+        ## basis instead of rebuilding it. Passing `eta` as a function of position still works
+        ## and is what a purely spatial viscosity wants, but for a shear-thinning fluid it
+        ## makes the cache pointless, because the closure rebuilds what the cache stores.
+        fast = eta_rate !== nothing && state !== nothing
+        @inbounds for q in eachindex(g.w)
+            ev = fast ? eta_rate(shear_rate_at(g, state, q)) : eta(g.xs[q], g.mus[q])
+            c = g.w[q] * 2 * ev
+            c == 0 && continue
+            @simd for k in 1:npairs
+                acc[k] += c * g.D[k, q]
+            end
+        end
+        Cm = Matrix{Float64}(undef, N, N)
+        k = 0
+        @inbounds for p in 1:N, r in p:N
+            k += 1
+            Cm[p, r] = acc[k]; Cm[r, p] = acc[k]
+        end
+        Cm .*= Oh
+        return (M = g.M, C = Cm, G = g.G)
+    end
     xs, wxs = gauss_legendre_nodes(nx, 0.0, 1.0)
     mus, wmus = gauss_legendre_nodes(nmu, -1.0, 1.0)
     Mm, Cm = zeros(N, N), zeros(N, N)
@@ -290,15 +443,7 @@ function assemble_coupled(b::ModalBasis, Oh::Real; eta = (x, mu) -> 1.0,
         Mm[p, q] = Mm[q, p]; Cm[p, q] = Cm[q, p]
     end
     Cm .*= Oh
-    Gm = zeros(N, N)
-    for (i, l) in enumerate(b.ls)
-        rb = RitzBasis(l, b.K)
-        tr = [phi(rb, k, 1.0) for k in 1:b.K]
-        blk = (4pi / (2l + 1)) * (l - 1) * (l + 2) * (tr * tr')
-        rng = dofindex(b, i, 1):dofindex(b, i, b.K)
-        Gm[rng, rng] .= blk
-    end
-    (M = Mm, C = Cm, G = Gm)
+    (M = Mm, C = Cm, G = stiffness_matrix(b))
 end
 
 """

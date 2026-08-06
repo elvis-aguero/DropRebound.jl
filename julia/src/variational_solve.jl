@@ -88,10 +88,18 @@ end
 `M` is the harmonic truncation: shape modes are `l = 2..M`, the film pressure carries
 `l = 0..M`, and there are `M+1` collocation nodes. Those three counts are tied
 together deliberately -- that is what makes the contact system square.
+
+`eta_max_sweeps` bounds the Picard iteration on the viscosity. It is headroom rather than a
+tuning knob: on the 3000 ppm fluid the iteration converges geometrically at a ratio of about
+0.19 per sweep and reaches `eta_tol = 1e-8` at sweep 12, and raising the cap from 12 to 100 or
+500 leaves both KPIs identical to six digits. It was 12, which happened to be exactly the
+number that fluid needs -- a case needing one more would have had its step rejected and `dt`
+halved for no reason. Since the geometry is cached a sweep costs well under a millisecond, so
+the headroom is close to free.
 """
 function ImpactParams(; We, Bo, Oh, M::Int = 90, K::Int = 1, eta = gd -> 1.0,
                       dt0 = nothing, dt_min = 1e-10, t_max = 25.0,
-                      eta_tol = 1e-8, eta_max_sweeps = 12, force_mode::Symbol = :legendre)
+                      eta_tol = 1e-8, eta_max_sweeps = 100, force_mode::Symbol = :legendre)
     ls = collect(2:M)
     # theta = pi plus the zeros of P_M. These cluster at the poles, which is the
     # whole point: contact is resolved where contact happens.
@@ -320,7 +328,7 @@ function try_step(p::ImpactParams, prev::ImpactState, curr::ImpactState,
         used = it
         prev_star = copy(adot_star)
         F = F0 === nothing ?
-            assemble_coupled(b, p.Oh; eta = eta_field(p, adot_star)) : F0
+            assemble_coupled(b, p.Oh; eta_rate = p.eta, state = adot_star) : F0
         A = β^2 * F.M + β * F.C + F.G
         rhs0 = -F.M * (β * hv_a + hv_adot) - F.C * hv_a
         # With a constant viscosity and a constant dt the whole KKT matrix is
@@ -938,7 +946,7 @@ function try_step_lcp(p::ImpactParams, prev::ImpactState, curr::ImpactState,
         used = it
         prev_star = copy(adot_star)
         F = F0 === nothing ?
-            assemble_coupled(basis(p), p.Oh; eta = eta_field(p, adot_star)) : F0
+            assemble_coupled(basis(p), p.Oh; eta_rate = p.eta, state = adot_star) : F0
         Ac, bv, idx, aux = contact_lcp(p, prev, curr, dt; F0 = F, Vfac = Vfac)
         pact, resid, sweeps = lcp_active_set(Ac, bv)
         ## `resid` is already the two-sided measure, so this rejects a step whose gap or
