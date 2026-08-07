@@ -126,7 +126,7 @@ end
 
     # PAGE CLAIM: "Setting K = 1 keeps only the first [term]. That is a potential flow."
     #
-    # For a Stokes stream function Psi = f(x) C_l(theta), the flow is irrotational when
+    # For a Stokes stream function Psi = f(x) Gamma_l(theta), the flow is irrotational when
     # E^2 Psi = 0, that is f'' - l(l+1) f / x^2 = 0. The first trial function is
     # x^(l+1) in both bases, and it must satisfy this exactly.
     #
@@ -172,6 +172,41 @@ end
             resid = d2f - l * (l + 1) * fv(l, q, x) / x^2 + q^2 * fv(l, q, x)
             @test abs(resid) <= 1e-5 * max(1.0, abs(fv(l, q, x)))
         end
+    end
+
+    # PAGE CLAIM: the |q| table, the sign convention behind it, and the footnote saying
+    # the first column is the odd one out.
+    #
+    # The page defines sigma_l by chi ~ exp(-sigma_l t), so a physical mode must have
+    # Re(sigma) > 0, and then writes q^2 = +sigma_l/Oh. An earlier version of the page
+    # had the sign the other way round. Nothing caught it, because no test evaluated
+    # the convention against the solver.
+    #
+    # The footnote says the estimate |q| ~ sqrt(omega_l/Oh) reproduces the table except
+    # at Oh = 1, where mode 2 is close to critically damped so sigma is no longer close
+    # to i*omega. That is checkable: the root there should be real.
+    @testset "the |q| table, and the sign that produces it" begin
+        published = ((1.0, 1.1), (0.3038, 3.0), (0.05, 7.5), (0.01, 16.8))
+        for (Oh, qpub) in published
+            b = RitzBasis(2, 5, :legendre)
+            sig, _ = DropSolver.decay_rates(b, Oh)
+            good = filter(z -> real(z) > 1e-8, sig)      # drop the spurious zero roots
+            @test !isempty(good)
+            phys = good[argmin(real.(good))]             # least damped
+            @test real(phys) > 0                         # decays under exp(-sigma t)
+            @test isapprox(abs(sqrt(phys / Oh)), qpub; atol = 0.06)
+        end
+
+        # Rayleigh's inviscid frequency, as the page defines omega_l.
+        om(l) = sqrt(l * (l - 1) * (l + 2))
+        @test isapprox(om(2), sqrt(8.0); atol = 1e-12)
+
+        # The footnote: at Oh = 1 mode 2 does not oscillate, so the inviscid estimate
+        # does not apply and the table entry comes from the exact root instead.
+        sig1, _ = DropSolver.decay_rates(RitzBasis(2, 5, :legendre), 1.0)
+        g1 = filter(z -> real(z) > 1e-8, sig1)
+        @test abs(imag(g1[argmin(real.(g1))])) < 1e-8    # real root: past critical
+        @test abs(sqrt(om(2) / 1.0) - 1.1) > 0.4         # and the estimate would miss
     end
 
     # PAGE CLAIM: "K(l) = 47.2 l^(-0.642)".

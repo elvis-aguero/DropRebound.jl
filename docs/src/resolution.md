@@ -28,10 +28,16 @@ The exact radial profile of a freely oscillating viscous drop, derived in *The F
 Drop*, is
 
 ```math
-\chi_l(x) \;=\; A\,x^{l+1} \;+\; B\,x\,j_l(qx) , \qquad q^2 = -\sigma_l/\mathrm{Oh} ,
+\chi_l(x) \;=\; A\,x^{l+1} \;+\; B\,x\,j_l(qx) , \qquad q^2 = \sigma_l/\mathrm{Oh} ,
 ```
 
-an irrotational part plus a vortical one. Setting ``K = 1`` keeps only the first. That is a
+an irrotational part plus a vortical one, with ``A`` and ``B`` fixed by the two free-surface
+conditions. Here ``j_l`` is the spherical Bessel function of the first kind, and ``\sigma_l``
+is the complex decay rate of mode ``l``, defined by writing the free oscillation as
+``\chi_l \propto e^{-\sigma_l t}``, so that ``\mathrm{Re}\,\sigma_l > 0`` is decay and
+``\mathrm{Im}\,\sigma_l`` is the oscillation frequency. The wavenumber follows from
+substituting that form into the unsteady Stokes equation, which turns it into a Helmholtz
+equation ``\nabla^2\bm u + (\sigma_l/\mathrm{Oh})\bm u = 0``. Setting ``K = 1`` keeps only the first. That is a
 potential flow, which still dissipates, because an irrotational field has nonzero strain. It is
 Lamb's calculation, and it over-predicts damping at every Ohnesorge number tested, from
 +5 per cent at ``\mathrm{Oh} = 0.01`` to +170 per cent at ``\mathrm{Oh} = 1``. The error is
@@ -46,8 +52,12 @@ follows ``|q|``:
 | ``\|q\|`` at ``l = 2`` | 1.1 | 3.0 | 7.5 | 16.8 |
 | ``K`` for damping within 1 % | 2 | 2 | 3 | 4 |
 
-Empirically ``K \gtrsim |q|/1.5``, with ``|q| \approx \sqrt{\omega_l/\mathrm{Oh}}`` and
-``\omega_l \sim l^{3/2}``. The requirement therefore grows with mode number and with falling
+Empirically ``K \gtrsim |q|/1.5``, with ``|q| \approx \sqrt{\omega_l/\mathrm{Oh}}``, where
+``\omega_l = \sqrt{l(l-1)(l+2)}`` is Rayleigh's inviscid capillary frequency and so grows like
+``l^{3/2}``. That estimate replaces ``\sigma_l`` by its inviscid limit, which is why it
+reproduces the table above except in the first column: at ``\mathrm{Oh} = 1`` mode 2 is close
+to critically damped, ``\sigma_l`` is no longer close to ``i\omega_l``, and the entry there is
+taken from the exact root instead. The requirement therefore grows with mode number and with falling
 viscosity.
 
 ## The ceiling on ``K``

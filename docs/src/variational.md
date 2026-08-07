@@ -43,17 +43,23 @@ The weak form removed the pressure by requiring that test fields be divergence-f
 requirement is now a constraint on the trial space, and constraints of that kind are usually
 awkward. In axisymmetry they are free.
 
-Any axisymmetric incompressible flow derives from a Stokes stream function,
+Any axisymmetric incompressible flow derives from a Stokes stream function ``\Psi``,
 
 ```math
-\bm u \;=\; \nabla\times\!\left(\frac{\Psi}{r\sin\theta}\,\bm e_\phi\right) ,
+\bm u \;=\; \nabla\times\!\left(\frac{\Psi}{r\sin\theta}\,\hat{\bm\varphi}\right) ,
 ```
 
-and a field written this way satisfies ``\nabla\cdot\bm u = 0`` identically, for every ``\Psi``.
+with ``\hat{\bm\varphi}`` the azimuthal unit vector. A field written this way satisfies
+``\nabla\cdot\bm u = 0`` identically, for every ``\Psi``, because the divergence of a curl
+vanishes.
 The constraint is discharged by the choice of representation rather than enforced afterwards.
 Nothing in the discrete problem is a Lagrange multiplier, and no saddle-point system appears.
 
-Separating ``\Psi = f(x)\,C_l(\theta)`` mode by mode gives velocity components
+Separate ``\Psi`` mode by mode as ``\Psi = f(x)\,\Gamma_l(\theta)``, where ``f`` is the
+radial profile and ``\Gamma_l`` is the angular function whose curl produces the ``l``-th
+surface harmonic. It is the Gegenbauer function ``\Gamma_l = -\sin\theta\,\partial_\theta
+P_l(\cos\theta)/l(l+1)``, and it is fixed by requiring ``u_r \propto P_l(\cos\theta)``.
+This gives velocity components
 
 ```math
 u_r = \frac{f}{x^2}\,P_l(\cos\theta) , \qquad
@@ -95,7 +101,10 @@ with trial functions that are regular at the origin. The functionals become quad
 \bm M\ddot{\bm a} + \bm C\dot{\bm a} + \bm G\bm a = \bm Q ,
 ```
 
-with
+From here on the problem is nondimensional: lengths in units of ``R``, time in units of
+``\tau_\sigma``, and ``\eta`` the *local* viscosity divided by its zero-shear value, so that
+``\eta = 1`` for a Newtonian fluid. The Ohnesorge number is then the only material parameter
+left, and the density has been scaled out of the mass matrix. With that,
 
 ```math
 M_{ab} = \int \bm u^{(a)}\!\cdot\bm u^{(b)}\,dV , \qquad
@@ -104,9 +113,10 @@ G_{ab} = \frac{4\pi}{2l+1}(l-1)(l+2)\,\phi_a(1)\phi_b(1) .
 ```
 
 Because ``T``, ``\mathcal R`` and ``V`` are quadratic, the Ritz and Galerkin routes coincide
-here, and the matrices are Hessians of scalar functionals. They are therefore symmetric by
-construction rather than by cancellation, which is a property worth testing and one the suite
-does test.
+here, and each matrix is the Hessian of a scalar functional: ``M_{ab} = \partial^2
+T/\partial\dot a_a\partial\dot a_b`` and likewise for the other two. A second derivative
+does not care about the order it is taken in, so the matrices are symmetric identically rather
+than as the outcome of a cancellation that could fail.
 
 Every entry needs one derivative of the velocity. The strong form needs two, since it carries
 ``\nabla^2\bm u``. That reduction is the practical payoff of the weak form, and it is why the

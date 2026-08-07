@@ -99,7 +99,12 @@ leaves the nodal clearances affine in the nodal pressures,
 ```
 
 where ``\bm A = \beta^2\bm M + \beta\bm C + \bm G`` is the step operator, ``\bm H`` is the
-constraint Jacobian, and ``\bm Q_n`` maps nodal pressure to generalised force. The entries of
+constraint Jacobian ``\partial\bm h/\partial\bm\xi``, and ``\bm Q_n`` maps nodal pressure
+to generalised force. Here ``\bm M``, ``\bm C`` and ``\bm G`` are the mass, damping and
+stiffness matrices of *Variational Mechanics*, and ``\beta`` is the coefficient the time
+discretisation puts in front of ``d/dt``, so that ``\dot{\bm\xi} \to \beta\bm\xi +
+(\text{known history})`` over one step. For backward Euler ``\beta = 1/\Delta t``. Boldface
+distinguishes these matrices from the harmonic truncation ``M`` used above. The entries of
 ``\bm A_c`` are influence coefficients: how much the clearance at node ``i`` opens per unit
 pressure at node ``j``. Solving
 
@@ -191,9 +196,11 @@ shape and to the centre of mass:
 
 ```math
 \bm A\bm\xi = \bm f + \bm H^{\mathsf T}\bm\lambda , \qquad
-m\ddot z = -mBo + \bm 1^{\mathsf T}\bm\lambda .
+m\ddot z = -m\,\mathrm{Bo} + \bm 1^{\mathsf T}\bm\lambda ,
 ```
 
+with ``m = 4\pi/3`` the drop's mass in these units, ``\bm\lambda`` the vector of nodal loads,
+and ``\bm 1`` a column of ones, so that ``\bm 1^{\mathsf T}\bm\lambda`` is their sum.
 Eliminating both gives
 
 ```math

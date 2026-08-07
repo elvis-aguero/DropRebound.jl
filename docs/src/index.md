@@ -34,8 +34,18 @@ carry the physics:
 \bm n\cdot\bm\Sigma\cdot\bm n = \sigma\,\kappa ,
 ```
 
-with ``\bm\Sigma = -p\,\bm I + 2\eta\,\bm e`` the stress tensor and ``\kappa`` the mean
-curvature. The first is kinematic: the surface moves with the fluid. The second says a free
+with ``\kappa`` the mean curvature, ``\bm n`` and ``\bm t`` the normal and tangent to the
+surface, and
+
+```math
+\bm\Sigma = -p\,\bm I + 2\eta\,\bm e , \qquad
+\bm e = \tfrac12\left(\nabla\bm u + \nabla\bm u^{\mathsf T}\right)
+```
+
+the stress tensor and the strain-rate tensor. Everything below is written in terms of ``\bm e``,
+so it is worth noting now that it is symmetric and, for an incompressible flow, traceless.
+
+The first condition is kinematic: the surface moves with the fluid. The second says a free
 surface cannot support shear. The third balances the normal traction against capillarity.
 
 The tangential condition is the one that shapes everything downstream. A potential flow cannot
@@ -87,8 +97,16 @@ condition. Contract the momentum equation with it and integrate over the drop:
 \;=\; \int \left(-\nabla p + \eta\nabla^2\bm u\right)\cdot\bm v \,dV .
 ```
 
-Integrating the viscous term by parts once, and using ``\nabla\cdot\bm v = 0`` on the pressure
-term, both volume integrals shed a derivative and leave a surface term:
+Both terms on the right integrate by parts once. For the pressure,
+
+```math
+\int -\nabla p\cdot\bm v\,dV \;=\; -\oint p\,(\bm v\cdot\bm n)\,dS + \int p\,\nabla\cdot\bm v\,dV ,
+```
+
+and the volume term vanishes because ``\bm v`` is divergence-free. For the viscous term, use
+``\nabla^2\bm u = 2\nabla\cdot\bm e`` (which holds when ``\nabla\cdot\bm u = 0``) and the
+symmetry of ``\bm e``, which turns ``\bm e\!:\!\nabla\bm v`` into ``\bm e\!:\!\bm e(\bm v)``.
+The two surface terms combine into the traction, and what remains is
 
 ```math
 \int \rho\,\partial_t\bm u\cdot\bm v\,dV
@@ -96,21 +114,59 @@ term, both volume integrals shed a derivative and leave a surface term:
 \;=\; \oint \left(\bm\Sigma\cdot\bm n\right)\cdot\bm v \,dS .
 ```
 
-The two stress conditions now appear on the right-hand side rather than as constraints. The
-tangential condition makes the shear part of the traction vanish, and the normal condition
-replaces the rest by the capillary traction, which is the variation of the surface energy. The
-free-surface conditions have become **natural**: they are satisfied by any solution of the weak
-form, and are never imposed.
+The pressure has not disappeared. It has left the volume integral, where it was a constraint,
+and survives inside the traction, where the normal stress condition will remove it.
 
-Write the surface energy as ``V[\bm\xi]`` and identify
+The two stress conditions now sit on the right-hand side rather than acting as constraints. The
+tangential condition makes the shear part of the traction vanish. The normal condition replaces
+what is left by the capillary traction ``\sigma\kappa\,\bm n``, and that traction is the first
+variation of the surface energy
 
 ```math
-T[\dot{\bm\xi}] = \tfrac12\int\rho\,|\bm u|^2\,dV , \qquad
-\mathcal R[\dot{\bm\xi}] = \eta\int \bm e\!:\!\bm e \,dV ,
+V \;=\; \sigma\left(\text{area of the deformed surface} - 4\pi R^2\right) ,
 ```
 
-the kinetic energy and the Rayleigh dissipation function. The weak form is then Lagrange's
-equations for a dissipative system,
+so the whole right-hand side is a derivative of an energy. The free-surface conditions have
+become **natural**: any solution of the weak form satisfies them, and neither is ever imposed.
+
+### From a field to coordinates
+
+Nothing so far has reduced the problem, because ``\bm u`` is still a field. Introduce
+generalised coordinates ``\bm\xi = (\xi_1,\ldots,\xi_N)`` describing the fluid's displacement
+from the sphere, so that the velocity is linear in their rates,
+
+```math
+\bm u(\bm r,t) \;=\; \sum_{a} \dot\xi_a(t)\,\bm u^{(a)}(\bm r) , \qquad
+\bm u^{(a)} = \frac{\partial\bm u}{\partial\dot\xi_a} ,
+```
+
+with each ``\bm u^{(a)}`` divergence-free and fixed in time. *Variational Mechanics* constructs
+them; here only their existence matters.
+
+The weak form holds for every admissible ``\bm v``, so it holds in particular for each
+``\bm v = \bm u^{(a)}`` in turn. That choice is what converts it into equations of motion.
+Define
+
+```math
+T = \tfrac12\int\rho\,|\bm u|^2\,dV , \qquad
+\mathcal R = \eta\int \bm e\!:\!\bm e \,dV ,
+```
+
+the kinetic energy and the Rayleigh dissipation function, both quadratic in ``\dot{\bm\xi}``.
+Then term by term,
+
+```math
+\int\rho\,\partial_t\bm u\cdot\bm u^{(a)}dV = \frac{d}{dt}\frac{\partial T}{\partial\dot\xi_a} ,
+\qquad
+\int 2\eta\,\bm e(\bm u)\!:\!\bm e(\bm u^{(a)})dV = \frac{\partial\mathcal R}{\partial\dot\xi_a} ,
+\qquad
+\oint(\bm\Sigma\cdot\bm n)\cdot\bm u^{(a)}dS = -\frac{\partial V}{\partial\xi_a} + Q_a .
+```
+
+The first holds because ``\bm u^{(a)}`` does not depend on time, the second because
+``\partial\bm e/\partial\dot\xi_a = \bm e(\bm u^{(a)})`` and ``\mathcal R`` is quadratic, and
+the third is the statement that the capillary part of the traction is the variation of ``V``
+while ``Q_a`` collects the work done by the film pressure. Assembling them,
 
 ```math
 \frac{d}{dt}\frac{\partial T}{\partial\dot{\bm\xi}}
@@ -119,18 +175,20 @@ equations for a dissipative system,
 \;=\; \bm Q ,
 ```
 
-with ``\bm Q`` the generalised force of the film pressure. Because ``T``, ``\mathcal R`` and
-``V`` are quadratic, this is
+which is Lagrange's equations for a dissipative system. Because ``T``, ``\mathcal R`` and ``V``
+are quadratic, their second derivatives are constant matrices, and this reads
 
 ```math
 \bm M\ddot{\bm\xi} + \bm C\dot{\bm\xi} + \bm G\bm\xi = \bm Q ,
 ```
 
-a damped linear system whose three matrices are second derivatives of three scalar functionals.
+with ``\bm M`` the mass matrix from ``T``, ``\bm C`` the damping matrix from ``\mathcal R``,
+and ``\bm G`` the stiffness matrix from ``V``.
 
 Three things are gained. Only one derivative of the velocity is needed, where the strong form
-needs two. The pressure has left the problem, having been absorbed into the constraint that
-trial fields be divergence-free. And the boundary conditions are automatic.
+needs two. The pressure never has to be solved for, because incompressibility was built into
+the trial fields and the normal stress condition disposed of the rest. And the boundary
+conditions are automatic.
 
 This is Onsager's variational principle [^onsager], whose modern statement and use as an
 approximation tool are set out by Wang, Qian and Xu [^wqx]. The principle is usually written
