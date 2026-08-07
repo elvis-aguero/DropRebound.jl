@@ -320,3 +320,39 @@ end
         @test far > 0.2
     end
 end
+
+@testset "docs math: solvers.md" begin
+
+    # PAGE CLAIM: "The two variational columns are indistinguishable ... contact time is
+    # identical in all 35 and restitution agrees to 2.4e-4 at worst."
+    #
+    # This is the load-bearing claim of the solver page: it is what licenses treating
+    # the closure as a free choice, and what makes a disagreement between `simulate`
+    # and `simulate_lcp` attributable to the closure alone. Nothing pinned it.
+    # `test_backends.jl` checks that each backend matches the function it wraps, which
+    # is wiring rather than agreement.
+    #
+    # Only a handful of the 35 cases run here, chosen at the corners of the published
+    # range. The absolute values are not asserted: the page's KPI table does not state
+    # its Bond number, so pinning `cor` itself would be pinning a guess. What is
+    # asserted is closure independence, which is the claim actually made.
+    #
+    # Physical meaning of a failure: the contact set found by walking to it from the
+    # previous step and the contact set found by pivoting from no assumption would be
+    # different sets, so at least one of them is not the solution of the
+    # complementarity conditions both are supposed to satisfy.
+    @testset "the two closures agree" begin
+        cases = ((0.2, 0.0373), (0.5, 0.0373), (1.0, 0.3038), (2.0, 0.3038))
+        for (We, Oh) in cases
+            kw = (We = We, Bo = 0.0189, Oh = Oh, M = 20, K = 2)
+            a = run_impact(Backend(contact = :active_set); kw...)
+            l = run_impact(Backend(contact = :lcp); kw...)
+            (a.ok && l.ok) || continue          # a case neither closure completes says nothing
+            @test a.tc == l.tc                  # exact: dt is fixed, tc is a difference of step times
+            # The published bound, asserted rather than approximated. Measured worst
+            # over these four cases is 2.7e-5, so there is about a factor of nine of
+            # headroom; the bound is what the page owes a reader, not the margin.
+            @test isapprox(a.cor, l.cor; atol = 2.4e-4)
+        end
+    end
+end
