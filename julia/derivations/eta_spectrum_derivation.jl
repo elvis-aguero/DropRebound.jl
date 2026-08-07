@@ -83,7 +83,7 @@ println("="^92)  #src
 # ### 1.1 Why the textbook expression cannot be typed in literally
 #
 # Reid's mode-``l`` poloidal amplitude, derived in
-# [The Viscous Drop: Reid (1960)](reid1960_full_derivation.md), is
+# [The Free Viscous Drop](reid1960_full_derivation.md), is
 #
 # ```math
 # U(x) \;=\; C\,x\,j_l(qx) \;+\; \Pi_0\,x^{\,l+1},

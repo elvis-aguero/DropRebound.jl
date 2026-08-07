@@ -1,109 +1,77 @@
-# # Oscillations of a Viscous Liquid Drop
+# # The Free Viscous Drop
 #
-# A from-scratch, CAS-verified derivation of W. H. Reid's (1960) exact
-# characteristic equation for the free oscillations of a viscous liquid drop.
+# A drop left alone does not stay deformed. Surface tension pulls it back,
+# it overshoots, and viscosity bleeds the motion away. This part asks the
+# only question that has a clean answer: **at what rate?**
 #
-# **What problem are we solving?** Take a small liquid drop (water in air,
-# say) that has been slightly deformed from its equilibrium spherical
-# shape. Surface tension pulls it back; viscosity dissipates energy as it
-# does. Two questions: *how fast does it oscillate, and how fast does that
-# oscillation decay?* Answering both simultaneously, for **any** viscosity
-# (not just the small- or large-viscosity limits), is what this derivation
-# does.
+# ## The question, stated as an eigenvalue problem
 #
-# Three distinct pieces of physics have to be resolved at once, and this is
-# why the problem is harder than it first looks:
+# *Variational Mechanics* reduced the drop to a finite system,
 #
-# 1. the inviscid capillary oscillation modes, characterized by a single
-#    frequency ``\sigma_{l;0}`` for each spherical-harmonic order ``l``;
-# 2. viscous dissipation throughout the bulk of the drop;
-# 3. the coupling between surface deformation, internal flow, and pressure,
-#    all of which must be mutually consistent *at the boundary*.
+# ```math
+# \bm M\ddot{\bm a} + \bm C\dot{\bm a} + \bm G\bm a = \bm Q .
+# ```
 #
-# ## A note on method, coming from Part I
+# Set ``\bm Q = 0``: no wall, no forcing, a drop oscillating on its own. That
+# system is linear with constant coefficients, so its solutions are spanned by
+# exponentials. Substituting ``\bm a(t) = \bm a_0\,e^{-\sigma t}`` gives
 #
-# The previous part built an approximation scheme. Trial fields were chosen,
-# three functionals were reduced to matrices, and the free-surface conditions
-# were satisfied in the limit rather than exactly.
+# ```math
+# \left(\sigma^2\bm M - \sigma\bm C + \bm G\right)\bm a_0 = 0 ,
+# ```
 #
-# This part does none of that. Reid attacks the strong form directly: he
-# solves the linearised Navier-Stokes equations by separation of variables,
-# imposes the two stress conditions exactly at ``r = R``, and obtains a
-# transcendental equation whose roots are the growth rates. There is no trial
-# space and no residual. The answer is exact for every Ohnesorge number.
+# a quadratic eigenvalue problem. Its roots ``\sigma`` are the decay rates, and
+# the general motion is a superposition of the corresponding modes.
 #
-# Nothing is being contradicted. The two parts do different jobs, and this one
-# does two jobs for the other:
+# This is worth pausing on, because the exponential is often introduced as a
+# guess. It is not one. The linearised problem is autonomous and linear, so its
+# solution space is closed under time translation, and exponentials are the
+# functions that diagonalise translation. Every initial condition is a
+# combination of them. Finding the ``\sigma`` *is* solving the problem, and
+# nothing is being assumed about which solutions are physical.
 #
-# - **It is the benchmark.** A variational solver has a truncation error that
-#   only a known answer can measure. The decay rates derived below are that
-#   known answer, and *Resolution and Convergence* reports the variational
-#   scheme reproducing them once the radial basis is deep enough.
-# - **It supplies the trial functions.** The exact interior profile that comes
-#   out of Section 4 is a polynomial plus a spherical Bessel function. That
-#   structure is what the radial basis of Part I approximates, and it is why
-#   the basis is built the way it is rather than from generic polynomials.
+# ## Why this part looks different from the last
 #
-# Read this part, then, as the exactly solvable case: the one configuration in
-# which the drop is free, the modes decouple, and no discretisation is needed.
-# Part III puts the wall back and Part IV puts the rheology back, and both
-# destroy the separability that makes what follows possible.
+# The pencil above is the finite-dimensional shadow of a continuum problem: the
+# same eigenvalue question asked of the fluid rather than of a trial space.
+# Reid (1960) answers that continuum question exactly. He writes the linearised
+# equations in strong form, imposes the two stress conditions exactly at
+# ``r = R``, and obtains a transcendental equation whose roots are the ``\sigma``.
 #
-# **Why does this matter for a numerical solver?** For every surface mode
-# ``l``, the nonvariational timestepper needs a damping rate and an
-# oscillation frequency to put into that mode's equation of motion. Those two
-# numbers are exactly the two roots of the equation derived here.
+# So the change of method is not a change of subject. Part I solves this
+# eigenvalue problem approximately, on a basis of ``K`` functions per mode;
+# this part solves it exactly. Two consequences follow, and both are used
+# later:
 #
-# ## Where this sits historically
+# - **It is the benchmark.** A truncation error is only measurable against a
+#   known answer. *Resolution and Convergence* reports the variational scheme
+#   reproducing the rates derived here once the radial basis is deep enough.
+# - **It supplies the trial functions.** The exact radial profile that comes out
+#   of Section 4 is a polynomial plus a spherical Bessel function. That is the
+#   structure Part I's radial basis is approximating, which is why the basis is
+#   built the way it is rather than from generic polynomials.
 #
-# Three analytical milestones precede Reid's result:
+# Part III puts the wall back and Part IV puts the rheology back. Both destroy
+# the separability that makes an exact answer possible here, which is the other
+# reason to do this case properly first.
 #
-# - **Rayleigh (1879) / Lamb (1932)** -- the inviscid frequencies
-#   ``\sigma_{l;0}`` (Section 1 below).
-# - **Lamb (1881)** -- the *small*-viscosity correction,
-#   ``\sigma_{l;\nu} = (l-1)(2l+1)\nu/R^2 \pm i\,\sigma_{l;0}``. This is the
-#   formula the production timestepper implements (Section 8), and the one
-#   the companion page *Finite-Ohnesorge Coefficients* generalizes.
-# - **Chandrasekhar (1959)** -- the full, arbitrary-viscosity solution, but
-#   for a *self-gravitating* liquid globe rather than a surface-tension-held
-#   drop.
+# ## A warning about ``\sigma``
 #
-# Reid (1960)'s contribution is to show that the surface-tension problem is
-# *the same problem* as Chandrasekhar's. The insight is a rescaling: surface
-# tension enters the entire calculation only through the single number
-# ``\sigma_{l;0}``, so once the problem is non-dimensionalized the
-# characteristic equation no longer remembers which restoring force produced
-# it. A problem about surface tension turns out to be, mathematically,
-# a problem about gravity. Section 7 is where that cancellation happens
-# explicitly, and it is worth watching for.
+# From here to the end of the site, ``\sigma`` is the complex decay rate, with
+# ``\mathrm{Re}\,\sigma > 0`` meaning decay and ``\mathrm{Im}\,\sigma`` the
+# oscillation frequency. On the home page and in Part I, ``\sigma`` was the
+# surface tension. The clash is inherited: it is Reid's notation, it is the
+# convention in the code (`decay_rates`), and it is standard in both
+# literatures.
 #
-# Downstream, Reid's equation is what Molaček & Bush (2012) compress into
-# their per-mode coefficients ``A_m`` and ``D_m`` -- see Section 10 for that
-# mapping, and *Finite-Ohnesorge Coefficients* for the parametrization
-# DropSolver uses.
+# This part is dimensional, so both quantities appear on it. Surface tension is
+# written ``T_1`` throughout, following Reid. From Part III onward the problem
+# is nondimensional and surface tension has been scaled into ``\mathrm{Oh}``
+# and the capillary time, so it stops appearing at all.
 #
-# ## Notation
-#
-# | symbol | meaning |
-# |:--|:--|
-# | ``R`` | equilibrium (undeformed) drop radius |
-# | ``\rho`` | fluid density |
-# | ``\mu = \rho\nu`` | dynamic / kinematic viscosity |
-# | ``T_1`` | surface tension |
-# | ``x = r/R`` | dimensionless radial coordinate |
-# | ``\theta,\varphi`` | polar, azimuthal angle |
-# | ``l`` | spherical-harmonic degree of the surface deformation |
-# | ``Y_l^m(\theta,\varphi)`` | spherical harmonic (angular shape of the deformation) |
-# | ``\epsilon(t) = \epsilon_0 e^{-\sigma t}`` | dimensionless amplitude of the deformation |
-# | ``\sigma`` | complex decay rate; ``\mathrm{Re}(\sigma)>0`` is decay, ``\mathrm{Im}(\sigma)`` is the oscillation frequency |
-# | ``\sigma_{l;0}`` | inviscid oscillation frequency of mode ``l`` (real, no viscosity) |
-# | ``u_r(r,\theta,\varphi,t)`` | radial fluid velocity |
-# | ``U(x)`` | dimensionless radial-velocity eigenfunction (all of the unknown physics lives in this one function) |
-# | ``q^2 = \sigma R^2/\nu`` | viscous wavenumber -- ``\sigma`` measured in units of the viscous diffusion rate ``\nu/R^2`` |
-# | ``\alpha^2 = \sigma_{l;0}R^2/\nu`` | inviscid frequency, in the same units |
-# | ``j_l(z)`` | spherical Bessel function of the first kind, order ``l`` |
-# | ``Q_{l+1/2}(q) = j_{l+1}(q)/j_l(q) = J_{l+3/2}(q)/J_{l+1/2}(q)`` | the one Bessel-function combination the whole problem reduces to |
-#
+# The remaining notation, and the standard results this part leans on, are
+# collected in the appendix.
+
 using Symbolics            #src
 using SpecialFunctions     #src
 using DropSolver           #src
@@ -166,11 +134,18 @@ end                                                                             
 # ```
 # This is real (undamped) and independent of the azimuthal order ``m``. The
 # ``l=2`` case is the oblate-prolate wobble familiar from a falling raindrop
-# or a drop shaken loose from a tap. We will not re-derive this particular
-# formula (it requires the inviscid energy functional, a separate
-# calculation); we take it as given, exactly as Reid (1960) does, and use it
-# only as a bookkeeping device: viscosity will enter the final answer only
-# through this one number, ``\sigma_{l;0}``.
+# or a drop shaken loose from a tap.
+#
+# It does not have to be imported. It is the inviscid limit of the pencil in
+# the opening: drop ``\bm C``, and ``\sigma^2\bm M\bm a_0=-\bm G\bm a_0``
+# is an undamped oscillator whose frequency is set by the ratio of the surface
+# energy to the kinetic energy. *Variational Mechanics* gives both, with
+# ``G\propto(l-1)(l+2)`` from the excess area and the remaining factor ``l``
+# from the inertia of the potential flow. Reid takes the formula as given, and
+# so does this page, but the corpus does not have to.
+#
+# Viscosity enters the final answer only through this one number,
+# ``\sigma_{l;0}``.
 #
 # Two sanity checks on the formula itself, before building anything on it.
 # First, dimensions: it should be a rate squared, and
@@ -217,16 +192,16 @@ sigma_l0_sq = l_sym * (l_sym - 1) * (l_sym + 2) * T1 / (rho * R^3)       #src
 # \nabla^2\!\left[f(r)\,Y_l^m\right] = \left[\,f'' + \frac{2}{r}f' - \frac{l(l+1)}{r^2}\,f\,\right] Y_l^m.
 # ```
 #
-# The eigenvalue claim splits cleanly into two independent facts, each
-# checked below: (i) a change of variables from ``\theta`` to
-# ``x=\cos\theta`` turns the angular Laplacian, acting on *any* function,
-# into the "Legendre operator" ``\frac{d}{dx}\!\left[(1-x^2)\frac{dQ}{dx}\right]``;
-# (ii) ``P_l(x)`` *specifically* satisfies Legendre's equation, so the
-# Legendre operator acting on ``P_l`` gives exactly ``-l(l+1)P_l``.
+# The eigenvalue claim splits into two independent facts, each checked below.
+# First, the change of variables ``\mu=\cos\theta`` turns the angular
+# Laplacian, acting on *any* function, into the Legendre operator
+# ``\frac{d}{d\mu}\!\left[(1-\mu^2)\frac{dQ}{d\mu}\right]``. Second,
+# ``P_l(\mu)`` satisfies Legendre's equation, so that operator acting on
+# ``P_l`` returns exactly ``-l(l+1)P_l``. Note that ``\mu`` is the cosine of
+# the polar angle here; the radial variable ``x=r/R`` is a different thing.
 #
-# Fact (i) is checked for a generic cubic. That is not a restriction to
-# cubics: both operators are linear, so an operator identity verified on
-# ``1, x, x^2, x^3`` with independent coefficients holds generally.
+# The first is an operator identity, so verifying it on a generic cubic with
+# independent coefficients verifies it generally: both operators are linear.
 
 @variables theta_sym c0 c1 c2 c3 x_leg                                                                               #src
 Dth = Differential(theta_sym)                                                                                        #src
@@ -1060,9 +1035,82 @@ for (Oh_val, l_val) in ((0.02, 2), (0.02, 3), (0.05, 2))                        
     @assert err < 0.05                                                                         #src
 end                                                                                            #src
 
-# ## Section 10: How this is used downstream
+# ## What a change of rheology costs
 #
-# ### Connection to Molaček & Bush (2012)
+# Every later part starts by modifying this one, so it is worth being precise
+# about which pieces are load-bearing for a Newtonian fluid specifically. The
+# temptation is to modify too little.
+#
+# **Rheology-agnostic** -- depends only on incompressibility and geometry,
+# carries over unchanged: the poloidal decomposition (Section 2.3), the
+# pressure field satisfying Laplace's equation (Section 3), and BC1, the
+# kinematic condition (Section 6).
+#
+# **Newtonian-specific** -- must be redone for any other constitutive law:
+# the ``\nu\nabla^2\bm u`` term in the momentum equation is the obvious one,
+# flagged in Section 4. But it is *not the only one*. BC2 and BC3 both also
+# assume a constant ``\mu`` multiplying a linear strain rate
+# (``\tau_{r\theta}=\mu[\cdots]`` and ``-2\mu\,\partial u_r/\partial r``
+# respectively). A shear-thinning or viscoelastic model changes the momentum
+# equation and both stress boundary conditions -- Oldroyd-B and
+# Carreau-Yasuda each have to redo that work, not merely swap a coefficient.
+#
+#
+# ## Summary of key equations
+#
+# | Equation | Physical content |
+# |:--|:--|
+# | ``\sigma_{l;0}^2 = l(l-1)(l+2)\,T_1/(\rho R^3)`` | inviscid capillary frequency |
+# | ``q^2 = \sigma R^2/\nu`` | complex decay rate, scaled |
+# | ``\alpha^2 = \sigma_{l;0}R^2/\nu`` | inviscid frequency, scaled |
+# | ``Q_{l+1/2}(q) = J_{l+3/2}(q)/J_{l+1/2}(q)`` | the one Bessel ratio |
+# | ``\alpha^4/q^4 + 1 = (2(l-1)/q^2)\left[l + (l+1)\frac{q-2lQ}{q-2Q}\right]`` | Reid's characteristic equation |
+# | ``\sigma_{l;\nu} = (l-1)(2l+1)\nu/R^2 \pm i\,\sigma_{l;0}`` | small-``\nu`` (Lamb) limit |
+#
+#
+# ## Appendix A: Notation
+#
+# | symbol | meaning |
+# |:--|:--|
+# | ``R`` | equilibrium (undeformed) drop radius |
+# | ``\rho`` | fluid density |
+# | ``\mu = \rho\nu`` | dynamic / kinematic viscosity; ``\eta`` elsewhere on the site |
+# | ``T_1`` | surface tension; ``\sigma`` on the home page and in Part I |
+# | ``x = r/R`` | dimensionless radial coordinate |
+# | ``\mu = \cos\theta`` | cosine of the polar angle, in Section 2 only |
+# | ``\theta,\varphi`` | polar, azimuthal angle |
+# | ``l`` | spherical-harmonic degree of the surface deformation |
+# | ``Y_l^m(\theta,\varphi)`` | spherical harmonic (angular shape of the deformation) |
+# | ``\epsilon(t) = \epsilon_0 e^{-\sigma t}`` | dimensionless amplitude of the deformation |
+# | ``\sigma`` | complex decay rate; ``\mathrm{Re}(\sigma)>0`` is decay, ``\mathrm{Im}(\sigma)`` is the oscillation frequency |
+# | ``\sigma_{l;0}`` | inviscid oscillation frequency of mode ``l`` (real, no viscosity) |
+# | ``u_r`` | radial fluid velocity |
+# | ``U(x)`` | dimensionless radial-velocity eigenfunction; all the unknown physics is in it |
+# | ``q^2 = \sigma R^2/\nu`` | viscous wavenumber: ``\sigma`` in units of the diffusion rate ``\nu/R^2`` |
+# | ``\alpha^2 = \sigma_{l;0}R^2/\nu`` | inviscid frequency, in the same units |
+# | ``j_l(z)`` | spherical Bessel function of the first kind, order ``l`` |
+# | ``Q_{l+1/2}(q) = j_{l+1}(q)/j_l(q)`` | the one Bessel combination the problem reduces to |
+#
+# ## Appendix B: Where this sits historically
+#
+# Three analytical results precede Reid's.
+#
+# **Rayleigh (1879) and Lamb (1932)** gave the inviscid frequencies
+# ``\sigma_{l;0}``, quoted in Section 1.
+#
+# **Lamb (1881)** gave the small-viscosity correction,
+# ``\sigma_{l;\nu} = (l-1)(2l+1)\nu/R^2 \pm i\,\sigma_{l;0}``, recovered as a
+# limit in Section 9. It is an asymptotic result, valid when the vorticity
+# layer is thin against the radius.
+#
+# **Chandrasekhar (1959)** solved the arbitrary-viscosity problem, but for a
+# self-gravitating liquid globe rather than a surface-tension-held drop.
+#
+# Reid's contribution is to show that the surface-tension problem reduces to a
+# single Bessel-function ratio, exactly and at any viscosity. That is what
+# Sections 3 to 7 derive.
+#
+# ## Appendix C: Molacek and Bush's coefficients
 #
 # In their quasi-static model of drop impact, Molaček & Bush parametrize the
 # kinetic energy and viscous dissipation of each surface harmonic ``m``
@@ -1104,36 +1152,6 @@ end                                                                             
 #
 # Steps 2 and 3 are exactly what *Finite-Ohnesorge Coefficients* carries out,
 # in a slightly different (and, for the solver, more convenient) gauge.
-#
-# ### Summary of key equations
-#
-# | Equation | Physical content |
-# |:--|:--|
-# | ``\sigma_{l;0}^2 = l(l-1)(l+2)\,T_1/(\rho R^3)`` | inviscid capillary frequency |
-# | ``q^2 = \sigma R^2/\nu`` | complex decay rate, scaled |
-# | ``\alpha^2 = \sigma_{l;0}R^2/\nu`` | inviscid frequency, scaled |
-# | ``Q_{l+1/2}(q) = J_{l+3/2}(q)/J_{l+1/2}(q)`` | the one Bessel ratio |
-# | ``\alpha^4/q^4 + 1 = (2(l-1)/q^2)\left[l + (l+1)\frac{q-2lQ}{q-2Q}\right]`` | Reid's characteristic equation |
-# | ``\sigma_{l;\nu} = (l-1)(2l+1)\nu/R^2 \pm i\,\sigma_{l;0}`` | small-``\nu`` (Lamb) limit |
-#
-# ### What survives a change of rheology, and what does not
-#
-# This matters because every other derivation here starts by
-# modifying this one, and it is easy to modify too little.
-#
-# **Rheology-agnostic** -- depends only on incompressibility and geometry,
-# carries over unchanged: the poloidal decomposition (Section 2.3), the
-# pressure field satisfying Laplace's equation (Section 3), and BC1, the
-# kinematic condition (Section 6).
-#
-# **Newtonian-specific** -- must be redone for any other constitutive law:
-# the ``\nu\nabla^2\bm u`` term in the momentum equation is the obvious one,
-# flagged in Section 4. But it is *not the only one*. BC2 and BC3 both also
-# assume a constant ``\mu`` multiplying a linear strain rate
-# (``\tau_{r\theta}=\mu[\cdots]`` and ``-2\mu\,\partial u_r/\partial r``
-# respectively). A shear-thinning or viscoelastic model changes the momentum
-# equation and both stress boundary conditions -- Oldroyd-B and
-# Carreau-Yasuda each have to redo that work, not merely swap a coefficient.
 #
 # ### Where to go next
 #

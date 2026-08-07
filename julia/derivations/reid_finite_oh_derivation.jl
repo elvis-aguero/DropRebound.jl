@@ -1,6 +1,6 @@
 # # Finite-Oh Damping and Frequency
 #
-# The companion page, "The Viscous Drop: Reid (1960)", ends with an exact
+# The companion page, "The Free Viscous Drop", ends with an exact
 # transcendental characteristic equation for a viscous drop. This page turns
 # that equation into two numbers per mode that a timestepper can actually
 # use: a damping rate ``\lambda_l(\mathrm{Oh})`` and a squared frequency

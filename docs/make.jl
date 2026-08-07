@@ -105,8 +105,8 @@ makedocs(
         "I. Foundations" => [
             "Variational Mechanics"            => "variational.md",
         ],
-        "II. The Free Viscous Drop" => [
-            "The Viscous Drop: Reid (1960)"    => PAGE["reid1960_full_derivation.jl"],
+        "II. Free Oscillations" => [
+            "The Free Viscous Drop"            => PAGE["reid1960_full_derivation.jl"],
             "Finite-Ohnesorge Coefficients"    => PAGE["reid_finite_oh_derivation.jl"],
         ],
         "III. Contact" => [

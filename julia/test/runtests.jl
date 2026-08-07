@@ -43,4 +43,5 @@ using DropSolver
     include("test_src_markers.jl")
     include("test_claim_ledger.jl")
     include("test_docs_math.jl")
+    include("test_docs_crossrefs.jl")
 end

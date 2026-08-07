@@ -946,7 +946,7 @@ end  #src
 #   everywhere, this forces ``e_{r\theta}=0`` *regardless of whether ``\eta``
 #   is constant*. **Unchanged**, and so is the whole
 #   ``\tau_{r\theta}=0\Rightarrow\mathcal T[\psi]=0`` reduction already derived
-#   in *The Viscous Drop: Reid (1960)*.
+#   in *The Free Viscous Drop*.
 # * **BC3 (normal stress)** carries ``\eta`` multiplicatively, so it becomes
 #   the *surface* value ``\eta_s=\eta(\dot\gamma|_{r=R})``. Same form, one
 #   state-dependent coefficient.
