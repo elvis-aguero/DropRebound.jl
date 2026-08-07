@@ -10,8 +10,11 @@ using Test
 using DropSolver
 using LinearAlgebra
 
-const BK_ALL = [Backend(),
-                Backend(forcing = :nodal),
+## Every cell, named explicitly. Writing one of these as `Backend()` couples the
+## enumeration to whichever cell is currently the default, so changing the default
+## silently turns two entries into duplicates instead of failing honestly.
+const BK_ALL = [Backend(contact = :lcp),
+                Backend(contact = :lcp,        forcing = :nodal),
                 Backend(contact = :active_set),
                 Backend(contact = :active_set, forcing = :nodal),
                 Backend(formulation = :nonvariational, contact = :tangency)]
@@ -54,12 +57,15 @@ const BK_ALL = [Backend(),
         # `run_impact` must not be a second implementation. Same parameters, same numbers.
         kw = (We = 1.0, Bo = 0.0189, Oh = 0.3038, M = 20, K = 2, t_max = 25.0)
         p = ImpactParams(; kw...)
-        @test run_impact(Backend(); kw...).cor ≈ proximity_metrics(p, simulate_lcp(p)).cor
+        @test run_impact(Backend(contact = :lcp); kw...).cor ≈
+              proximity_metrics(p, simulate_lcp(p)).cor
         @test run_impact(Backend(contact = :active_set); kw...).cor ≈
               proximity_metrics(p, simulate(p)).cor
         pn = ImpactParams(; kw..., force_mode = :nodal)
-        @test run_impact(Backend(forcing = :nodal); kw...).cor ≈
+        @test run_impact(Backend(contact = :lcp, forcing = :nodal); kw...).cor ≈
               proximity_metrics(pn, simulate_lcp(pn)).cor
+        ## and the default resolves to a cell that exists
+        @test label(Backend()) in label.(BK_ALL)
     end
 
     @testset "a solver that gives up reports it instead of throwing" begin

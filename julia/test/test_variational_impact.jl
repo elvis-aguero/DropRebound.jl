@@ -253,10 +253,23 @@ end
     rst = simulate(ImpactParams(; common...,
         eta = gd -> carreau(gd; lambda_c = K_cross/t_cap, a = m_cross,
                             n = 1 - m_cross, eta_inf_ratio = eta_inf/eta_0)))
-    ## Convergence of the viscosity iteration, not absence of rejected steps: a step
-    ## whose Picard iteration stalls is now rejected so that dt halves, and for this
-    ## fluid that happens occasionally.
-    @test rst.eta_resid_max <= 1e-8
+    ## NOT `eta_resid_max <= eta_tol`. That asks whether the residual is below the
+    ## number we told it to reach, which is true by construction whenever the loop
+    ## exits normally, and it fails the moment the tolerance is changed even if
+    ## nothing physical moved. It is a statement about the machinery, not the science.
+    ##
+    ## The question worth asking is whether the default settings change the answer.
+    ## Tighten the tolerance by three decades and the restitution and contact time
+    ## must not move: if they do, the default is buying accuracy the model needs, and
+    ## if they do not, the extra sweeps are being spent for nothing.
+    ##
+    ## Physical meaning of a failure: the reported bounce depends on a convergence
+    ## threshold, so it is a property of the iteration rather than of the fluid.
+    rst_tight = simulate(ImpactParams(; common..., eta_tol = 1e-9,
+        eta = gd -> carreau(gd; lambda_c = K_cross/t_cap, a = m_cross,
+                            n = 1 - m_cross, eta_inf_ratio = eta_inf/eta_0)))
+    @test isapprox(rst.cor, rst_tight.cor; rtol = 2e-3)
+    @test isapprox(rst.tc,  rst_tight.tc;  rtol = 2e-3)
     @test 0.6 < rst.cor < 0.95
     @test isapprox(rst.cor, 0.80; rtol = 0.20)
     ## and the contact time within the same band as the measurement, ~2.7

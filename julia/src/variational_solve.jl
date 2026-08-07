@@ -63,6 +63,22 @@ using LinearAlgebra: I
 # Active-set moves allowed per step. Each move is forced by a violated complementarity
 # condition, so the iteration cannot wander; this only bounds pathological cycling,
 # after which the step is rejected and dt halved.
+"""
+Default angular truncation. `M+1` collocation nodes carry the contact constraint, so
+this is not only a spectral resolution: it is how many distinct contact radii the
+discretisation can represent at all. At `M = 45` a patch covering a tenth of the
+lower hemisphere is a couple of nodes wide, which is too coarse to follow contact
+growth at high Weber number even where the restitution has stopped moving.
+"""
+const DEFAULT_M = 90
+
+"""
+Default radial truncation. `K = 1` is potential flow, which over-damps by up to
+170 per cent at experimental Ohnesorge; `K = 2` is the bare minimum and `K = 3`
+reproduces Reid's exact damping to under two per cent across the validated range.
+"""
+const DEFAULT_K = 3
+
 const MAX_ACTIVE_SET_ITERS = 40
 
 struct ImpactParams
@@ -98,9 +114,9 @@ number that fluid needs -- a case needing one more would have had its step rejec
 halved for no reason. Since the geometry is cached a sweep costs well under a millisecond, so
 the headroom is close to free.
 """
-function ImpactParams(; We, Bo, Oh, M::Int = 90, K::Int = 1, eta = gd -> 1.0,
+function ImpactParams(; We, Bo, Oh, M::Int = DEFAULT_M, K::Int = DEFAULT_K, eta = gd -> 1.0,
                       dt0 = nothing, dt_min = 1e-10, t_max = 25.0,
-                      eta_tol = 1e-8, eta_max_sweeps = 100, force_mode::Symbol = :legendre,
+                      eta_tol = 1e-6, eta_max_sweeps = 100, force_mode::Symbol = :legendre,
                       basis_kind::Symbol = :legendre)
     ls = collect(2:M)
     # theta = pi plus the zeros of P_M. These cluster at the poles, which is the

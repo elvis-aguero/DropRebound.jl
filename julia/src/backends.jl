@@ -40,7 +40,7 @@ struct Backend
     forcing::Symbol
 end
 
-function Backend(; formulation::Symbol = :variational, contact::Symbol = :lcp,
+function Backend(; formulation::Symbol = :variational, contact::Symbol = :active_set,
                  forcing::Symbol = :legendre)
     formulation in (:variational, :nonvariational) ||
         error("formulation must be :variational or :nonvariational, got $formulation")
@@ -87,6 +87,34 @@ solver cannot take one -- it has no interior field to evaluate it on -- so shear
 passed to it as `eta_nonvar`, an `STExactParams`, and it is an error to give one without the
 other.
 """
+
+"""
+    check_converged(cor, tc, t_max, minz, label) -> Bool
+
+Whether a finished march produced a bounce, as opposed to finishing.
+
+A run that never releases still returns numbers. It reports `tc` a hair under
+`t_max` and a restitution of order `1e-15`, and an `ok` test of the form
+`0 < tc < t_max` waves it through. Every one of twenty-five nonvariational runs
+passed that test while the drop sat on the substrate, and the audit that found it
+had already drawn the wrong conclusion from it once.
+
+So the test is on the physics, not on the absence of an exception, and a failure is
+warned about rather than returned quietly: a caller who does not inspect `ok` should
+still hear about it.
+"""
+function check_converged(cor, tc, t_max, minz, lbl)
+    reasons = String[]
+    (isfinite(cor) && isfinite(tc))     || push!(reasons, "non-finite metrics")
+    tc >= 0.9 * t_max                   && push!(reasons, "never released (tc = $(round(tc, digits=2)) of t_max = $t_max)")
+    isfinite(cor) && cor <= 1e-6        && push!(reasons, "restitution is zero to machine precision")
+    isfinite(cor) && cor > 1.0          && push!(reasons, "restitution exceeds 1, which is unphysical")
+    isfinite(minz) && minz <= 1e-9      && push!(reasons, "centre of mass reached the substrate")
+    isempty(reasons) && return true
+    @warn "run did not converge to a bounce; treat its metrics as meaningless" backend=lbl reasons
+    false
+end
+
 function run_impact(b::Backend; kw...)
     ## A solver that gives up is a RESULT, not an exception: a sweep must be able to record
     ## which cases a backend cannot do. Only genuine misuse -- an impossible Backend, or a
@@ -105,7 +133,8 @@ function run_impact(b::Backend; kw...)
     end
 end
 
-function _run_impact(b::Backend; We::Real, Bo::Real, Oh::Real, M::Int = 30, K::Int = 2,
+function _run_impact(b::Backend; We::Real, Bo::Real, Oh::Real,
+                    M::Int = DEFAULT_M, K::Int = DEFAULT_K,
                     t_max::Real = 25.0, eta = nothing, eta_nonvar = nothing,
                     save_every::Real = 0.005, h_thresh::Real = 0.02)
     t0 = time()
@@ -121,7 +150,8 @@ function _run_impact(b::Backend; We::Real, Bo::Real, Oh::Real, M::Int = 30, K::I
                 zeta = [surface_amplitudes(p, a) for a in r.a],
                 ls = collect(p.ls), cp = r.cp,
                 cor = m.cor, tc = m.tc, wall = time() - t0,
-                ok = isfinite(m.cor) && isfinite(m.tc) && 0 < m.tc < t_max,
+                ok = check_converged(m.cor, m.tc, t_max,
+                                     isempty(r.z) ? NaN : minimum(r.z), label(b)),
                 backend = label(b),
                 ## solver-specific diagnostics, kept so a stored row is still reproducible
                 diag = (min_gap = m.min_gap, n_detected = m.n_detected,
@@ -143,11 +173,15 @@ function _run_impact(b::Backend; We::Real, Bo::Real, Oh::Real, M::Int = 30, K::I
     ths = range(pi/2, pi; length = 240)
     touch = [minimum(drop_height(x, th) for th in ths) < h_thresh for x in st]
     i = findfirst(touch); j = findlast(touch)
-    ok = !(i === nothing || j === nothing || i == j)
-    (t = ts, z = [x.z for x in st], v = [x.v for x in st],
+    touched = !(i === nothing || j === nothing || i == j)
+    cor_ = touched ? abs(st[j].v / st[i].v) : NaN
+    tc_  = touched ? ts[j] - ts[i] : NaN
+    zs   = [x.z for x in st]
+    ok   = touched && check_converged(cor_, tc_, t_max, isempty(zs) ? NaN : minimum(zs),
+                                      label(b))
+    (t = ts, z = zs, v = [x.v for x in st],
      zeta = [x.A[2:end] for x in st], ls = collect(2:M), cp = [x.cp for x in st],
-     cor = ok ? abs(st[j].v / st[i].v) : NaN,
-     tc  = ok ? ts[j] - ts[i] : NaN,
+     cor = cor_, tc = tc_,
      wall = time() - t0, ok = ok, backend = label(b),
      diag = (min_gap = minimum(minimum(drop_height(x, th) for th in ths) for x in st),
              n_detected = count(touch), rejects = 0, lcp_resid = NaN, eta_sweeps = 0,
