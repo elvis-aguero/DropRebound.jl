@@ -40,7 +40,7 @@ struct Backend
     forcing::Symbol
 end
 
-function Backend(; formulation::Symbol = :variational, contact::Symbol = :active_set,
+function Backend(; formulation::Symbol = :variational, contact::Symbol = :lcp,
                  forcing::Symbol = :legendre)
     formulation in (:variational, :nonvariational) ||
         error("formulation must be :variational or :nonvariational, got $formulation")
@@ -103,13 +103,22 @@ So the test is on the physics, not on the absence of an exception, and a failure
 warned about rather than returned quietly: a caller who does not inspect `ok` should
 still hear about it.
 """
-function check_converged(cor, tc, t_max, minz, lbl)
+function check_converged(cor, tc, t_max, minz, lbl; t_final = NaN, dt_final = NaN,
+                         dt_min = NaN, released = true)
     reasons = String[]
     (isfinite(cor) && isfinite(tc))     || push!(reasons, "non-finite metrics")
     tc >= 0.9 * t_max                   && push!(reasons, "never released (tc = $(round(tc, digits=2)) of t_max = $t_max)")
     isfinite(cor) && cor <= 1e-6        && push!(reasons, "restitution is zero to machine precision")
     isfinite(cor) && cor > 1.0          && push!(reasons, "restitution exceeds 1, which is unphysical")
     isfinite(minz) && minz <= 1e-9      && push!(reasons, "centre of mass reached the substrate")
+    ## A march can also stop EARLY. The tight-tolerance run at M = 60 died at
+    ## t = 0.235 of a requested 25 with the drop still on the substrate, and every
+    ## test above passes for it: tc is small, the restitution is finite and under
+    ## one, the drop never reached z = 0. What marks it is that the integrator gave
+    ## up rather than the drop leaving, so the tests are on the integrator.
+    released || push!(reasons, "the march ended with the drop still in contact")
+    isfinite(dt_final) && isfinite(dt_min) && dt_final <= 1.01 * dt_min &&
+        push!(reasons, "step size collapsed to its floor (dt = $dt_final)")
     isempty(reasons) && return true
     @warn "run did not converge to a bounce; treat its metrics as meaningless" backend=lbl reasons
     false
@@ -124,6 +133,9 @@ function run_impact(b::Backend; kw...)
     try
         return _run_impact(b; kw...)
     catch e
+        ## A bad keyword or a missing method is a caller mistake. Swallowing it as
+        ## "the solver could not do this case" is how a typo becomes a data point.
+        (e isa MethodError || e isa UndefKeywordError) && rethrow()
         e isa ErrorException && occursin("eta", e.msg) && rethrow()
         return (t = Float64[], z = Float64[], v = Float64[], zeta = Vector{Float64}[],
                 ls = Int[], cp = Int[], cor = NaN, tc = NaN, wall = time() - t0,
@@ -136,13 +148,14 @@ end
 function _run_impact(b::Backend; We::Real, Bo::Real, Oh::Real,
                     M::Int = DEFAULT_M, K::Int = DEFAULT_K,
                     t_max::Real = 25.0, eta = nothing, eta_nonvar = nothing,
-                    save_every::Real = 0.005, h_thresh::Real = 0.02)
+                    save_every::Real = 0.005, h_thresh::Real = 0.02,
+                    eta_tol::Real = DEFAULT_ETA_TOL)
     t0 = time()
     if b.formulation === :variational
         eta_nonvar === nothing ||
             error("eta_nonvar is for the nonvariational backend; pass `eta` instead")
         p = ImpactParams(We = We, Bo = Bo, Oh = Oh, M = M, K = K, t_max = t_max,
-                         force_mode = b.forcing,
+                         force_mode = b.forcing, eta_tol = eta_tol,
                          eta = eta === nothing ? (gd -> 1.0) : eta)
         r = b.contact === :lcp ? simulate_lcp(p) : simulate(p)
         m = proximity_metrics(p, r; h_thresh = h_thresh)
@@ -150,8 +163,14 @@ function _run_impact(b::Backend; We::Real, Bo::Real, Oh::Real,
                 zeta = [surface_amplitudes(p, a) for a in r.a],
                 ls = collect(p.ls), cp = r.cp,
                 cor = m.cor, tc = m.tc, wall = time() - t0,
+                ## A completed bounce ends with the drop moving UP. A march that the
+                ## integrator abandoned ends wherever it gave up, which for the M = 60
+                ## tight-tolerance case was mid-impact at t = 0.235. Comparing times or
+                ## frame indices does not separate these, because the march terminates
+                ## at release, so a good run has no frames after last contact either.
                 ok = check_converged(m.cor, m.tc, t_max,
-                                     isempty(r.z) ? NaN : minimum(r.z), label(b)),
+                                     isempty(r.z) ? NaN : minimum(r.z), label(b);
+                                     released = !isempty(r.v) && r.v[end] > 0),
                 backend = label(b),
                 ## solver-specific diagnostics, kept so a stored row is still reproducible
                 diag = (min_gap = m.min_gap, n_detected = m.n_detected,

@@ -91,27 +91,39 @@ a representative run.
 
 ## Recommended settings
 
-**Newtonian.** ``M = 45`` to ``90``, ``K = 3``. Restitution is converged in ``M`` by 45 and in
-``K`` by 3; ``K = 4`` and ``K = 5`` agree with ``K = 3`` to four decimal places.
+The defaults are ``M = 90``, ``K = 3``. Two different questions decide them, and they do
+not have the same answer.
 
-**Shear thinning.** ``M = 45``, ``K = 3``. On the 3000 ppm fluid at ``\mathrm{We} = 0.3643``:
+**Restitution converges early.** It moves 0.09 per cent between ``M = 45`` and ``M = 90``,
+and ``K = 4`` and ``K = 5`` agree with ``K = 3`` to four decimal places. On that evidence
+alone ``M = 45`` would do.
 
-| ``M`` at ``K = 3`` | 14 | 30 | 45 | 60 |
+**The contact patch does not.** Contact is imposed at ``M+1`` collocation nodes, so the
+contact radius can only take as many distinct values as there are nodes inside the patch.
+Measured on a Newtonian drop, the patch covers a converged physical angle but a
+resolution-dependent number of nodes:
+
+| ``\mathrm{We}`` | ``M`` | nodes in contact | half-angle | steps where the patch jumped |
 |---|---|---|---|---|
-| CoR | 0.74305 | 0.75165 | 0.752992 | 0.75315 |
+| 0.5 | 30 | 9 | 45.8° | 6 |
+| 0.5 | 45 | 12 | 42.5° | 6 |
+| 0.5 | 90 | 24 | 45.2° | 8 |
+| 3.0 | 45 | 16 | 58.4° | 27 |
+| 3.0 | 90 | 31 | 59.2° | 48 |
 
-| ``K`` at ``M = 14`` | 2 | 3 | 4 | 5 |
-|---|---|---|---|---|
-| CoR | 0.73711 | 0.74305 | 0.74233 | 0.74235 |
+The half-angle is converged by ``M = 30``. The number of nodes spanning it is not: at
+``M = 45`` the whole growth and retreat of contact is described by a dozen or so discrete
+radii. A quantity integrated over the bounce, like restitution, is insensitive to that. A
+quantity that depends on the contact history is not, and this package exists to compute
+the second kind.
 
-Refining ``M`` from 45 to 60 moves restitution by 0.02 per cent, and ``K`` from 3 to 4 by
-0.10 per cent.
+The last column is the one to watch. It counts accepted steps where the patch moved by more
+than one node, and it *rises* with resolution rather than falling. At high Weber number the
+contact edge outruns the grid whatever the grid, so refining buys a finer description of
+the patch without buying continuity of its motion.
 
-A shear-thinning run costs far more than a Newtonian one at the same truncation, because a
-viscosity that depends on the solution rebuilds the dissipation operator at every iteration of
-the fixed-point closure. Cost grows roughly as ``M^3``: 9 s at ``M = 14``, 68 s at ``M = 30``,
-250 s at ``M = 45``. The pairwise strain contractions are geometry and are cached per basis,
-which is what brings those figures within reach.
+**Cost.** A Newtonian run at ``M = 90, K = 3`` takes 18 s with the active-set closure and
+50 s with complementarity, against 1.3 s and 6.8 s at ``M = 45``.
 
 ## Practical limits
 

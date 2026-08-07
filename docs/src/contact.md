@@ -120,7 +120,7 @@ single patch.
 
 The two agree. Over 35 cases spanning ``\mathrm{Oh}\in[0.023,\,0.685]`` and
 ``\mathrm{We}\in[0.05,\,3]``, contact time is identical in all 35 and restitution agrees to
-``2.4\times10^{-4}`` at worst. On a shear-thinning fluid they agree to ``3.5\times10^{-6}``.
+``1.1\times10^{-5}`` at worst. On a shear-thinning fluid they agree to ``3.5\times10^{-6}``.
 
 The agreement carries information. Complementarity is free to return an annular contact, with the
 pole released while a ring still presses, and it does not: at ``M = 90`` the free arc at the pole

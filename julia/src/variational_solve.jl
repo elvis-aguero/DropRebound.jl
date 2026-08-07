@@ -79,6 +79,14 @@ reproduces Reid's exact damping to under two per cent across the validated range
 """
 const DEFAULT_K = 3
 
+"""
+Default Picard tolerance on the interior strain rate, relative and in the infinity
+norm. Tightening it does not buy accuracy: at `M = 30` the answer is identical to six
+digits at `1e-9`, and at `M = 60` a tolerance of `1e-8` is unreachable, so steps are
+rejected until `dt` collapses and the march dies before the drop releases.
+"""
+const DEFAULT_ETA_TOL = 1e-6
+
 const MAX_ACTIVE_SET_ITERS = 40
 
 struct ImpactParams
@@ -100,23 +108,22 @@ struct ImpactParams
 end
 
 """
-    ImpactParams(; We, Bo, Oh, M=90, K=1, ...)
+    ImpactParams(; We, Bo, Oh, M=DEFAULT_M, K=DEFAULT_K, ...)
 
 `M` is the harmonic truncation: shape modes are `l = 2..M`, the film pressure carries
 `l = 0..M`, and there are `M+1` collocation nodes. Those three counts are tied
 together deliberately -- that is what makes the contact system square.
 
-`eta_max_sweeps` bounds the Picard iteration on the viscosity. It is headroom rather than a
-tuning knob: on the 3000 ppm fluid the iteration converges geometrically at a ratio of about
-0.19 per sweep and reaches `eta_tol = 1e-8` at sweep 12, and raising the cap from 12 to 100 or
-500 leaves both KPIs identical to six digits. It was 12, which happened to be exactly the
-number that fluid needs -- a case needing one more would have had its step rejected and `dt`
-halved for no reason. Since the geometry is cached a sweep costs well under a millisecond, so
-the headroom is close to free.
+`eta_max_sweeps` bounds the Picard iteration on the viscosity, and it is headroom rather
+than a tuning knob. How many sweeps a step actually needs depends strongly on resolution:
+on the 3000 ppm fluid the worst step takes 17 sweeps at `M = 30` and 45 at `M = 60`, which
+is why the cap is generous. The iteration is what a shear-thinning run spends its time on,
+around 80 per cent of a step at `M = 60`, with the contact solve under one per cent.
+
 """
 function ImpactParams(; We, Bo, Oh, M::Int = DEFAULT_M, K::Int = DEFAULT_K, eta = gd -> 1.0,
                       dt0 = nothing, dt_min = 1e-10, t_max = 25.0,
-                      eta_tol = 1e-6, eta_max_sweeps = 100, force_mode::Symbol = :legendre,
+                      eta_tol = DEFAULT_ETA_TOL, eta_max_sweeps = 100, force_mode::Symbol = :legendre,
                       basis_kind::Symbol = :legendre)
     ls = collect(2:M)
     # theta = pi plus the zeros of P_M. These cluster at the poles, which is the

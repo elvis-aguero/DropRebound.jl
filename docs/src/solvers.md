@@ -8,6 +8,9 @@ how the contact set is found:
 | **variational**    | [`simulate`](@ref)    | [`simulate_lcp`](@ref) | not carried           |
 | **nonvariational** | not carried           | not carried            | [`solve_drop!`](@ref) |
 
+[`Backend()`](@ref) selects the variational complementarity solver, which is the one to
+reach for unless there is a reason not to.
+
 [`simulate`](@ref) and [`simulate_lcp`](@ref) take identical arguments and return identical
 types, so switching closures is a one-word change. [`Backend`](@ref) names a combination of the
 two axes if a study needs to sweep over solvers.
@@ -46,19 +49,29 @@ compares centre-of-mass speed at those two instants.
 | 2.0 | 0.3038 | 2.1323 | 2.1323 | 2.2164 | 0.3026 | 0.3026 | 0.2978 |
 
 The two variational columns are indistinguishable, for the reasons *Contact* gives: both closures
-read the contact set off the same two inequalities. Contact time agrees exactly because ``dt`` is
-fixed and ``t_c`` is a difference of step times, so two closures that flag the same steps return
-the same number.
+read the contact set off the same two inequalities. Across the 25-case grid the worst
+disagreement in restitution is ``1.1\times10^{-5}``. Contact time agrees exactly, because ``dt``
+is fixed and ``t_c`` is a difference of step times, so two closures that flag the same steps
+return the same number.
 
 The nonvariational column differs by 3.3 per cent in contact time and 0.6 per cent in restitution.
 That gap is the formulation and its closure together, since `solve_drop!` differs in both, and
 nothing here separates the two contributions.
 
-Robustness separates them where accuracy does not. `solve_drop!` completed three of the five
-cases above and both variational cells completed all five. `simulate_lcp` also runs cases at which
-`simulate` fails outright: the active set walks to the contact set from the previous step's
-answer, so it can stall when that answer is far from the new one, while the pivoting solve starts
-from no assumption.
+Robustness separates them where accuracy does not, and it separates them the other way round
+from what the table might suggest.
+
+Over a grid of 25 impacts spanning ``\mathrm{We}\in[0.1,3]`` and ``\mathrm{Oh}\in[0.02,0.7]``
+at ``M = 45, K = 3``, and 36 further cases drawn from the validation set, `simulate_lcp`
+completed every one. `simulate` failed three, all of them at high Weber and low Ohnesorge: the
+drop never released. That is the mechanism *Contact* describes. The active set walks to the
+contact set from the previous step's answer, so it stalls when the two are far apart, which is
+exactly what a fast, weakly damped impact produces. The pivoting solve starts from no assumption
+and does not have that failure mode.
+
+The price is speed. At ``M = 45`` the active set takes 1.3 s against 6.8 s; at ``M = 90``,
+17.9 s against 50.3 s. So the active set is the one to use when sweeping cheap cases, and
+complementarity when the cases are hard or unattended.
 
 Wallclock over these cases is 0.2 to 2.6 s for the variational solvers. The nonvariational
 search ranges from 0.0 to 7.5 s, erratic because rejected steps dominate its cost.
