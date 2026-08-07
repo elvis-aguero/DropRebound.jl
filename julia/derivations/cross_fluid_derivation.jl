@@ -485,5 +485,5 @@ println("ASSERTION 9 OK: bounded, finite, sensible decay for every m in {0.5,1,2
 # demonstrate stability, not a validation against experimental data.
 # And the whole treatment is weakly nonlinear --
 # for a fluid whose ``(\lambda_c\dot\gamma)^a`` is not small, the
-# non-perturbative route of *Carreau-Yasuda: Multi-Mode*, which evaluates the
-# viscosity law directly rather than expanding it, is the applicable one.
+# route of *Shear-Thinning Drops*, which evaluates the viscosity law pointwise
+# on the full strain field rather than expanding it, is the applicable one.

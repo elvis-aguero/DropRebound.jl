@@ -1145,7 +1145,7 @@ end                                                                             
 # equation, not Lamb's asymptotic approximation to it, is the physically
 # correct starting point for any drop whose Ohnesorge number isn't small --
 # which includes every shear-thinning fluid the Carreau-Yasuda
-# extension was built to handle (see *Carreau-Yasuda: Multi-Mode*),
+# extension was built to handle (see *Shear-Thinning Drops*),
 # since shear-thinning can swing the effective Ohnesorge number across
 # orders of magnitude within a single impact.
 #

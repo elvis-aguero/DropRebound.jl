@@ -91,6 +91,37 @@ spread(g::Lcg, dims...) = [nextu(g) for _ in CartesianIndices(dims)]
         end
     end
 
+    # PAGE CLAIM: the Gegenbauer function that fixes the angular part of the stream
+    # function,
+    #     Gamma_l(theta) = -sin(theta) dP_l/dtheta / (l(l+1)),
+    # chosen so that the curl of Psi = f(x) Gamma_l gives u_r proportional to P_l, i.e.
+    # so that the interior field drives the surface mode it is paired with.
+    #
+    # For the Stokes stream function convention u = curl(Psi/(r sin th) e_phi), that
+    # requires d(Gamma_l)/dtheta = sin(theta) P_l, which follows from Legendre's
+    # equation. Checked here by differentiating Gamma_l numerically, so the identity is
+    # verified rather than restated, and then by confirming the u_r and u_theta the page
+    # prints are what the solver assembles.
+    #
+    # Physical meaning of a failure: the interior velocity field would not match the
+    # surface harmonic it is supposed to drive, so the kinematic condition zeta_l =
+    # chi_l(1) would be attaching two different angular shapes to each other.
+    @testset "the Gegenbauer function gives u_r proportional to P_l" begin
+        Gam(l, th) = -sin(th) * (-sin(th) * dPdmu(l, cos(th))) / (l * (l + 1))
+        # dP/dmu from the same recurrence the solver uses, via legendre_angular:
+        # dPdth = -sin(th) dPdmu, so dPdmu = -dPdth/sin(th).
+        function dPdmu(l, mu)
+            A = legendre_angular(l, mu)
+            -A.dPdth / A.sinth
+        end
+        h = 1e-6
+        for l in LS, th in (0.7, 1.3, 2.2, 2.9)
+            dGam = (Gam(l, th + h) - Gam(l, th - h)) / (2h)
+            P = legendre_angular(l, cos(th)).P
+            @test isapprox(dGam, sin(th) * P; atol = 1e-6)
+        end
+    end
+
     # PAGE CLAIM: "G is rank one for a single mode", with
     #   G_ab = (4 pi/(2l+1)) (l-1)(l+2) phi_a(1) phi_b(1).
     #

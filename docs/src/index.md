@@ -25,13 +25,14 @@ unsteady term, and what remains is
 \rho\,\partial_t \bm u \;=\; -\nabla p + \eta\,\nabla^2\bm u , \qquad \nabla\cdot\bm u = 0 .
 ```
 
-The drop is bounded by a free surface at ``r = R + \zeta(\theta,t)``, and the conditions there
-carry the physics:
+Write ``\Omega`` for the region the liquid occupies and ``\partial\Omega`` for its free
+surface, at ``r = R + \zeta(\theta,t)``. Every integral below is over one of these two. The
+conditions on ``\partial\Omega`` carry the physics:
 
 ```math
 \partial_t\zeta = u_r , \qquad
 \bm n\cdot\bm\Sigma\cdot\bm t = 0 , \qquad
-\bm n\cdot\bm\Sigma\cdot\bm n = \sigma\,\kappa ,
+\bm n\cdot\bm\Sigma\cdot\bm n = \sigma\,\kappa - p_c ,
 ```
 
 with ``\kappa`` the mean curvature, ``\bm n`` and ``\bm t`` the normal and tangent to the
@@ -46,15 +47,15 @@ the stress tensor and the strain-rate tensor. Everything below is written in ter
 so it is worth noting now that it is symmetric and, for an incompressible flow, traceless.
 
 The first condition is kinematic: the surface moves with the fluid. The second says a free
-surface cannot support shear. The third balances the normal traction against capillarity.
+surface cannot support shear. The third balances the normal traction against capillarity and
+against ``p_c``, the pressure in the thin air film that separates the drop from the substrate
+during an impact. That film is the only agent by which the wall acts on the drop, and the drop
+never touches the solid. Away from the substrate ``p_c = 0`` and the third condition is the
+usual Young-Laplace balance.
 
 The tangential condition is the one that shapes everything downstream. A potential flow cannot
 satisfy it, so a viscous drop must carry vorticity near its surface, and any method that
 forbids that vorticity will over-predict the damping.
-
-While the drop is close to the substrate, a thin film of air separates the two. Its pressure
-``p_c(\theta,t)`` acts on the lower surface and is the only agent by which the wall influences
-the drop. The drop never touches the solid.
 
 ## Dimensionless groups
 
@@ -93,14 +94,15 @@ Take a test velocity field ``\bm v`` that is incompressible and compatible with 
 condition. Contract the momentum equation with it and integrate over the drop:
 
 ```math
-\int \rho\,\partial_t\bm u\cdot\bm v \,dV
-\;=\; \int \left(-\nabla p + \eta\nabla^2\bm u\right)\cdot\bm v \,dV .
+\int_\Omega \rho\,\partial_t\bm u\cdot\bm v \,dV
+\;=\; \int_\Omega \left(-\nabla p + \eta\nabla^2\bm u\right)\cdot\bm v \,dV .
 ```
 
 Both terms on the right integrate by parts once. For the pressure,
 
 ```math
-\int -\nabla p\cdot\bm v\,dV \;=\; -\oint p\,(\bm v\cdot\bm n)\,dS + \int p\,\nabla\cdot\bm v\,dV ,
+\int_\Omega -\nabla p\cdot\bm v\,dV
+\;=\; -\oint_{\partial\Omega} p\,(\bm v\cdot\bm n)\,dS + \int_\Omega p\,\nabla\cdot\bm v\,dV ,
 ```
 
 and the volume term vanishes because ``\bm v`` is divergence-free. For the viscous term, use
@@ -109,93 +111,75 @@ symmetry of ``\bm e``, which turns ``\bm e\!:\!\nabla\bm v`` into ``\bm e\!:\!\b
 The two surface terms combine into the traction, and what remains is
 
 ```math
-\int \rho\,\partial_t\bm u\cdot\bm v\,dV
-\;+\; \int 2\eta\,\bm e(\bm u)\!:\!\bm e(\bm v)\,dV
-\;=\; \oint \left(\bm\Sigma\cdot\bm n\right)\cdot\bm v \,dS .
+\int_\Omega \rho\,\partial_t\bm u\cdot\bm v\,dV
+\;+\; \int_\Omega 2\eta\,\bm e(\bm u)\!:\!\bm e(\bm v)\,dV
+\;=\; \oint_{\partial\Omega} \left(\bm\Sigma\cdot\bm n\right)\cdot\bm v \,dS .
 ```
 
 The pressure has not disappeared. It has left the volume integral, where it was a constraint,
-and survives inside the traction, where the normal stress condition will remove it.
+The pressure has not disappeared. It has left the volume integral, where it was a constraint,
+and survives inside the traction, where the stress conditions will now remove it.
 
-The two stress conditions now sit on the right-hand side rather than acting as constraints. The
-tangential condition makes the shear part of the traction vanish. The normal condition replaces
-what is left by the capillary traction ``\sigma\kappa\,\bm n``, and that traction is the first
-variation of the surface energy
-
-```math
-V \;=\; \sigma\left(\text{area of the deformed surface} - 4\pi R^2\right) ,
-```
-
-so the whole right-hand side is a derivative of an energy. The free-surface conditions have
-become **natural**: any solution of the weak form satisfies them, and neither is ever imposed.
-
-### From a field to coordinates
-
-Nothing so far has reduced the problem, because ``\bm u`` is still a field. Introduce
-generalised coordinates ``\bm\xi = (\xi_1,\ldots,\xi_N)`` describing the fluid's displacement
-from the sphere, so that the velocity is linear in their rates,
+Split the test field on the surface into its normal and tangential parts,
+``\bm v = (\bm v\cdot\bm n)\,\bm n + \bm v_t``. The traction then contributes two pieces,
 
 ```math
-\bm u(\bm r,t) \;=\; \sum_{a} \dot\xi_a(t)\,\bm u^{(a)}(\bm r) , \qquad
-\bm u^{(a)} = \frac{\partial\bm u}{\partial\dot\xi_a} ,
+\left(\bm\Sigma\cdot\bm n\right)\cdot\bm v
+\;=\; \underbrace{\left(\bm n\cdot\bm\Sigma\cdot\bm n\right)}_{\sigma\kappa - p_c}(\bm v\cdot\bm n)
+\;+\; \underbrace{\left(\bm n\cdot\bm\Sigma\cdot\bm t\right)}_{=\,0}\,(\bm v\cdot\bm t) ,
 ```
 
-with each ``\bm u^{(a)}`` divergence-free and fixed in time. *Variational Mechanics* constructs
-them; here only their existence matters.
-
-The weak form holds for every admissible ``\bm v``, so it holds in particular for each
-``\bm v = \bm u^{(a)}`` in turn. That choice is what converts it into equations of motion.
-Define
+and each is settled by one of the two stress conditions. The tangential condition kills the
+second outright. The normal condition turns the first into capillarity and film pressure, so
+the right-hand side becomes
 
 ```math
-T = \tfrac12\int\rho\,|\bm u|^2\,dV , \qquad
-\mathcal R = \eta\int \bm e\!:\!\bm e \,dV ,
+\oint_{\partial\Omega}\left(\bm\Sigma\cdot\bm n\right)\cdot\bm v\,dS
+\;=\; \underbrace{\oint_{\partial\Omega}\sigma\kappa\,(\bm v\cdot\bm n)\,dS}_{\text{capillary}}
+\;-\; \underbrace{\oint_{\partial\Omega} p_c\,(\bm v\cdot\bm n)\,dS}_{\text{film}} .
 ```
 
-the kinetic energy and the Rayleigh dissipation function, both quadratic in ``\dot{\bm\xi}``.
-Then term by term,
+The capillary term is a derivative of an energy. Deforming the surface by a normal displacement
+``\delta\zeta`` changes its area by ``\oint_{\partial\Omega} \kappa\,\delta\zeta\,dS``, so with
 
 ```math
-\int\rho\,\partial_t\bm u\cdot\bm u^{(a)}dV = \frac{d}{dt}\frac{\partial T}{\partial\dot\xi_a} ,
-\qquad
-\int 2\eta\,\bm e(\bm u)\!:\!\bm e(\bm u^{(a)})dV = \frac{\partial\mathcal R}{\partial\dot\xi_a} ,
-\qquad
-\oint(\bm\Sigma\cdot\bm n)\cdot\bm u^{(a)}dS = -\frac{\partial V}{\partial\xi_a} + Q_a .
+V \;=\; \sigma\left(|\partial\Omega| - 4\pi R^2\right)
 ```
 
-The first holds because ``\bm u^{(a)}`` does not depend on time, the second because
-``\partial\bm e/\partial\dot\xi_a = \bm e(\bm u^{(a)})`` and ``\mathcal R`` is quadratic, and
-the third is the statement that the capillary part of the traction is the variation of ``V``
-while ``Q_a`` collects the work done by the film pressure. Assembling them,
+the excess surface energy, the first variation is ``\delta V = \oint_{\partial\Omega}
+\sigma\kappa\,\delta\zeta\,dS``. Since ``\bm v\cdot\bm n`` is a rate of normal displacement,
+the capillary integral is exactly ``V`` differentiated along ``\bm v``.
+
+Collecting, the weak form reads
 
 ```math
-\frac{d}{dt}\frac{\partial T}{\partial\dot{\bm\xi}}
-\;+\; \frac{\partial\mathcal R}{\partial\dot{\bm\xi}}
-\;+\; \frac{\partial V}{\partial\bm\xi}
-\;=\; \bm Q ,
+\int_\Omega \rho\,\partial_t\bm u\cdot\bm v\,dV
+\;+\; \int_\Omega 2\eta\,\bm e(\bm u)\!:\!\bm e(\bm v)\,dV
+\;+\; \delta_{\bm v} V
+\;=\; -\oint_{\partial\Omega} p_c\,(\bm v\cdot\bm n)\,dS ,
 ```
 
-which is Lagrange's equations for a dissipative system. Because ``T``, ``\mathcal R`` and ``V``
-are quadratic, their second derivatives are constant matrices, and this reads
+for every admissible ``\bm v``: inertia, dissipation and capillarity on the left, and the wall
+on the right. The free-surface conditions have become **natural**. They were used once, to
+evaluate the boundary term, and they are never imposed on the solution; any field satisfying
+this statement for all ``\bm v`` satisfies them.
 
-```math
-\bm M\ddot{\bm\xi} + \bm C\dot{\bm\xi} + \bm G\bm\xi = \bm Q ,
-```
-
-with ``\bm M`` the mass matrix from ``T``, ``\bm C`` the damping matrix from ``\mathcal R``,
-and ``\bm G`` the stiffness matrix from ``V``.
-
-Three things are gained. Only one derivative of the velocity is needed, where the strong form
+Three things are gained. Only one derivative of the velocity appears, where the strong form
 needs two. The pressure never has to be solved for, because incompressibility was built into
-the trial fields and the normal stress condition disposed of the rest. And the boundary
+the test fields and the normal stress condition disposed of the rest. And the boundary
 conditions are automatic.
+
+What remains is to turn this from a statement about fields into a finite set of equations.
+*Variational Mechanics* does that, and shows that the result is Lagrange's equations for a
+damped system.
 
 This is Onsager's variational principle [^onsager], whose modern statement and use as an
 approximation tool are set out by Wang, Qian and Xu [^wqx]. The principle is usually written
 for overdamped motion with the inertial term dropped, which is not our case: a bouncing drop is
-an oscillator, and ``T`` is as important as ``\mathcal R``. The form above is the inertial
-generalisation, discussed by Archer [^archer]. Solving such a principle with trial functions is
-the Ritz method, applied to variational problems in soft matter by Wang and co-workers [^ritz].
+an oscillator, and the first term above matters as much as the second. The inertial
+generalisation is discussed by Archer [^archer]. Solving such a principle with trial functions
+is the Ritz method, applied to variational problems in soft matter by Wang and co-workers
+[^ritz].
 
 ## Getting started
 
