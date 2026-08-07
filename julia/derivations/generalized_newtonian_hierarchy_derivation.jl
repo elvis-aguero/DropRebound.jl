@@ -556,7 +556,16 @@ end  #src
 # V[\bm\xi]=\text{surface energy} ,
 # ```
 #
-# and the equations of motion are the Euler--Lagrange equations of that data,
+# One convention to reconcile before going on. The home page and *Variational
+# Mechanics* write the dissipation as the Rayleighian
+# ``\mathcal R = \eta\int\bm e\!:\!\bm e\,dV``,
+# whereas ``\Phi`` here is the *total viscous dissipation rate*, which is twice
+# that: ``\Phi = 2\mathcal R``. Both appear in the literature. The factor of one
+# half in the next display is exactly that difference, so
+# ``\tfrac12\,\partial\Phi/\partial\dot\xi_a = \partial\mathcal R/\partial\dot\xi_a``
+# and the two statements are the same equation.
+#
+# The equations of motion are the Euler--Lagrange equations of that data,
 #
 # ```math
 # \boxed{\;
