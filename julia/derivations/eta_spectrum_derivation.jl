@@ -58,7 +58,7 @@
 # | ``\dot A_l`` | modal surface velocity; the drop's state vector |
 # | ``\lambda_c,\ m`` | Cross time constant and exponent |
 # | ``\eta_{l'}`` | ``l'``-th Legendre coefficient of ``\eta`` |
-# | ``\mathcal T_1(L)`` | ``\sum_{l'>L}|\eta_{l'}|/|\eta_0|`` -- summed discarded coupling |
+# | ``\mathcal \gamma(L)`` | ``\sum_{l'>L}|\eta_{l'}|/|\eta_0|`` -- summed discarded coupling |
 # | ``\mathcal T_2(L)`` | ``\bigl(\sum_{l'>L}\eta_{l'}^2\bigr)^{1/2}/|\eta_0|`` -- its RMS counterpart |
 #
 # ``l'`` is not a shape mode and never enters the *size* of the coupling matrix,
@@ -699,17 +699,17 @@ end  #src
 # The quantity that actually controls the banding error is therefore
 #
 # ```math
-# \mathcal T_1(L)=\frac{1}{|\eta_0|}\sum_{l'>L}\bigl|\eta_{l'}\bigr| ,
+# \mathcal \gamma(L)=\frac{1}{|\eta_0|}\sum_{l'>L}\bigl|\eta_{l'}\bigr| ,
 # ```
 #
 # the relative size of the coupling thrown away by banding at ``L``. Its RMS
 # counterpart ``\mathcal T_2`` is tabulated alongside it as the optimistic
 # bound, and the gap between the two is itself part of the result. Define
-# ``L_\eta(t)`` as the smallest ``L`` with ``\mathcal T_1(L)<t``; the headline
+# ``L_\eta(t)`` as the smallest ``L`` with ``\mathcal \gamma(L)<t``; the headline
 # number is ``t=10^{-2}``, i.e. banding that discards 1% of the coupling.
 #
 # One deliberate detail: the search for ``L_\eta`` stops one short of the last
-# measured coefficient. ``\mathcal T_1`` at the final index is identically zero
+# measured coefficient. ``\mathcal \gamma`` at the final index is identically zero
 # because the sum beyond it is empty, and accepting that would report a
 # bandwidth that is an artefact of where the table was cut off rather than a
 # property of the field.
@@ -971,7 +971,7 @@ end  #src
 # Gauss-Legendre grid in ``\mu`` and a ``72``-node graded radial grid. It takes
 # about twenty seconds.
 #
-# | modal spectrum | ``M`` | ``L_\eta`` for ``\mathcal T_1<10^{-2}`` | ``\mathcal T_1(M)`` |
+# | modal spectrum | ``M`` | ``L_\eta`` for ``\mathcal \gamma<10^{-2}`` | ``\mathcal \gamma(M)`` |
 # |:--|--:|--:|--:|
 # | single mode ``l=2`` | 2 | 8 | -- |
 # | ``\propto l^{-2}``, ``M=30`` | 30 | 32 | 0.02 |
@@ -996,7 +996,7 @@ end  #src
 # power-fraction metric of Section 3.1 reports that 90% of the anisotropic power
 # lies below ``l'=1`` and 99% below ``l'=3`` -- it would sanction banding at
 # ``L_\eta=3``. At ``L=3`` the summed discarded coupling is
-# ``\mathcal T_1=2.96``, i.e. **three times** ``|\eta_0|``, and even the
+# ``\mathcal \gamma=2.96``, i.e. **three times** ``|\eta_0|``, and even the
 # forgiving RMS norm is ``\mathcal T_2=0.43``. The power metric is not merely
 # optimistic here; it is wrong by a factor of forty in the bandwidth.
 #
@@ -1076,10 +1076,10 @@ end  #src
 # ### 5.4 Caveat: every entry is a lower bound
 #
 # Coefficients above ``l'=140`` are not measured. The reported
-# ``\mathcal T_1(L)`` therefore omits the tail beyond the table, so every
+# ``\mathcal \gamma(L)`` therefore omits the tail beyond the table, so every
 # ``L_\eta`` above is a **lower** bound on the bandwidth required -- equivalently,
 # an upper bound on how narrow ``\eta`` is. The residual matters: on the real
-# ``M=30`` state ``\mathcal T_1(100)\approx0.14``, still fourteen percent of
+# ``M=30`` state ``\mathcal \gamma(100)\approx0.14``, still fourteen percent of
 # ``|\eta_0|``, and ``|\eta_{140}|/|\eta_0|\approx1.2\times10^{-3}`` shows the
 # spectrum has not finished decaying where the table stops. Nothing on this page
 # would improve if the table were extended; the numbers would only get worse.

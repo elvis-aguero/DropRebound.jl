@@ -99,7 +99,7 @@ harmonics, so they are regular at both poles. They are orthogonal, which is what
 Newtonian problem separate. And they diagonalise the surface energy, giving
 
 ```math
-V \;=\; \frac{\sigma}{2}\sum_{l\ge2}\frac{4\pi}{2l+1}\,(l-1)(l+2)\,\zeta_l^2
+V \;=\; \frac{\gamma}{2}\sum_{l\ge2}\frac{4\pi}{2l+1}\,(l-1)(l+2)\,\zeta_l^2
 ```
 
 for the excess area to second order in the amplitudes. The sum starts at ``l = 2`` because
@@ -201,7 +201,7 @@ set per mode, and each carries a velocity field ``\bm u^{(a)}`` obtained by putt
 ``f = \phi_k`` into the formulas above.
 
 From here the problem is nondimensional: lengths in units of ``R``, time in units of
-``\tau_\sigma``, and ``\eta`` the local viscosity divided by its zero-shear value, so ``\eta=1``
+``\tau_c``, and ``\eta`` the local viscosity divided by its zero-shear value, so ``\eta=1``
 for a Newtonian fluid. The Ohnesorge number is then the only material parameter left.
 
 Substituting the expansion into the three functionals makes each one an explicit quadratic form,

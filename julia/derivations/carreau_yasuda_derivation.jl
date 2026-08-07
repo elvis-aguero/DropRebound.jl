@@ -73,7 +73,7 @@
 # | ``\sigma=-\gamma+i\omega`` | complex modal frequency (``\gamma>0`` = decay) |
 # | ``q``, ``\sigma=q^2\mathrm{Oh}`` | viscous wavenumber |
 # | ``\alpha^2=\sigma_{l;0}/\mathrm{Oh}``, ``\sigma_{l;0}=\sqrt{l(l-1)(l+2)}`` | |
-# | ``\mathrm{Oh}=\mu/\sqrt{\rho T_1 R}`` | Ohnesorge number |
+# | ``\mathrm{Oh}=\mu/\sqrt{\rho \gamma R}`` | Ohnesorge number |
 # | ``U(x)`` | radial velocity eigenfunction (Reid) |
 # | ``b_l(t)`` | dimensionless amplitude of mode ``l`` (the solver's ``A_l``) |
 # | ``P_l(\cos\theta)`` | Legendre polynomial of degree ``l`` |

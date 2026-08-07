@@ -77,7 +77,7 @@
 # | ``k`` | degree index of the **viscosity field's own** Legendre series |
 # | ``L_\eta`` | highest ``k`` present -- the *bandwidth* of the coupling |
 # | ``G^{k}_{l m},\ H^{k}_{l m}`` | Gaunt-type angular integrals; pure numbers |
-# | ``\mathrm{Oh}=\eta_0/\sqrt{\rho T_1R}`` | Ohnesorge number: viscous over inertio-capillary stress |
+# | ``\mathrm{Oh}=\eta_0/\sqrt{\rho \gamma R}`` | Ohnesorge number: viscous over inertio-capillary stress |
 #
 # ### Conventions
 #
@@ -172,12 +172,12 @@ println("="^78)  #src
 # balances surface tension,
 #
 # ```math
-# (-p\,\bm I + \bm\tau)\cdot\bm n = T_1(\nabla\cdot\bm n)\,\bm n .
+# (-p\,\bm I + \bm\tau)\cdot\bm n = \gamma(\nabla\cdot\bm n)\,\bm n .
 # ```
 #
 # Here ``\bm u`` is the velocity field and ``p`` the pressure, ``\rho`` the
 # (constant) density, ``\bm n`` the outward unit normal to the free surface,
-# ``T_1`` the surface tension coefficient, and ``\nabla\cdot\bm n`` twice the
+# ``\gamma`` the surface tension coefficient, and ``\nabla\cdot\bm n`` twice the
 # mean curvature, positive for a convex surface. ``\bm\tau=2\eta\bm e`` is the
 # deviatoric stress.
 #
@@ -527,7 +527,7 @@ end  #src
 # | Cross | yes | the ``p=-1`` slice of Carreau-Yasuda |
 # | Ellis, truncated power law | yes | bounded by construction |
 # | unregularised power law | no | violates (H2); ``\eta\to0`` or ``\infty`` and BC2 stops reducing |
-# | Bingham, Herschel-Bulkley | no | yield stress makes ``\eta`` unbounded as ``\dot\gamma\to0`` |
+# | Bingham, Herschel-Bulkley | no | yield stress makes ``\eta`` unbounded as ``\dot\lambda\to0`` |
 # | Oldroyd-B, viscoelastic models | no | violates (H1): the stress carries memory |
 #
 # The viscoelastic exclusion is a different physical problem rather than a gap
@@ -1258,15 +1258,15 @@ end  #src
 #
 # ### Scalings
 #
-# Lengths by the equilibrium radius ``R``, time by ``T_\sigma=\sqrt{\rho R^3/T_1}``,
+# Lengths by the equilibrium radius ``R``, time by ``T_\sigma=\sqrt{\rho R^3/\gamma}``,
 # velocity by ``R/T_\sigma``, viscosity by the zero-shear plateau ``\eta_0``:
 #
 # ```math
-# \mathrm{Oh}=\frac{\eta_0}{\sqrt{\rho T_1 R}},
+# \mathrm{Oh}=\frac{\eta_0}{\sqrt{\rho \gamma R}},
 # \qquad
-# \mathrm{Bo}=\frac{\rho g R^2}{T_1},
+# \mathrm{Bo}=\frac{\rho g R^2}{\gamma},
 # \qquad
-# \mathrm{We}=\frac{\rho R V^2}{T_1} .
+# \mathrm{We}=\frac{\rho R V^2}{\gamma} .
 # ```
 #
 # ### The unknowns

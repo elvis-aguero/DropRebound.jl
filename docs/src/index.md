@@ -2,7 +2,7 @@
 
 ## The problem
 
-A liquid drop of radius ``R``, density ``\rho``, surface tension ``\sigma`` and dynamic
+A liquid drop of radius ``R``, density ``\rho``, surface tension ``\gamma`` and dynamic
 viscosity ``\eta`` falls onto a rigid, non-wetting surface at speed ``v_0``. It flattens
 against the surface, spreads, recoils, and in most cases leaves again. Two numbers summarise
 the encounter: how long the drop stays in contact, and what fraction of its downward speed it
@@ -32,7 +32,7 @@ conditions on ``\partial\Omega`` carry the physics:
 ```math
 \partial_t\zeta = u_r , \qquad
 \bm n\cdot\bm\Sigma\cdot\bm t = 0 , \qquad
-\bm n\cdot\bm\Sigma\cdot\bm n = \sigma\,\kappa - p_c ,
+\bm n\cdot\bm\Sigma\cdot\bm n = \gamma\,\kappa - p_c ,
 ```
 
 with ``\kappa`` the mean curvature, ``\bm n`` and ``\bm t`` the normal and tangent to the
@@ -60,14 +60,14 @@ forbids that vorticity will over-predict the damping.
 ## Dimensionless groups
 
 Lengths are scaled by ``R`` and time by the capillary time
-``\tau_\sigma = \sqrt{\rho R^3/\sigma}``, the natural oscillation period of a free drop. Three
+``\tau_c = \sqrt{\rho R^3/\gamma}``, the natural oscillation period of a free drop. Three
 groups remain:
 
 | group | definition | what it controls |
 |---|---|---|
-| Weber ``\mathrm{We}`` | ``\rho v_0^2 R/\sigma`` | impact energy against surface tension |
-| Ohnesorge ``\mathrm{Oh}`` | ``\eta/\sqrt{\rho\sigma R}`` | viscous dissipation against surface tension |
-| Bond ``\mathrm{Bo}`` | ``\rho g R^2/\sigma`` | weight against surface tension |
+| Weber ``\mathrm{We}`` | ``\rho v_0^2 R/\gamma`` | impact energy against surface tension |
+| Ohnesorge ``\mathrm{Oh}`` | ``\eta/\sqrt{\rho\gamma R}`` | viscous dissipation against surface tension |
+| Bond ``\mathrm{Bo}`` | ``\rho g R^2/\gamma`` | weight against surface tension |
 
 A water–glycerol drop of radius 0.2 mm falling at 9 cm/s has ``\mathrm{Oh} \approx 0.30``,
 ``\mathrm{Bo} \approx 0.019`` and ``\mathrm{We} \approx 0.079``.
@@ -125,7 +125,7 @@ Split the test field on the surface into its normal and tangential parts,
 
 ```math
 \left(\bm\Sigma\cdot\bm n\right)\cdot\bm v
-\;=\; \underbrace{\left(\bm n\cdot\bm\Sigma\cdot\bm n\right)}_{\sigma\kappa - p_c}(\bm v\cdot\bm n)
+\;=\; \underbrace{\left(\bm n\cdot\bm\Sigma\cdot\bm n\right)}_{\gamma\kappa - p_c}(\bm v\cdot\bm n)
 \;+\; \underbrace{\left(\bm n\cdot\bm\Sigma\cdot\bm t\right)}_{=\,0}\,(\bm v\cdot\bm t) ,
 ```
 
@@ -135,7 +135,7 @@ the right-hand side becomes
 
 ```math
 \oint_{\partial\Omega}\left(\bm\Sigma\cdot\bm n\right)\cdot\bm v\,dS
-\;=\; \underbrace{\oint_{\partial\Omega}\sigma\kappa\,(\bm v\cdot\bm n)\,dS}_{\text{capillary}}
+\;=\; \underbrace{\oint_{\partial\Omega}\gamma\kappa\,(\bm v\cdot\bm n)\,dS}_{\text{capillary}}
 \;-\; \underbrace{\oint_{\partial\Omega} p_c\,(\bm v\cdot\bm n)\,dS}_{\text{film}} .
 ```
 
@@ -143,11 +143,11 @@ The capillary term is a derivative of an energy. Deforming the surface by a norm
 ``\delta\zeta`` changes its area by ``\oint_{\partial\Omega} \kappa\,\delta\zeta\,dS``, so with
 
 ```math
-V \;=\; \sigma\left(|\partial\Omega| - 4\pi R^2\right)
+V \;=\; \gamma\left(|\partial\Omega| - 4\pi R^2\right)
 ```
 
 the excess surface energy, the first variation is ``\delta V = \oint_{\partial\Omega}
-\sigma\kappa\,\delta\zeta\,dS``. Since ``\bm v\cdot\bm n`` is a rate of normal displacement,
+\gamma\kappa\,\delta\zeta\,dS``. Since ``\bm v\cdot\bm n`` is a rate of normal displacement,
 the capillary integral is exactly ``V`` differentiated along ``\bm v``.
 
 Collecting, the weak form reads

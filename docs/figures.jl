@@ -20,50 +20,59 @@ save(name, plt) = savefig(plt, joinpath(ASSETS, name))
 
 # ---------------------------------------------------------------------------
 # 1. Root locus: how the two dominant roots move as viscosity increases, and
-#    where the oscillatory branch becomes aperiodic. This is the picture that
-#    Section 8 of the Reid derivation describes in words.
+#    where the oscillatory branch becomes aperiodic, beside what that means for
+#    the surface. Referenced from *The Free Viscous Drop*.
 # ---------------------------------------------------------------------------
 function root_locus()
-    l = 2
-    s0 = sqrt(l * (l - 1) * (l + 2))          # inviscid frequency
-    ohs = exp10.(range(-2, 0.45; length=400))
+    l  = 2
+    s0 = sqrt(l * (l - 1) * (l + 2))
+    ohs = exp10.(range(-2, 0.45; length = 400))
     re1, im1, re2, im2 = Float64[], Float64[], Float64[], Float64[]
     for Oh in ohs
-        q1 = dominant_root(Oh, l)
-        q2 = second_root(Oh, l, q1)
-        s1 = q1^2 * Oh / s0
-        s2 = q2^2 * Oh / s0
+        q1 = dominant_root(Oh, l); q2 = second_root(Oh, l, q1)
+        s1 = q1^2 * Oh / s0;       s2 = q2^2 * Oh / s0
         push!(re1, real(s1)); push!(im1, imag(s1))
         push!(re2, real(s2)); push!(im2, imag(s2))
     end
-    icrit = findfirst(i -> abs(im1[i]) < 1e-9, eachindex(im1))
+    icrit  = findfirst(i -> abs(im1[i]) < 1e-9, eachindex(im1))
     ohcrit = ohs[icrit]
 
-    plt = plot(xlabel="decay rate   Re(σ) / σ₀",
-               ylabel="oscillation frequency   Im(σ) / σ₀",
-               title="How a viscous drop stops ringing   (mode l = 2)",
-               legend=:topright, xlims=(0, 2.6), ylims=(-1.25, 1.25))
-    vspan!(plt, [0, real(ohcrit) * 0 + re1[icrit]], c=:steelblue, alpha=0.06, label="")
-    hline!(plt, [0.0], c=:gray, lw=1, ls=:dot, label="")
+    # LEFT: where the roots live.
+    p1 = plot(xlabel = "decay rate  Re σ / σ₀", ylabel = "frequency  Im σ / σ₀",
+              title = "Roots move as viscosity rises", legend = :topright,
+              xlims = (0, 2.6), ylims = (-1.3, 1.3),
+              guidefontsize = 11, titlefontsize = 12, tickfontsize = 10,
+              legendfontsize = 10)
+    hline!(p1, [0.0], c = :gray70, lw = 1, ls = :dot, label = "")
+    osc = 1:icrit
+    plot!(p1, re2[osc], im2[osc], lw = 3, c = :steelblue, label = "oscillatory")
+    plot!(p1, re1[osc], im1[osc], lw = 3, c = :steelblue, label = "")
+    plot!(p1, re1[icrit:end], im1[icrit:end], lw = 3, c = :indianred, label = "overdamped")
+    plot!(p1, re2[icrit:end], im2[icrit:end], lw = 3, c = :indianred, label = "")
+    scatter!(p1, [re1[icrit]], [0.0], m = :circle, ms = 8, c = :black, msw = 0,
+             label = @sprintf("critical Oh = %.2f", ohcrit))
+    # Past the critical point the pair splits into two real roots that move in
+    # opposite directions. Without saying so, the red branch reads as one line
+    # drawn through the critical point rather than as two.
+    annotate!(p1, 2.05, 0.20, text("fast root", 10, :indianred, :center))
+    annotate!(p1, 0.42, 0.20, text("slow creep", 10, :indianred, :center))
 
-    plot!(plt, re1, im1, lw=2.6, c=:steelblue, label="")
-    plot!(plt, re2, im2, lw=2.6, c=:steelblue, label="conjugate pair of roots")
-
-    # ticks along the locus, on the upper branch only, so labels do not collide
-    for Oh in (0.05, 0.2, 0.5)
-        i = argmin(abs.(ohs .- Oh))
-        scatter!(plt, [re2[i]], [im2[i]], m=:circle, ms=4, c=:steelblue, msw=0, label="")
-        annotate!(plt, re2[i] + 0.07, im2[i] + 0.09,
-                  text("Oh = $(Oh)", 7, :steelblue, :left))
+    # RIGHT: what that means for the surface, which is the point of the left panel.
+    ts = range(0, 12; length = 600)
+    p2 = plot(xlabel = "time  (capillary times)", ylabel = "surface amplitude  ζ₂",
+              title = "…and what the drop does", legend = :topright,
+              guidefontsize = 11, titlefontsize = 12, tickfontsize = 10,
+              legendfontsize = 10)
+    for (Oh, c, lab) in ((0.05, :steelblue, "Oh = 0.05  (rings)"),
+                         (1.20, :indianred, "Oh = 1.20  (creeps back)"))
+        q = dominant_root(Oh, l); s = q^2 * Oh / s0
+        y = real.(exp.(-s .* ts))
+        plot!(p2, ts, y ./ maximum(abs, y), lw = 3, c = c, label = lab)
     end
+    hline!(p2, [0.0], c = :gray70, lw = 1, ls = :dot, label = "")
 
-    scatter!(plt, [re1[icrit]], [0.0], m=:circle, ms=7, c=:black,
-             label=@sprintf("critical point, Oh = %.3f", ohcrit))
-
-    annotate!(plt, 0.30,  0.55, text("oscillatory:\nconjugate pair", 8, :steelblue, :center))
-    annotate!(plt, 1.75,  0.62, text("aperiodic: two real roots", 8, :indianred, :center))
-    annotate!(plt, 1.95,  0.14, text("fast-decaying root →", 7, :indianred, :center))
-    annotate!(plt, 0.42, -0.16, text("← slow creep root", 7, :indianred, :center))
+    plt = plot(p1, p2; layout = (1, 2), size = (1040, 420), dpi = 150,
+               left_margin = 6Plots.mm, bottom_margin = 6Plots.mm)
     save("reid_root_locus.png", plt)
 end
 

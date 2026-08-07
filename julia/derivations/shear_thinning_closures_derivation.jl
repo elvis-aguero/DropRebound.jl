@@ -160,7 +160,7 @@ println("="^78)  #src
 # surface**, linearised and evaluated at ``x=1``,
 #
 # ```math
-# \Bigl[-p + \tau_{rr}\Bigr]_{x=1} \;=\; T_1\,(\nabla\cdot\bm n)\Big|_{x=1} ,
+# \Bigl[-p + \tau_{rr}\Bigr]_{x=1} \;=\; \gamma\,(\nabla\cdot\bm n)\Big|_{x=1} ,
 # \qquad \tau_{rr}=2\eta\,e_{rr},
 # ```
 #
@@ -843,7 +843,7 @@ end  #src
 #
 # Measured on Reid's actual viscous eigenmodes (volume-averaged,
 # ``\mathrm{Oh}=0.2``, in the saturated thinned regime), the smallest
-# ``L_\eta`` holding ``T_1<10^{-2}``:
+# ``L_\eta`` holding ``\gamma<10^{-2}``:
 #
 # | modal spectrum | ``L_\eta`` for 1% |
 # |:--|:--|
@@ -1043,7 +1043,7 @@ end  #src
 # by a single number ``\eta_{\mathrm{eff}}``, taken as the
 # dissipation-weighted average of ``\eta`` over the drop. Equivalently, the
 # whole field is summarised by one effective Ohnesorge number
-# ``\mathrm{Oh}_{\mathrm{eff}}=\eta_{\mathrm{eff}}/\sqrt{\rho T_1R}``.
+# ``\mathrm{Oh}_{\mathrm{eff}}=\eta_{\mathrm{eff}}/\sqrt{\rho \gamma R}``.
 #
 # **What it buys.** The radial equation becomes constant-coefficient again,
 # i.e. Bessel's equation, and Reid's closed-form characteristic equation

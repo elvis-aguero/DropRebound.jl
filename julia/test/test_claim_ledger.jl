@@ -68,9 +68,9 @@ const LEDGER = [
      by = "ASSERTION 2c"),
     # Bo and We need their own entries: the per-equation coverage test showed that
     # SUM-GROUPS claimed only Oh, and the other two rode along in the same fence.
-    (id = "SUM-BO",     status = :proved, anchor = raw"\mathrm{Bo}=\frac{\rho g R^2}{T_1}",
+    (id = "SUM-BO",     status = :proved, anchor = raw"\mathrm{Bo}=\frac{\rho g R^2}{\gamma}",
      by = "ASSERTION 2c"),
-    (id = "SUM-WE",     status = :proved, anchor = raw"\mathrm{We}=\frac{\rho R V^2}{T_1}",
+    (id = "SUM-WE",     status = :proved, anchor = raw"\mathrm{We}=\frac{\rho R V^2}{\gamma}",
      by = "ASSERTION 2c"),
     (id = "SUM-ZETA",   status = :axiom,  anchor = raw"\zeta(\theta,t)=\sum_{l\ge2}\zeta_l(t)P_l(\mu)",
      by = ""),  # choice of basis and of truncation floor l >= 2

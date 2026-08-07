@@ -281,7 +281,7 @@ println("ASSERTION 6 OK: relative correction a^m -> 0 monotonically for every m>
 # ```math
 # \underbrace{\tfrac{2}{3}\pi\rho R^{3}V^{2}}_{E_V}
 # \;=\;
-# \underbrace{\tfrac{8}{5}\pi T_1 R^{2}A_2^{2}}_{E_2}
+# \underbrace{\tfrac{8}{5}\pi \gamma R^{2}A_2^{2}}_{E_2}
 # \qquad\Longrightarrow\qquad
 # A_2 \;=\; \sqrt{\tfrac{5}{12}\,\mathrm{We}} .
 # ```
