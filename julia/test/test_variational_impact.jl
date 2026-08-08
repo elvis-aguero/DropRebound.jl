@@ -308,3 +308,45 @@ end
     @test r.t[end] > 2.0                       # the bounce completed, not a truncated march
     @test 0.70 < m.cor < 0.80                  # and gives the converged value, ~0.7535
 end
+
+@testset "the defaults themselves produce a bounce" begin
+    # Every other test names its own M and K, so none of them exercises what a user
+    # actually gets. These pass neither: whatever DEFAULT_M and DEFAULT_K are, this is
+    # the configuration the package ships, and it has to work.
+    #
+    # It is not hypothetical. DEFAULT_M and DEFAULT_K were set independently, and the
+    # pair M = 90, K = 3 could not complete a shear-thinning march at all until the step
+    # controller was fixed: the viscosity iteration hit a floor the tolerance was below,
+    # dt halved twenty-three times and the run died having computed a third of a bounce
+    # while reporting a restitution of 0.15. Nothing caught it, because every impact test
+    # then ran at M = 14.
+    #
+    # Physical meaning of a failure: the package's own defaults do not produce a drop
+    # that bounces, whatever the tests at chosen resolutions say.
+    @test DropSolver.DEFAULT_M == 90
+    @test DropSolver.DEFAULT_K == 3
+
+    @testset "Newtonian" begin
+        p = ImpactParams(We = 0.5, Bo = 0.019, Oh = 0.0373)
+        r = simulate_lcp(p)
+        m = proximity_metrics(p, r)
+        @test r.t[end] > 2.0                    # completed, not truncated
+        @test 0.70 < m.cor < 0.80               # converged value is 0.7556
+        @test 2.0 < m.tc < 3.0
+    end
+
+    @testset "shear thinning on the 3000 ppm fluid" begin
+        eta_0, eta_inf = 8.433817577956766, 0.0037320997942061666
+        K_cross, m_cross = 18.48081673111359, 0.7430524574330837
+        R, sigma, rho = 0.0003, 0.0728, 1000.0
+        t_cap = sqrt(rho * R^3 / sigma)
+        Oh_0 = eta_0 / sqrt(rho * sigma * R)
+        p = ImpactParams(We = 0.3643, Bo = 0.012, Oh = Oh_0,
+                         eta = gd -> carreau(gd; lambda_c = K_cross/t_cap, a = m_cross,
+                                             n = 1 - m_cross, eta_inf_ratio = eta_inf/eta_0))
+        r = simulate_lcp(p)
+        m = proximity_metrics(p, r)
+        @test r.t[end] > 2.0                    # this is the case that used to die at 0.890
+        @test 0.70 < m.cor < 0.80               # measured 0.753965 at the defaults
+    end
+end

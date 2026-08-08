@@ -49,7 +49,7 @@ spread(v) = (maximum(v) - minimum(v)) / mean(v)
             Wes = exp.(range(log(0.2), log(3.0); length = 6))
             tcs = Float64[]; cors = Float64[]; ok = Float64[]
             for We in Wes
-                p = ImpactParams(We = We, Bo = 0.02, Oh = Oh, M = 45, K = 2, t_max = 25.0)
+                p = ImpactParams(We = We, Bo = 0.02, Oh = Oh, M = 45, K = 3, t_max = 25.0)
                 m = proximity_metrics(p, simulate(p))
                 (isfinite(m.tc) && 0 < m.tc < 20) || continue
                 push!(tcs, m.tc); push!(cors, m.cor); push!(ok, We)
@@ -78,7 +78,7 @@ spread(v) = (maximum(v) - minimum(v)) / mean(v)
         Bos = (0.005, 0.02, 0.05, 0.1)                    # a factor of twenty in weight
         tb = Float64[]; cb = Float64[]
         for Bo in Bos
-            p = ImpactParams(We = We, Bo = Bo, Oh = 0.0373, M = 45, K = 2, t_max = 25.0)
+            p = ImpactParams(We = We, Bo = Bo, Oh = 0.0373, M = 45, K = 3, t_max = 25.0)
             m = proximity_metrics(p, simulate(p))
             push!(tb, m.tc); push!(cb, m.cor)
         end
@@ -111,7 +111,7 @@ spread(v) = (maximum(v) - minimum(v)) / mean(v)
         # kinetic energy at Oh = 0.3 to 2.4 per cent at Oh = 0.001, while the share of the
         # deficit still sitting in the shape modes rises from 1 per cent to 81 per cent.
         function partition(We, Oh)
-            p = ImpactParams(We = We, Bo = 0.02, Oh = Oh, M = 20, K = 2, t_max = 30.0)
+            p = ImpactParams(We = We, Bo = 0.02, Oh = Oh, M = 30, K = 3, t_max = 30.0)
             r = simulate(p)
             F = assemble_newtonian(basis_of_exp(p), Oh); mass = 4pi/3
             KEin  = 0.5*mass*r.v[1]^2

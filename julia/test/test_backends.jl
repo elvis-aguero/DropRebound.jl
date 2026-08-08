@@ -55,7 +55,7 @@ const BK_ALL = [Backend(contact = :lcp),
 
     @testset "the backends agree with the functions they wrap" begin
         # `run_impact` must not be a second implementation. Same parameters, same numbers.
-        kw = (We = 1.0, Bo = 0.0189, Oh = 0.3038, M = 20, K = 2, t_max = 25.0)
+        kw = (We = 1.0, Bo = 0.0189, Oh = 0.3038, M = 30, K = 3, t_max = 25.0)
         p = ImpactParams(; kw...)
         @test run_impact(Backend(contact = :lcp); kw...).cor ≈
               proximity_metrics(p, simulate_lcp(p)).cor
@@ -73,7 +73,7 @@ const BK_ALL = [Backend(contact = :lcp),
         # search fails at the canonical reference point We = 1, Oh = 0.3038 -- which is worth
         # knowing on its own account, and is why the animations use a different case.
         r = run_impact(Backend(formulation = :nonvariational, contact = :tangency);
-                       We = 1.0, Bo = 0.0189, Oh = 0.3038, M = 20, K = 2, t_max = 25.0)
+                       We = 1.0, Bo = 0.0189, Oh = 0.3038, M = 30, K = 3, t_max = 25.0)
         @test r.ok == false
         @test isnan(r.cor)
         @test r.backend == "nonvar/tangency"

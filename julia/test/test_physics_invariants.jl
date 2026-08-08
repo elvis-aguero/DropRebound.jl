@@ -26,7 +26,7 @@ mean_(v) = sum(v) / length(v)
         # this one has a number.
         for (Bo, Oh) in ((0.05, 0.5), (0.20, 0.5), (0.05, 1.0))
             for solver in (simulate, simulate_lcp)
-                p = ImpactParams(We = 1e-8, Bo = Bo, Oh = Oh, M = 20, K = 2, t_max = 60.0)
+                p = ImpactParams(We = 1e-8, Bo = Bo, Oh = Oh, M = 30, K = 3, t_max = 60.0)
                 r = solver(p)
                 ## the tail of the run, once the transient has damped
                 tail = max(1, length(r.pc1) - length(r.pc1) ÷ 5)
@@ -69,7 +69,7 @@ mean_(v) = sum(v) / length(v)
         # variational structure asserts and nothing else here checks.
         Bo = 0.05
         function preflight(We)
-            p = ImpactParams(We = We, Bo = Bo, Oh = 0.3, M = 20, K = 2, t_max = 25.0)
+            p = ImpactParams(We = We, Bo = Bo, Oh = 0.3, M = 30, K = 3, t_max = 25.0)
             r = simulate(p)
             i = findfirst(>(0), r.cp)
             i === nothing && return (nothing, nothing, nothing, p)

@@ -105,7 +105,7 @@ const REF = (We = 1.0, Bo = 0.0189, Oh = 0.303767)
         for (We, Oh) in ((0.05, 0.05), (0.3, 0.05), (1.0, 0.1),
                          (0.3, 0.3), (1.0, 0.3), (2.0, 0.5))
             r = simulate(ImpactParams(We = We, Bo = 0.0189, Oh = Oh,
-                                      M = 20, K = 2, t_max = 25.0))
+                                      M = 30, K = 3, t_max = 25.0))
             @test isfinite(r.cor)
             @test 0 < r.cor <= 1.0
             ## and the drop must actually have hit something
@@ -122,7 +122,7 @@ const REF = (We = 1.0, Bo = 0.0189, Oh = 0.303767)
         # that the velocity change equals the integrated film acceleration less the
         # free-fall contribution -- so it checks the film force's MAGNITUDE, which
         # every other test here only constrains in sign.
-        p = ImpactParams(; REF..., M = 20, K = 2, t_max = 25.0)
+        p = ImpactParams(; REF..., M = 30, K = 3, t_max = 25.0)
         r = simulate(p)
         i0, i1 = 1, length(r.t)
         ## trapezoid on -p_c,1, which is the film's contribution to v-dot
@@ -160,7 +160,7 @@ const REF = (We = 1.0, Bo = 0.0189, Oh = 0.303767)
         ## constraint or the assembly.
         gn, gw = DropSolver.gauss_legendre_nodes(200, -1.0, 1.0)
         function volume_error(We)
-            p = ImpactParams(We = We, Bo = REF.Bo, Oh = REF.Oh, M = 20, K = 2,
+            p = ImpactParams(We = We, Bo = REF.Bo, Oh = REF.Oh, M = 30, K = 3,
                              t_max = 25.0)
             r = simulate(p); ls = p.ls
             wres = 0.0; wn = 0.0
@@ -378,7 +378,7 @@ end
         # the only regime where the film contributes at all. Validated at 2.4 per cent on
         # this case; a failing run missed by a factor of 156, which is what told me the
         # accounting, not the film, was the thing to look at.
-        p = ImpactParams(; REF2..., M = 30, K = 2, t_max = 25.0)
+        p = ImpactParams(; REF2..., M = 30, K = 3, t_max = 25.0)
         r = simulate(p)
         b = basis_of(p); F = assemble_newtonian(b, p.Oh); mass = 4pi/3
         E(a, ad, z, v) = 0.5*dot(ad, F.M, ad) + 0.5*dot(a, F.G, a) +

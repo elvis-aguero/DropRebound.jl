@@ -45,7 +45,7 @@ using LinearAlgebra
         # (`p_{c,1} -> -Bo`) because no harmonic is involved. `equivalent_pressure` stores
         # `-sum(lam)/m` in the `l = 1` slot, so this reads it back out.
         for Bo in (0.05, 0.2)
-            p = ImpactParams(We = 1e-8, Bo = Bo, Oh = 0.5, M = 20, K = 2, t_max = 60.0,
+            p = ImpactParams(We = 1e-8, Bo = Bo, Oh = 0.5, M = 30, K = 3, t_max = 60.0,
                              force_mode = :nodal)
             r = simulate_lcp(p)
             tail = max(1, length(r.pc) - length(r.pc) ÷ 5)
@@ -90,8 +90,8 @@ using LinearAlgebra
         # M = 14, 20, 30, 45, 60.
         gaps = Float64[]
         for M in (20, 45)
-            a = ImpactParams(We = 1.0, Bo = 0.0189, Oh = 0.3038, M = M, K = 2, t_max = 25.0)
-            b = ImpactParams(We = 1.0, Bo = 0.0189, Oh = 0.3038, M = M, K = 2, t_max = 25.0,
+            a = ImpactParams(We = 1.0, Bo = 0.0189, Oh = 0.3038, M = M, K = 3, t_max = 25.0)
+            b = ImpactParams(We = 1.0, Bo = 0.0189, Oh = 0.3038, M = M, K = 3, t_max = 25.0,
                              force_mode = :nodal)
             ma = proximity_metrics(a, simulate_lcp(a)); mb = proximity_metrics(b, simulate_lcp(b))
             push!(gaps, abs(mb.cor - ma.cor)/ma.cor)
@@ -104,7 +104,7 @@ using LinearAlgebra
         # The Picard closure on eta is independent of which forcing is used, so this checks that
         # the two are genuinely orthogonal choices rather than entangled.
         eta = gd -> carreau(gd; lambda_c = 10.0, a = 2.0, n = 0.5, eta_inf_ratio = 0.01)
-        p = ImpactParams(We = 1.0, Bo = 0.0189, Oh = 0.3038, M = 12, K = 2, eta = eta,
+        p = ImpactParams(We = 1.0, Bo = 0.0189, Oh = 0.3038, M = 30, K = 3, eta = eta,
                          t_max = 25.0, force_mode = :nodal)
         r = simulate_lcp(p)
         @test r.lcp_resid_max < 1e-8
@@ -112,9 +112,9 @@ using LinearAlgebra
         ## and the Newtonian limit of the shear-thinning path reproduces the constant-viscosity
         ## one, through the conjugate forcing as through the other
         e1 = gd -> carreau(gd; lambda_c = 1e-8, a = 2.0, n = 0.5, eta_inf_ratio = 0.0)
-        pv = ImpactParams(We = 1.0, Bo = 0.0189, Oh = 0.3038, M = 12, K = 2, eta = e1,
+        pv = ImpactParams(We = 1.0, Bo = 0.0189, Oh = 0.3038, M = 30, K = 3, eta = e1,
                           t_max = 25.0, force_mode = :nodal)
-        pc = ImpactParams(We = 1.0, Bo = 0.0189, Oh = 0.3038, M = 12, K = 2,
+        pc = ImpactParams(We = 1.0, Bo = 0.0189, Oh = 0.3038, M = 30, K = 3,
                           t_max = 25.0, force_mode = :nodal)
         @test isapprox(simulate_lcp(pv).cor, simulate_lcp(pc).cor; rtol = 1e-4)
     end

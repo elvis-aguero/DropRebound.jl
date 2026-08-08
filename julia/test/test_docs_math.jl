@@ -264,7 +264,7 @@ end
 
 @testset "docs math: contact.md" begin
 
-    p = ImpactParams(We = 0.5, Bo = 0.0189, Oh = 0.05, M = 12, K = 2)
+    p = ImpactParams(We = 0.5, Bo = 0.0189, Oh = 0.05, M = 30, K = 3)
     b = basis(p)
 
     # PAGE CLAIM: "h(theta) = z + cos(theta) (1 + sum_l zeta_l P_l(cos theta))".
@@ -410,7 +410,7 @@ end
     @testset "the two closures agree" begin
         cases = ((0.2, 0.0373), (0.5, 0.0373), (1.0, 0.3038), (2.0, 0.3038))
         for (We, Oh) in cases
-            kw = (We = We, Bo = 0.0189, Oh = Oh, M = 20, K = 2)
+            kw = (We = We, Bo = 0.0189, Oh = Oh, M = 30, K = 3)
             a = run_impact(Backend(contact = :active_set); kw...)
             l = run_impact(Backend(contact = :lcp); kw...)
             (a.ok && l.ok) || continue          # a case neither closure completes says nothing
