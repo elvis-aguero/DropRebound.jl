@@ -967,6 +967,7 @@ function try_step_lcp(p::ImpactParams, prev::ImpactState, curr::ImpactState,
     ## path reuses both.
     adot_star = curr.first ? curr.adot : (1 + dt/curr.dt) * curr.adot - (dt/curr.dt) * prev.adot
     conv = 0.0; used = 0
+    star_back = Float64[]                      # iterate before last, for the secant step
     Ac = zeros(0,0); bv = Float64[]; idx = Int[]; aux = nothing
     pact = Float64[]; resid = Inf; sweeps = 0
     for it in 1:(F0 === nothing ? p.eta_max_sweeps : 1)
@@ -987,9 +988,27 @@ function try_step_lcp(p::ImpactParams, prev::ImpactState, curr::ImpactState,
             conv = 0.0
             break
         end
+        ## The residual is measured on the RAW fixed-point step, before any
+        ## acceleration, so it stays the honest distance between successive iterates.
         scv = max(maximum(abs, adot_star), 1e-12)
         conv = maximum(abs, adot_star .- prev_star) / scv
         conv < p.eta_tol && break
+        ## Irons-Tuck (Anderson with depth one) on the NEXT guess. Plain Picard on this
+        ## fixed point converges linearly, and the rate worsens with resolution: the
+        ## worst step needs 20 sweeps at M = 45, 16 at M = 60 and 63 at M = 90, where it
+        ## approaches the cap and the march dies. A secant step along the last two
+        ## increments costs three vector operations on `ndof` and does not change the
+        ## fixed point, only the path taken to it.
+        if !isempty(star_back)
+            d1 = prev_star .- star_back
+            d2 = adot_star .- prev_star
+            dd = d2 .- d1
+            ndd = dot(dd, dd)
+            if ndd > 0
+                adot_star = adot_star .- (dot(d2, dd) / ndd) .* d2
+            end
+        end
+        star_back = prev_star
     end
     (F0 === nothing && conv > p.eta_tol) && return (:diverge, curr,
         (resid = resid, sweeps = sweeps, nact = 0, contiguous = true,
@@ -1038,7 +1057,33 @@ function simulate_lcp(p::ImpactParams)
     while curr.t < p.t_max
         st, nxt, dg = try_step_lcp(p, prev, curr, dt; F0 = F0, Vfac = Vfac)
         if st !== :ok
-            nrej += 1; dt /= 2
+            nrej += 1
+            ## HALVING dt IS THE RIGHT ANSWER TO ONE OF THE TWO FAILURES AND THE WRONG
+            ## ANSWER TO THE OTHER.
+            ##
+            ## A complementarity failure is a genuine step-size problem: the contact set
+            ## moved too far in one step, and a smaller step fixes it.
+            ##
+            ## A viscosity-iteration failure is not. The iterate is
+            ## `adot_star = beta*a + hv_a` with `beta = c0/dt`, a difference of large
+            ## quantities once dt is small, so the increment between sweeps is
+            ## cancellation noise scaled by beta. Measured at M = 90, the residual grows
+            ## as 1/dt across four decades, from 3.0e-6 at the natural step to 2.0e-2 at
+            ## dt = 5.6e-8, while the complementarity residual stays at 1e-21 throughout.
+            ## Halving dt therefore makes the thing it is meant to repair monotonically
+            ## worse, and twenty-three halvings later the march is dead at the floor with
+            ## a third of a bounce computed.
+            ##
+            ## So only the complementarity path shrinks the step. A viscosity failure at
+            ## a step size that cannot be usefully reduced is reported, not chased.
+            if dg.eta_resid > p.eta_tol && dg.resid <= 1e-8
+                @warn "the viscosity iteration did not reach its tolerance, and reducing" *
+                      " the step would make it worse; the march stops here" *
+                      " (raise eta_tol above the floor, or lower M)" t=curr.t dt=dt *
+                      1.0 eta_resid=dg.eta_resid eta_tol=p.eta_tol
+                break
+            end
+            dt /= 2
             dt < p.dt_min && break
             continue
         end

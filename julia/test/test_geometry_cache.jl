@@ -89,8 +89,18 @@ end
         # silently allocate gigabytes. Above the budget the direct loop is used instead --
         # slower, but it runs.
         @test DropSolver.coupled_cache_bytes(26, 40, 48) < 10_000_000
-        @test DropSolver.coupled_cache_bytes(178, 40, 48) < DropSolver.COUPLED_CACHE_BUDGET
-        @test DropSolver.coupled_cache_bytes(258, 40, 48) > DropSolver.COUPLED_CACHE_BUDGET
+        ## Relative to the budget, not against a hard-coded dof count. An earlier
+        ## version asserted that ndof = 258 was over budget, which was true at 500 MB
+        ## and false the moment the budget was raised: the test then failed for a
+        ## change that was not a regression.
+        n_small = 178
+        @test DropSolver.coupled_cache_bytes(n_small, 40, 48) < DropSolver.COUPLED_CACHE_BUDGET
+        n_big = n_small
+        while DropSolver.coupled_cache_bytes(n_big, 40, 48) <= DropSolver.COUPLED_CACHE_BUDGET
+            n_big *= 2
+            n_big > 100_000 && break
+        end
+        @test DropSolver.coupled_cache_bytes(n_big, 40, 48) > DropSolver.COUPLED_CACHE_BUDGET
         ## monotone in every argument, since a bound that is not monotone is not a bound
         @test DropSolver.coupled_cache_bytes(50, 40, 48) >
               DropSolver.coupled_cache_bytes(40, 40, 48)

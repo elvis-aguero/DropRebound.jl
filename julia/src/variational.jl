@@ -405,7 +405,7 @@ coupled_cache_bytes(N::Int, nx::Int, nmu::Int) =
     ((N*(N+1) ÷ 2) + 6N) * nx * nmu * 8
 
 """Above this the geometry is not cached and the direct loop is used instead."""
-const COUPLED_CACHE_BUDGET = 500_000_000
+const COUPLED_CACHE_BUDGET = 2_000_000_000
 
 """Footprints above this are reported once, because a silent 300 MB allocation is a surprise."""
 const COUPLED_CACHE_WARN = 100_000_000
@@ -514,12 +514,41 @@ function assemble_coupled(b::ModalBasis, Oh::Real; eta = (x, mu) -> 1.0,
         ## and is what a purely spatial viscosity wants, but for a shear-thinning fluid it
         ## makes the cache pointless, because the closure rebuilds what the cache stores.
         fast = eta_rate !== nothing && state !== nothing
+        ## The inner product is `acc = D * c`, and `D` is the whole cache: 550 MB at
+        ## M = 90. Streaming it once per Picard sweep is what a shear-thinning run
+        ## spends its time on, and at 16 GB/s single-threaded it is bandwidth bound
+        ## rather than compute bound. So evaluate the coefficients first, then split
+        ## the PAIR index across threads.
+        ##
+        ## Chunked over pairs, not interleaved. `D` is column major, so `D[k, q]` for
+        ## fixed `q` is contiguous in `k`; giving each thread a contiguous block keeps
+        ## that, whereas threading the `q` loop would have every thread writing the
+        ## whole of `acc` and threading `k` naively would stride by `npairs`.
+        cs = Vector{Float64}(undef, length(g.w))
         @inbounds for q in eachindex(g.w)
             ev = fast ? eta_rate(shear_rate_at(g, state, q)) : eta(g.xs[q], g.mus[q])
-            c = g.w[q] * 2 * ev
-            c == 0 && continue
-            @simd for k in 1:npairs
-                acc[k] += c * g.D[k, q]
+            cs[q] = g.w[q] * 2 * ev
+        end
+        nt = min(Threads.nthreads(), max(1, npairs ÷ 512))
+        if nt <= 1
+            @inbounds for q in eachindex(cs)
+                c = cs[q]; c == 0 && continue
+                @simd for k in 1:npairs
+                    acc[k] += c * g.D[k, q]
+                end
+            end
+        else
+            span = cld(npairs, nt)
+            Threads.@threads for t in 1:nt
+                lo = (t - 1) * span + 1
+                hi = min(t * span, npairs)
+                lo > hi && continue
+                @inbounds for q in eachindex(cs)
+                    c = cs[q]; c == 0 && continue
+                    @simd for k in lo:hi
+                        acc[k] += c * g.D[k, q]
+                    end
+                end
             end
         end
         Cm = Matrix{Float64}(undef, N, N)
