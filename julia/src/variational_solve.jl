@@ -98,9 +98,23 @@ default_eta_tol(M::Integer) = 1e-8 * float(M)^3
 
 """
 How many consecutive step reductions a viscosity failure is allowed before the march
-gives up. Rescued episodes take one to seven; the unrescuable one took twenty-three.
+gives up.
+
+Calibrated against measurement, and the margin is narrow. Rescued episodes on the
+3000 ppm fluid at M = 45 take one to seven halvings; the 2000 ppm fluid at M = 90 takes
+FOURTEEN on its very first step, with the residual falling four decades, jumping back up
+to 1e46, and only then converging. The unrescuable episode that motivated this bound ran
+twenty-three.
+
+So the window between "still worth shrinking" and "never going to work" is 14 to 23, and
+a bound of 12 sat inside the legitimate range: it stopped the 2000 ppm sweep dead at
+t = 0 without a single step accepted. Eighteen leaves room above the largest observed
+rescue while still cutting the spiral well before dt_min.
+
+If a fluid ever needs more than this, the symptom is a march that reports no contact at
+all, `cor = 1` and `tc = 0`, rather than a wrong answer.
 """
-const MAX_ETA_HALVINGS = 12
+const MAX_ETA_HALVINGS = 18
 
 const MAX_ACTIVE_SET_ITERS = 40
 
@@ -449,11 +463,18 @@ end
 March the impact. Returns the trajectory and the two KPIs, coefficient of restitution
 and contact time.
 
-The contact count changes by at most one per step and is chosen as the admissible
-candidate with the smallest edge residual. Inadmissible candidates are rejected
-outright rather than ranked, and when no candidate is admissible the step is rejected
-and `dt` halved -- that, rather than event detection, is what keeps the nonsmooth
-transition from being straddled.
+The contact set is found by a primal active set on the complementarity pair: grow while
+a free node has penetrated, release while the outermost contacting node's pressure
+pulls, stop when neither holds. Each move is forced by a violated condition, so there is
+no candidate to rank and no tie to break.
+
+This replaced a ranked search over neighbouring contact counts scored by an edge
+residual, which is what the reference implementation does and what the nonvariational
+solver still does. That search chatters when the damping is small: two candidates score
+almost equally, the choice flips step to step, and the film pressure oscillates in sign
+until `dt` collapses, which made it fail sporadically in `M`. The active set also
+matches the reference case more closely, giving a contact time of 2.1830 against its
+2.183 where the search gave 2.300.
 """
 function simulate(p::ImpactParams; verbose = false)
     F0 = p.eta_const ? assemble_newtonian(basis(p), p.Oh) : nothing
