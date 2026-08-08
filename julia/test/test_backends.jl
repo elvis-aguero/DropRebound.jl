@@ -40,7 +40,7 @@ const BK_ALL = [Backend(contact = :lcp),
         wantdiag = (:min_gap, :n_detected, :rejects, :lcp_resid, :eta_sweeps,
                     :cor_internal, :tc_internal)
         for b in BK_ALL
-            r = run_impact(b; We = 0.5, Bo = 0.0188, Oh = 0.0373, M = 14, K = 2, t_max = 25.0)
+            r = run_impact(b; We = 0.5, Bo = 0.0188, Oh = 0.0373, M = 30, K = 3, t_max = 25.0)
             @test all(k -> haskey(r, k), want)
             @test all(k -> haskey(r.diag, k), wantdiag)
             @test r.backend == label(b)
@@ -86,7 +86,7 @@ const BK_ALL = [Backend(contact = :lcp),
         # `drop_outline` is what both the figure and the animation draw, and it is written
         # against the common form rather than against any solver, so it has to reproduce the
         # surface from `zeta` alone.
-        r = run_impact(Backend(); We = 0.5, Bo = 0.0188, Oh = 0.0373, M = 14, K = 2,
+        r = run_impact(Backend(); We = 0.5, Bo = 0.0188, Oh = 0.0373, M = 30, K = 3,
                        t_max = 25.0)
         @test r.ok
         i = argmax([maximum(abs, z) for z in r.zeta])

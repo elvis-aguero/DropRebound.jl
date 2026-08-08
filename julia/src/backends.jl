@@ -149,7 +149,7 @@ function _run_impact(b::Backend; We::Real, Bo::Real, Oh::Real,
                     M::Int = DEFAULT_M, K::Int = DEFAULT_K,
                     t_max::Real = 25.0, eta = nothing, eta_nonvar = nothing,
                     save_every::Real = 0.005, h_thresh::Real = 0.02,
-                    eta_tol::Real = DEFAULT_ETA_TOL)
+                    eta_tol = nothing)
     t0 = time()
     if b.formulation === :variational
         eta_nonvar === nothing ||

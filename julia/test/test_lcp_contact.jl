@@ -154,7 +154,7 @@ end
                          n = 1 - m_cross, eta_inf_ratio = eta_inf/eta_0)
 
     @testset "it integrates, and complementarity still holds exactly" begin
-        p = ImpactParams(We = 0.1912, Bo = 0.012, Oh = Oh_0, M = 14, K = 2,
+        p = ImpactParams(We = 0.1912, Bo = 0.012, Oh = Oh_0, M = 30, K = 3,
                          eta = etaf, t_max = 25.0)
         @test !p.eta_const                        # the probe really sees a variable eta
         r = simulate_lcp(p)
@@ -180,15 +180,27 @@ end
         # closures share the assembly and nothing about how they choose the contact set, so
         # this pins the rheology and the contact treatment against each other on a fluid whose
         # zero-shear Ohnesorge number is 57.
-        p = ImpactParams(We = 0.1912, Bo = 0.012, Oh = Oh_0, M = 14, K = 2,
+        p = ImpactParams(We = 0.1912, Bo = 0.012, Oh = Oh_0, M = 30, K = 3,
                          eta = etaf, t_max = 25.0)
         rl = simulate_lcp(p); rs = simulate(p)
         @test abs(rl.cor - 0.804)/0.804 < 0.10        # within ten per cent on restitution
         @test abs(rl.tc - 2.693)/2.693 < 0.15         # contact time within fifteen
-        ## measured 3.47e-6 on restitution; contact time is a multiple of the fixed dt, so
-        ## it comes out bit-identical whenever both closures flag the same steps
-        @test isapprox(rl.cor, rs.cor; rtol = 1e-5)
-        @test rl.tc == rs.tc
+        ## How closely the two closures may agree is set by how far each is allowed to
+        ## sit from the fixed point, which is `eta_tol`. They share the assembly and the
+        ## rheology and differ only in how the contact set is chosen, so the residual
+        ## disagreement is the tolerance, not the closure.
+        ##
+        ## Asserting a fixed 1e-5 here was correct while eta_tol was 1e-6 and became
+        ## wrong when the tolerance began scaling with M: at M = 30 the tolerance is
+        ## 2.7e-4 and the closures differ by 1.25e-4, which is inside it. A test that
+        ## demands agreement finer than the tolerance permits is testing luck.
+        @test isapprox(rl.cor, rs.cor; rtol = max(1e-5, p.eta_tol))
+        ## Contact time is a multiple of the step, so the closures agree to within the
+        ## step on which they flag release. Measured: they differ by 0.00456 against a
+        ## dt of 0.00471, which is one step. Bit-identical was the right assertion when
+        ## both closures flagged the same steps and is not once eta_tol permits them to
+        ## accept different ones.
+        @test abs(rl.tc - rs.tc) <= 2 * p.dt0
     end
 
     @testset "the Newtonian limit is recovered through the LCP path" begin
@@ -196,7 +208,7 @@ end
         # reassembly and a fresh compliance every sweep -- must reproduce the cached
         # constant-viscosity one. This checks the two code paths against each other rather
         # than each against itself.
-        base = (We = 1.0, Bo = 0.0189, Oh = 0.303767, M = 14, K = 2, t_max = 25.0)
+        base = (We = 1.0, Bo = 0.0189, Oh = 0.303767, M = 30, K = 3, t_max = 25.0)
         rn = simulate_lcp(ImpactParams(; base...))
         rt = simulate_lcp(ImpactParams(; base...,
                 eta = gd -> carreau(gd; lambda_c = 1e-10, a = 2.0, n = 0.4,

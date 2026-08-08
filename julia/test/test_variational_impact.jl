@@ -176,7 +176,7 @@ end
     # A modest truncation, because a non-constant viscosity forces the full coupled
     # reassembly -- O(ndof^2) quadratures -- instead of the cached block-diagonal
     # operator a constant viscosity allows. That is a cost, not an approximation.
-    base = (We = 1.0, Bo = 0.0189, Oh = 0.303767, M = 14, K = 2, t_max = 25.0)
+    base = (We = 1.0, Bo = 0.0189, Oh = 0.303767, M = 30, K = 3, t_max = 25.0)
 
     rn = simulate(ImpactParams(; base...))
     @test rn.rejects == 0
@@ -242,7 +242,7 @@ end
     Oh_0 = eta_0 / sqrt(rho * sigma * R)
     @test Oh_0 > 50                                   # genuinely, extremely viscous
 
-    common = (We = 0.19, Bo = 0.012, Oh = Oh_0, M = 14, K = 2, t_max = 25.0)
+    common = (We = 0.19, Bo = 0.012, Oh = Oh_0, M = 30, K = 3, t_max = 25.0)
 
     ## At the zero-shear viscosity the drop must NOT come back.
     rn = simulate(ImpactParams(; common...))
@@ -274,4 +274,37 @@ end
     @test isapprox(rst.cor, 0.80; rtol = 0.20)
     ## and the contact time within the same band as the measurement, ~2.7
     @test isapprox(rst.tc, 2.7; rtol = 0.30)
+end
+
+@testset "a viscosity failure does not collapse the step size" begin
+    # The march meets two different viscosity-iteration failures and they need opposite
+    # responses. Early on the iteration DIVERGES, residual of order 1e20, and halving dt
+    # rescues it. Later it reaches a FLOOR just above the tolerance, and halving raises
+    # that floor, because `adot_star = beta*a + hv_a` with `beta = c0/dt` is a difference
+    # of large quantities, so the increment between sweeps is cancellation noise scaled by
+    # beta. Measured at M = 90: 3.0e-6 at the natural step, 2.0e-2 at dt = 5.6e-8.
+    #
+    # Three versions of the handler were wrong before this one. Stopping on any viscosity
+    # failure killed every run at t = 0, since the first step always trips. Stopping when
+    # the residual worsens fired on the divergent cluster, which is not monotone. Both
+    # passed the suite, because every impact test then ran at M = 14, K = 2, where the
+    # first step does not trip at all. They run at M = 30 now for that reason.
+    #
+    # So this runs at a resolution that DOES exercise the path. A failure means either the
+    # early divergence is no longer being rescued by step reduction, or the floor is no
+    # longer being detected and the march is spiralling to dt_min again.
+    eta_0, eta_inf = 8.433817577956766, 0.0037320997942061666
+    K_cross, m_cross = 18.48081673111359, 0.7430524574330837
+    R, sigma, rho = 0.0003, 0.0728, 1000.0
+    t_cap = sqrt(rho * R^3 / sigma)
+    Oh_0 = eta_0 / sqrt(rho * sigma * R)
+    eta_fn = gd -> carreau(gd; lambda_c = K_cross/t_cap, a = m_cross,
+                           n = 1 - m_cross, eta_inf_ratio = eta_inf/eta_0)
+    p = ImpactParams(We = 0.3643, Bo = 0.012, Oh = Oh_0, M = 30, K = 3,
+                     eta = eta_fn, t_max = 25.0)
+    r = simulate_lcp(p)
+    m = proximity_metrics(p, r)
+    @test !isempty(r.t)
+    @test r.t[end] > 2.0                       # the bounce completed, not a truncated march
+    @test 0.70 < m.cor < 0.80                  # and gives the converged value, ~0.7535
 end

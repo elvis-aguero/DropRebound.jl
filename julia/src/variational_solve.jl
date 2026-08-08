@@ -80,12 +80,27 @@ reproduces Reid's exact damping to under two per cent across the validated range
 const DEFAULT_K = 3
 
 """
-Default Picard tolerance on the interior strain rate, relative and in the infinity
-norm. Tightening it does not buy accuracy: at `M = 30` the answer is identical to six
-digits at `1e-9`, and at `M = 60` a tolerance of `1e-8` is unreachable, so steps are
-rejected until `dt` collapses and the march dies before the drop releases.
+    default_eta_tol(M) -> Float64
+
+Default Picard tolerance on the interior strain rate, relative and in the infinity norm.
+It scales with the truncation because the reachable residual does.
+
+The iterate is `adot_star = beta*a + hv_a` with `beta = c0/dt` and `dt ~ M^(-3/2)`, so
+the sweep-to-sweep increment is a difference of large quantities and its floor rises with
+`M`. Measured on the 3000 ppm fluid, the floor is below 1e-6 at M = 45 and M = 60 and
+3.0e-6 at M = 90, which a cubic in `M` tracks: `4e-12 * M^3` passes through all three.
+
+The default sits about three decades above that fit rather than on it. A tolerance below
+the floor is not merely slow, it is fatal: the step is rejected, `dt` halves, the floor
+rises as `1/dt`, and the march dies having computed part of a bounce.
 """
-const DEFAULT_ETA_TOL = 1e-6
+default_eta_tol(M::Integer) = 1e-8 * float(M)^3
+
+"""
+How many consecutive step reductions a viscosity failure is allowed before the march
+gives up. Rescued episodes take one to seven; the unrescuable one took twenty-three.
+"""
+const MAX_ETA_HALVINGS = 12
 
 const MAX_ACTIVE_SET_ITERS = 40
 
@@ -123,9 +138,10 @@ around 80 per cent of a step at `M = 60`, with the contact solve under one per c
 """
 function ImpactParams(; We, Bo, Oh, M::Int = DEFAULT_M, K::Int = DEFAULT_K, eta = gd -> 1.0,
                       dt0 = nothing, dt_min = 1e-10, t_max = 25.0,
-                      eta_tol = DEFAULT_ETA_TOL, eta_max_sweeps = 100, force_mode::Symbol = :legendre,
+                      eta_tol = nothing, eta_max_sweeps = 100, force_mode::Symbol = :legendre,
                       basis_kind::Symbol = :legendre)
     ls = collect(2:M)
+    tol = something(eta_tol, default_eta_tol(M))
     # theta = pi plus the zeros of P_M. These cluster at the poles, which is the
     # whole point: contact is resolved where contact happens.
     mus, _ = gauss_legendre_nodes(M, -1.0, 1.0)
@@ -136,7 +152,7 @@ function ImpactParams(; We, Bo, Oh, M::Int = DEFAULT_M, K::Int = DEFAULT_K, eta 
         error("force_mode must be :legendre or :nodal, got $force_mode")
     basis_kind in (:legendre, :monomial) ||
         error("basis_kind must be :legendre or :monomial, got $basis_kind")
-    ImpactParams(We, Bo, Oh, ls, K, eta, nodes, dt, dt_min, t_max, eta_tol,
+    ImpactParams(We, Bo, Oh, ls, K, eta, nodes, dt, dt_min, t_max, tol,
                  eta_max_sweeps, ec, basis_kind, force_mode)
 end
 
@@ -1054,39 +1070,44 @@ function simulate_lcp(p::ImpactParams)
     pcs = Vector{Float64}[copy(s0.pc)]
     dt = p.dt0; nrej = 0; worst_resid = 0.0; max_sweeps = 0; noncontig = 0
     eta_sw = 0; eta_rs = 0.0
+    eta_halvings = 0       # consecutive step reductions spent on a viscosity failure
     while curr.t < p.t_max
         st, nxt, dg = try_step_lcp(p, prev, curr, dt; F0 = F0, Vfac = Vfac)
         if st !== :ok
             nrej += 1
-            ## HALVING dt IS THE RIGHT ANSWER TO ONE OF THE TWO FAILURES AND THE WRONG
-            ## ANSWER TO THE OTHER.
+            ## HALVING dt RESCUES SOME VISCOSITY FAILURES AND IS FUTILE FOR OTHERS,
+            ## and the residual does not say which. Measured on the 3000 ppm fluid,
+            ## episodes that halving DID rescue contain residuals of 1.2e-4, 4.4e-4,
+            ## 8.2e-1, 3.8e0 and 1.4e13; the episode it could not rescue sat at 3.0e-6.
+            ## The same magnitudes appear on both sides, so every threshold on
+            ## `eta_resid` classifies one of them wrongly. Four versions of this test
+            ## did exactly that.
             ##
-            ## A complementarity failure is a genuine step-size problem: the contact set
-            ## moved too far in one step, and a smaller step fixes it.
+            ## What separates them is how MANY halvings it takes. Rescued episodes end
+            ## after one to seven; the fatal one ran twenty-three consecutive halvings
+            ## with the residual climbing as 1/dt the whole way, because
+            ## `adot_star = beta*a + hv_a` with `beta = c0/dt` is a difference of large
+            ## quantities and shrinking the step raises its own noise floor.
             ##
-            ## A viscosity-iteration failure is not. The iterate is
-            ## `adot_star = beta*a + hv_a` with `beta = c0/dt`, a difference of large
-            ## quantities once dt is small, so the increment between sweeps is
-            ## cancellation noise scaled by beta. Measured at M = 90, the residual grows
-            ## as 1/dt across four decades, from 3.0e-6 at the natural step to 2.0e-2 at
-            ## dt = 5.6e-8, while the complementarity residual stays at 1e-21 throughout.
-            ## Halving dt therefore makes the thing it is meant to repair monotonically
-            ## worse, and twenty-three halvings later the march is dead at the floor with
-            ## a third of a bounce computed.
-            ##
-            ## So only the complementarity path shrinks the step. A viscosity failure at
-            ## a step size that cannot be usefully reduced is reported, not chased.
+            ## So the step is allowed a bounded number of reductions. Beyond that the
+            ## iteration is not going to be rescued by a smaller step and the march
+            ## says so, instead of grinding to dt_min and reporting part of a bounce as
+            ## if it were a result.
             if dg.eta_resid > p.eta_tol && dg.resid <= 1e-8
-                @warn "the viscosity iteration did not reach its tolerance, and reducing" *
-                      " the step would make it worse; the march stops here" *
-                      " (raise eta_tol above the floor, or lower M)" t=curr.t dt=dt *
-                      1.0 eta_resid=dg.eta_resid eta_tol=p.eta_tol
-                break
+                eta_halvings += 1
+                if eta_halvings > MAX_ETA_HALVINGS
+                    @warn "the viscosity iteration is not recovering as the step" *
+                          " shrinks; no smaller step will help, so the march stops" *
+                          " here (raise eta_tol, or lower M)" t=curr.t dt=dt*1.0 *
+                          1.0 eta_resid=dg.eta_resid halvings=eta_halvings
+                    break
+                end
             end
             dt /= 2
             dt < p.dt_min && break
             continue
         end
+        eta_halvings = 0
         worst_resid = max(worst_resid, abs(dg.resid))
         max_sweeps = max(max_sweeps, dg.sweeps)
         eta_sw = max(eta_sw, dg.eta_sweeps); eta_rs = max(eta_rs, dg.eta_resid)

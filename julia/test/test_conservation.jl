@@ -295,7 +295,7 @@ end
         for (We, cor_e, tc_e) in ((0.0769, 0.8168, 3.099),
                                   (0.1912, 0.8037, 2.693),
                                   (0.4754, 0.7816, 2.288))
-            r = simulate(ImpactParams(We = We, Bo = 0.012, Oh = Oh_0, M = 14, K = 2,
+            r = simulate(ImpactParams(We = We, Bo = 0.012, Oh = Oh_0, M = 30, K = 3,
                                       eta = etaf, t_max = 25.0))
             @test isfinite(r.cor)
             @test abs(r.cor - cor_e) / cor_e < TOL
