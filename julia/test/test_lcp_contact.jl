@@ -265,3 +265,27 @@ end
         @test minimum(eigvals(Symmetric(0.5 .* (W .+ W')))) > 0   # and positive definite
     end
 end
+
+# The march normally stops once the drop has left and is rising, because that is all the
+# impact metrics need. The animations need what happens next, so `stop_on_release = false`
+# keeps integrating to `t_max`. Two things have to hold: the record really does extend past
+# the release, and the physics up to the release is untouched by the flag.
+@testset "stop_on_release = false records the free flight" begin
+    kw = (We = 0.5, Bo = 0.019, Oh = 0.0373, M = 20, K = 3, t_max = 8.0)
+    short = DropSolver.simulate_lcp(ImpactParams(; kw...))
+    long  = DropSolver.simulate_lcp(ImpactParams(; kw..., stop_on_release = false))
+
+    @test short.t[end] < long.t[end]          # the long run genuinely continues
+    @test long.t[end] >= 0.95 * 8.0           # ... all the way to t_max
+    ## and it is free flight: no contact anywhere after the short run stopped
+    tail = findall(>(short.t[end]), long.t)
+    @test !isempty(tail)
+    @test all(==(0), long.cp[tail])
+    @test long.z[end] > 1.0                   # airborne
+
+    ## the flag must not perturb the bounce itself
+    @test isapprox(short.cor, long.cor; rtol = 1e-10)
+    @test isapprox(short.tc,  long.tc;  rtol = 1e-10)
+    n = length(short.t)
+    @test isapprox(short.z[1:n], long.z[1:n]; rtol = 1e-10)
+end

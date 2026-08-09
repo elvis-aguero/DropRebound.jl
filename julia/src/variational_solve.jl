@@ -134,6 +134,7 @@ struct ImpactParams
     eta_const::Bool
     basis_kind::Symbol           # :legendre (well conditioned) or :monomial (historical)
     force_mode::Symbol           # :legendre (radial spectral field) or :nodal (conjugate loads)
+    stop_on_release::Bool        # end the march when the drop leaves, rather than at t_max
 end
 
 """
@@ -149,11 +150,15 @@ on the 3000 ppm fluid the worst step takes 17 sweeps at `M = 30` and 45 at `M = 
 is why the cap is generous. The iteration is what a shear-thinning run spends its time on,
 around 80 per cent of a step at `M = 60`, with the contact solve under one per cent.
 
+`stop_on_release` ends the march once the drop has left the substrate and is rising, which
+is all the impact metrics need and is why it defaults to true. Set it false to keep marching
+to `t_max` and record the free flight after the bounce -- what the animations use, since a
+video that stops at release does not show the drop leaving.
 """
 function ImpactParams(; We, Bo, Oh, M::Int = DEFAULT_M, K::Int = DEFAULT_K, eta = gd -> 1.0,
                       dt0 = nothing, dt_min = 1e-10, t_max = 25.0,
                       eta_tol = nothing, eta_max_sweeps = 100, force_mode::Symbol = :legendre,
-                      basis_kind::Symbol = :legendre)
+                      basis_kind::Symbol = :legendre, stop_on_release::Bool = true)
     ls = collect(2:M)
     tol = something(eta_tol, default_eta_tol(M))
     # theta = pi plus the zeros of P_M. These cluster at the poles, which is the
@@ -167,7 +172,7 @@ function ImpactParams(; We, Bo, Oh, M::Int = DEFAULT_M, K::Int = DEFAULT_K, eta 
     basis_kind in (:legendre, :monomial) ||
         error("basis_kind must be :legendre or :monomial, got $basis_kind")
     ImpactParams(We, Bo, Oh, ls, K, eta, nodes, dt, dt_min, t_max, tol,
-                 eta_max_sweeps, ec, basis_kind, force_mode)
+                 eta_max_sweeps, ec, basis_kind, force_mode, stop_on_release)
 end
 
 basis(p::ImpactParams) = ModalBasis(p.ls, p.K, p.basis_kind)
@@ -567,7 +572,7 @@ push!(as, copy(curr.a)); push!(adots, copy(curr.adot)); push!(pcs, copy(curr.pc)
         verbose && best_cp != cps[end-1] &&
             @info "contact" t=curr.t cp=best_cp z=curr.z v=curr.v
         # done once the drop has left the substrate and is rising
-        if best_cp == 0 && curr.v > 0 && curr.z > 1.0 && any(>(0), cps)
+        if p.stop_on_release && best_cp == 0 && curr.v > 0 && curr.z > 1.0 && any(>(0), cps)
             break
         end
     end
@@ -580,13 +585,23 @@ push!(as, copy(curr.a)); push!(adots, copy(curr.adot)); push!(pcs, copy(curr.pc)
      gap_fraction = contact_gap_fraction(ts, cps))
 end
 
-"""Coefficient of restitution: rebound speed over impact speed."""
+"""
+Coefficient of restitution: rebound speed over impact speed.
+
+Measured at the FRAME AFTER THE LAST CONTACT, not at the end of the record. The two are
+the same whenever the march stops at release, which is the default and is why this went
+unnoticed: the break fires on the very step that clears the substrate, so the last frame
+IS the release frame. They stop being the same the moment a run keeps integrating -- with
+`stop_on_release = false` the drop is still rising and still decelerating under gravity,
+and reading `vs[end]` after five more capillary times reported 0.602 for a bounce whose
+restitution is 0.750. Anchoring to the release frame gives the same number either way.
+"""
 function restitution(vs, cps, We)
     inc = findfirst(>(0), cps)
     inc === nothing && return NaN
     lastc = findlast(>(0), cps)
     lastc >= length(vs) && return NaN
-    abs(vs[end] / vs[max(inc - 1, 1)])
+    abs(vs[lastc + 1] / vs[max(inc - 1, 1)])
 end
 
 """
@@ -1138,7 +1153,7 @@ function simulate_lcp(p::ImpactParams)
         push!(cps, dg.nact); push!(pc1, curr.pc[2])
         push!(as, copy(curr.a)); push!(adots, copy(curr.adot)); push!(pcs, copy(curr.pc))
         dt = min(2*dt, p.dt0)
-        if dg.nact == 0 && curr.v > 0 && curr.z > 1.0 && any(>(0), cps)
+        if p.stop_on_release && dg.nact == 0 && curr.v > 0 && curr.z > 1.0 && any(>(0), cps)
             break
         end
     end

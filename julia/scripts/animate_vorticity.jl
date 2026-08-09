@@ -6,8 +6,13 @@
 # the substrate and carried into the bulk. Colouring the inside shows that directly.
 #
 # Usage:
-#   julia --project=docs julia/scripts/animate_vorticity.jl            # Newtonian
-#   julia --project=docs julia/scripts/animate_vorticity.jl --shear    # the 3000 ppm fluid
+#   julia --project=docs julia/scripts/animate_vorticity.jl              # Newtonian
+#   julia --project=docs julia/scripts/animate_vorticity.jl --shear      # the 3000 ppm fluid
+#   julia --project=docs julia/scripts/animate_vorticity.jl --preview    # three stills, no gif
+#
+# The march is run with `stop_on_release = false`, so it carries on past the bounce and
+# the video shows the drop actually leaving. The default stops at release, which is all
+# the impact metrics need but makes for a video that ends mid-air.
 #
 # HOW THE INTERIOR IS DRAWN
 #
@@ -26,7 +31,8 @@ gr()
 
 include(joinpath(@__DIR__, "_vorticity.jl"))
 
-const SHEAR = "--shear" in ARGS
+const SHEAR   = "--shear" in ARGS
+const PREVIEW = "--preview" in ARGS
 const FIGS  = joinpath(@__DIR__, "..", "..", "docs", "figures")
 mkpath(FIGS)
 
@@ -50,9 +56,12 @@ const CASE = SHEAR ?
 ## on it would be uniformly zero; K is the number of radial functions and the vorticity
 ## lives entirely in the ones past the first.
 const M_RUN, K_RUN = DropSolver.DEFAULT_M, DropSolver.DEFAULT_K
-const N_FRAMES = 220
+const N_FRAMES = 300
 const FPS      = 30
 const NPIX     = 300           # raster resolution of the interior
+## Enough flight after release to see the drop leave, and no more: the vertical window has
+## to hold every frame, so a long tail of rising drop shrinks the contact phase to nothing.
+const T_END    = 4.0
 
 assert_irrotational()
 
@@ -62,9 +71,9 @@ assert_irrotational()
 ## as a callable to decide whether the viscosity is constant.
 p = SHEAR ?
     ImpactParams(We = CASE.We, Bo = CASE.Bo, Oh = CASE.Oh, M = M_RUN, K = K_RUN,
-                 t_max = 25.0, eta = CASE.eta) :
+                 t_max = T_END, eta = CASE.eta, stop_on_release = false) :
     ImpactParams(We = CASE.We, Bo = CASE.Bo, Oh = CASE.Oh, M = M_RUN, K = K_RUN,
-                 t_max = 25.0)
+                 t_max = T_END, stop_on_release = false)
 r = DropSolver.simulate_lcp(p)
 @printf("  %d frames, restitution %.4f, contact time %.3f\n", length(r.t), r.cor, r.tc)
 
@@ -86,30 +95,28 @@ radius_of(zeta) = 1.0 .+ vec(transpose(zeta) * Pang)     # R at every mu on the 
 
 ## COLOUR SCALE. Vorticity here is not spread evenly through the drop: it is made in a
 ## thin layer at the contact and diffuses inward, so the field spans orders of magnitude
-## across one frame. A linear scale set by the peak renders everything except that layer
-## as black, which is a picture of the colour scale rather than of the flow.
+## across one frame -- on the Newtonian case the median is 0.06 against a peak of 25. A
+## linear scale set by the peak draws everything except that layer black, which pictures
+## the colour scale rather than the flow.
 ##
-## So the map is a power law, |omega|^GAMMA, with the colourbar ticked in |omega| so the
-## numbers a reader takes off it are still vorticity. The ceiling is a high quantile of
-## the actual interior values rather than the peak, and the brief transient at first
-## touch clips against it.
-const GAMMA = 0.4
-vmax = let vals = Float64[]
+## So the quantity drawn is log10|omega|, clipped at both ends. The ceiling is a high
+## quantile of the actual interior values rather than the peak, so the brief transient at
+## first touch clips instead of setting the scale for the whole video; the floor is three
+## decades below it, which covers the bulk without spending colour on numerical dust.
+## Unlike a power law, the numbers on the colourbar ARE the quantity plotted.
+const DECADES = 3.0
+const LOG_FLOOR = 1e-12
+lo, hi = let vals = Float64[]
     for i in keep[1:4:end]
-        g = vorticity_grid(p, r.adot[i], Phi, Dang)
-        append!(vals, vec(g))
+        append!(vals, vec(vorticity_grid(p, r.adot[i], Phi, Dang)))
     end
     sort!(vals)
-    q = vals[max(1, round(Int, 0.995 * length(vals)))]
-    @printf("  |omega|: peak %.3g, median %.3g, colour ceiling %.3g (gamma = %.2f)\n",
-            vals[end], vals[max(1, length(vals) ÷ 2)], q, GAMMA)
-    q
+    q  = vals[max(1, round(Int, 0.995 * length(vals)))]
+    hi = log10(q)
+    @printf("  |omega|: peak %.3g, median %.3g, ceiling %.3g -> log10 range [%.2f, %.2f]\n",
+            vals[end], vals[max(1, length(vals) ÷ 2)], q, hi - DECADES, hi)
+    (hi - DECADES, hi)
 end
-
-## GR will not take custom colourbar ticks, so the bar is labelled for the quantity it
-## actually shows, |omega|^GAMMA, rather than carrying |omega| numbers it is not drawing.
-## The peak and median above give the absolute scale.
-const CB_LABEL = @sprintf("  |ω|^%.1f", GAMMA)
 
 ## A common window, from the extreme outline over all kept frames.
 ymax = 1.15 * maximum(maximum(radius_of(surf_amp(i))) + r.z[i] for i in keep)
@@ -144,7 +151,7 @@ function frame_image(i)
         ii = clamp(floor(Int, fi), 1, nx - 1); ti = clamp(fi - ii, 0.0, 1.0)
         w = (1 - ti) * ((1 - tj) * Wg[ii,   j] + tj * Wg[ii,   j+1]) +
                  ti  * ((1 - tj) * Wg[ii+1, j] + tj * Wg[ii+1, j+1])
-        img[cy, cx] = w^GAMMA          # drawn on the power scale, ticked in |omega|
+        img[cy, cx] = clamp(log10(max(w, LOG_FLOOR)), lo, hi)   # clipped at both ends
     end
     img
 end
@@ -152,21 +159,39 @@ end
 default(fontfamily = "sans-serif", framestyle = :box, titlefontsize = 11,
         guidefontsize = 11, tickfontsize = 10)
 
-println("rendering $(length(keep)) frames ..."); flush(stdout)
-anim = @animate for (n, i) in enumerate(keep)
-    heatmap(gx, gy, frame_image(i); c = ABYSS, clims = (0.0, vmax^GAMMA),
+render(i) = begin
+    heatmap(gx, gy, frame_image(i); c = ABYSS, clims = (lo, hi),
             aspect_ratio = 1, xlim = XLIM, ylim = YLIM,
-            colorbar = true, colorbar_title = CB_LABEL,
+            ## GR places the colourbar title hard against its tick labels, so the gap has
+            ## to be bought with margin rather than asked for.
+            colorbar = true, colorbar_title = "log₁₀ |ω|", colorbar_titlefontsize = 11,
             legend = false, grid = false,
-            size = (600, 520), dpi = 130, right_margin = 6Plots.mm,
-            xlabel = "", ylabel = "",
-            title = @sprintf("t = %5.2f    contact nodes = %d", r.t[i], r.cp[i]))
+            size = (700, 520), dpi = 130,
+            right_margin = 22Plots.mm, left_margin = 3Plots.mm, bottom_margin = 3Plots.mm,
+            xlabel = "x / R", ylabel = "y / R",
+            title = r.cp[i] > 0 ?
+                @sprintf("t = %5.2f    contact nodes = %d", r.t[i], r.cp[i]) :
+                @sprintf("t = %5.2f    free flight", r.t[i]))
     ## the outline itself, drawn over the fill, and the substrate
     xo, yo = drop_outline(surf_amp(i), DropSolver.basis(p).ls, r.z[i])
     plot!(vcat(-reverse(xo), xo), vcat(reverse(yo), yo);
           lc = RGB(0.75, 0.88, 0.95), lw = 1.4, label = "")
     hline!([0.0]; lc = :black, lw = 2.5, label = "")
-    n % 40 == 0 && (@printf("  %d / %d\n", n, length(keep)); flush(stdout))
+end
+
+if PREVIEW
+    ## three stills spanning the record, to check layout without paying for 300 frames
+    sel = [keep[6], keep[length(keep) ÷ 3], keep[end - 12]]
+    plt = plot((render(i) for i in sel)...; layout = (1, 3), size = (1740, 520))
+    out = joinpath(@__DIR__, "..", "..", "results", "preview_vorticity_" * CASE.tag * ".png")
+    savefig(plt, out); println("wrote ", out)
+    exit()
+end
+
+println("rendering $(length(keep)) frames ..."); flush(stdout)
+anim = @animate for (n, i) in enumerate(keep)
+    render(i)
+    n % 60 == 0 && (@printf("  %d / %d\n", n, length(keep)); flush(stdout))
 end
 
 out = joinpath(FIGS, "impact_vorticity_" * CASE.tag * ".gif")
