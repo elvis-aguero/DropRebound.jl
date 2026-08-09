@@ -68,27 +68,6 @@ end
 Base.show(io::IO, b::Backend) = print(io, "Backend(", label(b), ")")
 
 """
-    run_impact(b::Backend; We, Bo, Oh, M, K, t_max, eta, eta_nonvar, save_every)
-
-Run one impact and return a NamedTuple with the same fields whatever the backend:
-
-  * `t`, `z`, `v`       -- time, centre-of-mass height and velocity
-  * `zeta`              -- surface amplitudes per frame, a vector of vectors
-  * `ls`                -- the harmonic degrees `zeta` is indexed by
-  * `cp`                -- contact node count per frame
-  * `cor`, `tc`         -- restitution and contact time under the PROXIMITY definition,
-                           identical for every backend: contact whenever any surface point is
-                           below `0.02R`, first touch to last release
-  * `wall`              -- seconds
-  * `ok`                -- whether the run produced usable metrics
-
-`eta` is the dimensionless viscosity function for the variational backends. The nonvariational
-solver cannot take one -- it has no interior field to evaluate it on -- so shear thinning is
-passed to it as `eta_nonvar`, an `STExactParams`, and it is an error to give one without the
-other.
-"""
-
-"""
     check_converged(cor, tc, t_max, minz, label) -> Bool
 
 Whether a finished march produced a bounce, as opposed to finishing.
@@ -124,6 +103,26 @@ function check_converged(cor, tc, t_max, minz, lbl; t_final = NaN, dt_final = Na
     false
 end
 
+"""
+    run_impact(b::Backend; We, Bo, Oh, M, K, t_max, eta, eta_nonvar, eta_tol, save_every)
+
+Run one impact and return a NamedTuple with the same fields whatever the backend:
+
+  * `t`, `z`, `v`       -- time, centre-of-mass height and velocity
+  * `zeta`              -- surface amplitudes per frame, a vector of vectors
+  * `ls`                -- the harmonic degrees `zeta` is indexed by
+  * `cp`                -- contact node count per frame
+  * `cor`, `tc`         -- restitution and contact time under the PROXIMITY definition,
+                           identical for every backend: contact whenever any surface point is
+                           below `0.02R`, first touch to last release
+  * `wall`              -- seconds
+  * `ok`                -- whether the run produced usable metrics
+
+`eta` is the dimensionless viscosity function for the variational backends. The nonvariational
+solver cannot take one -- it has no interior field to evaluate it on -- so shear thinning is
+passed to it as `eta_nonvar`, an `STExactParams`, and it is an error to give one without the
+other.
+"""
 function run_impact(b::Backend; kw...)
     ## A solver that gives up is a RESULT, not an exception: a sweep must be able to record
     ## which cases a backend cannot do. Only genuine misuse -- an impossible Backend, or a

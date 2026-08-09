@@ -325,18 +325,66 @@ end
         end
     end
 
-    # PAGE CLAIM: "A_c = -H A^-1 H^T is symmetric for any H, because A is."
+    # PAGE CLAIM: a conjugate forcing is "Q = H^T lambda", giving
+    # "A_c = H A^-1 H^T ... symmetric for any H, because A is, and positive
+    # semidefinite with it."
     #
     # The algebraic half of the convexity argument: asymmetry of the compliance is a
     # statement about conjugacy of the forcing, not about the discretisation being
     # sloppy. Pure linear algebra, so it needs no step.
+    #
+    # The SIGN is load-bearing and was wrong on the page until this test existed. With
+    # `-H A^-1 H^T` the compliance is negative semidefinite, the quadratic programme the
+    # page writes down is concave rather than convex, and the whole argument inverts. So
+    # definiteness is asserted, not just symmetry.
     @testset "a conjugate forcing gives a symmetric compliance" begin
         n, m = 9, 4
         g = Lcg()
         S = spread(g, n, n); A = S * S' + n * I     # symmetric positive definite
         H = spread(g, m, n)
-        Ac_conj = -H * (A \ transpose(H))
+        Ac_conj = H * (A \ transpose(H))
         @test norm(Ac_conj - Ac_conj') <= 1e-10 * norm(Ac_conj)
+        @test minimum(eigvals(Symmetric(Ac_conj))) > 0      # convex, not concave
+    end
+
+    # PAGE CLAIM, the boxed result:
+    #     A_c = H A^-1 Q_n - (1/beta^2) 1 v_1^T
+    #
+    # The second term is the centre-of-mass channel, and omitting it is the easy mistake:
+    # the clearance responds to the film pressure both by deforming the drop and by
+    # lifting it bodily, and only the first is an inverse of the shape operator. A page
+    # that boxes `A_c = H A^-1 Q_n` alone is describing a different operator from the one
+    # the solver assembles, so the published formula is checked against the assembly.
+    @testset "the boxed compliance includes the centre-of-mass channel" begin
+        for M in (20, 45)
+            q  = ImpactParams(We = 0.5, Bo = 0.019, Oh = 0.0373, M = M, K = 3)
+            F0 = DropSolver.assemble_newtonian(basis(q), q.Oh)
+            Vf = lu(DropSolver.legendre_vandermonde(q))
+            s0 = DropSolver.initial_state(q)
+            Ac, _, idx, aux = DropSolver.contact_lcp(q, s0, s0, q.dt0; F0 = F0, Vfac = Vf)
+            nn = length(q.nodes)
+            shape = aux.H * (aux.A \ aux.Qn)              # H A^-1 Q_n
+            com   = (1 / aux.β^2) .* (ones(nn) * aux.Vinv[2, :]')   # (1/beta^2) 1 v_1^T
+            @test isapprox(Ac, (shape .- com)[idx, idx]; rtol = 1e-10)
+            # and the omitted term is not a rounding-level correction
+            @test norm(com[idx, idx]) > 0.01 * norm(Ac)
+        end
+    end
+
+    # PAGE CLAIM: the contact problem carries "floor(M/2) + 1" unknowns, "23 at M = 45
+    # and 46 at M = 90, against M+1 collocation nodes". The page uses this to say the
+    # truncation buys contact resolution at half the rate the mode count suggests, so
+    # the formula is the claim, not just the two spot values.
+    @testset "the complementarity problem has the published size" begin
+        for M in (20, 21, 30, 45, 60, 90, 91)
+            q  = ImpactParams(We = 0.5, Bo = 0.019, Oh = 0.0373, M = M, K = 3)
+            F0 = DropSolver.assemble_newtonian(basis(q), q.Oh)
+            Vf = lu(DropSolver.legendre_vandermonde(q))
+            s0 = DropSolver.initial_state(q)
+            _, _, idx, _ = DropSolver.contact_lcp(q, s0, s0, q.dt0; F0 = F0, Vfac = Vf)
+            @test length(idx) == M ÷ 2 + 1
+            @test length(q.nodes) == M + 1
+        end
     end
 
     # PAGE CLAIM: "A_c departs from symmetry by 0.43 at M = 20 and 0.37 at M = 45."
