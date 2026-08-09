@@ -87,26 +87,14 @@ for (ppm, _) in FILES
           c = COLS[ppm], lw = 4, label = lab(ppm))
 end
 
-## The upstream solver of Gabbard et al. (2025), run verbatim at our water conditions.
-## Their code, not our port: cloned from rcsc-group/LowWeberDropRebound, with one line
-## patched (vpasolve(legendreP) -> Golub-Welsch Legendre zeros) because this MATLAB has
-## no Symbolic Toolbox. Same nodes to twelve digits, no physics changed.
-let up = joinpath(OUT, "water_upstream.csv")
-    if isfile(up)
-        w = Tuple{Float64,Float64}[]
-        for ln in eachline(up)
-            p = split(strip(ln), ',')
-            length(p) < 2 && continue
-            v = tryparse.(Float64, p[1:2])
-            any(isnothing, v) && continue
-            push!(w, (v[1], v[2]))
-        end
-        sort!(w)
-        plot!(plt, [x[1] for x in w], [x[2] for x in w];
-              c = COLS[0], lw = 3, ls = :dash, label = "water, upstream solver")
-    end
-end
-
+## The upstream solver of Gabbard et al. (2025) is NOT overlaid here.
+## It was, briefly. Run verbatim at our water conditions it agrees with this model to
+## better than 0.5 per cent up to We = 0.7 and then collapses to 0.33, which is not a
+## feature of their solver but of running it at Oh = 0.0068. Their published data spans
+## Oh 0.0139 to 0.79, and a scan across that range (results/upstream_oh_scan.csv) is
+## smooth and monotone at every Oh from 0.0139 up; only the water case breaks, and it
+## is converged in modes, so it is not under-resolution. Plotting a curve taken from
+## outside a solver's validated range, next to data, would misrepresent it.
 savefig(plt, joinpath(ASSET, "concentration_series.png"))
 @printf("wrote %s\n", joinpath(ASSET, "concentration_series.png"))
 
