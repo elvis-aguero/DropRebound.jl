@@ -3,14 +3,24 @@
 The home page ended with a weak form: for every admissible test field ``\bm v``,
 
 ```math
-\int_\Omega \rho\,\partial_t\bm u\cdot\bm v\,dV
-\;+\; \int_\Omega 2\eta\,\bm e(\bm u)\!:\!\bm e(\bm v)\,dV
+\int_\Omega \rho\bigl(\partial_t\bm u + \bm u\cdot\nabla\bm u\bigr)\cdot\bm v\,dV
+\;+\; \int_\Omega 2\eta(\dot\gamma)\,\bm e(\bm u)\!:\!\bm e(\bm v)\,dV
 \;+\; \delta_{\bm v} V
-\;=\; -\oint_{\partial\Omega} p_c\,(\bm v\cdot\bm n)\,dS .
+\;=\; -\oint_{\partial\Omega} p_c\,(\bm v\cdot\bm n)\,dS ,
 ```
 
-It is exact, and on its own it computes nothing, because ``\bm u`` is a field and the statement
-ranges over an infinite-dimensional space of ``\bm v``.
+and with its reduction to Lagrange's equations,
+``\frac{d}{dt}\partial_{\dot\xi_a}T - \partial_{\xi_a}T + \partial_{\dot\xi_a}\mathcal R +
+\partial_{\xi_a}V = Q_a``, in finitely many coordinates. Both are exact.
+
+**This chapter carries out the linearised case**, which is the one the solver implements: the
+domain is frozen at the sphere, the trial fields are independent of the configuration, and ``V``
+is expanded to second order. The consequence is that ``\partial T/\partial\xi_a`` vanishes, the
+advective term with it, and the reduction produces constant ``\bm M`` and ``\bm G``. The
+shear-rate dependence of the viscosity is **not** linearised and stays inside ``\bm C``.
+
+Even reduced, the exact statement computes nothing on its own, because ``\bm u`` is a field and
+it ranges over an infinite-dimensional space of ``\bm v``.
 
 This page reduces it to a finite system, in four steps. First the general reduction from fields
 to coordinates, which needs no assumption about drops. Then the choice of coordinates for this

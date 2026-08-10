@@ -6,6 +6,12 @@
 #
 # ## The question is an eigenvalue problem
 #
+# Everything on this page is the **linearised** problem: the Navier-Stokes equations
+# expanded about a sphere at rest, with the advective term dropped and the boundary
+# conditions transferred to `r = R`. The home page gives the exact statement and says
+# what the linearisation removes. Reid's result is a property of that linear system, and
+# the closed-form answer below exists because of it.
+#
 # *Variational Mechanics* reduced the drop to
 #
 # ```math

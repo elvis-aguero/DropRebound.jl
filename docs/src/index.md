@@ -17,22 +17,31 @@ outcome follows.
 
 ## Governing equations
 
-Inside the drop the flow obeys the incompressible Navier–Stokes equations. For the small
-deformations this package treats, the nonlinear advection term is negligible against the
-unsteady term, and what remains is
+Inside the drop the flow obeys the incompressible Navier-Stokes equations. Nothing is
+approximated here: the linearisation this package uses is a separate step, introduced below and
+kept separate deliberately, because the variational machinery does not need it.
 
 ```math
-\rho\,\partial_t \bm u \;=\; \nabla\cdot\bm\Sigma , \qquad
-\bm\Sigma = -p\,\bm I + 2\eta\,\bm e , \qquad
-\bm e = \tfrac12\bigl(\nabla\bm u + \nabla\bm u^{\mathsf T}\bigr) , \qquad
-\nabla\cdot\bm u = 0 .
+\rho\bigl(\partial_t \bm u + \bm u\cdot\nabla\bm u\bigr) \;=\; \nabla\cdot\bm\Sigma + \rho\bm g ,
+\qquad
+\bm\Sigma = -p\,\bm I + 2\eta(\dot\gamma)\,\bm e ,
+\qquad
+\bm e = \tfrac12\bigl(\nabla\bm u + \nabla\bm u^{\mathsf T}\bigr) ,
+\qquad
+\nabla\cdot\bm u = 0 ,
 ```
 
-Written with the stress tensor rather than as ``\rho\partial_t\bm u = -\nabla p +
-\eta\nabla^2\bm u``, because the two agree only for a **uniform** viscosity:
+with ``\dot\gamma = \sqrt{2\,\bm e\!:\!\bm e}`` the shear rate.
+
+Two things about how this is written. The stress appears as ``\nabla\cdot\bm\Sigma`` rather than
+as ``-\nabla p + \eta\nabla^2\bm u``, because the two agree only for a **uniform** viscosity:
 ``\nabla\cdot(2\eta\bm e) = \eta\nabla^2\bm u + 2\,\bm e\cdot\nabla\eta``, and for the
-shear-thinning and viscoelastic fluids this package also treats, that second term is the physics.
-The weak form below keeps ``\int 2\eta\,\bm e\!:\!\bm e(\bm v)``, which is correct either way.
+shear-thinning fluids this package treats, that second term is the physics. And ``\eta`` is
+written as a function of the shear rate from the outset, since a constant viscosity is the
+special case rather than the starting point.
+
+The flow and the interface are assumed **axisymmetric** throughout, so a single polar angle
+``\theta`` describes the surface. That assumption is not lifted anywhere in this package.
 
 The flow and the interface are assumed **axisymmetric** throughout, so a single polar angle
 ``\theta`` describes the surface.
@@ -42,10 +51,16 @@ surface, at ``r = R + \zeta(\theta,t)``. Every integral below is over one of the
 conditions on ``\partial\Omega`` carry the physics:
 
 ```math
-\partial_t\zeta = u_r , \qquad
-\bm n\cdot\bm\Sigma\cdot\bm t = 0 , \qquad
-\bm n\cdot\bm\Sigma\cdot\bm n = \gamma\,\kappa - p_c ,
+\underbrace{\partial_t\zeta = \bm u\cdot\bm n\,\sqrt{1+|\nabla_s\zeta|^2}}_{\text{kinematic}} ,
+\qquad
+\underbrace{\bm n\cdot\bm\Sigma\cdot\bm t = 0}_{\text{no tangential traction}} ,
+\qquad
+\underbrace{\bm n\cdot\bm\Sigma\cdot\bm n = \gamma\,\kappa - p_c}_{\text{normal traction}} ,
 ```
+
+all evaluated **on the deformed surface**, with ``\kappa = \nabla_s\!\cdot\bm n`` the sum of the
+principal curvatures, positive for a sphere, so that a sphere at rest satisfies
+``\gamma\kappa = 2\gamma/R``.
 
 with ``\kappa`` the mean curvature, ``\bm n`` and ``\bm t`` the normal and tangent to the
 surface, and
@@ -89,18 +104,6 @@ A water-glycerol drop with ``\rho = 1200\,\mathrm{kg\,m^{-3}}``,
 ``\mathrm{Oh} \approx 0.30``, ``\mathrm{Bo} \approx 0.019`` and ``\mathrm{We} \approx 0.079``.
 The three material values are quoted so the reader can check the arithmetic; an earlier version
 gave a radius and a speed that no water-glycerol mixture could reconcile with those groups.
-
-## The one physical approximation
-
-Surface deformations are assumed small against the radius, so the equations above are
-linearised about a sphere. The approximation is controlled by ``\mathrm{We}``, and the
-amplitude it produces can be checked after the fact: at ``\mathrm{We} = 1`` the largest surface
-mode reaches ``|\zeta_2| \approx 0.4R``. That is not small, and results at higher Weber number
-should be read with that in mind.
-
-No further approximation enters. Everything after this point is a discretisation whose error
-can be reduced by refinement, and *Resolution and Convergence* reports how far it has been
-reduced.
 
 ## From the equations to a variational statement
 
@@ -170,14 +173,16 @@ the capillary integral is exactly ``V`` differentiated along ``\bm v``.
 Collecting, the weak form reads
 
 ```math
-\int_\Omega \rho\,\partial_t\bm u\cdot\bm v\,dV
-\;+\; \int_\Omega 2\eta\,\bm e(\bm u)\!:\!\bm e(\bm v)\,dV
+\int_\Omega \rho\bigl(\partial_t\bm u + \bm u\cdot\nabla\bm u\bigr)\cdot\bm v\,dV
+\;+\; \int_\Omega 2\eta(\dot\gamma)\,\bm e(\bm u)\!:\!\bm e(\bm v)\,dV
 \;+\; \delta_{\bm v} V
 \;=\; -\oint_{\partial\Omega} p_c\,(\bm v\cdot\bm n)\,dS ,
 ```
 
 for every admissible ``\bm v``: inertia, dissipation and capillarity on the left, and the wall
-on the right. The free-surface conditions have become **natural**. They were used once, to
+on the right. **Nothing has been approximated to reach this point.** The domain is the deformed
+one, the advective term is present, the viscosity depends on the shear rate, and ``V`` is the
+exact area functional. The free-surface conditions have become **natural**. They were used once, to
 evaluate the boundary term, and they are never imposed on the solution; any field satisfying
 this statement for all ``\bm v`` satisfies them.
 
@@ -186,9 +191,45 @@ needs two. The pressure never has to be solved for, because incompressibility wa
 the test fields and the normal stress condition disposed of the rest. And the boundary
 conditions are automatic.
 
+### The reduced equations, in general form
+
 What remains is to turn this from a statement about fields into a finite set of equations.
-*Variational Mechanics* does that, and shows that the result is Lagrange's equations for a
-damped system.
+Describe the configuration of the liquid by finitely many coordinates ``\bm\xi(t)``, so that the
+velocity field is ``\bm u = \sum_a \dot\xi_a\,\bm u^{(a)}(\bm x;\bm\xi)``. In general the basis
+fields depend on the configuration, because the domain does. Three scalars follow:
+
+```math
+T(\bm\xi,\dot{\bm\xi}) = \tfrac12\!\int_{\Omega(\bm\xi)}\!\rho\,|\bm u|^2\,dV ,
+\qquad
+V(\bm\xi) = \gamma\bigl(|\partial\Omega(\bm\xi)| - 4\pi R^2\bigr) + \text{gravity} ,
+\qquad
+\mathcal R(\bm\xi,\dot{\bm\xi}) = \!\int_{\Omega(\bm\xi)}\! W(\dot\gamma)\,dV ,
+```
+
+with ``W(\dot\gamma) = \int_0^{\dot\gamma}\eta(s)\,s\,\mathrm{d}s`` the dissipation potential of
+the constitutive law. The weak form above is then equivalent to
+
+```math
+\boxed{\;
+\frac{d}{dt}\frac{\partial T}{\partial\dot\xi_a}
+\;-\;\frac{\partial T}{\partial\xi_a}
+\;+\;\frac{\partial\mathcal R}{\partial\dot\xi_a}
+\;+\;\frac{\partial V}{\partial\xi_a}
+\;=\; Q_a \;}
+```
+
+which is Lagrange's equations for a damped system, and is **exact**: it is the full nonlinear
+problem written in finitely many coordinates rather than a linearisation of it.
+
+It is worth naming where each nonlinearity now lives, because that is what would have to be
+kept to lift the approximation of the next section. The advective term ``\bm u\cdot\nabla\bm u``
+is carried by ``-\,\partial T/\partial\xi_a``, which is nonzero precisely because the domain and
+the basis fields move with the configuration. The exact curvature is carried by ``V``, which is
+the true area rather than a quadratic form. The shear-rate dependence of the viscosity is carried
+by ``\mathcal R``, which is the integral of the flow curve rather than a quadratic form. Only the
+last of these is retained by this package today.
+
+*Variational Mechanics* carries out this reduction.
 
 This is Onsager's variational principle [^onsager], whose modern statement and use as an
 approximation tool are set out by Wang, Qian and Xu [^wqx]. The principle is usually written
@@ -197,6 +238,31 @@ an oscillator, and the first term above matters as much as the second. The inert
 generalisation is discussed by Archer [^archer]. Solving such a principle with trial functions
 is the Ritz method, applied to variational problems in soft matter by Wang and co-workers
 [^ritz].
+
+## The one physical approximation
+
+Surface deformations are assumed small against the radius, so the equations above are linearised
+about a sphere. This is a choice made *after* the variational statement, not one built into it,
+and it is the only physical approximation in the package. Concretely it does four things:
+
+| exact | linearised | consequence |
+|---|---|---|
+| ``\Omega(\bm\xi)`` moves | frozen at the sphere ``r = R`` | integrals and boundary conditions are evaluated on ``r = R`` |
+| ``\bm u^{(a)}(\bm x;\bm\xi)`` | independent of ``\bm\xi`` | ``T = \tfrac12\dot{\bm\xi}^{\mathsf T}\bm M\dot{\bm\xi}`` with ``\bm M`` constant, so ``\partial T/\partial\xi_a = 0`` and the advective term is gone |
+| ``V`` the exact area | quadratic in ``\bm\xi`` | a constant stiffness ``\bm G`` |
+| ``\kappa`` exact | linearised curvature | the restoring coefficient ``(l-1)(l+2)`` |
+
+What survives is
+``\bm M\ddot{\bm\xi} + \bm C(\dot{\bm\xi})\,\dot{\bm\xi} + \bm G\bm\xi = \bm Q``, with the
+viscosity's state dependence kept inside ``\bm C``. Lifting the approximation means restoring the
+terms in the middle column, in that order of difficulty; the framework above does not change.
+
+The approximation is controlled by ``\mathrm{We}``, and the amplitude it produces can be checked
+after the fact: at ``\mathrm{We} = 1`` the largest surface mode reaches ``|\zeta_2| \approx 0.4R``.
+That is not small, and results at higher Weber number should be read with that in mind.
+
+No further approximation enters. Everything after this point is a discretisation whose error can
+be reduced by refinement, and *Resolution and Convergence* reports how far it has been reduced.
 
 ## Getting started
 
