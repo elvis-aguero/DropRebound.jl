@@ -334,8 +334,15 @@ target_operator = expand_derivatives(Dx_(Dx_(G)) + 4 / x * Dx_(G) + (2 - l * (l 
 # -q^2 G = -\frac{P_0\,l\,x^{l-1}}{\sigma\nu} + G'' + \frac{4}{x}G' + \frac{2-l(l+1)}{x^2}G.
 # ```
 # Now substitute ``G = U/x^2`` -- this is where the ``1/x^2`` scaling earns
-# its keep. It turns the bracket above into ``[U'' - l(l+1)U/x^2]/x^2``
-# exactly, verified below for symbolic ``l``.
+# its keep. Differentiating ``G = U/x^2`` twice,
+# ``G' = U'/x^2 - 2U/x^3`` and ``G'' = U''/x^2 - 4U'/x^3 + 6U/x^4``, and
+# substituting, every term in ``1/x^3`` and ``1/x^4`` cancels and what is left is
+#
+# ```math
+# G'' + \frac{4}{x}G' + \frac{2-l(l+1)}{x^2}G
+#   \;=\; \frac{1}{x^2}\left[\,U'' - \frac{l(l+1)}{x^2}U\,\right],
+# ```
+# exactly, for every ``l``.
 
 @variables Ufun(..)                                                                                                   #src
 Usym = Ufun(x)                                                                                                        #src
@@ -380,11 +387,16 @@ particular_residual = expand_derivatives(Dx_(Dx_(Up)) - l * (l + 1) / x^2 * Up +
 # ``U_h = x\,v(qx)``, the chain rule gives ``U_h'=v+xqv'``,
 # ``U_h''=2qv'+xq^2v''``, and substituting ``v`` satisfying the spherical
 # Bessel equation at argument ``z=qx`` (``v''=-\tfrac{2}{z}v'-(1-\tfrac{l(l+1)}{z^2})v``)
-# collapses the whole thing to zero. The check below treats ``v, v', v''``
-# as related by exactly that one substitution rather than evaluating an
-# actual Bessel function -- this is the general, function-independent
-# statement, exactly analogous to the standard results.2. So ``U_h = C\,x\,j_l(qx)``
-# for any constant ``C``.
+# collapses the whole thing to zero. Nothing about ``j_l`` is used beyond the
+# equation it satisfies, so the statement holds for any solution of the
+# spherical Bessel equation, and
+#
+# ```math
+# U_h'' - \frac{l(l+1)}{x^2}U_h + q^2 U_h = 0
+# \qquad\Longleftarrow\qquad
+# U_h = C\,x\,v(qx), \quad v \text{ spherical Bessel of order } l ,
+# ```
+# for any constant ``C``. This is the same substitution used in Appendix D.2.2.
 
 @variables v vp vpp                                                                                                                     #src
 z = q * x                                                                                                                               #src
@@ -645,8 +657,7 @@ target_at_1 = substitute(Dx__(U) - 2 * U, Dict(x => 1))                         
 # ``P_0=\sigma^2R^2\Pi_0/l`` (the linearised equations) to rewrite its right side, then
 # multiplying through by ``lR^2/\nu^2``, the left side becomes
 # ``\alpha^4 = \sigma_{l;0}^2R^4/\nu^2`` and the right side becomes purely a
-# function of ``q`` and the boundary-condition unknowns -- both verified
-# below for symbolic ``l``:
+# function of ``q`` and the boundary-condition unknowns:
 
 @variables l q alpha nu sigma R T1 rho sigma_l0 Pi_0 Uterm P0                                                                                            #src
 bc3_lhs = (l - 1) * (l + 2) * T1 / (rho * R)                                                                                                             #src
@@ -999,13 +1010,46 @@ end                                                                             
 # \qquad
 # D = 8\pi\mu R_0^3 \dot{B}^2 \sum_m D_m \frac{m}{2m+1}b_m^2.
 # ```
-# Those coefficients are *defined* so that the two roots of the quadratic
+# Those coefficients are *defined* so that the resulting oscillator reproduces
+# the two dominant roots of the characteristic equation derived above, at
+# harmonic order ``l=m``. Their gauge keeps the restoring term at its inviscid
+# value and lets the inertia vary:
+#
 # ```math
-# A_m b^2 - 2a D_m b + 1 = 0, \qquad a \equiv \mathrm{Oh}\sqrt{m(m-1)(m+2)},
+# \mathcal A_l\,\ddot A + 2\,l^2\mathrm{Oh}\,D_l\,\dot A + l(l-1)(l+2)\,A = 0 ,
 # ```
-# reproduce the two dominant roots of the characteristic equation derived
-# above, at harmonic order ``l=m``. The variable identification is
-# ``q^2 = (b/a)\,\alpha^2``, under which ``W(b/a) = Q_{l+1/2}(q)/q``.
+#
+# while the form used on the companion page keeps unit inertia and lets both
+# remaining coefficients vary. Dividing the line above by ``\mathcal A_l`` and matching
+# term by term gives the map, in both directions:
+#
+# ```math
+# \lambda_l = \frac{l^2\,\mathrm{Oh}\,D_l}{\mathcal A_l} ,
+# \qquad
+# \omega_l^2 = \frac{l(l-1)(l+2)}{\mathcal A_l} ,
+# \qquad\Longleftrightarrow\qquad
+# \mathcal A_l = \frac{l(l-1)(l+2)}{\omega_l^2} ,
+# \qquad
+# D_l = \frac{\lambda_l \mathcal A_l}{l^2\,\mathrm{Oh}} .
+# ```
+#
+# In the scaled root ``b = \sigma/\omega_{l;0}`` with
+# ``\omega_{l;0} = \sqrt{l(l-1)(l+2)}``, the same statement is the quadratic
+#
+# ```math
+# \mathcal A_l\,b^2 - \frac{2\,l^2\mathrm{Oh}}{\omega_{l;0}}\,D_l\,b + 1 = 0 ,
+# ```
+#
+# and the variable identification is simply ``q^2 = b\,\alpha^2``, since
+# ``q^2 = \sigma/\mathrm{Oh}`` and ``\alpha^2 = \omega_{l;0}/\mathrm{Oh}``.
+#
+# An earlier version of this appendix carried ``a \equiv
+# \mathrm{Oh}\sqrt{m(m-1)(m+2)}`` in place of ``l^2\mathrm{Oh}/\omega_{l;0}``
+# and wrote ``q^2 = (b/a)\alpha^2``. Both were wrong, and the companion page's
+# Section 3.2 is the version to trust: it recovers ``D_l`` from the computed
+# roots and matches Molacek and Bush's independently published high-Oh limit
+# ``D_l \to (l-1)(2l^2+4l+3)/[l^2(2l+1)]`` to six digits, with no free
+# parameters.
 #
 # So ``A_m`` and ``D_m`` are not a separate theory: they are the *result* of
 # solving Reid's problem at each order, compressed into two numbers per mode
@@ -1064,7 +1108,7 @@ end                                                                             
 # \nabla^2\!\left[f(r)\,Y_l^m\right] = \left[\,f'' + \frac{2}{r}f' - \frac{l(l+1)}{r^2}\,f\,\right] Y_l^m.
 # ```
 #
-# The eigenvalue claim splits into two independent facts, each checked below.
+# The eigenvalue claim splits into two independent facts.
 # First, the change of variables ``\mu=\cos\theta`` turns the angular
 # Laplacian, acting on *any* function, into the Legendre operator
 # ``\frac{d}{d\mu}\!\left[(1-\mu^2)\frac{dQ}{d\mu}\right]``. Second,
@@ -1174,3 +1218,23 @@ sph_bessel_eq = expand_derivatives(x_sub * (Dxs(Dxs(v)) + 2 / x_sub * Dxs(v) + (
 # with ``u_r \propto U(x)/x^2``, can carry the whole flow -- and it is the
 # statement invoked in the linearised equations for the pressure gradient and in the radial equation
 # for the velocity itself.
+
+## The gauge map of Appendix C, checked against the roots it claims to reproduce.     #src
+## A_l and D_l are recovered from the computed (lambda_l, omega_l^2), and then the     #src
+## quadratic in b = sigma/omega_{l;0} must have both computed roots as its roots.      #src
+let                                                                                   #src
+    for l in (2, 3, 5, 8), Oh in (0.02, 0.2, 2.0)                                     #src
+        lam, om2 = reid_lambda_omega2(Oh, l)                                          #src
+        w0 = sqrt(float(l) * (l - 1) * (l + 2))                                       #src
+        A_l = float(l) * (l - 1) * (l + 2) / om2                                      #src
+        D_l = lam * A_l / (l^2 * Oh)                                                  #src
+        ## the two roots of sigma^2 - 2 lam sigma + om2 = 0, in scaled form b          #src
+        disc = complex(lam^2 - om2)                                                   #src
+        for sig in (lam + sqrt(disc), lam - sqrt(disc))                               #src
+            b = sig / w0                                                              #src
+            res = A_l * b^2 - 2 * (l^2 * Oh / w0) * D_l * b + 1                       #src
+            @assert abs(res) < 1e-8 "Appendix C quadratic fails at l=$l Oh=$Oh: $res" #src
+        end                                                                           #src
+    end                                                                               #src
+end                                                                                   #src
+println("ASSERTION: Appendix C's gauge map reproduces the computed root pair")          #src

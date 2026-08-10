@@ -17,12 +17,25 @@
 # grows with both ``\mathrm{Oh}`` and ``l``, so its domain of validity is
 # narrower than "low viscosity" alone would suggest.
 #
-# Concretely: the shear-thinning fluid used for DropSolver's validation
-# dataset has a rest-state Ohnesorge number ``\mathrm{Oh}_0 \approx 57``
-# (from ``\eta_0=8.43\,\mathrm{Pa\,s}``, ``\mathrm{Bo}=0.012``,
-# ``R=0.3\,\mathrm{mm}``, ``\sigma=72.8\,\mathrm{mN/m}``) and a fully-thinned
-# ``\mathrm{Oh}_\infty \approx 0.025`` -- a ``\sim2260\times`` swing that
-# spends most of its time outside the range Lamb's formula covers. The
+# The Ohnesorge number is
+#
+# ```math
+# \mathrm{Oh} = \frac{\eta}{\sqrt{\rho\gamma R}} ,
+# ```
+#
+# the ratio of viscous to inertio-capillary stress, with ``\gamma`` the surface
+# tension. Time is measured in units of ``\tau_\gamma = \sqrt{\rho R^3/\gamma}``
+# throughout, which is what makes ``\sigma_l = q_l^2\,\mathrm{Oh}`` below
+# dimensionless on both sides.
+#
+# Concretely: the shear-thinning fluid used for DropSolver's validation dataset,
+# with ``\rho = 10^3\,\mathrm{kg\,m^{-3}}``, ``\gamma = 72.8\,\mathrm{mN\,m^{-1}}``
+# and ``R = 0.3\,\mathrm{mm}``, has a rest viscosity
+# ``\eta_0 = 8.43\,\mathrm{Pa\,s}`` and a fully-thinned
+# ``\eta_\infty = 3.73\,\mathrm{mPa\,s}``. Those give
+# ``\mathrm{Oh}_0 = 57.1`` and ``\mathrm{Oh}_\infty = 0.0253``, a swing of
+# ``2260\times``, which spends most of its range outside the interval Lamb's
+# formula covers. The
 # coefficients derived here are the ones the `:reid` viscous model
 # evaluates.
 #
@@ -334,7 +347,12 @@ end                                                                #src
 # ```math
 # \ddot A_l + 2\lambda_l\dot A_l + \omega_l^2 A_l = 0,
 # ```
-# whose characteristic equation is ``x^2 - 2\lambda_l x + \omega_l^2 = 0``.
+# whose characteristic equation, under the ``A_l \propto e^{-\sigma t}``
+# convention used throughout this page, is
+# ``\sigma^2 - 2\lambda_l\sigma + \omega_l^2 = 0``. The minus sign is a
+# consequence of that convention and not a typographical one: with
+# ``e^{+\sigma t}`` the middle term would be ``+2\lambda_l\sigma``, and the
+# decay rates below would come out negative.
 # Requiring its roots to be Reid's own ``\sigma_1,\sigma_2`` (with
 # ``\sigma_i = q_i^2\,\mathrm{Oh}``, the ``q^2\mathrm{Oh}`` time-unit
 # convention used throughout DropSolver), Vieta's formulas immediately give
@@ -397,18 +415,19 @@ end                                                                  #src
 # ### 3.2 The high-Oh limit reproduces Molaček & Bush
 #
 # The independent check at the other end comes from Molaček & Bush (2012),
-# who parametrize the same physics with an inertia coefficient ``A_l`` and a
+# who parametrize the same physics with an inertia coefficient ``\\mathcal A_l`` and a
 # dissipation coefficient ``D_l`` (see Section 10 of the companion page for
 # the mapping and for their Eq. 31). Translating between the two gauges,
 # ```math
-# \lambda_l = \frac{l^2\,\mathrm{Oh}\,D_l}{A_l}, \qquad
-# \omega_l^2 = \frac{l(l-1)(l+2)}{A_l},
+# \lambda_l = \frac{l^2\,\mathrm{Oh}\,D_l}{\mathcal A_l}, \qquad
+# \omega_l^2 = \frac{l(l-1)(l+2)}{\mathcal A_l},
 # ```
 # and at high ``\mathrm{Oh}`` their published limit is
 # ``D_l \to (l-1)(2l^2+4l+3)/[l^2(2l+1)]``.
 #
 # ``\lambda_l`` and ``\omega_l^2`` alone already determine the physics
-# completely; ``D_l`` is recovered here only so it can be compared against
+# completely; ``\mathcal A_l`` is the inertia coefficient, distinct from the modal
+# amplitude ``A_l`` of the oscillator above, and ``D_l`` is recovered here only so it can be compared against
 # that independently published number. At ``\mathrm{Oh}=1000`` the recast
 # value matches the published limit to better than ``0.1\%`` for every mode
 # tested -- and to six digits for most of them:
