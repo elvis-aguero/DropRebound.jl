@@ -156,3 +156,60 @@ const SKY   = cgrad([RGB(0.055, 0.220, 0.400), RGB(0.145, 0.420, 0.667),
                      RGB(0.353, 0.639, 0.831), RGB(0.643, 0.831, 0.925),
                      RGB(0.878, 0.949, 0.980)])
 const DEEP  = RGB(0.016, 0.239, 0.478)      # a line colour from the same family
+
+# ---------------------------------------------------------------------------
+# THE LOCAL VISCOSITY FIELD
+#
+# A generalized Newtonian fluid has no single viscosity: eta depends on the local shear
+# rate, so during an impact the drop is a map of stiff and soft regions that moves. That
+# map is what an "effective viscosity" is being asked to stand in for, and drawing it is
+# the most direct statement of how much is being averaged over.
+#
+# `shear_rate` evaluates gammadot = sqrt(2 e:e) one point at a time, rebuilding the
+# strain basis at every call. On an animation grid that is around 10^10 operations and
+# is not worth waiting for. But the strain basis does not depend on the state: only the
+# amplitudes do. So the basis is built once as a matrix and every frame becomes a single
+# GEMV, which is a few milliseconds.
+# ---------------------------------------------------------------------------
+
+"""
+    strain_kernel(p, xs, mus) -> Matrix
+
+The six strain components of every degree of freedom at every grid point, flattened to a
+`(npoints*6) x ndof` matrix. State-independent, so it is built once per animation.
+"""
+function strain_kernel(p::ImpactParams, xs, mus)
+    b = DropSolver.basis(p); N = DropSolver.ndof(b)
+    K = zeros(length(xs) * length(mus) * 6, N)
+    row = 0
+    for x in xs, mu in mus
+        F = DropSolver.strain_at(b, x, mu)
+        for c in 1:6
+            row += 1
+            @views K[row, :] .= F[:, c]
+        end
+    end
+    K
+end
+
+"""
+    shear_rate_grid(Kern, adot, nx, nmu) -> Matrix
+
+`gammadot` on the grid `strain_kernel` was built for, in solver units. One matrix-vector
+product, then the second invariant of the summed tensor -- not a per-mode sum of
+invariants, which would be a different and wrong quantity.
+"""
+function shear_rate_grid(Kern, adot::AbstractVector, nx::Int, nmu::Int)
+    e = Kern * adot                      # all six components at all points
+    out = zeros(nx, nmu)
+    idx = 0
+    for i in 1:nx, j in 1:nmu
+        a = e[idx+1]; bb = e[idx+2]; c = e[idx+3]
+        d = e[idx+4]; f = e[idx+5]; g = e[idx+6]
+        idx += 6
+        ## ddot_strain uses components 3..6 as (e_rr, e_tt, e_pp, e_rt); 1..2 are the
+        ## velocities and take no part in the rate of strain.
+        out[i, j] = sqrt(max(2 * (c*c + d*d + f*f + 2*g*g), 0.0))
+    end
+    out
+end
