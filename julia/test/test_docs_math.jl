@@ -538,3 +538,27 @@ end
     @test isapprox(grad(a -> quantities(eta_c, a)[2], ad), Fc; rtol = 1e-4)
     @test isapprox(grad(a -> quantities(eta_c, a)[3], ad), Fc; rtol = 1e-4)
 end
+
+# PAGE CLAIM (Shear-Thinning Drops): the derivative pair in the e_rtheta contraction is
+# reduced to ordinary Legendre triple products by
+#   (1 - mu^2) P_l'(mu) = l(l+1)/(2l+1) [ P_{l-1}(mu) - P_{l+1}(mu) ],
+# which is the step that lets the triangle/parity selection rule cover BOTH angular
+# families rather than only the diagonal one. Without it the band structure -- and hence
+# the claim that a constant viscosity decouples the modes -- is asserted for a
+# contraction that is not a triple product as it stands.
+@testset "docs math: the derivative pair reduces to triple products" begin
+    P(l, mu) = l < 0 ? 0.0 : legendre_angular(l, mu).P
+    dPdmu(l, mu) = (A = legendre_angular(l, mu); -A.dPdth / A.sinth)
+    for l in 1:9, mu in (-0.87, -0.4, 0.13, 0.62, 0.91)
+        lhs = (1 - mu^2) * dPdmu(l, mu)
+        rhs = l * (l + 1) / (2l + 1) * (P(l - 1, mu) - P(l + 1, mu))
+        @test isapprox(lhs, rhs; atol = 1e-12)
+    end
+    ## and the parity half of the claim: shifting an outer index by +-1 twice preserves
+    ## the parity of l + m + k, which is why both families obey one rule
+    for l in 2:6, m in 2:6, k in 0:8
+        for dl in (-1, 1), dm in (-1, 1)
+            @test iseven(l + m + k) == iseven((l + dl) + (m + dm) + k)
+        end
+    end
+end

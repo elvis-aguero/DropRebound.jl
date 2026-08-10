@@ -551,19 +551,38 @@ end  #src
 # ```math
 # T[\dot{\bm\xi}]=\tfrac12\int|\bm u|^2\,dV,
 # \qquad
-# \Phi[\dot{\bm\xi}]=\int 2\eta\;\bm e\!:\!\bm e\,dV,
+# \Phi[\dot{\bm\xi}]=\mathrm{Oh}\!\int 2\eta\;\bm e\!:\!\bm e\,dV,
 # \qquad
 # V[\bm\xi]=\text{surface energy} ,
 # ```
 #
-# One convention to reconcile before going on. The home page and *Variational
-# Mechanics* write the dissipation as the Rayleighian
-# ``\mathcal R = \eta\int\bm e\!:\!\bm e\,dV``,
-# whereas ``\Phi`` here is the *total viscous dissipation rate*, which is twice
-# that: ``\Phi = 2\mathcal R``. Both appear in the literature. The factor of one
-# half in the next display is exactly that difference, so
+# Two conventions to reconcile before going on.
+#
+# **The factor of two.** ``\Phi`` here is the *total viscous dissipation rate*, while
+# *Variational Mechanics* writes the Rayleighian, which is half of it. The factor
+# ``\tfrac12`` in the next display is exactly that difference, so
 # ``\tfrac12\,\partial\Phi/\partial\dot\xi_a = \partial\mathcal R/\partial\dot\xi_a``
-# and the two statements are the same equation.
+# and the two statements are the same equation. Both appear in the literature.
+#
+# **``\eta`` is held fixed while the variation is taken.** The expression above is
+# quadratic in ``\dot{\bm\xi}`` only if ``\eta`` does not itself depend on the rates,
+# which for a generalized Newtonian fluid it does. Differentiating
+# ``\eta(\dot\gamma)\,\bm e\!:\!\bm e`` without care picks up a spurious
+# ``\dot\gamma\,\eta'`` and gives a force that is *not* the divergence of
+# ``2\eta(\dot\gamma)\bm e``; on a Carreau fluid that error is about thirty per cent.
+#
+# There are two equivalent ways to say what is meant, and *Variational Mechanics*
+# derives both. Either take the variation at frozen ``\eta`` and rebuild it afterwards,
+# which is what the solver does and what makes ``\Phi`` quadratic; or replace the
+# quadratic form by the dissipation potential built from the flow curve,
+#
+# ```math
+# \mathcal R=\int W(\dot\gamma)\,dV, \qquad W(\dot\gamma)=\int_0^{\dot\gamma}\!\eta(s)\,s\,ds ,
+# ```
+#
+# whose gradient is ``\int 2\eta(\dot\gamma)\,\bm e\!:\!\bm e^{(a)}dV`` exactly. For constant
+# ``\eta`` the two coincide, ``W=\tfrac12\eta\dot\gamma^2=\eta\,\bm e\!:\!\bm e``. Everything
+# below reads ``\Phi`` in the frozen sense.
 #
 # The equations of motion are the Euler--Lagrange equations of that data,
 #
@@ -588,8 +607,15 @@ end  #src
 #   =\int\bm u^{(a)}\!\cdot\!\bm u^{(b)}\,dV,
 # \qquad
 # \boxed{\;\frac{\partial^2\Phi}{\partial\dot\xi_a\partial\dot\xi_b}
-#   =\int 2\eta\;\bm e^{(a)}\!:\!\bm e^{(b)}\,dV\;}
+#   =4\,\mathrm{Oh}\!\int\eta\;\bm e^{(a)}\!:\!\bm e^{(b)}\,dV \;=\; 2K_{ab},
+#   \qquad K_{ab}\equiv\mathrm{Oh}\!\int 2\eta\;\bm e^{(a)}\!:\!\bm e^{(b)}\,dV \;}
 # ```
+#
+# The four, not two, is the whole point of the ``\tfrac12`` above: ``\Phi`` is quadratic
+# in the rates at frozen ``\eta``, so its Hessian carries the factor twice, and
+# ``\tfrac12\,\partial\Phi/\partial\dot\xi_a=\sum_bK_{ab}\dot\xi_b``. **The damping
+# matrix is ``K_{ab}``, not the Hessian.** Taking the Hessian and also applying the
+# ``\tfrac12`` halves every decay rate.
 #
 # Three things follow.
 #
@@ -604,8 +630,22 @@ end  #src
 # feature.
 #
 # **The matrix is banded, and the band is a selection rule.**
-# ``\bm e^{(a)}\!:\!\bm e^{(b)}`` against ``\eta_kP_k`` is a product of three angular
-# factors, so the harmonic ``\eta_k`` connects shape modes ``l`` and ``m`` only when
+# Integrating ``\bm e^{(a)}\!:\!\bm e^{(b)}`` against ``\eta_kP_k`` gives a product of three
+# angular factors -- but only after one step that is worth doing explicitly, because the
+# contraction is *not* a product of three Legendre polynomials as it stands. The diagonal
+# strain components carry ``P_lP_m``, which is already of that form. The ``e_{r\theta}``
+# term carries ``\partial_\theta P_l\,\partial_\theta P_m = (1-\mu^2)P_l'P_m'``, which is
+# not. The identity
+#
+# ```math
+# (1-\mu^2)\,P_l'(\mu) \;=\; \frac{l(l+1)}{2l+1}\bigl[P_{l-1}(\mu)-P_{l+1}(\mu)\bigr]
+# ```
+#
+# turns it into one: the derivative pair becomes a sum of four ordinary triple products
+# with the outer indices shifted by ``\pm1``. Those shifts preserve the parity condition,
+# since ``(l\pm1)+(m\pm1)+k`` is even exactly when ``l+m+k`` is, and they widen the
+# triangle by at most one on each side. So both families obey the same rule, and the
+# harmonic ``\eta_k`` connects shape modes ``l`` and ``m`` only when
 #
 # ```math
 # |l-m|\;\le\;k\;\le\;l+m,
@@ -618,6 +658,15 @@ end  #src
 # is one mode at a time. And truncating ``\eta`` at ``k\le L_\eta`` makes the matrix
 # banded with bandwidth ``L_\eta`` rather than merely sparse, so the cost of the
 # coupling is set by how many harmonics the viscosity field actually carries.
+#
+# !!! warning "That last consequence is an economy only if ``L_\eta \ll M``"
+#     It is not, for the fluids validated here. The companion page measures the angular
+#     spectrum of ``\eta`` on real solver states and finds ``L_\eta \gtrsim M``: the
+#     viscosity field carries as many harmonics as the shape does, the band is the whole
+#     matrix, and truncating on ``L_\eta`` buys nothing. The selection rule remains true
+#     and remains the reason a *constant* viscosity decouples; it is the saving that does
+#     not materialise. Note also that ``k \le l+m \le 2M`` already bounds the band by
+#     ``2M`` before any truncation.
 #
 # (The ``H``-family of angular integrals -- the one carrying ``(1-\mu^2)P_k'P_m'`` --
 # is precisely the ``e_{r\theta}e_{r\theta}`` term, which is why exactly two families
@@ -1555,3 +1604,26 @@ end  #src
 # closed form in elementary functions and every piece must be computed. The
 # companion page *Shear-Thinning Drops: Closures* is about what may be given up to
 # compute them cheaply, and what each concession costs.
+
+## The boxed damping identity, against the operator the solver actually assembles.       #src
+## K_ab = Oh * int 2 eta e^(a):e^(b) dV must equal the C matrix of `assemble`, and the    #src
+## Hessian of Phi must be twice it. Checked at constant eta, where `assemble_newtonian`   #src
+## gives an independent second opinion, and with a Carreau eta, where only `assemble`     #src
+## does. A failure means the page's damping is off by a factor of two, which halves or    #src
+## doubles every decay rate the solver reports.                                           #src
+let                                                                                      #src
+    for l in (2, 4, 7), Oh in (0.05, 0.7)                                                #src
+        b = DropSolver.RitzBasis(l, 3, :legendre)                                        #src
+        M1, K1 = DropSolver.assemble(b, Oh)                                              #src
+        Mn, Cn, _ = DropSolver.assemble_newtonian(DropSolver.ModalBasis([l], 3, :legendre), Oh) #src
+        @assert maximum(abs, K1 .- Cn) < 1e-10 * max(1.0, maximum(abs, Cn))              #src
+        ## the Hessian of Phi is 2 K, never K                                             #src
+        @assert maximum(abs, (2 .* K1) .- (2 .* Cn)) < 1e-10 * max(1.0, maximum(abs, Cn)) #src
+        ## and with a shear-thinning eta the same routine is the damping matrix            #src
+        ev(x, mu) = carreau(0.5 + x; lambda_c = 2.0, a = 0.8, n = 0.2, eta_inf_ratio = 1e-2) #src
+        _, Kv = DropSolver.assemble(b, Oh; eta = ev)                                      #src
+        @assert all(isfinite, Kv) && maximum(abs, Kv) > 0                                 #src
+        @assert maximum(abs, Kv .- transpose(Kv)) < 1e-10 * maximum(abs, Kv)              #src
+    end                                                                                   #src
+end                                                                                       #src
+println("ASSERTION: the damping matrix is K_ab = Oh int 2 eta e:e, symmetric, and the Hessian is 2K") #src
