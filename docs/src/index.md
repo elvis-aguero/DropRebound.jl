@@ -43,9 +43,6 @@ special case rather than the starting point.
 The flow and the interface are assumed **axisymmetric** throughout, so a single polar angle
 ``\theta`` describes the surface. That assumption is not lifted anywhere in this package.
 
-The flow and the interface are assumed **axisymmetric** throughout, so a single polar angle
-``\theta`` describes the surface.
-
 Write ``\Omega`` for the region the liquid occupies and ``\partial\Omega`` for its free
 surface, at ``r = R + \zeta(\theta,t)``. Every integral below is over one of these two. The
 conditions on ``\partial\Omega`` carry the physics:
@@ -55,15 +52,16 @@ conditions on ``\partial\Omega`` carry the physics:
 \qquad
 \underbrace{\bm n\cdot\bm\Sigma\cdot\bm t = 0}_{\text{no tangential traction}} ,
 \qquad
-\underbrace{\bm n\cdot\bm\Sigma\cdot\bm n = \gamma\,\kappa - p_c}_{\text{normal traction}} ,
+\underbrace{\bm n\cdot\bm\Sigma\cdot\bm n = -(\gamma\,\kappa + p_c)}_{\text{normal traction}} ,
 ```
 
 all evaluated **on the deformed surface**, with ``\kappa = \nabla_s\!\cdot\bm n`` the sum of the
-principal curvatures, positive for a sphere, so that a sphere at rest satisfies
-``\gamma\kappa = 2\gamma/R``.
+principal curvatures, positive for a sphere. The signs are worth checking on the static case:
+with ``\bm n`` outward and no film, ``\bm n\cdot\bm\Sigma\cdot\bm n = -p``, so the condition
+reads ``p = \gamma\kappa = 2\gamma/R``, which is Young-Laplace. A film pressure ``p_c \ge 0``
+pushes inward, against ``\bm n``, and so enters with the same sign as ``\gamma\kappa``.
 
-with ``\kappa`` the mean curvature, ``\bm n`` and ``\bm t`` the normal and tangent to the
-surface, and
+with ``\bm n`` and ``\bm t`` the normal and tangent to the surface, and
 
 ```math
 \bm\Sigma = -p\,\bm I + 2\eta\,\bm e , \qquad
@@ -165,7 +163,7 @@ Split the test field on the surface into its normal and tangential parts,
 
 ```math
 \left(\bm\Sigma\cdot\bm n\right)\cdot\bm v
-\;=\; \underbrace{\left(\bm n\cdot\bm\Sigma\cdot\bm n\right)}_{\gamma\kappa - p_c}(\bm v\cdot\bm n)
+\;=\; \underbrace{\left(\bm n\cdot\bm\Sigma\cdot\bm n\right)}_{-(\gamma\kappa + p_c)}(\bm v\cdot\bm n)
 \;+\; \underbrace{\left(\bm n\cdot\bm\Sigma\cdot\bm t\right)}_{=\,0}\,(\bm v\cdot\bm t) ,
 ```
 
@@ -175,9 +173,12 @@ the right-hand side becomes
 
 ```math
 \oint_{\partial\Omega}\left(\bm\Sigma\cdot\bm n\right)\cdot\bm v\,dS
-\;=\; \underbrace{\oint_{\partial\Omega}\gamma\kappa\,(\bm v\cdot\bm n)\,dS}_{\text{capillary}}
-\;-\; \underbrace{\oint_{\partial\Omega} p_c\,(\bm v\cdot\bm n)\,dS}_{\text{film}} .
+\;=\; -\underbrace{\oint_{\partial\Omega}\gamma\kappa\,(\bm v\cdot\bm n)\,dS}_{\text{capillary}}
+\;-\; \underbrace{\oint_{\partial\Omega} p_c\,(\bm v\cdot\bm n)\,dS}_{\text{film}} ,
 ```
+
+so that moving the capillary term to the left of the equation makes it ``+\delta_{\bm v}V``,
+which is where the sign in the collected weak form comes from.
 
 The capillary term is a derivative of an energy. Deforming the surface by a normal displacement
 ``\delta\zeta`` changes its area by ``\oint_{\partial\Omega} \kappa\,\delta\zeta\,dS``, so with
@@ -190,8 +191,9 @@ the excess surface energy, the first variation is ``\delta V = \oint_{\partial\O
 \gamma\kappa\,\delta\zeta\,dS``. Since ``\bm v\cdot\bm n`` is a rate of normal displacement,
 the capillary integral is exactly ``V`` differentiated along ``\bm v``.
 
-The body force is a potential in the same way: ``\int_\Omega\rho\,\bm g\cdot\bm v\,dV`` is the
-first variation of the gravitational energy, so from here on ``V`` denotes the excess surface
+The body force is a potential in the same way: ``\int_\Omega\rho\,\bm g\cdot\bm v\,dV`` is
+*minus* the first variation of the gravitational energy, since a force is minus the gradient of
+a potential, so from here on ``V`` denotes the excess surface
 energy **and** the gravitational potential, and the body-force term is carried inside
 ``\delta_{\bm v}V``.
 

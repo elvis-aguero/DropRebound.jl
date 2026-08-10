@@ -147,7 +147,7 @@ harmonics, so they are regular at both poles. They are orthogonal, which is what
 Newtonian problem separate. And they diagonalise the surface energy, giving
 
 ```math
-V \;=\; \frac{\gamma}{2}\sum_{l\ge2}\frac{4\pi}{2l+1}\,(l-1)(l+2)\,\zeta_l^2
+V \;=\; \frac{\gamma R^2}{2}\sum_{l\ge2}\frac{4\pi}{2l+1}\,(l-1)(l+2)\,\zeta_l^2
 ```
 
 for the excess area to second order in the amplitudes.
@@ -169,7 +169,7 @@ The third ingredient is the one most easily missed. **Volume conservation forces
 ```
 
 and the area that shift costs must be subtracted. Without it the coefficient comes out
-``(l+2)(l+1)`` instead of ``(l-1)(l+2)``, a different and wrong restoring force.
+``l(l+1)+2`` instead of ``(l-1)(l+2)``, a different and wrong restoring force.
 
 The sum starts at ``l = 2``, and the two excluded modes are excluded for **different** reasons.
 ``l = 1`` is killed by the coefficient itself: ``(l-1)(l+2) = 0`` there, which is Galilean

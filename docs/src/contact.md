@@ -170,6 +170,14 @@ centre of mass ``(h,v)``, obeying, in dimensionless form,
 
 with ``\omega_l^2 = l(l+2)(l-1)`` and ``\lambda_l = (2l+1)(l-1)\mathrm{Oh}``.
 
+One convention has been changed from the original. Gabbard *et al.* measure ``\theta`` from the
+**contact** pole, so that contact occupies ``\theta \le \theta_c``; this page measures it from
+the opposite pole throughout, so contact is at ``\theta = \pi`` and occupies
+``\theta \ge \theta_c``. Since ``P_1(\cos\theta) = \cos\theta`` changes sign between the two,
+the ``l = 1`` pressure coefficient does too, which is why the centre-of-mass equation is written
+with ``-\mathcal B_1`` here and ``+\mathcal B_1`` in the paper. Everything below is in this
+page's convention.
+
 The scheme is **first-order implicit Euler**, and the time level has to be carried explicitly or
 everything below is ambiguous. Writing ``y^{k}`` for the value at step ``k``, with every term on
 the right at the new level,
@@ -202,13 +210,14 @@ scalar equation per mode,
 ```
 
 where ``f_l^{k}`` is built only from level-``k`` values. The centre of mass reduces the same way,
-to ``\beta^2 h^{k+1} = f_z^{k} + \mathcal B_1^{k+1}``. **The response of the new state to the new
+to ``\beta^2 h^{k+1} = f_z^{k} - \mathcal B_1^{k+1}``. **The response of the new state to the new
 pressure is a division by ``d_l``.**
 
-The clearance at a node is affine in the state,
+The clearance at a node is affine in the state, and is the same ``h`` as at the top of this
+page,
 
 ```math
-g_i^{k+1} \;=\; h^{k+1} - \cos\theta_i\Bigl(1 + \sum_l \mathcal A_l^{k+1}P_l(\mu_i)\Bigr),
+g_i^{k+1} \;=\; h^{k+1} + \cos\theta_i\Bigl(1 + \sum_l \mathcal A_l^{k+1}P_l(\mu_i)\Bigr),
 ```
 
 so substituting both reductions makes it affine in ``\mathcal B^{k+1}``. Changing variables from
@@ -217,10 +226,16 @@ collocation change described above, gives exactly
 
 ```math
 \boxed{\;\bm g^{k+1} = \bm A_c\,\bm p^{k+1} + \bm b^{k}\;},\qquad
-(A_c)_{ij} = \underbrace{\cos\theta_i\sum_l
-  \frac{l\,P_l(\mu_i)}{d_l}(V^{-1})_{lj}}_{\text{shape}}
-\;+\;\underbrace{\frac{1}{\beta^{2}}(V^{-1})_{1j}}_{\text{centre of mass}} .
+(A_c)_{ij} = -\underbrace{\cos\theta_i\sum_{l\ge2}
+  \frac{l\,P_l(\mu_i)}{d_l}(V^{-1})_{l+1,\,j}}_{\text{shape}}
+\;-\;\underbrace{\frac{1}{\beta^{2}}(V^{-1})_{2j}}_{\text{centre of mass}} .
 ```
+
+Both terms are positive where it matters. Near the contact pole ``\cos\theta_i < 0``, so the
+shape term is positive; and a pressure bump against the substrate there has ``p_{c,1} < 0``,
+which makes the centre-of-mass term positive too. Pressure opens clearance, as a compliance
+must. Note the row index: with ``V_{ij} = P_{j-1}(\mu_i)``, the harmonic ``l`` is read off row
+``l+1`` of ``\bm V^{-1}``, so the ``l = 1`` coefficient is row **2**.
 
 Four things about that expression are worth keeping.
 
@@ -249,15 +264,15 @@ every harmonic through ``\bm V^{-1}``, and every harmonic moves every node throu
 The reduced model closes the same system a different way, and comparing the two closures is the
 clearest statement of what a complementarity formulation buys.
 
-It assumes the contact region is a single interval ``\theta \le \theta_c`` and imposes, at the
-new time level, that the surface lies **on** the substrate inside it and that the pressure
-vanishes outside:
+It assumes the contact region is a single interval about the contact pole, ``\theta \ge
+\theta_c`` in this page's convention, and imposes at the new time level that the surface lies
+**on** the substrate inside it and that the pressure vanishes outside:
 
 ```math
 \sum_{l\ge2}\mathcal A_l^{k+1}P_l(\cos\theta) = \frac{h^{k+1}}{\cos\theta}-1
-\;\;(\theta\le\theta_c),
+\;\;(\theta\ge\theta_c),
 \qquad
-\sum_{l\ge0}\mathcal B_l^{k+1}P_l(\cos\theta) = 0 \;\;(\theta>\theta_c),
+\sum_{l\ge0}\mathcal B_l^{k+1}P_l(\cos\theta) = 0 \;\;(\theta<\theta_c),
 ```
 
 which are exactly ``g_i^{k+1}=0`` on the contact rows and ``p_i^{k+1}=0`` on the free rows. Those
@@ -270,7 +285,7 @@ So the two closures differ in one substitution:
 
 | | contact set | closed by |
 |---|---|---|
-| kinematic match | an interval ``[0,\theta_c]``, searched over | tangency at the edge |
+| kinematic match | an interval ``[\theta_c,\pi]``, searched over | tangency at the edge |
 | complementarity | any subset of the nodes, solved for | ``p_i \ge 0`` pointwise |
 
 Both are legitimate, and on smooth impacts they agree. The complementarity form gives up the
@@ -338,11 +353,11 @@ This is the same forcing as the reduced model, in different clothes. Dividing th
 force of harmonic ``l`` by that mode's modal mass gives
 
 ```math
-\frac{Q_l}{M_{ll}} \;=\; -\,l ,
+\frac{Q_l}{M_{ll}} \;=\; -\,l\,p_{c,l} ,
 ```
 
-exactly, for every ``l``, which is the ``-l/(\rho R)\,\mathcal B_l`` of the oscillator system
-above, in units where ``\rho = R = 1``. The two formulations agree on the forcing; they differ
+exactly, for every ``l``, which is the ``-l\,\mathcal B_l`` forcing of the oscillator system
+above, in the units used throughout (``\rho = R = 1``). The two formulations agree on the forcing; they differ
 only in whether the interior is resolved.
 
 The clearance is affine in the state, ``\bm h = \bm H\bm\xi + \bm 1 z + \bm b_0``, so it responds

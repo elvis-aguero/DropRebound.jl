@@ -127,7 +127,7 @@ Now ``\oint\mathrm{d}\Omega = 4\pi``, ``\oint u\,\mathrm{d}\Omega = 4\pi\zeta_0`
 ∎
 
 Omitting this term is not a small error: it changes the surface-energy coefficient from
-``(l-1)(l+2)`` to ``(l+2)(l+1)``, and with it every restoring force and every frequency.
+``(l-1)(l+2)`` to ``l(l+1)+2``, and with it every restoring force and every frequency.
 
 ### B.2 First variation of area
 
