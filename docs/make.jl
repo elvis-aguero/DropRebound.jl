@@ -126,6 +126,12 @@ makedocs(
             "Resolution and Convergence"       => "resolution.md",
             "API Reference"                    => "api.md",
         ],
+        # Reference material the chapters lean on. Kept separate so no chapter has to
+        # interrupt itself to prove a standard identity or define a symbol twice.
+        "Reference" => [
+            "Identities and Standard Results"   => "appendix.md",
+            "Glossary of Symbols"               => "glossary.md",
+        ],
         # Supporting derivations that are not part of the main line of argument:
         # a constitutive-law mapping, and a measurement of the viscosity field's
         # angular spectrum.

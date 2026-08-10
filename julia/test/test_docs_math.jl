@@ -594,3 +594,39 @@ end
         end
     end
 end
+
+# APPENDIX CLAIM B.1: holding the volume fixed forces a second-order shift in the mean
+# radius, zeta_0 = -sum_{l>=2} zeta_l^2/(2l+1). Omitting it changes the surface-energy
+# coefficient from (l-1)(l+2) to (l+2)(l+1), so every restoring force and every frequency
+# would be wrong.
+#
+# Checked by integrating the volume of the perturbed shape directly and confirming the
+# error is third order in the amplitude with the shift, and second order without it.
+@testset "docs math: volume conservation fixes the mean-radius shift" begin
+    ls = [2, 3, 5]
+    volume(z0, zs, n = 4000) = begin          # (1/3) * int r^3 dOmega, axisymmetric
+        s, h = 0.0, 2.0 / n
+        for i in 1:n
+            mu = -1 + (i - 0.5) * h
+            r  = 1 + z0 + sum(zs[j] * legendre_angular(l, mu).P for (j, l) in enumerate(ls))
+            s += r^3 * h
+        end
+        (2pi / 3) * s
+    end
+    V0 = 4pi / 3
+    errs_with, errs_without = Float64[], Float64[]
+    for eps in (0.04, 0.02, 0.01)
+        zs = eps .* [1.0, -0.6, 0.35]
+        z0 = -sum(zs[j]^2 / (2l + 1) for (j, l) in enumerate(ls))     # the claim
+        push!(errs_with,    abs(volume(z0,  zs) - V0) / V0)
+        push!(errs_without, abs(volume(0.0, zs) - V0) / V0)
+    end
+    ## halving the amplitude should cut the corrected error by ~8 (third order) and the
+    ## uncorrected one by ~4 (second order)
+    for i in 1:2
+        @test errs_with[i] / errs_with[i+1]       > 6.0
+        @test 3.0 < errs_without[i] / errs_without[i+1] < 5.0
+    end
+    ## and at the smallest amplitude the shift must buy at least two orders of magnitude
+    @test errs_with[end] < 0.01 * errs_without[end]
+end
