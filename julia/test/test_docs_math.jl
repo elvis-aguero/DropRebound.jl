@@ -470,3 +470,18 @@ end
         end
     end
 end
+
+# PAGE CLAIM (contact.md): "Q_l / M_ll = -l, exactly, for every l" -- the bridge showing
+# our generalised forcing is the same as the -l/(rho R) B_l of the reduced oscillator
+# model of Gabbard et al. (2025), eq (3.4). If this drifts, the two formulations have
+# stopped describing the same physics and every comparison against that model is void.
+@testset "docs math: the forcing agrees with the reduced model" begin
+    for l in 2:8
+        M, _, _ = DropSolver.assemble(DropSolver.RitzBasis(l, 1, :legendre), 1.0)
+        q  = ImpactParams(We = 0.5, Bo = 0.019, Oh = 0.05, M = l, K = 1)
+        b  = DropSolver.basis(q)
+        i  = findfirst(==(l), b.ls)
+        Ql = DropSolver.force_column(q, l + 1)[DropSolver.dofindex(b, i, 1)]
+        @test isapprox(Ql / M[1, 1], -float(l); rtol = 1e-10)
+    end
+end

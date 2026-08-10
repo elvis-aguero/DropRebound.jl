@@ -115,10 +115,80 @@ by scoring candidates, so there is no tie to break and the iteration terminates.
 **Complementarity** proposes nothing at all. It asks instead how the clearance responds to
 the pressure, and reads the contact set off the answer.
 
-Over one step the discretisation replaces the time derivatives, so the equations of motion
-become an algebraic system in the end-of-step state. Collect the shape amplitudes ``\zeta_l``
-into a vector ``\bm\xi``, write ``\bm p`` for the pressures at the retained nodes, and let
-``\beta`` be the coefficient the scheme puts in front of ``d/dt``. The shape equation is then
+### Where the compliance comes from
+
+The object that closes the problem, ``\bm A_c``, is not written down. It is what is left after
+the interior is eliminated, and it is worth seeing that happen once on a system simple enough to
+do by hand before meeting it in matrix form.
+
+Take the reduced model of Gabbard *et al.* (2025), where the state is just the surface amplitudes
+``\mathcal A_l``, their rates ``\mathcal U_l``, and the centre of mass ``(h,v)``. Each mode is a
+damped oscillator driven by the ``l``-th harmonic of the film pressure,
+
+```math
+\dot{\mathcal A_l} = \mathcal U_l ,\qquad
+\dot{\mathcal U_l} = -\omega_l^2\,\mathcal A_l - 2\lambda_l\,\mathcal U_l - \frac{l}{\rho R}\,\mathcal B_l ,
+```
+
+and the centre of mass feels only the ``l = 1`` harmonic. Discretise with any one-step scheme, so
+that ``\dot y \mapsto \beta y - y_{\text{hist}}``, and eliminate ``\mathcal U_l``:
+
+```math
+\underbrace{\bigl(\beta^2 + 2\lambda_l\beta + \omega_l^2\bigr)}_{\textstyle d_l}\,\mathcal A_l
+\;=\; f_l \;-\; \frac{l}{\rho R}\,\mathcal B_l ,
+```
+
+with ``f_l`` built from the previous steps. **Each mode is now a single scalar equation, and the
+response to the pressure is a division.** The centre of mass gives one more, ``\beta^2 h = f_z +
+(4\pi R^2/3m)\,\mathcal B_1``.
+
+The clearance at a node is affine in that state,
+``g_i = h + \cos\theta_i\bigl(R + \sum_l \mathcal A_l P_l(\mu_i)\bigr)``, so substituting both
+lines above makes it affine in the pressure harmonics. Changing variables from harmonics to
+nodal values with ``\bm{\mathcal B} = \bm V^{-1}\bm p`` — the same collocation change described
+above — gives exactly
+
+```math
+\bm g = \bm A_c\,\bm p + \bm b ,\qquad
+(A_c)_{ij} = \underbrace{-\cos\theta_i\sum_l \frac{l\,P_l(\mu_i)}{\rho R\,d_l}(V^{-1})_{lj}}_{\text{shape}}
+\;+\;\underbrace{\frac{4\pi R^2}{3m\beta^2}(V^{-1})_{1j}}_{\text{centre of mass}} .
+```
+
+Three things about that expression are worth keeping.
+
+``\bm A_c`` is a **compliance**: entry ``ij`` is the clearance opened at node ``i`` by unit
+pressure at node ``j``, over one step. It is the drop's discrete-time Green's function, and
+``\bm b`` is the clearance the step would produce with no contact force at all — the free-flight
+prediction.
+
+The relation runs ``\bm g = \bm A_c\bm p + \bm b``, not the other way round. There is no natural
+map from clearance to pressure; the dynamics tells you how the drop *responds* to a load, and the
+complementarity conditions then pick which loads are admissible.
+
+**``\bm A_c`` is dense even though every mode was independent.** Nothing above couples the modes:
+``d_l`` is diagonal. The density comes from the two changes of basis. One nodal pressure excites
+every harmonic through ``\bm V^{-1}``, and every harmonic moves every node through
+``P_l(\mu_i)``. The coupling is spectral, not dynamical.
+
+### The same elimination, with an interior
+
+The variational formulation differs in exactly two ways, and neither changes the structure.
+
+First, the state is not the surface. It is the vector ``\bm\xi`` of **interior** amplitudes
+``a_{l,k}`` — one per surface mode ``l \in \{2,\dots,M\}`` and radial trial function
+``k \in \{1,\dots,K\}``, so ``\bm\xi`` has ``(M-1)K`` entries, not ``M-1``. The surface is a
+linear functional of it,
+
+```math
+\zeta_l \;=\; \sum_{k=1}^{K} a_{l,k}\,\phi_k(1),
+```
+
+which is why the constraint Jacobian carries the trace as a third factor,
+``H_{i,(l,k)} = \cos\theta_i\,P_l(\mu_i)\,\phi_k(1)``, and why ``\bm H`` is
+``(M+1)\times(M-1)K`` rather than square.
+
+Second, ``d_l`` becomes a matrix. Writing ``\bm p`` for the pressures at the retained nodes and
+``\beta`` for the coefficient the scheme puts in front of ``d/dt``, the shape equation is
 
 ```math
 \underbrace{\left(\beta^2\bm M + \beta\bm C + \bm G\right)}_{\textstyle \bm A}\bm\xi
@@ -127,12 +197,45 @@ into a vector ``\bm\xi``, write ``\bm p`` for the pressures at the retained node
 
 where ``\bm M``, ``\bm C`` and ``\bm G`` are the mass, damping and stiffness matrices assembled
 in the previous chapter. The boldface ``\bm M`` is that matrix and not the truncation degree
-``M``, which is an unhappy collision this page inherits and lives with. Here ``\bm f`` collects
-everything known from previous steps, and ``\bm Q_n`` maps nodal pressures to generalised forces
-by interpolating them onto the Legendre basis and applying
-``Q_l = -\tfrac{4\pi}{2l+1}p_{c,l}``. The scheme is BDF2, so ``\beta = c_0/\Delta t`` with
+``M``, which is an unhappy collision this page inherits and lives with. ``\bm f`` collects
+everything known from previous steps. The scheme is BDF2, so ``\beta = c_0/\Delta t`` with
 ``c_0 = (1+2r)/(1+r)`` and ``r`` the ratio of successive steps; on the opening step it falls
 back to BDF1 and ``c_0 = 1``.
+
+``\bm M`` and ``\bm G`` are block diagonal, one ``K\times K`` block per mode, and so is ``\bm C``
+for a constant viscosity — in that case ``\bm A`` is the block version of ``d_l`` and nothing has
+really changed. For a shear-thinning fluid ``\bm C`` is dense, because the viscosity field
+couples modes, and then ``\bm A^{-1}`` is a factorisation rather than a division. That is the
+whole extra cost of the interior: the compliance needs ``M+1`` back-substitutions against
+``\bm A`` per step.
+
+### From nodal pressures to generalised forces
+
+``\bm Q_n`` is the composition of the two maps this page has already used. Nodal values become
+harmonics by collocation, and harmonics become generalised forces by the virtual-work
+coefficient:
+
+```math
+\bm p \;\xrightarrow{\;\bm V^{-1}\;}\; p_{c,l}
+  \;\xrightarrow{\;-\frac{4\pi}{2l+1}\phi_k(1)\;}\; Q_{(l,k)} ,
+\qquad\text{that is}\qquad
+\bm Q_n = \bm Q_{\text{modal}}\,\bm V^{-1},
+```
+
+where the ``j``-th column of ``\bm Q_{\text{modal}}`` is the generalised force of the harmonic
+``l = j-1`` at unit amplitude. The ``l = 0`` and ``l = 1`` columns are identically zero, for the
+reasons given above.
+
+This is the same forcing as the reduced model, in different clothes. Dividing the generalised
+force of harmonic ``l`` by that mode's modal mass gives
+
+```math
+\frac{Q_l}{M_{ll}} \;=\; -\,l ,
+```
+
+exactly, for every ``l`` — which is the ``-l/(\rho R)\,\mathcal B_l`` of the oscillator system
+above, in units where ``\rho = R = 1``. The two formulations agree on the forcing; they differ
+only in whether the interior is resolved.
 
 The clearance is affine in the state, ``\bm h = \bm H\bm\xi + \bm 1 z + \bm b_0``, so it responds
 to the pressure through two channels rather than one. The shape channel is obtained by
