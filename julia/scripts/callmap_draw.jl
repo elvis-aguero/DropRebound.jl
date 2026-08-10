@@ -83,26 +83,49 @@ const ARROW = RGB(0.68, 0.72, 0.78)
 
 plt = plot(; size = (9000, 9000), dpi = 100, legend = false, grid = false,
            framestyle = :none, background_color = :white,
-           xlims = (-4, maxw + 2), ylims = (ybot - 5, 16))
+           xlims = (-4, maxw + 2), ylims = (ybot - 5, 26))
 
-## edges first, so boxes sit on top of them
+## HUBS: the files most depended upon. Those are the ones to understand first, so
+## their incoming edges are coloured and everything else stays grey. Colouring all
+## sixteen targets would be a rainbow; colouring the six that matter is a map.
+indeg = Dict{String,Int}()
+for (_, b) in edges; indeg[b] = get(indeg, b, 0) + 1; end
+hubs = first(sort(collect(keys(indeg)); by = k -> -indeg[k]), 6)
+const PALETTE = [RGB(0.09,0.50,0.52), RGB(0.83,0.52,0.09), RGB(0.28,0.33,0.71),
+                 RGB(0.76,0.26,0.41), RGB(0.28,0.56,0.27), RGB(0.51,0.31,0.64)]
+hubcol = Dict(h => PALETTE[i] for (i, h) in enumerate(hubs))
+ecol(b) = get(hubcol, b, ARROW)
+
+## Edges run from the TOP of the user up to the BOTTOM of the dependency, which sits on
+## an earlier row. Anchoring them to the far sides of each box, as a previous version
+## did, drew every line straight through the boxes it connected.
 for (a, b) in edges
     haskey(pos, a) && haskey(pos, b) || continue
     xa, ya = pos[a]; xb, yb = pos[b]
-    x1, y1 = xa + BW / 2, ya - boxh(a)          # bottom of the user
-    x2, y2 = xb + BW / 2, yb                    # top of the dependency
+    x1, y1 = xa + BW / 2, ya                    # top of the user
+    x2, y2 = xb + BW / 2, yb - boxh(b)          # bottom of the dependency
+    c = ecol(b); ishub = haskey(hubcol, b)
     ## a slight bow so parallel edges do not overprint
-    xm = (x1 + x2) / 2 + 0.06 * (y1 - y2)
+    xm = (x1 + x2) / 2 + 0.05 * (y2 - y1)
     plot!(plt, [x1, xm, x2], [y1, (y1 + y2) / 2, y2];
-          lc = ARROW, lw = 4.0, alpha = 0.85, label = "")
+          lc = c, lw = ishub ? 5.0 : 3.0, alpha = ishub ? 0.85 : 0.5, label = "")
+    ## arrowhead at the dependency end, pointing at it
+    dx, dy = x2 - xm, y2 - (y1 + y2) / 2
+    n = hypot(dx, dy); n < 1e-9 && continue
+    ux, uy = dx / n, dy / n; px, py = -uy, ux
+    hl, hw = 1.6, 0.62
+    plot!(plt, Shape([x2, x2 - hl*ux + hw*px, x2 - hl*ux - hw*px],
+                     [y2, y2 - hl*uy + hw*py, y2 - hl*uy - hw*py]);
+          fc = c, lc = c, alpha = ishub ? 0.9 : 0.55, label = "")
 end
 
 for (f, v) in nodes
     x, yt = pos[f]; h = boxh(f)
     isdead = f in unused
+    bc = isdead ? DEADL : get(hubcol, f, EDGE)
     plot!(plt, Shape([x, x + BW, x + BW, x], [yt, yt, yt - h, yt - h]);
-          fc = isdead ? DEAD : FILL, lc = isdead ? DEADL : EDGE,
-          lw = isdead ? 5 : 3, label = "")
+          fc = isdead ? DEAD : FILL, lc = bc,
+          lw = (isdead || haskey(hubcol, f)) ? 6 : 3, label = "")
     annotate!(plt, x + 1.2, yt - 1.7, text(f, 50, INK, :left, "Courier"))
     annotate!(plt, x + BW - 1.2, yt - 1.7,
               text("L$(v.level)", 40, EDGE, :right, "Courier"))
@@ -114,13 +137,23 @@ for (f, v) in nodes
                                  text("(module: includes and exports)", 32, EDGE, :left))
 end
 
-annotate!(plt, 0, 12.0, text("DropRebound.jl call map", 104, INK, :left))
-annotate!(plt, 0, 6.6,
+annotate!(plt, 0, 21.5, text("DropRebound.jl call map", 104, INK, :left))
+annotate!(plt, 0, 15.5,
           text("read top to bottom: level 0 depends on nothing else in the package; " *
                "each row uses only the rows above it", 46, RGB(0.42,0.47,0.54), :left))
-annotate!(plt, 0, 2.6,
+annotate!(plt, 0, 11.0,
           text("arrows point from a file to a file whose names it uses   |   " *
                "orange outline: used by nothing else in the package", 46, DEADL, :left))
+
+## the hub key, drawn in the hubs' own colours
+let x = 0.0
+    annotate!(plt, x, 6.0, text("most depended upon:", 40, RGB(0.42,0.47,0.54), :left))
+    x += 27
+    for h in hubs
+        annotate!(plt, x, 6.0, text(h, 40, hubcol[h], :left, "Courier"))
+        x += 1.05 * length(h) + 5
+    end
+end
 
 out = joinpath(ROOT, "docs", "figures", "callmap.png")
 mkpath(dirname(out)); savefig(plt, out)
