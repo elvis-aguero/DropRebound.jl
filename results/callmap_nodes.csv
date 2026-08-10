@@ -1,0 +1,21 @@
+file,level,ndefs,defs
+DropSolver.jl,6,0,
+backends.jl,5,6,Backend _run_impact check_converged drop_outline label run_impact
+bdf.jl,0,1,bdf_coefficients
+contact.jl,2,3,contact_error drop_height update_theta_star!
+integrals.jl,1,3,gauss_legendre_nodes integral_at_theta_star precompute_integrals
+jacobian.jl,2,1,build_jacobian
+legendre.jl,0,2,collect_Pl collect_dPl
+newton.jl,0,3,_jac_cache clear_jac_cache! newton_solve!
+ob_extension.jl,3,4,build_jacobian_ob build_residual_ob! pack_X_ob unpack_X_ob!
+postprocessing.jl,4,7,MAX_ALLOWED_COR MIN_BOUNCE_STEPS SweepKPIs _tentative_cor compute_contact_radius drop_profile extract_kpis
+reid.jl,0,13,ReidTable _dominant_root_direct _newton_complex _safe_eval build_reid_cache build_reid_table dominant_root drop_viscous_coeffs reid_char reid_lambda_omega2 reid_lambda_omega2_fast second_root sph_bessel_ratio
+residual.jl,2,3,build_residual! pack_X unpack_X!
+residual_v1.jl,2,2,build_jacobian_v1 build_residual_v1!
+st_exact_extension.jl,3,13,OUTLIER_FACTOR RINGING_NOISE_FLOOR STExactParams _extrapolated_Adot _legendre_P_dP _ringing_outlier_mask _strain_basis build_jacobian_st_exact build_residual_st_exact! characteristic_shear_K g_l lambda_omega2_from_oh_eff oh_eff_all_coupled
+st_extension.jl,3,2,build_jacobian_st build_residual_st!
+timestepper.jl,4,1,solve_drop!
+timestepper_v1.jl,3,1,solve_drop_v1!
+types.jl,1,6,DropState OBParams STParams SimConstants make_dt_max make_theta_vec
+variational.jl,2,31,COUPLED_CACHE COUPLED_CACHE_ANNOUNCED COUPLED_CACHE_BUDGET COUPLED_CACHE_WARN CoupledGeometry ModalBasis RitzBasis assemble assemble_coupled assemble_newtonian block_norm carreau coupled_cache_bytes coupled_geometry d2phi ddot_strain decay_rates dofindex dominant_pair dphi legendre_angular legendre_uderivs modal_field ndof npow phi radial_window shear_rate shear_rate_at stiffness_matrix strain_at
+variational_solve.jl,3,34,DEFAULT_K DEFAULT_M ImpactParams ImpactState MAX_ACTIVE_SET_ITERS MAX_ETA_HALVINGS basis contact_gap_fraction contact_lcp contact_time default_eta_tol equivalent_pressure eta_field force_column gap gap_row initial_state lcp_active_set lcp_pgs lcp_residual legendre_vandermonde lmax pc_at pc_l pc_len proximity_metrics restitution shape_from_contact simulate simulate_lcp surface_amplitudes trace_vec try_step try_step_lcp
