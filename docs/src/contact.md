@@ -121,46 +121,81 @@ The object that closes the problem, ``\bm A_c``, is not written down. It is what
 the interior is eliminated, and it is worth seeing that happen once on a system simple enough to
 do by hand before meeting it in matrix form.
 
-Take the reduced model of Gabbard *et al.* (2025), where the state is just the surface amplitudes
-``\mathcal A_l``, their rates ``\mathcal U_l``, and the centre of mass ``(h,v)``. Each mode is a
-damped oscillator driven by the ``l``-th harmonic of the film pressure,
+Take the reduced model of Gabbard *et al.* (2025). Its unknowns are the surface amplitudes
+``\mathcal A_l``, their rates ``\mathcal U_l``, the pressure harmonics ``\mathcal B_l`` and the
+centre of mass ``(h,v)``, obeying, in dimensionless form,
 
 ```math
 \dot{\mathcal A_l} = \mathcal U_l ,\qquad
-\dot{\mathcal U_l} = -\omega_l^2\,\mathcal A_l - 2\lambda_l\,\mathcal U_l - \frac{l}{\rho R}\,\mathcal B_l ,
+\dot{\mathcal U_l} = -\,\omega_l^2\,\mathcal A_l - 2\lambda_l\,\mathcal U_l - l\,\mathcal B_l ,
+\qquad \dot h = v ,\qquad \dot v = -\mathrm{Bo} + \mathcal B_1 ,
 ```
 
-and the centre of mass feels only the ``l = 1`` harmonic. Discretise with any one-step scheme, so
-that ``\dot y \mapsto \beta y - y_{\text{hist}}``, and eliminate ``\mathcal U_l``:
+with ``\omega_l^2 = l(l+2)(l-1)`` and ``\lambda_l = (2l+1)(l-1)\mathrm{Oh}``.
+
+The scheme is **first-order implicit Euler**, and the time level has to be carried explicitly or
+everything below is ambiguous. Writing ``y^{k}`` for the value at step ``k``, with every term on
+the right at the new level,
 
 ```math
-\underbrace{\bigl(\beta^2 + 2\lambda_l\beta + \omega_l^2\bigr)}_{\textstyle d_l}\,\mathcal A_l
-\;=\; f_l \;-\; \frac{l}{\rho R}\,\mathcal B_l ,
+\frac{\mathcal A_l^{k+1}-\mathcal A_l^{k}}{\Delta t} = \mathcal U_l^{k+1},
+\qquad
+\frac{\mathcal U_l^{k+1}-\mathcal U_l^{k}}{\Delta t}
+  = -\omega_l^2\,\mathcal A_l^{k+1} - 2\lambda_l\,\mathcal U_l^{k+1} - l\,\mathcal B_l^{k+1} .
 ```
 
-with ``f_l`` built from the previous steps. **Each mode is now a single scalar equation, and the
-response to the pressure is a division.** The centre of mass gives one more, ``\beta^2 h = f_z +
-(4\pi R^2/3m)\,\mathcal B_1``.
-
-The clearance at a node is affine in that state,
-``g_i = h + \cos\theta_i\bigl(R + \sum_l \mathcal A_l P_l(\mu_i)\bigr)``, so substituting
-both
-lines above makes it affine in the pressure harmonics. Changing variables from harmonics to
-nodal values with ``\bm{\mathcal B} = \bm V^{-1}\bm p``, the same collocation change described
-above, gives exactly
+**All five blocks are unknowns at ``k+1`` and are solved together**, as one linear system
 
 ```math
-\bm g = \bm A_c\,\bm p + \bm b ,\qquad
-(A_c)_{ij} = \underbrace{-\cos\theta_i\sum_l
-  \frac{l\,P_l(\mu_i)}{\rho R\,d_l}(V^{-1})_{lj}}_{\text{shape}}
-\;+\;\underbrace{\frac{4\pi R^2}{3m\beta^2}(V^{-1})_{1j}}_{\text{centre of mass}} .
+\bm A\,\bm x^{k+1} = \bm b(\bm x^{k}),
+\qquad
+\bm x^{k+1} = \bigl[\mathcal A^{k+1};\;\mathcal U^{k+1};\;\mathcal B^{k+1};\;h^{k+1};\;v^{k+1}\bigr].
 ```
 
-Three things about that expression are worth keeping.
+The pressure is not a forcing applied from outside. It is part of the solve, on the same footing
+as the shape.
+
+Eliminating ``\mathcal U_l^{k+1}`` between the first two rows is bookkeeping, and leaves one
+scalar equation per mode,
+
+```math
+\underbrace{\bigl(\beta^2 + 2\lambda_l\beta + \omega_l^2\bigr)}_{\textstyle d_l}\,\mathcal A_l^{k+1}
+\;=\; f_l^{k} \;-\; l\,\mathcal B_l^{k+1} ,
+\qquad \beta = 1/\Delta t ,
+```
+
+where ``f_l^{k}`` is built only from level-``k`` values. The centre of mass reduces the same way,
+to ``\beta^2 h^{k+1} = f_z^{k} + \mathcal B_1^{k+1}``. **The response of the new state to the new
+pressure is a division by ``d_l``.**
+
+The clearance at a node is affine in the state,
+
+```math
+g_i^{k+1} \;=\; h^{k+1} - \cos\theta_i\Bigl(1 + \sum_l \mathcal A_l^{k+1}P_l(\mu_i)\Bigr),
+```
+
+so substituting both reductions makes it affine in ``\mathcal B^{k+1}``. Changing variables from
+harmonics to nodal values with ``\bm{\mathcal B}^{k+1} = \bm V^{-1}\bm p^{k+1}``, the same
+collocation change described above, gives exactly
+
+```math
+\boxed{\;\bm g^{k+1} = \bm A_c\,\bm p^{k+1} + \bm b^{k}\;},\qquad
+(A_c)_{ij} = \underbrace{\cos\theta_i\sum_l
+  \frac{l\,P_l(\mu_i)}{d_l}(V^{-1})_{lj}}_{\text{shape}}
+\;+\;\underbrace{\frac{1}{\beta^{2}}(V^{-1})_{1j}}_{\text{centre of mass}} .
+```
+
+Four things about that expression are worth keeping.
+
+**The time levels do not mix.** Both the clearance and the pressure are at ``k+1``; only
+``\bm b^{k}`` carries history. That is what makes ``\bm A_c`` well defined at all: it is
+``\partial\bm g^{k+1}/\partial\bm p^{k+1}`` at frozen history, which exists because the scheme is
+implicit. An explicit scheme would put ``\bm p^{k}`` on the right, the contact condition would no
+longer constrain the step being taken, and there would be no complementarity problem to solve.
 
 ``\bm A_c`` is a **compliance**: entry ``ij`` is the clearance opened at node ``i`` by unit
 pressure at node ``j``, over one step. It is the drop's discrete-time Green's function, and
-``\bm b`` is the clearance the step would produce with no contact force at all, which is the
+``\bm b^{k}`` is the clearance the step would produce with no contact force at all, which is the
 free-flight prediction.
 
 The relation runs ``\bm g = \bm A_c\bm p + \bm b``, not the other way round. There is no natural
@@ -171,6 +206,40 @@ complementarity conditions then pick which loads are admissible.
 ``d_l`` is diagonal. The density comes from the two changes of basis. One nodal pressure excites
 every harmonic through ``\bm V^{-1}``, and every harmonic moves every node through
 ``P_l(\mu_i)``. The coupling is spectral, not dynamical.
+
+### What complementarity replaces
+
+The reduced model closes the same system a different way, and comparing the two closures is the
+clearest statement of what a complementarity formulation buys.
+
+It assumes the contact region is a single interval ``\theta \le \theta_c`` and imposes, at the
+new time level, that the surface lies **on** the substrate inside it and that the pressure
+vanishes outside:
+
+```math
+\sum_{l\ge2}\mathcal A_l^{k+1}P_l(\cos\theta) = \frac{h^{k+1}}{\cos\theta}-1
+\;\;(\theta\le\theta_c),
+\qquad
+\sum_{l\ge0}\mathcal B_l^{k+1}P_l(\cos\theta) = 0 \;\;(\theta>\theta_c),
+```
+
+which are exactly ``g_i^{k+1}=0`` on the contact rows and ``p_i^{k+1}=0`` on the free rows. Those
+are two of the three Signorini conditions. What is missing is the inequality on the pressure, and
+its place is taken by a **tangency condition** at the edge,
+``\partial_\theta[(1+\sum_l\mathcal A_lP_l)\cos\theta]=0`` at ``\theta_c``, with ``\theta_c``
+itself found by a search over candidate contact counts.
+
+So the two closures differ in one substitution:
+
+| | contact set | closed by |
+|---|---|---|
+| kinematic match | an interval ``[0,\theta_c]``, searched over | tangency at the edge |
+| complementarity | any subset of the nodes, solved for | ``p_i \ge 0`` pointwise |
+
+Both are legitimate, and on smooth impacts they agree. The complementarity form gives up the
+assumption that the contact region is a single patch, which is what lets the solution be checked
+against that assumption rather than built on it, and it replaces a search with a solve. The cost
+is that the resulting problem is no longer symmetric, which the rest of this page is about.
 
 ### The same elimination, with an interior
 
