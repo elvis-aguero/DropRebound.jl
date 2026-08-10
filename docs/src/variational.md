@@ -43,18 +43,56 @@ scalar equations. Take them one at a time.
 T = \tfrac12\int_\Omega\rho\,|\bm u|^2\,dV .
 ```
 
-**Dissipation.** Since ``\bm e`` is linear in the rates,
-``\partial\bm e/\partial\dot\xi_a = \bm e(\bm u^{(a)})``, and so
+**Dissipation.** The viscous term is a gradient too, but which potential it is the gradient of
+needs care, and the answer is not the obvious one once ``\eta`` depends on the flow.
+
+Since ``\bm e`` is linear in the rates, ``\partial\bm e/\partial\dot\xi_a = \bm e(\bm u^{(a)})``.
+For a **constant** viscosity that is enough:
 
 ```math
 \int_\Omega 2\eta\,\bm e(\bm u)\!:\!\bm e(\bm u^{(a)})\,dV
 \;=\; \frac{\partial\mathcal R}{\partial\dot\xi_a} ,
 \qquad
-\mathcal R = \eta\int_\Omega \bm e\!:\!\bm e\,dV .
+\mathcal R = \eta\int_\Omega \bm e\!:\!\bm e\,dV ,
 ```
 
-``\mathcal R`` is the Rayleigh dissipation function. It is half the rate at which the fluid
-turns kinetic energy into heat, which is where the factor of two in the integrand goes.
+and ``\mathcal R`` is the Rayleigh dissipation function, half the rate at which the fluid turns
+kinetic energy into heat.
+
+For a **shear-rate-dependent** viscosity this fails, and it is worth seeing why rather than
+discovering it later. Differentiating ``\eta(\dot\gamma)\,\bm e\!:\!\bm e`` picks up the
+viscosity's own dependence on the rates. With ``\dot\gamma = \sqrt{2\,\bm e\!:\!\bm e}`` we have
+``\partial\dot\gamma/\partial\dot\xi_a = 2\,\bm e\!:\!\bm e^{(a)}/\dot\gamma``, so
+
+```math
+\frac{\partial}{\partial\dot\xi_a}\int_\Omega \eta(\dot\gamma)\,\bm e\!:\!\bm e\,dV
+\;=\; \int_\Omega \bigl(2\eta + \dot\gamma\,\eta'(\dot\gamma)\bigr)\,
+      \bm e\!:\!\bm e^{(a)}\,dV ,
+```
+
+which carries a spurious ``\dot\gamma\eta'`` and is **not** the force whose divergence is
+``\bm\tau = 2\eta(\dot\gamma)\bm e``. On a Carreau fluid the discrepancy is about thirty per
+cent, so it is not a technicality.
+
+The potential that does work is built from the constitutive law itself,
+
+```math
+\boxed{\;\mathcal R = \int_\Omega W(\dot\gamma)\,dV ,\qquad
+W(\dot\gamma) = \int_0^{\dot\gamma}\!\eta(s)\,s\,\mathrm{d}s ,\qquad
+\frac{\partial\mathcal R}{\partial\dot\xi_a} = \int_\Omega 2\eta(\dot\gamma)\,
+  \bm e\!:\!\bm e^{(a)}\,dV \;}
+```
+
+since ``\partial W/\partial\dot\xi_a = \eta\dot\gamma\,\partial\dot\gamma/\partial\dot\xi_a
+= 2\eta\,\bm e\!:\!\bm e^{(a)}``. For constant ``\eta`` this reduces to
+``W = \tfrac12\eta\dot\gamma^2 = \eta\,\bm e\!:\!\bm e``, recovering the previous line exactly,
+which is why the Newtonian derivation is unharmed and why the generalisation looks innocent.
+
+So the Onsager structure survives a generalized Newtonian fluid unchanged. What changes is the
+dissipation potential, from a quadratic form to the integral of the flow curve. Equivalently, and
+this is what the solver does, one may hold ``\eta`` fixed at its current value while taking the
+variation and rebuild it afterwards: the resulting force is the same
+``\int 2\eta(\dot\gamma)\,\bm e\!:\!\bm e^{(a)}``.
 
 **Capillarity.** The home page identified the capillary term as the variation of the surface
 energy, so ``\delta_{\bm u^{(a)}}V = \partial V/\partial\xi_a``.
@@ -102,9 +140,32 @@ Newtonian problem separate. And they diagonalise the surface energy, giving
 V \;=\; \frac{\gamma}{2}\sum_{l\ge2}\frac{4\pi}{2l+1}\,(l-1)(l+2)\,\zeta_l^2
 ```
 
-for the excess area to second order in the amplitudes. The sum starts at ``l = 2`` because
-``l = 0`` changes the volume, which is forbidden, and ``l = 1`` translates the drop without
-deforming it. Both give zero restoring force, as the factor ``(l-1)`` records.
+for the excess area to second order in the amplitudes.
+
+That coefficient is worth deriving, because two of its three ingredients are invisible in the
+result. Writing ``r(\theta) = R\bigl(1+\sum_l\zeta_lP_l\bigr)``, the area element of a surface of
+revolution is ``\mathrm{d}A = r\sqrt{r^2+(\partial_\theta r)^2}\,\sin\theta\,
+\mathrm{d}\theta\,\mathrm{d}\varphi``, whose expansion to second order gives one term from ``r^2``
+and one from the slope ``\partial_\theta r``. Integrating the slope term by parts against
+Legendre's equation turns ``(\partial_\theta P_l)^2`` into ``l(l+1)P_l^2``, and the angular
+normalisation ``\oint P_lP_m\,\mathrm{d}A = \frac{4\pi}{2l+1}\delta_{lm}R^2`` supplies the
+prefactor.
+
+The third ingredient is the one most easily missed. **Volume conservation forces an
+``O(\zeta^2)`` shift in the mean radius**: holding the volume fixed requires
+
+```math
+\zeta_0 = -\sum_{l\ge2}\frac{\zeta_l^2}{2l+1} ,
+```
+
+and the area that shift costs must be subtracted. Without it the coefficient comes out
+``(l+2)(l+1)`` instead of ``(l-1)(l+2)``, a different and wrong restoring force.
+
+The sum starts at ``l = 2``, and the two excluded modes are excluded for **different** reasons.
+``l = 1`` is killed by the coefficient itself: ``(l-1)(l+2) = 0`` there, which is Galilean
+invariance, since translating a sphere costs no surface energy. ``l = 0`` is *not* killed by the
+coefficient, which evaluates there to ``(-1)(2) = -2``. It is excluded instead because it changes
+the volume, which incompressibility forbids. Only the second of these is recorded by the factor ``(l-1)``.
 
 ## Coordinates that are displacements, not velocities
 
@@ -266,6 +327,9 @@ integrand of ``C_{ab}`` and carries its own angular spectrum. The orthogonality 
 diagonalised the Newtonian problem no longer applies, and the dissipation matrix becomes dense
 and state-dependent. Those two are the subjects of *Contact* and *Shear-Thinning Fluids*.
 
-The formulation does not change. What changes is that ``\bm C`` must be rebuilt as the solution
-evolves, and that is the entire cost difference between a Newtonian run and a shear-thinning
-one.
+The formulation does not change, in the precise sense established above: the Euler-Lagrange
+statement still reads ``\frac{d}{dt}\partial_{\dot\xi}T + \partial_{\dot\xi}\mathcal R +
+\partial_\xi V = \bm Q``, with ``\mathcal R`` the dissipation potential ``\int W(\dot\gamma)dV``
+rather than the quadratic form. What changes computationally is that ``\bm C`` must be rebuilt as
+the solution evolves, and that is the entire cost difference between a Newtonian run and a
+shear-thinning one.

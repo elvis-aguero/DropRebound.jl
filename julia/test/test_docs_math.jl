@@ -485,3 +485,56 @@ end
         @test isapprox(Ql / M[1, 1], -float(l); rtol = 1e-10)
     end
 end
+
+# PAGE CLAIM (variational.md): for a shear-rate-dependent viscosity the Rayleigh
+# dissipation function is NOT the quadratic form. The generalised force is
+#   F_a = int 2 eta(gd) e:e^(a) dV,
+# which is the gradient of the dissipation potential
+#   R = int W(gd) dV,   W(gd) = int_0^gd eta(s) s ds,
+# and NOT of int eta(gd) e:e dV, whose gradient carries a spurious gd*eta'(gd).
+#
+# This is the foundation of the whole shear-thinning extension: if the wrong potential
+# were used the damping would be wrong by tens of per cent (measured 29% on a Carreau
+# fluid), and the solver's viscous operator would not be the weak form of
+# div(2 eta(gd) e). The page also claims the two coincide for constant eta; that is
+# checked too, since it is why the Newtonian derivation is unharmed.
+@testset "docs math: the dissipation potential for a variable viscosity" begin
+    l, K = 2, 3
+    rb = RitzBasis(l, K, :legendre)
+    xs, wx  = DropSolver.gauss_legendre_nodes(32, 0.0, 1.0)
+    mus, wm = DropSolver.gauss_legendre_nodes(32, -1.0, 1.0)
+    dd(a, c) = a[3]*c[3] + a[4]*c[4] + a[5]*c[5] + 2*a[6]*c[6]
+    fields(x, mu) = (A = legendre_angular(l, mu);
+        [collect(modal_field(l, phi(rb,k,x), dphi(rb,k,x), d2phi(rb,k,x), x, A)) for k in 1:K])
+    ## W(gd) by midpoint rule; only its derivative matters, so modest accuracy suffices
+    Wpot(eta, gd) = (n = 400; h = gd/n; sum(eta((i-0.5)*h)*((i-0.5)*h)*h for i in 1:n))
+
+    function quantities(eta, ad)
+        F = zeros(K); Phi = 0.0; Psi = 0.0
+        for (x, wxi) in zip(xs, wx), (mu, wmi) in zip(mus, wm)
+            Fk = fields(x, mu); w = wxi*wmi*2pi*x^2
+            e  = sum(ad[k] .* Fk[k] for k in 1:K)
+            ee = dd(e, e); gd = sqrt(max(2ee, 0.0)); ev = eta(gd)
+            for a in 1:K; F[a] += w * 2 * ev * dd(e, Fk[a]); end
+            Phi += w * ev * ee
+            Psi += w * Wpot(eta, gd)
+        end
+        (F, Phi, Psi)
+    end
+    grad(f, ad) = (h = 1e-6;
+        [(f(ad + h*I[1:K,a]) - f(ad - h*I[1:K,a]))/(2h) for a in 1:K])
+
+    ad = [0.7, -0.3, 0.15]
+    eta_v = gd -> carreau(gd; lambda_c = 3.0, a = 0.75, n = 0.25, eta_inf_ratio = 1e-3)
+    F, _, _ = quantities(eta_v, ad)
+    gPhi = grad(a -> quantities(eta_v, a)[2], ad)
+    gPsi = grad(a -> quantities(eta_v, a)[3], ad)
+    @test isapprox(gPsi, F; rtol = 1e-4)          # the potential is the right one
+    @test norm(gPhi - F) / norm(F) > 0.1          # the quadratic form is not
+
+    ## and for constant eta the two coincide, which is why the Newtonian case is unharmed
+    eta_c = gd -> 1.0
+    Fc, _, _ = quantities(eta_c, ad)
+    @test isapprox(grad(a -> quantities(eta_c, a)[2], ad), Fc; rtol = 1e-4)
+    @test isapprox(grad(a -> quantities(eta_c, a)[3], ad), Fc; rtol = 1e-4)
+end

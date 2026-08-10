@@ -22,8 +22,20 @@ deformations this package treats, the nonlinear advection term is negligible aga
 unsteady term, and what remains is
 
 ```math
-\rho\,\partial_t \bm u \;=\; -\nabla p + \eta\,\nabla^2\bm u , \qquad \nabla\cdot\bm u = 0 .
+\rho\,\partial_t \bm u \;=\; \nabla\cdot\bm\Sigma , \qquad
+\bm\Sigma = -p\,\bm I + 2\eta\,\bm e , \qquad
+\bm e = \tfrac12\bigl(\nabla\bm u + \nabla\bm u^{\mathsf T}\bigr) , \qquad
+\nabla\cdot\bm u = 0 .
 ```
+
+Written with the stress tensor rather than as ``\rho\partial_t\bm u = -\nabla p +
+\eta\nabla^2\bm u``, because the two agree only for a **uniform** viscosity:
+``\nabla\cdot(2\eta\bm e) = \eta\nabla^2\bm u + 2\,\bm e\cdot\nabla\eta``, and for the
+shear-thinning and viscoelastic fluids this package also treats, that second term is the physics.
+The weak form below keeps ``\int 2\eta\,\bm e\!:\!\bm e(\bm v)``, which is correct either way.
+
+The flow and the interface are assumed **axisymmetric** throughout, so a single polar angle
+``\theta`` describes the surface.
 
 Write ``\Omega`` for the region the liquid occupies and ``\partial\Omega`` for its free
 surface, at ``r = R + \zeta(\theta,t)``. Every integral below is over one of these two. The
@@ -60,8 +72,10 @@ forbids that vorticity will over-predict the damping.
 ## Dimensionless groups
 
 Lengths are scaled by ``R`` and time by the capillary time
-``\tau_c = \sqrt{\rho R^3/\gamma}``, the natural oscillation period of a free drop. Three
-groups remain:
+``\tau_c = \sqrt{\rho R^3/\gamma}``, the inertio-capillary time scale. It is a *scale*, not a
+period: the inviscid ``l = 2`` mode has ``\omega_2^2 = 8\gamma/(\rho R^3)``, so its period is
+``2\pi/\omega_2 = (\pi/\sqrt2)\,\tau_c \approx 2.22\,\tau_c``. Contact times are reported in
+units of ``\tau_c``. Three groups remain:
 
 | group | definition | what it controls |
 |---|---|---|
@@ -69,8 +83,12 @@ groups remain:
 | Ohnesorge ``\mathrm{Oh}`` | ``\eta/\sqrt{\rho\gamma R}`` | viscous dissipation against surface tension |
 | Bond ``\mathrm{Bo}`` | ``\rho g R^2/\gamma`` | weight against surface tension |
 
-A water–glycerol drop of radius 0.2 mm falling at 9 cm/s has ``\mathrm{Oh} \approx 0.30``,
-``\mathrm{Bo} \approx 0.019`` and ``\mathrm{We} \approx 0.079``.
+A water-glycerol drop with ``\rho = 1200\,\mathrm{kg\,m^{-3}}``,
+``\gamma = 65\,\mathrm{mN\,m^{-1}}`` and ``\eta = 48\,\mathrm{mPa\,s}``, of radius
+``R = 0.32\,\mathrm{mm}`` falling at ``v_0 = 11.5\,\mathrm{cm\,s^{-1}}``, has
+``\mathrm{Oh} \approx 0.30``, ``\mathrm{Bo} \approx 0.019`` and ``\mathrm{We} \approx 0.079``.
+The three material values are quoted so the reader can check the arithmetic; an earlier version
+gave a radius and a speed that no water-glycerol mixture could reconcile with those groups.
 
 ## The one physical approximation
 
@@ -116,7 +134,6 @@ The two surface terms combine into the traction, and what remains is
 \;=\; \oint_{\partial\Omega} \left(\bm\Sigma\cdot\bm n\right)\cdot\bm v \,dS .
 ```
 
-The pressure has not disappeared. It has left the volume integral, where it was a constraint,
 The pressure has not disappeared. It has left the volume integral, where it was a constraint,
 and survives inside the traction, where the stress conditions will now remove it.
 
