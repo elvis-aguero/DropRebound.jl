@@ -115,26 +115,46 @@ Take a test velocity field ``\bm v`` that is incompressible and compatible with 
 condition. Contract the momentum equation with it and integrate over the drop:
 
 ```math
-\int_\Omega \rho\,\partial_t\bm u\cdot\bm v \,dV
-\;=\; \int_\Omega \left(-\nabla p + \eta\nabla^2\bm u\right)\cdot\bm v \,dV .
+\int_\Omega \rho\bigl(\partial_t\bm u + \bm u\cdot\nabla\bm u\bigr)\cdot\bm v \,dV
+\;=\; \int_\Omega (\nabla\cdot\bm\Sigma)\cdot\bm v \,dV
+\;+\; \int_\Omega \rho\,\bm g\cdot\bm v \,dV .
 ```
 
-Both terms on the right integrate by parts once. For the pressure,
+The stress term integrates by parts exactly once, and this works for **any** stress tensor:
 
 ```math
-\int_\Omega -\nabla p\cdot\bm v\,dV
-\;=\; -\oint_{\partial\Omega} p\,(\bm v\cdot\bm n)\,dS + \int_\Omega p\,\nabla\cdot\bm v\,dV ,
+\int_\Omega (\nabla\cdot\bm\Sigma)\cdot\bm v \,dV
+\;=\; \oint_{\partial\Omega} (\bm\Sigma\cdot\bm n)\cdot\bm v \,dS
+\;-\; \int_\Omega \bm\Sigma\!:\!\nabla\bm v \,dV .
 ```
 
-and the volume term vanishes because ``\bm v`` is divergence-free. For the viscous term, use
-``\nabla^2\bm u = 2\nabla\cdot\bm e`` (which holds when ``\nabla\cdot\bm u = 0``) and the
-symmetry of ``\bm e``, which turns ``\bm e\!:\!\nabla\bm v`` into ``\bm e\!:\!\bm e(\bm v)``.
-The two surface terms combine into the traction, and what remains is
+The remaining volume integrand collapses in two steps:
 
 ```math
-\int_\Omega \rho\,\partial_t\bm u\cdot\bm v\,dV
-\;+\; \int_\Omega 2\eta\,\bm e(\bm u)\!:\!\bm e(\bm v)\,dV
-\;=\; \oint_{\partial\Omega} \left(\bm\Sigma\cdot\bm n\right)\cdot\bm v \,dS .
+\bm\Sigma\!:\!\nabla\bm v
+\;=\; \bigl(-p\,\bm I + 2\eta\,\bm e\bigr)\!:\!\nabla\bm v
+\;=\; \underbrace{-\,p\,(\nabla\cdot\bm v)}_{=\,0}
+      \;+\; 2\eta\,\underbrace{\bm e\!:\!\nabla\bm v}_{=\;\bm e(\bm u):\bm e(\bm v)} .
+```
+
+The first vanishes because the test field is divergence-free, which is where incompressibility
+of ``\bm v`` earns its keep and why the pressure never has to be solved for. The second uses only
+that ``\bm e`` is symmetric, so contracting it with ``\nabla\bm v`` picks out the symmetric part
+of ``\nabla\bm v``, which is ``\bm e(\bm v)``.
+
+**Nothing in that step assumed a uniform viscosity.** ``\eta`` sits inside the integrand and is
+carried along unchanged, whatever it depends on. A derivation routed through
+``\nabla^2\bm u = 2\nabla\cdot\bm e`` instead would have needed ``\eta`` constant, and would have
+excluded every fluid this package exists for. Working from ``\nabla\cdot\bm\Sigma`` is both more
+general and shorter.
+
+What remains is
+
+```math
+\int_\Omega \rho\bigl(\partial_t\bm u + \bm u\cdot\nabla\bm u\bigr)\cdot\bm v\,dV
+\;+\; \int_\Omega 2\eta(\dot\gamma)\,\bm e(\bm u)\!:\!\bm e(\bm v)\,dV
+\;=\; \oint_{\partial\Omega} \left(\bm\Sigma\cdot\bm n\right)\cdot\bm v \,dS
+\;+\; \int_\Omega \rho\,\bm g\cdot\bm v\,dV .
 ```
 
 The pressure has not disappeared. It has left the volume integral, where it was a constraint,
@@ -169,6 +189,11 @@ V \;=\; \gamma\left(|\partial\Omega| - 4\pi R^2\right)
 the excess surface energy, the first variation is ``\delta V = \oint_{\partial\Omega}
 \gamma\kappa\,\delta\zeta\,dS``. Since ``\bm v\cdot\bm n`` is a rate of normal displacement,
 the capillary integral is exactly ``V`` differentiated along ``\bm v``.
+
+The body force is a potential in the same way: ``\int_\Omega\rho\,\bm g\cdot\bm v\,dV`` is the
+first variation of the gravitational energy, so from here on ``V`` denotes the excess surface
+energy **and** the gravitational potential, and the body-force term is carried inside
+``\delta_{\bm v}V``.
 
 Collecting, the weak form reads
 
