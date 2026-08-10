@@ -562,3 +562,35 @@ end
         end
     end
 end
+
+# PAGE CLAIM (Shear-Thinning Drops): the interior operator R_{lm} IS the (l,m) block of
+# the damping matrix K_ab, and the triangle/parity selection rule is exactly the
+# statement that this block vanishes unless |l-m| <= k <= l+m with l+m+k even.
+#
+# Tested by giving the viscosity a SINGLE angular harmonic, eta = 1 + eps*P_k(mu), and
+# checking which blocks of the assembled coupled operator move. A block that moves where
+# the rule forbids it, or stays put where the rule allows it, means the band structure
+# the page claims is not the band structure the solver has -- and with it the claim that
+# a constant viscosity decouples the modes.
+@testset "docs math: the selection rule is the assembled band structure" begin
+    ls = [2, 3, 4, 5]
+    K  = 2
+    b  = ModalBasis(ls, K, :legendre)
+    Oh = 0.3
+    base = DropSolver.assemble_coupled(b, Oh)[2]
+    blk(A, i, j) = A[(i-1)*K+1 : i*K, (j-1)*K+1 : j*K]
+    for k in (1, 2, 3)
+        eta_k = (x, mu) -> 1.0 + 0.35 * legendre_angular(k, mu).P
+        C = DropSolver.assemble_coupled(b, Oh; eta = eta_k)[2]
+        for (i, l) in enumerate(ls), (j, m) in enumerate(ls)
+            moved = maximum(abs, blk(C, i, j) .- blk(base, i, j)) /
+                    max(1e-12, maximum(abs, base))
+            allowed = abs(l - m) <= k <= l + m && iseven(l + m + k)
+            if allowed
+                @test moved > 1e-8          # the rule permits it, and it happens
+            else
+                @test moved < 1e-10         # the rule forbids it, and it does not
+            end
+        end
+    end
+end

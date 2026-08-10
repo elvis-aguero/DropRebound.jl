@@ -47,15 +47,19 @@ println("="^78)  #src
 # under -- suggests something different from what is actually done, and nothing
 # in it is static.
 #
-# The model page leaves the interior as a parabolic evolution,
+# The model page leaves the interior amplitudes in the state, to be marched alongside
+# the surface ones. Written in the strong form, that interior evolution is parabolic,
 #
 # ```math
 # \partial_t\,\mathcal D_l[\psi_l]
 #   = \mathrm{Oh}\sum_{m}\mathcal R_{l m}[\psi_{m};\eta] ,
 # ```
 #
-# which has to be marched alongside the surface amplitudes, with ``\psi_l`` part of
-# the state. There are two different ways to get rid of that, and only the
+# with ``\mathcal R_{lm}`` the ``(l,m)`` block of the damping matrix ``K_{ab}``, as the
+# model page's section *Where the interior operator went* identifies. The variational
+# form of the same content is the second-order system in all the coordinates at once;
+# the parabolic form is written here because the elimination about to be performed is
+# most easily seen on it. There are two different ways to get rid of that, and only the
 # second is used:
 #
 # | | substitution | result |

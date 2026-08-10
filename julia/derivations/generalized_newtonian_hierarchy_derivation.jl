@@ -72,8 +72,8 @@
 # | ``\mathcal L_l`` | ``d^2/dx^2+(2/x)d/dx-l(l+1)/x^2``; the radial Laplacian (**not** ``\mathcal T``) |
 # | ``p`` | pressure inside the drop; ``p_l(x,t)`` its Legendre coefficients |
 # | ``p_c(\theta,t)`` | pressure in the air film holding the drop off the substrate; ``p_{c,l}`` its coefficients |
-# | ``\mathcal R_l[\psi;\eta]`` | variable-viscosity radial operator, derived below |
-# | ``\mathcal R_{l m}`` | its off-diagonal generalisation once ``\eta`` varies with ``\theta`` |
+# | ``\mathcal R_l[\psi;\eta]`` | variable-viscosity interior operator; here it is the interior block of ``K_{ab}`` |
+# | ``\mathcal R_{l m}`` | its off-diagonal generalisation once ``\eta`` varies with ``\theta``; the ``(l,m)`` block of ``K_{ab}`` |
 # | ``k`` | degree index of the **viscosity field's own** Legendre series |
 # | ``L_\eta`` | highest ``k`` present -- the *bandwidth* of the coupling |
 # | ``G^{k}_{l m},\ H^{k}_{l m}`` | Gaunt-type angular integrals; pure numbers |
@@ -671,6 +671,33 @@ end  #src
 # (The ``H``-family of angular integrals -- the one carrying ``(1-\mu^2)P_k'P_m'`` --
 # is precisely the ``e_{r\theta}e_{r\theta}`` term, which is why exactly two families
 # appear and no third.)
+#
+# ### Where the interior operator went
+#
+# The strong-form treatment of this problem carries a separate radial operator, written
+# ``\mathcal R_{l m}[\psi_m;\eta]``, obtained by projecting
+# ``\nabla\times\nabla\cdot(2\eta\bm e)`` onto mode ``l``. The variational route never
+# builds one, and it is worth saying plainly where it went rather than leaving a reader
+# looking for it.
+#
+# It is ``K_{ab}``. The interior is not a separate problem here: the amplitudes
+# ``\{\chi_{l,k}\}`` are coordinates like any other, and the equation that determines them
+# is the same Euler-Lagrange statement, restricted to those directions. So
+#
+# ```math
+# \mathcal R_{l m}[\psi_m;\eta] \;\equiv\; \text{the } (l,m) \text{ block of }
+# K_{ab}=\mathrm{Oh}\!\int 2\eta\;\bm e^{(a)}\!:\!\bm e^{(b)}\,dV ,
+# ```
+#
+# with ``a`` ranging over the radial functions of mode ``l`` and ``b`` over those of mode
+# ``m``. The selection rule above is exactly the statement that this block vanishes
+# unless ``|l-m|\le k\le l+m`` with ``l+m+k`` even for some harmonic ``\eta_k`` present in
+# the field, and the companion page decomposes the same block into its ``G^k_{lm}`` and
+# ``H^k_{lm}`` families.
+#
+# The practical difference is that the strong form needs
+# ``\nabla\times\nabla\cdot(2\eta\bm e)``, a fourth-order operator on ``\psi``, while this
+# needs one derivative of the velocity and a quadrature. They carry the same information.
 #
 # [^route]:
 #     The momentum equation can of course be written per mode and its traction
