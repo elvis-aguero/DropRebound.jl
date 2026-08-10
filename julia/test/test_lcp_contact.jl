@@ -289,3 +289,41 @@ end
     n = length(short.t)
     @test isapprox(short.z[1:n], long.z[1:n]; rtol = 1e-10)
 end
+
+# The published existence/uniqueness claim rests on A_c being a P-matrix. That is checked
+# here two ways, because the cheap check is the one that can run at production truncation.
+#
+#   * EXHAUSTIVELY at small M: every one of the 2^n - 1 principal minors is positive.
+#     Definitive, and affordable only up to n = 16.
+#   * By the SUFFICIENT condition at any M: if the symmetric part is positive definite then
+#     A_c is positive definite in the non-symmetric sense, and every positive definite
+#     matrix is a P-matrix. This is the certificate the page quotes.
+#
+# If either fails, the LCP may have no solution or several, and the pivoting solve has no
+# reason to terminate -- the contact set returned would be one of many, silently.
+@testset "the compliance is a P-matrix" begin
+    function compliance(M; fm = :legendre)
+        q  = ImpactParams(We = 0.5, Bo = 0.019, Oh = 0.0373, M = M, K = 3, force_mode = fm)
+        F0 = DropSolver.assemble_newtonian(DropSolver.basis(q), q.Oh)
+        Vf = lu(DropSolver.legendre_vandermonde(q))
+        s0 = DropSolver.initial_state(q)
+        first(DropSolver.contact_lcp(q, s0, s0, q.dt0; F0 = F0, Vfac = Vf))
+    end
+    for fm in (:legendre, :nodal)
+        ## exhaustive at M = 20 (n = 11, so 2047 minors)
+        A = compliance(20; fm = fm); n = size(A, 1)
+        for m in 1:(2^n - 1)
+            S = [i for i in 1:n if (m >> (i - 1)) & 1 == 1]
+            @test det(A[S, S]) > 0
+        end
+        ## and the sufficient condition, which is what carries to production truncation
+        for M in (20, 30, 45)
+            Ac = compliance(M; fm = fm)
+            @test minimum(eigvals(Symmetric(0.5 * (Ac .+ transpose(Ac))))) > 0
+        end
+    end
+    ## the nodal route is symmetric to machine precision; the Legendre one is not
+    An = compliance(30; fm = :nodal); Al = compliance(30; fm = :legendre)
+    @test norm(An .- transpose(An)) <= 1e-10 * norm(An)
+    @test norm(Al .- transpose(Al)) > 0.3 * norm(Al)
+end

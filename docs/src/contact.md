@@ -339,7 +339,59 @@ clearance the step would produce with no contact force at all. The contact condi
 \bm h \ge 0 , \qquad \bm p \ge 0 , \qquad p_i h_i = 0
 ```
 
-then close the system: a linear complementarity problem in ``\bm p`` alone, solved by pivoting.
+then close the system: a linear complementarity problem in ``\bm p`` alone.
+
+### Does it have a solution, and is it unique?
+
+Neither is automatic. ``\bm A_c`` is not symmetric, so the problem is not the optimality
+condition of a convex programme and the usual existence argument is unavailable. What is needed
+is a structural property of the matrix, and the relevant one is that ``\bm A_c`` be a
+**P-matrix**: every principal minor positive. For a P-matrix the complementarity problem
+``\bm g = \bm A_c\bm p + \bm b``, ``\bm g,\bm p \ge 0``, ``\bm g^{\mathsf T}\bm p = 0`` has
+**exactly one** solution for every ``\bm b`` (Samelson, Thrall and Wesler; see Cottle, Pang and
+Stone, *The Linear Complementarity Problem*, Thm 3.3.7), and principal pivoting terminates
+finitely on it.
+
+Checking the definition directly costs ``2^n-1`` determinants, so it is only affordable at small
+truncation. There is a cheap sufficient condition that is not: if the symmetric part
+``\tfrac12(\bm A_c + \bm A_c^{\mathsf T})`` is positive definite, then
+``\bm x^{\mathsf T}\bm A_c\bm x > 0`` for all ``\bm x \ne 0``, and every such matrix is a
+P-matrix. Both are measured on the shipped compliance:
+
+| forcing | ``M`` | ``n`` | least eigenvalue of the symmetric part | asymmetry | principal minors |
+|---|---|---|---|---|---|
+| `:legendre` | 20 | 11 | ``2.4\times10^{-5}`` | 0.44 | all 2047 positive |
+| `:legendre` | 30 | 16 | ``6.9\times10^{-6}`` | 0.36 | all 65535 positive |
+| `:legendre` | 45 | 23 | ``1.6\times10^{-6}`` | 0.38 | certificate only |
+| `:nodal` | 20 | 11 | ``6.0\times10^{-6}`` | 0.00 | all 2047 positive |
+| `:nodal` | 45 | 23 | ``1.4\times10^{-6}`` | 0.00 | certificate only |
+
+For the nodal route this is a theorem rather than a measurement. There
+``\bm W = \bm H\bm A^{-1}\bm H^{\mathsf T} + (m\beta^2)^{-1}\bm 1\bm 1^{\mathsf T}`` is symmetric,
+and it is positive definite whenever ``\bm A \succ 0`` and ``\bm H`` has full row rank on the
+retained nodes. ``\bm A = \beta^2\bm M + \beta\bm C + \bm G`` is positive definite for any
+``\beta > 0`` because ``\bm M`` is a kinetic energy, ``\bm C`` a dissipation with ``\eta > 0``,
+and ``\bm G`` a surface energy with ``(l-1)(l+2) > 0`` for every retained ``l \ge 2``. The rank
+condition is what the retained-node selection of the previous section is for.
+
+For the default Legendre route there is no such argument, because ``\bm Q_n`` is not
+``\bm H^{\mathsf T}`` times anything symmetric. The positive definiteness above is a computed
+certificate at each truncation, not a proof, and it is checked in the test suite rather than
+assumed.
+
+### The algorithm
+
+The solve is a **single-exchange principal pivoting** method, not Lemke's. It maintains a guess
+of the contact set and repeats three steps: solve the equality problem
+``\bm A_c[\mathcal S,\mathcal S]\,\bm p_{\mathcal S} = -\bm b_{\mathcal S}`` on the current set
+``\mathcal S``; if any contacting node came out pulling, release the most negative one; otherwise
+if the surface has passed through any free node, seize the most penetrating one; otherwise stop.
+
+Each move is forced by a violated condition rather than chosen by scoring candidates, so there is
+no tie to break. That is not the same as a termination proof. Finite termination for P-matrices
+is a theorem about Murty's **least-index** rule; the rule used here is *most-violated*, which is
+faster in practice and for which no such theorem is claimed. The iteration is capped at 400
+pivots. Observed counts are a handful, and the complementarity residual is reported per run.
 
 Both closures therefore read the contact set from the same two inequalities. They differ in that
 the active set walks to it one node at a time from the previous step's answer, while the
