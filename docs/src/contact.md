@@ -36,6 +36,21 @@ rather than supplied to it.
 Nothing here is specific to drops. The same three conditions describe a rod resting on a table.
 What is specific is what fills in ``h``.
 
+!!! note "What is assumed throughout"
+
+    The flow and the interface are **axisymmetric**, so one polar angle ``\theta`` describes the
+    whole surface. The substrate is a **flat rigid plane** at ``z = 0``. The theory is
+    **linearised about a sphere**, which has three consequences used below without further
+    comment: all integrals are taken over the undeformed sphere, the boundary conditions are
+    evaluated on ``r = 1`` rather than on the moving surface, and the clearance is measured along
+    fixed rays rather than as a true minimum distance to the plane. Each is correct to first
+    order in the deformation amplitude.
+
+    The air film is **not resolved**. It contributes a normal pressure and nothing else: its
+    tangential stress, its inertia, its compressibility, and any relation between its thickness
+    and the pressure it carries are all dropped. ``h = 0`` therefore means "the film is thinner
+    than this model resolves", not that liquid touches solid.
+
 ## The clearance in terms of the state
 
 A surface point at polar angle ``\theta`` sits at radius ``r(\theta) = 1 + \sum_l \zeta_l
@@ -51,11 +66,24 @@ linear even though the contact problem is not. And it carries a factor ``\cos\th
 the constraint is on vertical clearance while ``\zeta_l`` is a radial displacement. Near the
 south pole the two nearly coincide; away from it they do not.
 
-The film pressure is carried as a Legendre series ``p_c = \sum_l p_{c,l} P_l(\cos\theta)``, and
-the generalised force it exerts on mode ``l`` is
+The film pressure is carried as a Legendre series ``p_c = \sum_l p_{c,l} P_l(\cos\theta)``.
+The generalised force it exerts follows from the work it does. A normal displacement
+``\delta\zeta`` of the surface against a pressure ``p_c`` does work
 
 ```math
-Q_l \;=\; -\frac{4\pi}{2l+1}\,p_{c,l} .
+\delta W = -\oint p_c\,\delta\zeta\,\mathrm{d}A
+         = -2\pi\int_{-1}^{1} p_c\,\delta\zeta\,\mathrm{d}\mu ,
+```
+
+the second form using axisymmetry and the area element of the **undeformed** sphere, both
+correct to first order. Substituting the two Legendre series and using orthogonality,
+``\int_{-1}^{1}P_lP_m\,\mathrm{d}\mu = \tfrac{2}{2l+1}\delta_{lm}``, every cross term drops and
+
+```math
+\delta W = -\sum_l \frac{4\pi}{2l+1}\,p_{c,l}\,\delta\zeta_l
+\qquad\Longrightarrow\qquad
+\boxed{\;Q_l \;=\; \frac{\partial\,\delta W}{\partial\,\delta\zeta_l}
+      \;=\; -\frac{4\pi}{2l+1}\,p_{c,l}\;}
 ```
 
 The ``l = 0`` and ``l = 1`` harmonics do no work on the shape. The first changes volume, which is
@@ -76,14 +104,23 @@ itself is included because it is the first point to touch and the last to leave.
 
 Not all of these nodes carry an unknown. A node on the upper hemisphere is a great distance from
 the substrate and can never be in contact, so its pressure is zero throughout and it is dropped.
-The equator has to be dropped for a sharper reason: the clearance row of a node at
-``\theta = \pi/2`` is identically zero, because every entry of it carries the factor
-``\cos\theta`` that converts radial displacement to vertical clearance. Such a node has no
-influence on the clearance anywhere and no clearance of its own to constrain, and admitting it
-would put a zero row and column into the system. At odd ``M`` the polynomial ``P_M`` has a root
-at ``\mu = 0`` exactly, so this node is present and must be removed by a tolerance rather than by
-the sign of ``\cos\theta``, which at ``M = 45`` evaluates to ``-3\times10^{-16}`` and would
-otherwise be admitted.
+The equator has to be dropped for a sharper reason. Every entry of the constraint row
+``\bm H_{i\cdot}`` carries the factor ``\cos\theta_i`` that converts radial displacement to
+vertical clearance, so at ``\theta = \pi/2`` that row vanishes identically. A pressure there
+produces no shape response, and no deformation of the shape changes the clearance there: the
+node's clearance is exactly ``z``, which the centre-of-mass equation already carries. It is
+therefore redundant as a contact unknown rather than merely useless.
+
+It is worth being precise about what does **not** vanish, because it is easy to overstate this.
+The row of ``\bm A_c`` at the equator is not zero: the centre-of-mass channel contributes to it,
+as it does to every node. Nor is the compliance singular if the node is admitted. What happens is
+that admitting it costs about an order of magnitude in conditioning, the least eigenvalue at
+``M = 45`` falling from ``6.3\times10^{-6}`` to ``7.1\times10^{-7}``, and the node buys nothing
+in exchange.
+
+At odd ``M`` the polynomial ``P_M`` has a root at ``\mu = 0`` exactly, so this node is present and
+must be removed by a tolerance rather than by the sign of ``\cos\theta``, which at ``M = 45``
+evaluates to ``-3\times10^{-16}`` and would otherwise be admitted.
 
 What remains is the south pole together with the zeros of ``P_M`` in ``\mu < 0``, so the contact
 problem carries
@@ -432,8 +469,25 @@ complementarity problem would be the optimality condition of
 \min_{\bm p \ge 0} \;\; \tfrac12\,\bm p^{\mathsf T}\bm A_c\,\bm p + \bm b^{\mathsf T}\bm p ,
 ```
 
-a convex quadratic programme. Existence would follow, uniqueness would follow from definiteness,
-and a projected Gauss–Seidel sweep would converge to the answer.
+a convex quadratic programme. That the two are the same statement is a three-line calculation
+worth doing once. Attach a multiplier ``\bm s \ge 0`` to the constraint ``\bm p \ge 0``, so that
+the Lagrangian is ``\tfrac12\bm p^{\mathsf T}\bm A_c\bm p + \bm b^{\mathsf T}\bm p -
+\bm s^{\mathsf T}\bm p``. Its Karush-Kuhn-Tucker conditions are
+
+```math
+\underbrace{\bm A_c\bm p + \bm b - \bm s = \bm 0}_{\text{stationarity}},
+\qquad
+\underbrace{\bm p \ge 0,\; \bm s \ge 0}_{\text{feasibility}},
+\qquad
+\underbrace{s_i p_i = 0}_{\text{complementary slackness}} .
+```
+
+Stationarity says ``\bm s = \bm A_c\bm p + \bm b``, which is exactly ``\bm h``. Substituting,
+the three conditions read ``\bm h \ge 0``, ``\bm p \ge 0``, ``h_ip_i = 0``: the complementarity
+problem, unchanged. **The multiplier of the pressure's sign constraint is the clearance.**
+
+Existence would then follow, uniqueness from definiteness, and a projected Gauss-Seidel sweep
+would converge, that last requiring symmetry and a positive diagonal.
 
 Symmetry is not an accident of the discretisation. It is a statement about conjugacy. Enforce the
 constraint ``\bm h = \bm H\bm\xi + \bm b_0 \ge 0`` with a multiplier ``\bm\lambda \ge 0``, which
@@ -457,7 +511,8 @@ conjugate to the clearance.
 
 Here it is not, and the reason is interpolation rather than geometry.
 
-The constraint is read at nodes, ``H_{il} = \cos\theta_i\,P_l(\cos\theta_i)``, while the forcing
+The constraint is read at nodes, ``H_{i,(l,k)} = \cos\theta_i\,P_l(\mu_i)\,\phi_k(1)``, while the
+forcing
 is read from harmonics, ``Q_l = -\tfrac{4\pi}{2l+1}\,p_{c,l}``. A unit pressure at one node
 therefore does not enter as a load at that node. The film pressure is carried as a degree-``M``
 Legendre field, so that unit pressure enters as the Galerkin force of the polynomial interpolating
@@ -478,12 +533,12 @@ coincide. Measured at ``M = 45`` it is 0.02 at the pole and 0.28 at the far end 
 exactly where that explanation predicts it should be perfect.
 
 The resulting asymmetry is large. In the norm
-``\|\bm A_c - \bm A_c^{\mathsf T}\|/\|\bm A_c\|`` it is 0.43 at ``M = 20`` and 0.37 at
-``M = 45``.
+``\|\bm A_c - \bm A_c^{\mathsf T}\|/\|\bm A_c\|`` it is 0.44 at ``M = 20``, 0.36 at
+``M = 30`` and 0.38 at ``M = 45``.
 
-The problem is still a well-posed linear complementarity problem with a solution, and pivoting
-finds it exactly, which is why the two closures agree to the precision above. What is given up is
-convexity, and with it the projected sweep and the uniqueness argument.
+What is given up is convexity, and with it the projected sweep and the uniqueness argument that
+symmetry would have supplied. The problem remains solvable for the separate reason established
+above: the compliance is a P-matrix.
 
 ## Recovering convexity
 
@@ -511,8 +566,79 @@ and every term is symmetric positive semidefinite: the first because ``\bm A`` i
 because it is a positive multiple of an outer square. The problem is then exactly the convex
 programme written above, with a solution always and a unique one when ``\bm W`` is definite.
 
-This route is implemented and selectable as `force_mode = :nodal`. Its price is that the
-multiplier is a load rather than a pointwise pressure, so pressure is recoverable only as a
-diagnostic, and not at the pole at all, because the quadrature weight there vanishes to machine
-precision. The default remains the Legendre field, which gives the pressure directly and solves
-without needing symmetry.
+### It is the same physics, quadratured differently
+
+Taking the unknown to be a load rather than a pressure sounds like a change of model. It is not.
+Evaluate the same virtual work by **nodal quadrature** instead of by exact Legendre projection:
+with weights ``w_i`` at the collocation nodes,
+
+```math
+\delta W = -2\pi\sum_i w_i\,p_i\,\delta\zeta(\mu_i)
+\qquad\Longrightarrow\qquad
+Q_{\zeta_l} = -2\pi\sum_i w_i\,p_i\,P_l(\mu_i) ,
+```
+
+which in matrix form is exactly
+
+```math
+\boxed{\;\bm Q_{\text{quad}} = \bm H^{\mathsf T}\bm D ,\qquad
+D_i = -\frac{2\pi w_i}{\cos\theta_i} > 0 \ \text{ on the lower hemisphere}\;}
+```
+
+So the two forcings differ only by the diagonal ``\bm D``: one pairs the pressure with the
+constraint through ``\bm V^{-1}``, the other through ``\bm V^{\mathsf T}\bm W``. Conjugacy is
+recovered because ``\bm H^{\mathsf T}`` now appears on the forcing side by construction, and the
+nodal load is ``\lambda_i = D_i p_i``.
+
+This is also the sharpest statement of why the default is asymmetric. Interpolation and
+quadrature agree only when the quadrature is exact for the products involved; the collocation set
+here is the pole together with the zeros of ``P_M``, which is not a Gauss rule, and the two
+pairings therefore differ.
+
+### What the nodal route costs
+
+It is selectable as `force_mode = :nodal`, and it is not free.
+
+The multiplier is a load, not a pointwise pressure. Pressure is recoverable only as a diagnostic,
+``p_i = \lambda_i/D_i``, and not at the pole at all, where the quadrature weight vanishes to
+machine precision and the division is undefined.
+
+The two pairings are **not** two discretisations of the same operator that converge together at
+fixed ``M``. They agree as ``M \to \infty``, but for a wide contact patch they differ at ``O(1)``,
+so a run at fixed truncation should not be expected to give the same answer under both.
+
+The exact identity ``Q_l/M_{ll} = -l``, which ties this formulation's forcing to the reduced
+model's and to Lamb's added mass, is a property of the radial-Legendre pairing. It does not carry
+over to the quadrature pairing.
+
+The default remains the Legendre field, which gives the pressure directly, preserves that
+identity, and solves without needing symmetry.
+
+## Notation
+
+Every symbol used above, with its size and where it comes from. ``M`` is the truncation,
+``K`` the number of radial trial functions per mode, and ``n = \lfloor M/2\rfloor + 1`` the number
+of retained contact nodes.
+
+| symbol | size | meaning |
+|---|---|---|
+| ``\bm\xi`` | ``(M-1)K`` | interior amplitudes ``a_{l,k}``, the state. **Not** the surface |
+| ``\zeta_l`` | scalar | surface amplitude of mode ``l``, the trace ``\sum_k a_{l,k}\phi_k(1)`` |
+| ``\phi_k(x)`` | | ``k``-th radial trial function; ``\phi_k(1)`` is its surface trace |
+| ``z`` | scalar | centre-of-mass height; ``m = 4\pi/3`` is the drop's mass |
+| ``\bm h``, ``\bm g`` | ``n`` | clearance at the retained nodes |
+| ``\bm p`` | ``n`` | film pressure at the retained nodes, the LCP unknown |
+| ``p_{c,l}`` | | Legendre coefficient of the pressure, ``\bm p_c = \bm V^{-1}\bm p`` |
+| ``\bm\lambda`` | ``n`` | nodal vertical loads, the unknown under `force_mode = :nodal` |
+| ``\bm V`` | ``(M{+}1)^2`` | Legendre Vandermonde, ``V_{ij} = P_{j-1}(\mu_i)`` |
+| ``\bm H`` | ``(M{+}1)\times(M-1)K`` | ``H_{i,(l,k)} = \cos\theta_i P_l(\mu_i)\phi_k(1)``, clearance Jacobian |
+| ``\bm b_0`` | ``M{+}1`` | ``\cos\theta_i``, the undeformed clearance along each ray |
+| ``\bm 1`` | ``n`` | column of ones; ``\partial\bm h/\partial z`` |
+| ``\bm M,\bm C,\bm G`` | ``((M-1)K)^2`` | mass, damping, stiffness, from the previous chapter |
+| ``\bm A`` | ``((M-1)K)^2`` | ``\beta^2\bm M + \beta\bm C + \bm G``, the step operator |
+| ``\bm f`` | ``(M-1)K`` | everything known from previous steps |
+| ``\bm Q_n`` | ``(M-1)K\times n`` | nodal pressures to generalised forces, ``\bm Q_{\text{modal}}\bm V^{-1}`` |
+| ``\bm A_c`` | ``n^2`` | compliance, ``\partial\bm h/\partial\bm p`` at frozen history |
+| ``\bm b`` | ``n`` | clearance the step would produce with no contact force |
+| ``\beta`` | scalar | ``c_0/\Delta t``; BDF2 has ``c_0 = (1+2r)/(1+r)``, BDF1 has ``c_0 = 1`` |
+| ``\bm e_i`` | ``n`` | ``i``-th standard basis vector |

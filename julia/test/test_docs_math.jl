@@ -394,7 +394,7 @@ end
     # the departure being large. A drift here means either the page is stale or the
     # forcing changed; either way a reader is being told the wrong thing.
     @testset "the shipped compliance is asymmetric by the published amount" begin
-        for (M, expected) in ((20, 0.43), (45, 0.37))
+        for (M, expected) in ((20, 0.44), (30, 0.36), (45, 0.38))
             q = ImpactParams(We = 0.5, Bo = 0.0189, Oh = 0.05, M = M, K = 2)
             F0 = assemble_newtonian(DropSolver.basis(q), q.Oh)
             Vf = lu(DropSolver.legendre_vandermonde(q))
