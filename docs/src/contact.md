@@ -143,14 +143,16 @@ response to the pressure is a division.** The centre of mass gives one more, ``\
 (4\pi R^2/3m)\,\mathcal B_1``.
 
 The clearance at a node is affine in that state,
-``g_i = h + \cos\theta_i\bigl(R + \sum_l \mathcal A_l P_l(\mu_i)\bigr)``, so substituting both
+``g_i = h + \cos\theta_i\bigl(R + \sum_l \mathcal A_l P_l(\mu_i)\bigr)``, so substituting
+both
 lines above makes it affine in the pressure harmonics. Changing variables from harmonics to
-nodal values with ``\bm{\mathcal B} = \bm V^{-1}\bm p`` — the same collocation change described
-above — gives exactly
+nodal values with ``\bm{\mathcal B} = \bm V^{-1}\bm p``, the same collocation change described
+above, gives exactly
 
 ```math
 \bm g = \bm A_c\,\bm p + \bm b ,\qquad
-(A_c)_{ij} = \underbrace{-\cos\theta_i\sum_l \frac{l\,P_l(\mu_i)}{\rho R\,d_l}(V^{-1})_{lj}}_{\text{shape}}
+(A_c)_{ij} = \underbrace{-\cos\theta_i\sum_l
+  \frac{l\,P_l(\mu_i)}{\rho R\,d_l}(V^{-1})_{lj}}_{\text{shape}}
 \;+\;\underbrace{\frac{4\pi R^2}{3m\beta^2}(V^{-1})_{1j}}_{\text{centre of mass}} .
 ```
 
@@ -158,8 +160,8 @@ Three things about that expression are worth keeping.
 
 ``\bm A_c`` is a **compliance**: entry ``ij`` is the clearance opened at node ``i`` by unit
 pressure at node ``j``, over one step. It is the drop's discrete-time Green's function, and
-``\bm b`` is the clearance the step would produce with no contact force at all — the free-flight
-prediction.
+``\bm b`` is the clearance the step would produce with no contact force at all, which is the
+free-flight prediction.
 
 The relation runs ``\bm g = \bm A_c\bm p + \bm b``, not the other way round. There is no natural
 map from clearance to pressure; the dynamics tells you how the drop *responds* to a load, and the
@@ -175,7 +177,7 @@ every harmonic through ``\bm V^{-1}``, and every harmonic moves every node throu
 The variational formulation differs in exactly two ways, and neither changes the structure.
 
 First, the state is not the surface. It is the vector ``\bm\xi`` of **interior** amplitudes
-``a_{l,k}`` — one per surface mode ``l \in \{2,\dots,M\}`` and radial trial function
+``a_{l,k}``, one per surface mode ``l \in \{2,\dots,M\}`` and radial trial function
 ``k \in \{1,\dots,K\}``, so ``\bm\xi`` has ``(M-1)K`` entries, not ``M-1``. The surface is a
 linear functional of it,
 
@@ -203,7 +205,7 @@ everything known from previous steps. The scheme is BDF2, so ``\beta = c_0/\Delt
 back to BDF1 and ``c_0 = 1``.
 
 ``\bm M`` and ``\bm G`` are block diagonal, one ``K\times K`` block per mode, and so is ``\bm C``
-for a constant viscosity — in that case ``\bm A`` is the block version of ``d_l`` and nothing has
+for a constant viscosity. In that case ``\bm A`` is the block version of ``d_l`` and nothing has
 really changed. For a shear-thinning fluid ``\bm C`` is dense, because the viscosity field
 couples modes, and then ``\bm A^{-1}`` is a factorisation rather than a division. That is the
 whole extra cost of the interior: the compliance needs ``M+1`` back-substitutions against
@@ -233,7 +235,7 @@ force of harmonic ``l`` by that mode's modal mass gives
 \frac{Q_l}{M_{ll}} \;=\; -\,l ,
 ```
 
-exactly, for every ``l`` — which is the ``-l/(\rho R)\,\mathcal B_l`` of the oscillator system
+exactly, for every ``l``, which is the ``-l/(\rho R)\,\mathcal B_l`` of the oscillator system
 above, in units where ``\rho = R = 1``. The two formulations agree on the forcing; they differ
 only in whether the interior is resolved.
 
