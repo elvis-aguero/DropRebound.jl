@@ -30,9 +30,18 @@ principles. And every assembled operator is a Hessian of a scalar functional, he
 which the contact solve relies on.
 
 The **nonvariational** solver carries surface amplitudes only. Each mode advances as a damped
-oscillator whose coefficients are Reid's exact finite-Ohnesorge values, so the linear damping is
-right by construction with no radial resolution to choose. There is no interior state, which is
-also the limitation: there is nothing against which to evaluate a shear-dependent viscosity.
+oscillator whose coefficients can be Reid's exact finite-Ohnesorge values, in which case the
+linear damping is right by construction with no radial resolution to choose. There is no interior
+state, which is also the limitation: there is nothing against which to evaluate a shear-dependent
+viscosity.
+
+!!! warning "The Reid coefficients are not the default"
+
+    `SimConstants` is constructed with `viscous = :lamb`, Lamb's small-Ohnesorge asymptotics,
+    unless you ask for `viscous = :reid`. `run_impact` sets `:reid` for you; a hand-built
+    `SimConstants` does not. The difference is not cosmetic — Lamb over-predicts the damping by
+    5 per cent at ``\mathrm{Oh} = 0.01`` and by 170 per cent at ``\mathrm{Oh} = 1``. Every
+    accuracy statement on this page is for `:reid`.
 
 ## What the axes are worth
 
@@ -50,9 +59,17 @@ compares centre-of-mass speed at those two instants.
 
 The two variational columns are indistinguishable, for the reasons *Contact* gives: both closures
 read the contact set off the same two inequalities. Across the 25-case grid the worst
-disagreement in restitution is ``1.1\times10^{-5}``. Contact time agrees exactly, because ``dt``
-is fixed and ``t_c`` is a difference of step times, so two closures that flag the same steps
-return the same number.
+disagreement in restitution is ``2.9\times10^{-5}``, and contact time agrees to the last bit in
+every case that both complete.
+
+That exact agreement in ``t_c`` is not a general guarantee. It holds because no step was rejected
+anywhere on this grid, so both closures ran the same step sequence and ``t_c`` is a difference of
+step times. Where steps are rejected the two histories diverge: on the 3000 ppm shear-thinning
+fluid at ``M = 90`` the closures agree to ``7.1\times10^{-7}`` in restitution but only
+``2.9\times10^{-5}`` in contact time.
+
+One of the 25 is missing from that comparison. At ``\mathrm{We} = 3``, ``\mathrm{Oh} = 0.02`` the
+active set never releases while complementarity bounces.
 
 The nonvariational column differs by 3.3 per cent in contact time and 0.6 per cent in restitution.
 That gap is the formulation and its closure together, since `solve_drop!` differs in both, and
@@ -99,6 +116,23 @@ reuses both.
 no interior state to evaluate ``\eta(\dot\gamma)`` against.
 
 **Oldroyd-B** needs the nonvariational solver, which is where the polymer-stress state lives.
+Pass the parameters with the `ob` keyword:
+
+```julia
+b = Backend(formulation = :nonvariational, contact = :tangency)
+r = run_impact(b; We = 0.5, Bo = 0.019, Oh = 0.3038, M = 20, K = 2, t_max = 12.0,
+               ob = OBParams(0.6, 0.4))          # De1 = 0.6, solvent fraction 0.4
+```
+
+`De1` is the relaxation time in inertio-capillary units, ``\lambda_1/\sqrt{\rho R^3/\gamma}``,
+and is mode-independent. Omitting `ob` runs a Newtonian drop.
+
+!!! warning "Oldroyd-B is validated for free decay only"
+
+    Every Oldroyd-B check in this documentation is a free-oscillation eigenvalue at
+    ``M = 10``, with no wall. Contact forcing, mode-to-mode coupling and the finite-amplitude
+    behaviour of the polymer stress are untested, and no ``M`` convergence study exists for a
+    viscoelastic impact. Treat bouncing Oldroyd-B results as exploratory.
 
 **Exact linear damping with nothing to tune** is the nonvariational solver, which has Reid's
 coefficients built in. The variational solver reaches the same damping given enough radial

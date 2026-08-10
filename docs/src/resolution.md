@@ -133,10 +133,34 @@ the contact solve is exact, with a complementarity residual near ``10^{-15}``, a
 fixed-point iteration on the viscosity that fails to reach its tolerance. Reducing the time step
 does not help; it has been taken to ``10^{-10}`` without effect.
 
-For ``M = 60, K = 3`` the iteration stalls just above ``10^{-8}``, so raising `eta_tol` to
-``10^{-7}`` admits the step, and a control at ``M = 45, K = 3`` returns the same restitution to
-six decimal places at either tolerance. That is a usable workaround rather than an account of
-what sets the floor. ``M = 45, K = 4`` fails at ``10^{-6}`` as well, and is a separate matter.
+### The viscosity tolerance, and why it depends on the truncation
 
-The recommended settings sit below these limits, and the convergence tables above are measured
-within them.
+`eta_tol` is the Picard tolerance on the interior strain rate, relative and in the infinity
+norm. It is **not a fixed number**: the default is
+
+```math
+\texttt{eta\_tol}(M) \;=\; 10^{-8}\,M^{3},
+```
+
+which is ``9.1\times10^{-4}`` at ``M = 45`` and ``7.3\times10^{-3}`` at ``M = 90``.
+
+It scales with ``M`` because the reachable residual does. The Picard iterate is
+``\bm{\dot a}^{*} = \beta\bm a + \bm h``, with ``\beta = c_0/\Delta t`` and
+``\Delta t \sim M^{-3/2}``, so the sweep-to-sweep increment is a difference of two large
+quantities and its floor rises with the truncation. Measured on the 3000 ppm fluid the floor is
+below ``10^{-6}`` at ``M = 45`` and ``M = 60``, and ``3.0\times10^{-6}`` at ``M = 90``; a cubic
+passes through all three. The default sits about three decades above that fit.
+
+Setting `eta_tol` below the floor is not slow, it is fatal, and the mechanism is worth knowing
+because it is counter-intuitive. A step whose Picard iteration misses the tolerance is rejected
+and ``\Delta t`` is halved. But halving ``\Delta t`` doubles ``\beta``, and the residual floor
+rises as ``1/\Delta t`` — so the retry is further from the tolerance than the attempt that
+failed. Left alone the march spirals down to `dt_min` and dies having computed part of a bounce.
+The solver bounds the number of consecutive halvings spent this way and warns when it gives up:
+
+```
+┌ Warning: the viscosity iteration is not recovering as the step shrinks;
+│ no smaller step will help, so the march stops here (raise eta_tol, or lower M)
+```
+
+If you see that warning, raise `eta_tol` or lower ``M``. Do not lower `dt_min`.

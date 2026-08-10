@@ -477,3 +477,27 @@ end
         end
     end
 end
+
+# `run_impact` is the documented entry point, and the solver-choice page routes Oldroyd-B
+# users to it -- but until the `ob` keyword existed it hardwired `OBParams()`, so every
+# "viscoelastic" impact launched through it was silently Newtonian. These lock the route.
+@testset "run_impact carries Oldroyd-B parameters through" begin
+    b  = Backend(formulation = :nonvariational, contact = :tangency)
+    kw = (We = 0.5, Bo = 0.019, Oh = 0.3038, M = 20, K = 2, t_max = 12.0)
+    newt = run_impact(b; kw...)
+    obr  = run_impact(b; kw..., ob = OBParams(0.6, 0.4))
+    @test newt.ok && obr.ok
+    ## a polymer with De1 = 0.6 and only 40% solvent must not reproduce the Newtonian bounce
+    @test abs(obr.cor - newt.cor) > 1e-6
+    ## and the Newtonian limits of the parameter must reproduce it.
+    ##
+    ## The tolerance is 1e-8, not machine epsilon: the assembly is threaded, so reduction
+    ## order varies between runs and the same case reproduces to about 1e-11 rather than
+    ## bitwise. That still separates the two cases by three orders of magnitude, since a
+    ## genuine polymer moves the restitution by more than 1e-6 (asserted above).
+    for p in (OBParams(0.0, 1.0), OBParams(0.0, 0.4), OBParams(0.6, 1.0))
+        @test isapprox(run_impact(b; kw..., ob = p).cor, newt.cor; rtol = 1e-8)
+    end
+    ## the variational formulation has no polymer state and must refuse rather than ignore
+    @test_throws ErrorException run_impact(Backend(); kw..., ob = OBParams(0.6, 0.4))
+end

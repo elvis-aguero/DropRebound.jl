@@ -104,7 +104,7 @@ function check_converged(cor, tc, t_max, minz, lbl; t_final = NaN, dt_final = Na
 end
 
 """
-    run_impact(b::Backend; We, Bo, Oh, M, K, t_max, eta, eta_nonvar, eta_tol, save_every)
+    run_impact(b::Backend; We, Bo, Oh, M, K, t_max, eta, eta_nonvar, eta_tol, ob, save_every)
 
 Run one impact and return a NamedTuple with the same fields whatever the backend:
 
@@ -122,6 +122,10 @@ Run one impact and return a NamedTuple with the same fields whatever the backend
 solver cannot take one -- it has no interior field to evaluate it on -- so shear thinning is
 passed to it as `eta_nonvar`, an `STExactParams`, and it is an error to give one without the
 other.
+
+`ob` is an [`OBParams`](@ref) for a viscoelastic drop, and likewise only the nonvariational
+backend accepts it: the polymer stress needs a state the variational formulation does not
+carry. Omitting it runs a Newtonian drop.
 """
 function run_impact(b::Backend; kw...)
     ## A solver that gives up is a RESULT, not an exception: a sweep must be able to record
@@ -135,7 +139,10 @@ function run_impact(b::Backend; kw...)
         ## A bad keyword or a missing method is a caller mistake. Swallowing it as
         ## "the solver could not do this case" is how a typo becomes a data point.
         (e isa MethodError || e isa UndefKeywordError) && rethrow()
-        e isa ErrorException && occursin("eta", e.msg) && rethrow()
+        ## Handing a backend a parameter it structurally cannot use is misuse, not a case
+        ## the solver "could not do". Both such guards name the offending parameter.
+        e isa ErrorException &&
+            (occursin("eta", e.msg) || occursin("Oldroyd-B", e.msg)) && rethrow()
         return (t = Float64[], z = Float64[], v = Float64[], zeta = Vector{Float64}[],
                 ls = Int[], cp = Int[], cor = NaN, tc = NaN, wall = time() - t0,
                 ok = false, backend = label(b),
@@ -148,11 +155,16 @@ function _run_impact(b::Backend; We::Real, Bo::Real, Oh::Real,
                     M::Int = DEFAULT_M, K::Int = DEFAULT_K,
                     t_max::Real = 25.0, eta = nothing, eta_nonvar = nothing,
                     save_every::Real = 0.005, h_thresh::Real = 0.02,
-                    eta_tol = nothing)
+                    eta_tol = nothing, ob = nothing)
     t0 = time()
     if b.formulation === :variational
         eta_nonvar === nothing ||
             error("eta_nonvar is for the nonvariational backend; pass `eta` instead")
+        ## Oldroyd-B needs a polymer-stress state, which the variational formulation does
+        ## not carry. Refusing here is better than silently integrating a Newtonian drop.
+        ob === nothing ||
+            error("Oldroyd-B needs the nonvariational formulation; " *
+                  "use Backend(formulation = :nonvariational, contact = :tangency)")
         p = ImpactParams(We = We, Bo = Bo, Oh = Oh, M = M, K = K, t_max = t_max,
                          force_mode = b.forcing, eta_tol = eta_tol,
                          eta = eta === nothing ? (gd -> 1.0) : eta)
@@ -185,9 +197,13 @@ function _run_impact(b::Backend; We::Real, Bo::Real, Oh::Real,
                        precompute_integrals(NaN, M)[1], make_dt_max(M); viscous = :reid)
     s = DropState(M); s.z = 1.0 + 4*h_thresh; s.v = -sqrt(We)
     s.dt = make_dt_max(M); s.cp = 0
+    ## `OBParams()` is the Newtonian default; a caller who wants a viscoelastic drop
+    ## supplies one. Before this keyword existed there was NO route from `run_impact` to
+    ## Oldroyd-B at all, while the solver-choice page told readers to use it here.
+    obp = ob === nothing ? OBParams() : ob
     ts, st = eta_nonvar === nothing ?
-        solve_drop!(cfg, OBParams(), s; t_end = t_max, save_every = save_every) :
-        solve_drop!(cfg, OBParams(), s; stx = eta_nonvar, t_end = t_max, save_every = save_every)
+        solve_drop!(cfg, obp, s; t_end = t_max, save_every = save_every) :
+        solve_drop!(cfg, obp, s; stx = eta_nonvar, t_end = t_max, save_every = save_every)
     ths = range(pi/2, pi; length = 240)
     touch = [minimum(drop_height(x, th) for th in ths) < h_thresh for x in st]
     i = findfirst(touch); j = findlast(touch)

@@ -29,9 +29,27 @@ SimConstants(M::Int, N_angles::Int, Oh::Float64, Bo::Float64,
     SimConstants(M, N_angles, Oh, Bo, theta_vec, precomp_I, dt_max, viscous,
                  drop_viscous_coeffs(M, Oh, viscous)...)
 
-"""Oldroyd-B parameters. Set De1=0 or beta_s=1 for Newtonian."""
+"""
+    OBParams(De1, beta_s)
+
+Oldroyd-B parameters. Set `De1 = 0` or `beta_s = 1` for Newtonian.
+
+`De1` is the relaxation time in inertio-capillary units,
+
+    De1 = λ₁ / sqrt(rho R^3 / gamma),
+
+a SINGLE, MODE-INDEPENDENT number. It is not `λ₁·σ_{l;0}`, which this comment used to
+say: the polymer-stress evolution `De1 * dS/dt + S = (1 - beta_s) * Adot` is integrated
+once with the same `De1` for every mode (`ob_extension.jl`), so there is no `l` in it.
+The two readings differ by `σ_{l;0}` -- a factor of 2.83 at `l = 2` and 11.8 at `l = 5`
+-- so a user who took the old comment literally supplied a relaxation time several times
+too long.
+
+`beta_s = λ₂/λ₁ = μ_s/μ` is the solvent fraction of the viscosity, in `[0, 1]`;
+`beta_s = 1` removes the polymer entirely.
+"""
 struct OBParams
-    De1    :: Float64   # λ₁·σ_{l;0}  (relaxation Deborah number)
+    De1    :: Float64   # λ₁ / sqrt(rho R^3 / gamma)  -- mode-independent
     beta_s :: Float64   # λ₂/λ₁ = μ_s/μ  (solvent fraction, ∈ [0,1])
 end
 

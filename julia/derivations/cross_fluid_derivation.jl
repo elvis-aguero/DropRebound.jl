@@ -467,17 +467,121 @@ println("ASSERTION 9 OK: bounded, finite, sensible decay for every m in {0.5,1,2
 
 # ## What this means for the code
 #
-# There is no Cross implementation to write. Given a Cross-model fit
-# ``(K,m,\mu_0,\mu_\infty)``, convert once --
+# There is no Cross implementation to write: a Cross fluid is entered as a
+# Carreau-Yasuda one. This section gives the conversion in full, because getting
+# it wrong does not produce an error message -- it produces a different fluid.
+#
+# ### The law the solver evaluates
+#
+# `carreau` implements
 #
 # ```math
-# \lambda_c = K,\qquad a = m,\qquad n = 1-m,\qquad
-# \varepsilon_{ST} = \frac{\mu_0-\mu_\infty}{\mu_0}\cdot\frac{1-n}{a},
+# \frac{\eta(\dot\gamma)}{\eta_0}
+#   \;=\; r_\infty \;+\; (1-r_\infty)\bigl[\,1+(\lambda_c\dot\gamma)^{a}\,\bigr]^{(n-1)/a},
+#   \qquad r_\infty \equiv \frac{\mu_\infty}{\mu_0},
 # ```
 #
-# -- and use the existing Carreau-Yasuda model directly. (With ``n=1-m`` and
-# ``a=m`` the factor ``(1-n)/a`` is 1, so ``\varepsilon_{ST}=\Delta``, the
-# map of §2.) The only genuinely new ingredient a non-``2`` exponent needs is
+# with the four keyword arguments `lambda_c`, `a`, `n`, `eta_inf_ratio` in that
+# notation. Two things about its inputs decide everything below.
+#
+# **The shear rate is the second invariant of the rate of strain,**
+# ``\dot\gamma=\sqrt{2\,\bm e\!:\!\bm e}``. In simple shear ``e_{xy}=\dot\gamma/2``
+# and all other components vanish, so ``\sqrt{2\bm e\!:\!\bm e}=\dot\gamma``: this
+# convention agrees with the rheometer's, which is what lets a fitted ``K`` transfer
+# unchanged. A different convention (``\sqrt{2\,\mathrm{II}_e}``, ``2\sqrt{\bm e\!:\!\bm e}``)
+# would rescale ``\lambda_c`` by ``\sqrt2`` or ``2``.
+#
+# **The shear rate is non-dimensional.** Time is measured in inertio-capillary units
+# ``T_\sigma=\sqrt{\rho R^{3}/\gamma}``, so the solver's ``\dot\gamma`` is
+# ``T_\sigma`` times the rheometer's. A time constant fitted in seconds must be
+# divided by ``T_\sigma`` before it is passed in, or the product ``\lambda_c\dot\gamma``
+# -- the only place either appears -- is wrong by that factor.
+#
+# ### The conversion
+#
+# Given a Cross fit ``(K,m,\mu_0,\mu_\infty)`` with ``K`` in seconds:
+#
+# ```math
+# \boxed{\;
+#   \lambda_c = \frac{K}{T_\sigma},\qquad
+#   a = m,\qquad
+#   n = 1-m,\qquad
+#   r_\infty = \frac{\mu_\infty}{\mu_0},\qquad
+#   \mathrm{Oh} = \frac{\mu_0}{\sqrt{\rho\gamma R}} \;}
+# ```
+#
+# ``\mathrm{Oh}`` is built from the **zero-shear** viscosity, because ``\eta`` above is
+# normalised by ``\mu_0``; the thinning is carried entirely by ``r_\infty`` and the
+# bracket.
+#
+# ### ``r_\infty`` is not ``\varepsilon_{ST}``
+#
+# The perturbative sections of this page use
+# ``\Delta=\varepsilon_{ST}=(\mu_0-\mu_\infty)/\mu_0``, the *fraction of viscosity the
+# fluid can shed*. The solver wants ``r_\infty=\mu_\infty/\mu_0``, the *fraction it
+# keeps*. They are complements,
+#
+# ```math
+# r_\infty = 1-\varepsilon_{ST},
+# ```
+#
+# and for a strongly thinning fluid they are numerically nothing alike: the 3000 ppm
+# solution below has ``\varepsilon_{ST}=0.9996`` and ``r_\infty=4.4\times10^{-4}``.
+# Passing ``\varepsilon_{ST}`` where ``r_\infty`` belongs leaves the fluid at essentially
+# its rest viscosity at every shear rate -- roughly two thousand times too viscous where
+# it matters -- and the run completes without complaint.
+#
+# ### A worked conversion
+#
+# The 3000 ppm polymer solution used in the validation sweeps, at ``R=0.3\,\mathrm{mm}``
+# in water-like surroundings (``\rho=10^{3}\,\mathrm{kg\,m^{-3}}``,
+# ``\gamma=72.8\,\mathrm{mN\,m^{-1}}``, so ``T_\sigma=6.09\times10^{-4}\,\mathrm{s}``):
+#
+# | fitted | value | converted | value |
+# |---|---|---|---|
+# | ``\mu_0`` | ``8.434\,\mathrm{Pa\,s}`` | ``\mathrm{Oh}`` | ``57.07`` |
+# | ``\mu_\infty`` | ``3.732\times10^{-3}\,\mathrm{Pa\,s}`` | ``r_\infty`` | ``4.425\times10^{-4}`` |
+# | ``K`` | ``18.48\,\mathrm{s}`` | ``\lambda_c`` | ``3.035\times10^{4}`` |
+# | ``m`` | ``0.7431`` | ``a`` | ``0.7431`` |
+# | | | ``n`` | ``0.2569`` |
+#
+# which is the call
+#
+# ```julia
+# eta = gd -> carreau(gd; lambda_c = 3.035e4, a = 0.7431,
+#                     n = 0.2569, eta_inf_ratio = 4.425e-4)
+# p   = ImpactParams(We = 0.5, Bo = 0.012, Oh = 57.07, M = 90, K = 3, eta = eta)
+# ```
+#
+## Every number in the conversion table above is recomputed here and checked against    #src
+## the shipped `carreau`, so the published recipe cannot drift from the code. This block #src
+## is deliberately not rendered: the reader needs the equations, not the assertions.     #src
+let                                                                                     #src
+    R, rho, gam = 3e-4, 1000.0, 0.0728                                                  #src
+    T_sigma = sqrt(rho * R^3 / gam)                                                     #src
+    mu0, muinf = 8.433817577956766, 0.0037320997942061666                               #src
+    Kc, m = 18.48081673111359, 0.7430524574330837                                       #src
+    lambda_c = Kc / T_sigma; r_inf = muinf / mu0                                        #src
+    Oh = mu0 / sqrt(rho * gam * R); eps_ST = (mu0 - muinf) / mu0                        #src
+    @assert isapprox(T_sigma, 6.09e-4;  rtol = 1e-3) "T_sigma drifted: $T_sigma"        #src
+    @assert isapprox(lambda_c, 3.035e4; rtol = 1e-3) "lambda_c drifted: $lambda_c"      #src
+    @assert isapprox(Oh, 57.07;         rtol = 1e-3) "Oh drifted: $Oh"                  #src
+    @assert isapprox(r_inf, 4.425e-4;   rtol = 1e-3) "r_inf drifted: $r_inf"            #src
+    @assert isapprox(m, 0.7431;         rtol = 1e-3) "a drifted"                        #src
+    @assert isapprox(1 - m, 0.2569;     rtol = 1e-3) "n drifted"                        #src
+    ## r_inf and eps_ST are complements -- the claim the page makes in prose             #src
+    @assert isapprox(r_inf + eps_ST, 1.0; atol = 1e-12)                                 #src
+    ## and the law really does tend to r_inf at large shear, and to 1 at rest            #src
+    eta(gd) = carreau(gd; lambda_c = lambda_c, a = m, n = 1 - m, eta_inf_ratio = r_inf)  #src
+    @assert isapprox(eta(0.0), 1.0; atol = 1e-12) "rest viscosity is not eta_0"         #src
+    @assert isapprox(eta(1e12), r_inf; rtol = 1e-6) "plateau is not eta_inf"            #src
+    ## the error the prose warns about: passing eps_ST where r_inf belongs               #src
+    wrong = carreau(1e4; lambda_c = lambda_c, a = m, n = 1 - m, eta_inf_ratio = eps_ST)  #src
+    @assert wrong / eta(1e4) > 100 "the eps_ST/r_inf swap is no longer a large error"    #src
+end                                                                                     #src
+println("ASSERTION 10 OK: the published Cross to Carreau-Yasuda conversion matches carreau") #src
+
+# The only genuinely new ingredient a non-``2`` exponent needs is
 # the tabulated ``\Gamma_l^{(m)}``, computed by the same construction as
 # ``\Gamma_l^{(a)}``, and the ``C(m)`` factor above.
 #
