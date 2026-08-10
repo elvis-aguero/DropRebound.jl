@@ -100,8 +100,7 @@ A water-glycerol drop with ``\rho = 1200\,\mathrm{kg\,m^{-3}}``,
 ``\gamma = 65\,\mathrm{mN\,m^{-1}}`` and ``\eta = 48\,\mathrm{mPa\,s}``, of radius
 ``R = 0.32\,\mathrm{mm}`` falling at ``v_0 = 11.5\,\mathrm{cm\,s^{-1}}``, has
 ``\mathrm{Oh} \approx 0.30``, ``\mathrm{Bo} \approx 0.019`` and ``\mathrm{We} \approx 0.079``.
-The three material values are quoted so the reader can check the arithmetic; an earlier version
-gave a radius and a speed that no water-glycerol mixture could reconcile with those groups.
+The three material values are quoted so that all three groups can be checked.
 
 ## From the equations to a variational statement
 
@@ -181,7 +180,7 @@ so that moving the capillary term to the left of the equation makes it ``+\delta
 which is where the sign in the collected weak form comes from.
 
 The capillary term is a derivative of an energy. Deforming the surface by a normal displacement
-``\delta\zeta`` changes its area by ``\oint_{\partial\Omega} \kappa\,\delta\zeta\,dS``, so with
+``\delta\zeta`` changes its area by ``\oint_{\partial\Omega} \kappa\,\delta\zeta\,dS`` (*Identities and Standard Results*, B.2), so with
 
 ```math
 V \;=\; \gamma\left(|\partial\Omega| - 4\pi R^2\right)
@@ -290,6 +289,14 @@ That is not small, and results at higher Weber number should be read with that i
 
 No further approximation enters. Everything after this point is a discretisation whose error can
 be reduced by refinement, and *Resolution and Convergence* reports how far it has been reduced.
+
+!!! tip "Reference"
+
+    Two pages sit outside the main line of argument and are meant to be consulted rather than
+    read through. *Identities and Standard Results*, which proves every standard result the
+    chapters use, and *Glossary of Symbols*, which lists every symbol with its meaning, its
+    array size and where it is introduced, and records the places where one letter carries two
+    meanings.
 
 ## Getting started
 

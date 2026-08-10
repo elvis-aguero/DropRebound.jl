@@ -154,7 +154,7 @@ passes through all three. The default sits about three decades above that fit.
 Setting `eta_tol` below the floor is not slow, it is fatal, and the mechanism is worth knowing
 because it is counter-intuitive. A step whose Picard iteration misses the tolerance is rejected
 and ``\Delta t`` is halved. But halving ``\Delta t`` doubles ``\beta``, and the residual floor
-rises as ``1/\Delta t`` — so the retry is further from the tolerance than the attempt that
+rises as ``1/\Delta t``, so the retry is further from the tolerance than the attempt that
 failed. Left alone the march spirals down to `dt_min` and dies having computed part of a bounce.
 The solver bounds the number of consecutive halvings spent this way and warns when it gives up:
 

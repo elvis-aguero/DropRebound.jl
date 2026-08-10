@@ -77,7 +77,7 @@ The generalised force it exerts follows from the work it does. A normal displace
 
 the second form using axisymmetry and the area element of the **undeformed** sphere, both
 correct to first order. Substituting the two Legendre series and using orthogonality,
-``\int_{-1}^{1}P_lP_m\,\mathrm{d}\mu = \tfrac{2}{2l+1}\delta_{lm}``, every cross term drops and
+``\int_{-1}^{1}P_lP_m\,\mathrm{d}\mu = \tfrac{2}{2l+1}\delta_{lm}`` (*Identities and Standard Results*, A.2), every cross term drops and
 
 ```math
 \delta W = -\sum_l \frac{4\pi}{2l+1}\,p_{c,l}\,\delta\zeta_l
@@ -114,8 +114,9 @@ therefore redundant as a contact unknown rather than merely useless.
 It is worth being precise about what does **not** vanish, because it is easy to overstate this.
 The row of ``\bm A_c`` at the equator is not zero: the centre-of-mass channel contributes to it,
 as it does to every node. Nor is the compliance singular if the node is admitted. What happens is
-that admitting it costs about an order of magnitude in conditioning, the least eigenvalue at
-``M = 45`` falling from ``6.3\times10^{-6}`` to ``7.1\times10^{-7}``, and the node buys nothing
+that admitting it costs about an order of magnitude in conditioning, the least eigenvalue of ``\bm A_c`` itself at
+``M = 45`` falling from ``6.3\times10^{-6}`` to ``7.1\times10^{-7}`` (the table below reports the
+least eigenvalue of the symmetric part, a different quantity), and the node buys nothing
 in exchange.
 
 At odd ``M`` the polynomial ``P_M`` has a root at ``\mu = 0`` exactly, so this node is present and
@@ -130,7 +131,11 @@ problem carries
 ```
 
 unknowns: 23 at ``M = 45`` and 46 at ``M = 90``, against ``M+1`` collocation nodes and ``M+1``
-pressure coefficients. The truncation ``M`` therefore buys contact resolution at half the rate
+pressure coefficients. Write ``\bm E \in \mathbb R^{(M+1)\times n}`` for the operator that
+selects those retained nodes, so that ``\bm E^{\mathsf T}`` strikes the discarded rows and
+``\bm E`` the discarded columns. Every clearance and pressure vector below is the restricted
+one: ``\bm H_r = \bm E^{\mathsf T}\bm H``, ``\bm b_{0,r} = \bm E^{\mathsf T}\bm b_0``, and
+``\bm Q_n = \bm Q_{\text{modal}}\bm V^{-1}\bm E``. The subscript is dropped from here on. The truncation ``M`` therefore buys contact resolution at half the rate
 the mode count suggests.
 
 At each retained node one of two equations is imposed: the clearance vanishes if the node is in
@@ -398,7 +403,7 @@ then close the system: a linear complementarity problem in ``\bm p`` alone.
 Neither is automatic. ``\bm A_c`` is not symmetric, so the problem is not the optimality
 condition of a convex programme and the usual existence argument is unavailable. What is needed
 is a structural property of the matrix, and the relevant one is that ``\bm A_c`` be a
-**P-matrix**: every principal minor positive. For a P-matrix the complementarity problem
+**P-matrix**: every principal minor positive (*Identities and Standard Results*, E.2). For a P-matrix the complementarity problem
 ``\bm g = \bm A_c\bm p + \bm b``, ``\bm g,\bm p \ge 0``, ``\bm g^{\mathsf T}\bm p = 0`` has
 **exactly one** solution for every ``\bm b`` (Samelson, Thrall and Wesler; see Cottle, Pang and
 Stone, *The Linear Complementarity Problem*, Thm 3.3.7), and principal pivoting terminates
@@ -558,7 +563,11 @@ above: the compliance is a P-matrix.
 ## Recovering convexity
 
 Since the failure is that the multiplier is not attached to a place, the repair is to make it so.
-Take the contact unknown to be the vertical **load** at each node rather than a pressure field.
+Take the contact unknown to be the **multiplier conjugate to the clearance** at each node,
+rather than a pressure field. It has the units and the role of a vertical load, and it is called
+one below, but it is not the vertical force carried by the pressure over that node's quadrature
+weight: those differ by ``\cos^2\theta_i``, and ``\bm 1^{\mathsf T}\bm\lambda`` reproduces the
+net force only in the limit where the quadrature is exact.
 Differentiating the constraint then leaves no freedom in the forcing, because ``\bm H^{\mathsf T}``
 and ``\bm 1^{\mathsf T}`` are by definition the derivatives of the clearance with respect to the
 shape and to the centre of mass:
@@ -568,7 +577,7 @@ shape and to the centre of mass:
 m\ddot z = -m\,\mathrm{Bo} + \bm 1^{\mathsf T}\bm\lambda ,
 ```
 
-with ``m = 4\pi/3`` the drop's mass in these units, ``\bm\lambda`` the vector of nodal loads,
+with ``m = 4\pi/3`` the drop's mass in these units, ``\bm\lambda`` the vector of multipliers conjugate to the nodal clearances,
 and ``\bm 1`` a column of ones, so that ``\bm 1^{\mathsf T}\bm\lambda`` is their sum.
 Eliminating both gives
 
@@ -646,13 +655,14 @@ of retained contact nodes.
 | ``p_{c,l}`` | | Legendre coefficient of the pressure, ``\bm p_c = \bm V^{-1}\bm p`` |
 | ``\bm\lambda`` | ``n`` | nodal vertical loads, the unknown under `force_mode = :nodal` |
 | ``\bm V`` | ``(M{+}1)^2`` | Legendre Vandermonde, ``V_{ij} = P_{j-1}(\mu_i)`` |
-| ``\bm H`` | ``(M{+}1)\times(M-1)K`` | ``H_{i,(l,k)} = \cos\theta_i P_l(\mu_i)\phi_k(1)``, clearance Jacobian |
-| ``\bm b_0`` | ``M{+}1`` | ``\cos\theta_i``, the undeformed clearance along each ray |
+| ``\bm H`` | ``n\times(M-1)K`` | ``H_{i,(l,k)} = \cos\theta_i P_l(\mu_i)\phi_k(1)``, clearance Jacobian, restricted to retained nodes |
+| ``\bm b_0`` | ``n`` | ``\cos\theta_i``, the undeformed clearance along each ray, restricted |
 | ``\bm 1`` | ``n`` | column of ones; ``\partial\bm h/\partial z`` |
 | ``\bm M,\bm C,\bm G`` | ``((M-1)K)^2`` | mass, damping, stiffness, from the previous chapter |
 | ``\bm A`` | ``((M-1)K)^2`` | ``\beta^2\bm M + \beta\bm C + \bm G``, the step operator |
 | ``\bm f`` | ``(M-1)K`` | everything known from previous steps |
-| ``\bm Q_n`` | ``(M-1)K\times n`` | nodal pressures to generalised forces, ``\bm Q_{\text{modal}}\bm V^{-1}`` |
+| ``\bm Q_n`` | ``(M-1)K\times n`` | nodal pressures to generalised forces, ``\bm Q_{\text{modal}}\bm V^{-1}\bm E`` |
+| ``\bm E`` | ``(M{+}1)\times n`` | selects the retained contact nodes |
 | ``\bm A_c`` | ``n^2`` | compliance, ``\partial\bm h/\partial\bm p`` at frozen history |
 | ``\bm b`` | ``n`` | clearance the step would produce with no contact force |
 | ``\beta`` | scalar | ``c_0/\Delta t``; BDF2 has ``c_0 = (1+2r)/(1+r)``, BDF1 has ``c_0 = 1`` |

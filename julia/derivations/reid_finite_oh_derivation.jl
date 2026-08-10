@@ -13,7 +13,7 @@
 # coefficients ``\omega_l^2 = l(l-1)(l+2)`` and
 # ``2\lambda_l = 2\,\mathrm{Oh}\,(l-1)(2l+1)`` for every mode ``l``. Lamb's
 # formula is the leading-order-in-``\mathrm{Oh}`` asymptotic reduction of
-# Reid's exact equation (Section 9 of the companion page), and its error
+# Reid's exact equation (*The characteristic equation* on the companion page), and its error
 # grows with both ``\mathrm{Oh}`` and ``l``, so its domain of validity is
 # narrower than "low viscosity" alone would suggest.
 #
@@ -243,7 +243,7 @@ end
 # The tracked root satisfies ``\text{reid\_char}=0`` to better than
 # ``10^{-10}`` across all three regimes for ``l=2``: underdamped
 # (``\mathrm{Oh}=0.05``), near-critical (``\mathrm{Oh}=1.85``), and deeply
-# overdamped (``\mathrm{Oh}=57.4``, the rest-state value of the validation
+# overdamped (``\mathrm{Oh}=57.4``, near the rest-state value ``57.1`` of the validation
 # fluid).
 
 @assert abs(reid_char(dominant_root_tracked(0.05, 2), 0.05, 2)) < 1e-10   #src
@@ -257,7 +257,7 @@ end
 # ``\sigma \approx 49.2 - 10.5i``. Both are genuine roots -- each satisfies
 # the characteristic equation to better than ``10^{-8}``, so this is not a
 # convergence failure -- but they differ by more than a factor of eight, and
-# the tracked one has the smaller real part. By Section 8 of the companion
+# the tracked one has the smaller real part. By *Which roots matter* on the companion
 # page, smaller real part means slower decay means dominant: continuation
 # finds the physical root, the direct solve does not.
 #
@@ -415,8 +415,8 @@ end                                                                  #src
 # ### 3.2 The high-Oh limit reproduces Molaček & Bush
 #
 # The independent check at the other end comes from Molaček & Bush (2012),
-# who parametrize the same physics with an inertia coefficient ``\\mathcal A_l`` and a
-# dissipation coefficient ``D_l`` (see Section 10 of the companion page for
+# who parametrize the same physics with an inertia coefficient ``\mathcal A_l`` and a
+# dissipation coefficient ``D_l`` (see *Appendix C* of the companion page for
 # the mapping and for their Eq. 31). Translating between the two gauges,
 # ```math
 # \lambda_l = \frac{l^2\,\mathrm{Oh}\,D_l}{\mathcal A_l}, \qquad
@@ -537,7 +537,7 @@ end                                                                             
 # Exciting a single mode and measuring its free-decay rate from a
 # `solve_drop!` run:
 #
-# | ``\mathrm{Oh}`` | ``l`` | Lamb ``\gamma`` | measured ``\gamma`` | relative error |
+# | ``\mathrm{Oh}`` | ``l`` | Lamb ``\lambda_l`` | measured ``\lambda_l`` | relative error |
 # |--:|--:|--:|--:|--:|
 # | 0.02 | 2 | 0.10000 | 0.10310 | 3.1% |
 # | 0.02 | 3 | 0.28000 | 0.28528 | 1.9% |
@@ -585,7 +585,7 @@ end                                                                             
 # For ``l=2`` the gap closes monotonically, and roughly linearly in
 # ``\mathrm{Oh}``, which is the expected order of the correction:
 #
-# | ``\mathrm{Oh}`` | ``\lambda_2`` (Reid, exact) | ``\gamma_{\text{Lamb}}`` | relative gap |
+# | ``\mathrm{Oh}`` | ``\lambda_2`` (Reid, exact) | ``\lambda_l^{\text{Lamb}}`` | relative gap |
 # |--:|--:|--:|--:|
 # | 0.05 | 0.218735 | 0.250000 | 12.5% |
 # | 0.02 | 0.092524 | 0.100000 | 7.5% |

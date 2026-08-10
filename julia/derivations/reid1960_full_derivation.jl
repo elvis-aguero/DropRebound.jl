@@ -259,7 +259,7 @@ radial_laplace_residual = expand_derivatives(Dx_(Dx_(f_pressure)) + 2 / x * Dx_(
 # ```
 # (the ``1/x^2`` scaling is conventional -- it is exactly what makes the
 # final ODE for ``U`` take the clean Bessel-equation form derived in
-# the standard results.2, which is the entire point of choosing it). Write
+# Appendix D.2, which is the entire point of choosing it). Write
 # ``G(x)=U(x)/x^2``, so ``u_r \propto G(x)``.
 #
 # !!! warning "Where the Newtonian assumption enters -- read this before adapting the page"
@@ -383,7 +383,7 @@ particular_residual = expand_derivatives(Dx_(Dx_(Up)) - l * (l + 1) / x^2 * Up +
 @assert symbolic_zero(particular_residual)                                                                                   #src
 
 # **Homogeneous solution.** The homogeneous equation
-# ``U''-l(l+1)U/x^2+q^2U=0`` is the standard results.2's ODE with ``x\to qx``: writing
+# ``U''-l(l+1)U/x^2+q^2U=0`` is Appendix D.2's ODE with ``x\to qx``: writing
 # ``U_h = x\,v(qx)``, the chain rule gives ``U_h'=v+xqv'``,
 # ``U_h''=2qv'+xq^2v''``, and substituting ``v`` satisfying the spherical
 # Bessel equation at argument ``z=qx`` (``v''=-\tfrac{2}{z}v'-(1-\tfrac{l(l+1)}{z^2})v``)
@@ -396,7 +396,7 @@ particular_residual = expand_derivatives(Dx_(Dx_(Up)) - l * (l + 1) / x^2 * Up +
 # \qquad\Longleftarrow\qquad
 # U_h = C\,x\,v(qx), \quad v \text{ spherical Bessel of order } l ,
 # ```
-# for any constant ``C``. This is the same substitution used in Appendix D.2.2.
+# for any constant ``C``. This is the same substitution used in Appendix D.2.
 
 @variables v vp vpp                                                                                                                     #src
 z = q * x                                                                                                                               #src
@@ -686,7 +686,7 @@ rhs_in_q = simplify(substitute(rhs_rescaled, Dict(sigma => q^2 * nu / R^2)); exp
 # BC1 (``U(1)=C j_l(q)+\Pi_0=-1``) and BC2 (the boundary conditions, evaluated on the
 # general solution) are two linear equations in the two unknowns
 # ``C,\Pi_0``. Solving them and then using the Bessel recurrence
-# ``qj_l'/j_l = l-qQ_{l+1/2}(q)`` from the standard results.2 to eliminate ``j_l'`` in
+# ``qj_l'/j_l = l-qQ_{l+1/2}(q)`` from Appendix D.2 to eliminate ``j_l'`` in
 # favor of ``Q_{l+1/2}(q)`` gives
 # ```math
 # C = \frac{2(l-1)(l+1)}{j_l(q)\,q\,\bigl(2Q_{l+1/2}(q)-q\bigr)},
@@ -963,8 +963,8 @@ end                                                                             
 # |:--|:--|
 # | ``R`` | equilibrium (undeformed) drop radius |
 # | ``\rho`` | fluid density |
-# | ``\mu = \rho\nu`` | dynamic / kinematic viscosity; ``\eta`` elsewhere on the site |
-# | ``\gamma`` | surface tension; ``\sigma`` on the home page and in Part I |
+# | ``\mu``, ``\nu=\mu/\rho`` | dynamic and kinematic viscosity; the dynamic one is ``\eta`` elsewhere on the site |
+# | ``\gamma`` | surface tension, as everywhere else in the corpus |
 # | ``x = r/R`` | dimensionless radial coordinate |
 # | ``\mu = \cos\theta`` | cosine of the polar angle, in the standard results only |
 # | ``\theta,\varphi`` | polar, azimuthal angle |
@@ -1043,13 +1043,9 @@ end                                                                             
 # and the variable identification is simply ``q^2 = b\,\alpha^2``, since
 # ``q^2 = \sigma/\mathrm{Oh}`` and ``\alpha^2 = \omega_{l;0}/\mathrm{Oh}``.
 #
-# An earlier version of this appendix carried ``a \equiv
-# \mathrm{Oh}\sqrt{m(m-1)(m+2)}`` in place of ``l^2\mathrm{Oh}/\omega_{l;0}``
-# and wrote ``q^2 = (b/a)\alpha^2``. Both were wrong, and the companion page's
-# Section 3.2 is the version to trust: it recovers ``D_l`` from the computed
-# roots and matches Molacek and Bush's independently published high-Oh limit
-# ``D_l \to (l-1)(2l^2+4l+3)/[l^2(2l+1)]`` to six digits, with no free
-# parameters.
+# The map is confirmed independently: the companion page recovers ``D_l`` from the
+# computed roots and matches Molacek and Bush's published high-Ohnesorge limit
+# ``D_l \to (l-1)(2l^2+4l+3)/[l^2(2l+1)]`` to six digits, with no free parameters.
 #
 # So ``A_m`` and ``D_m`` are not a separate theory: they are the *result* of
 # solving Reid's problem at each order, compressed into two numbers per mode
@@ -1059,9 +1055,9 @@ end                                                                             
 #    ``\alpha^2=\mathrm{Oh}^{-1}\sqrt{m(m-1)(m+2)}``;
 # 2. solve the characteristic equation numerically for the two roots with
 #    the smallest ``\mathrm{Re}(\sigma)``;
-# 3. read off ``A_m`` and ``D_m`` by matching the quadratic -- sum of roots
-#    ``=2aD_m/A_m``, product of roots ``=1/A_m`` (Vieta);
-# 4. tabulate or fit ``A_m(\mathrm{Oh})``, ``D_m(\mathrm{Oh})`` for use in
+# 3. read off ``\mathcal A_l`` and ``D_l`` by matching the quadratic -- sum of roots
+#    ``=2(l^2\mathrm{Oh}/\omega_{l;0})D_l/\mathcal A_l``, product ``=1/\mathcal A_l`` (Vieta);
+# 4. tabulate or fit ``\mathcal A_l(\mathrm{Oh})``, ``D_l(\mathrm{Oh})`` for use in
 #    the Lagrangian equation of motion.
 #
 # **Why discard the higher roots?** The quasi-static assumption restricts
@@ -1086,7 +1082,7 @@ end                                                                             
 # problem. They are isolated here, with the parts that are easy to get wrong
 # derived in full and the standard, citable parts checked numerically.
 #
-# ### 2.1 Spherical harmonics are eigenfunctions of the angular Laplacian
+# ### D.1 Spherical harmonics are eigenfunctions of the angular Laplacian
 #
 # For axisymmetric problems (which is all we need: the deformed drop has no
 # preferred azimuthal direction), the spherical harmonic reduces to a
@@ -1148,7 +1144,7 @@ end                                                                             
 # Both halves check out (for ``l=2,3,4,5``), so ``P_l(\cos\theta)`` is an
 # eigenfunction of the angular Laplacian with eigenvalue ``-l(l+1)``.
 #
-# ### 2.2 The spherical Bessel substitution
+# ### D.2 The spherical Bessel substitution
 #
 # The ordinary Bessel equation of order ``\nu`` is
 # ```math
@@ -1200,7 +1196,7 @@ sph_bessel_eq = expand_derivatives(x_sub * (Dxs(Dxs(v)) + 2 / x_sub * Dxs(v) + (
 # collapse into one Bessel combination rather than two; it is used in
 # the characteristic equation.
 #
-# ### 2.3 The poloidal decomposition
+# ### D.3 The poloidal decomposition
 #
 # Any divergence-free vector field ``\bm u`` decomposes uniquely into a
 # **toroidal** part (of the form ``\nabla\times(\Psi\hat r)``, which has no

@@ -223,9 +223,19 @@ Wesler; see Cottle, Pang and Stone, *The Linear Complementarity Problem*, Thm 3.
 principal pivoting terminates finitely under a least-index rule.
 
 A cheap sufficient condition, which does not require symmetry: if the symmetric part
-``\tfrac12(\bm A + \bm A^{\mathsf T})`` is positive definite, then
-``\bm x^{\mathsf T}\bm A\bm x > 0`` for all ``\bm x\ne\bm 0``, and every such matrix is a
-P-matrix. This is the certificate *Contact* uses, because it is computable at any truncation
+``\tfrac12(\bm A + \bm A^{\mathsf T})`` is positive definite, then ``\bm A`` is a P-matrix.
+
+*Proof, in two steps.* First, ``\bm x^{\mathsf T}\bm A\bm x =
+\bm x^{\mathsf T}\tfrac12(\bm A+\bm A^{\mathsf T})\bm x > 0`` for every ``\bm x \ne \bm 0``,
+since the antisymmetric part contributes nothing to a quadratic form. Second, any matrix with
+that property has positive determinant: its eigenvalues are either real and positive (take
+``\bm x`` the eigenvector) or occur in complex-conjugate pairs, whose product
+``|\lambda|^2`` is positive, so the determinant, being the product of all of them, is
+positive. Finally, every principal submatrix inherits the property, because restricting
+``\bm x`` to the corresponding coordinate subspace is a special case of the same inequality.
+Hence every principal minor is positive. ∎
+
+This is the certificate *Contact* uses, because it is computable at any truncation
 while checking ``2^n-1`` minors is not.
 
 ## F. Generalized Newtonian dissipation
@@ -246,5 +256,6 @@ force whose divergence is ``\bm\tau = 2\eta(\dot\gamma)\bm e`` is the gradient o
 = 2\eta\,\bm e\!:\!\bm e^{(a)}``. ∎
 
 It is **not** the gradient of ``\int\eta(\dot\gamma)\,\bm e\!:\!\bm e\,\mathrm{d}V``, which
-carries an extra ``\dot\gamma\eta'`` and is wrong by about thirty per cent on a Carreau fluid.
+carries an extra ``\dot\gamma\eta'`` and is wrong by about thirty per cent on a Carreau fluid
+with ``\lambda_c = 3``, ``a = 0.75``, ``n = 0.25``, ``r_\infty = 10^{-3}``.
 For constant ``\eta`` the two coincide, since ``W = \tfrac12\eta\dot\gamma^2 = \eta\,\bm e\!:\!\bm e``.

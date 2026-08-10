@@ -55,8 +55,10 @@ println("="^78)  #src
 #   = \mathrm{Oh}\sum_{m}\mathcal R_{l m}[\psi_{m};\eta] ,
 # ```
 #
-# with ``\mathcal R_{lm}`` the ``(l,m)`` block of the damping matrix ``K_{ab}``, as the
-# model page's section *Where the interior operator went* identifies. The variational
+# with ``\mathcal R_{lm}`` the ``(l,m)`` block of ``K_{ab}/\mathrm{Oh}``, as the model page's
+# section *Where the interior operator went* identifies. The division is not cosmetic:
+# ``K_{ab}`` already carries the Ohnesorge number, so leaving it in would count it twice here
+# and would break ``q^2=\sigma/\mathrm{Oh}`` below. The variational
 # form of the same content is the second-order system in all the coordinates at once;
 # the parabolic form is written here because the elimination about to be performed is
 # most easily seen on it. There are two different ways to get rid of that, and only the
@@ -145,9 +147,9 @@ println("="^78)  #src
 # ```math
 # M_{lm}=\int\bm u^{(l)}\!\cdot\!\bm u^{(m)}dV,
 # \qquad
-# C_{lm}=\int2\eta\;\bm e^{(l)}\!:\!\bm e^{(m)}dV,
+# C_{lm}=\mathrm{Oh}\!\int2\eta\;\bm e^{(l)}\!:\!\bm e^{(m)}dV,
 # \qquad
-# K_l\propto(l-1)(l+2) .
+# G_l\propto(l-1)(l+2) .
 # ```
 #
 # That is the **energy route**. What follows is the **traction route**: project the
@@ -168,7 +170,7 @@ println("="^78)  #src
 # \qquad \tau_{rr}=2\eta\,e_{rr},
 # ```
 #
-# which is the third of the three conditions listed above and the only one that
+# which is the normal-stress condition BC3 of the Newtonian pages and the only one that
 # produces an equation of motion -- BC1 fixes the kinematics and BC2 constrains
 # the interior profile. Multiply it by ``P_l(\mu)`` and integrate over
 # ``\mu\in[-1,1]``. Writing the surface motion as
@@ -198,7 +200,7 @@ println("="^78)  #src
 # and the radial factors are exactly the ones the three viscous contributions
 # produce. From ``\eta\nabla^2\bm u``, the radial Laplacian of the driving mode's
 # profile,
-# ``\mathcal L_{m}[u_{r,m}]=F''_{m}+\tfrac{2}{x}u_{r,m}'-\tfrac{m(m+1)}{x^2}u_{r,m}``,
+# ``\mathcal L_{m}[u_{r,m}]=u_{r,m}''+\tfrac{2}{x}u_{r,m}'-\tfrac{m(m+1)}{x^2}u_{r,m}``,
 # carried by ``\eta_{k}`` itself. From the radial part of
 # ``2(\nabla\eta)\cdot\bm e``, the radial strain amplitude ``u_{r,m}'``, carried by
 # ``\eta'_{k}``. From its polar part, the ``e_{r\theta}`` amplitude
@@ -227,8 +229,9 @@ println("="^78)  #src
 # ``(l,k,m)`` and on the current viscosity profile; write it
 # ``A^{(i)}_{l m}[\eta_{k}]`` and ``B^{(i)}_{l m}[\eta_{k}]`` -- the two
 # radial integrals written out above, pairing with ``G`` and ``H`` respectively.
-# The index ``i`` distinguishes the terms that end up multiplying ``\dot\zeta``
-# from those multiplying ``A``.
+# The index ``i`` distinguishes the terms that end up multiplying ``\dot{\bm\zeta}``
+# (``i=2``) from those multiplying ``\bm\zeta`` (``i=1``), which is where the
+# superscripts on ``\mathcal D^{(2)}`` and ``\mathcal D^{(1)}`` below come from.
 #
 # ### The result
 #
@@ -250,8 +253,11 @@ println("="^78)  #src
 #              \;+\; \mathcal D^{(1)}\,\bm\zeta \;+\; \bm b \;=\; 0 \;}
 # ```
 #
-# ``\mathcal D^{(2)}`` generalises ``2\bm\Lambda`` and ``\mathcal D^{(1)}``
-# generalises ``\bm\Omega``. The viscous stress is linear in the velocity and so
+# Here ``\bm b`` is the film-pressure forcing, with entries ``\tfrac{4\pi}{2l+1}p_{c,l}``
+# so that ``-\bm b`` is the generalised force ``Q_{\zeta_l}``; ``\mathcal D^{(2)}`` is the
+# damping matrix, generalising the diagonal ``2\bm\Lambda = \mathrm{diag}(2\lambda_l)`` of the
+# Newtonian problem, and ``\mathcal D^{(1)}`` is the stiffness, generalising
+# ``\bm\Omega = \mathrm{diag}(\omega_l^2)``. The viscous stress is linear in the velocity and so
 # feeds ``\mathcal D^{(2)}`` directly; it reaches ``\mathcal D^{(1)}`` through the
 # normal-stress condition, where ``\eta`` appears multiplicatively at the
 # surface -- which is also why Reid's ``\omega_l^2`` depends on viscosity at all.
@@ -277,7 +283,7 @@ println("="^78)  #src
 #
 # Every entry is a functional of the whole velocity field at the current
 # instant -- which is what makes the system quasi-linear rather than linear, and
-# is taken up in *Where the shear rate is evaluated* below.
+# is taken up in *Where the shear rate is evaluated* on the model page.
 #
 # !!! note "What is in closed form here, and what is not"
 #     The angular factors ``G`` and ``H`` are closed-form integrals of Legendre
@@ -847,7 +853,7 @@ end  #src
 #
 # Measured on Reid's actual viscous eigenmodes (volume-averaged,
 # ``\mathrm{Oh}=0.2``, in the saturated thinned regime), the smallest
-# ``L_\eta`` holding ``\gamma<10^{-2}``:
+# ``L_\eta`` holding ``\mathcal T(L_\eta)<10^{-2}``:
 #
 # | modal spectrum | ``L_\eta`` for 1% |
 # |:--|:--|
@@ -1556,7 +1562,7 @@ end  #src
 # the admissible class, because ``\eta\ge\eta_\infty>0`` cannot vanish. The
 # normal-stress condition is where the rheology lands: once ``\eta`` varies
 # with ``\theta`` its surface value is a field, and projecting it is what
-# produces the coupling matrices. Under the spherically symmetric rung below
+# produces the coupling matrices. Under the spherically symmetric rung above
 # that field collapses to the single number ``\eta_s``, which is the sense in
 # which "BC3 changes by one coefficient" is true -- it is a property of that
 # rung, not of the model.

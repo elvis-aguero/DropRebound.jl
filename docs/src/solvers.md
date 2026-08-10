@@ -39,7 +39,7 @@ viscosity.
 
     `SimConstants` is constructed with `viscous = :lamb`, Lamb's small-Ohnesorge asymptotics,
     unless you ask for `viscous = :reid`. `run_impact` sets `:reid` for you; a hand-built
-    `SimConstants` does not. The difference is not cosmetic — Lamb over-predicts the damping by
+    `SimConstants` does not. The difference is not cosmetic: Lamb over-predicts the damping by
     5 per cent at ``\mathrm{Oh} = 0.01`` and by 170 per cent at ``\mathrm{Oh} = 1``. Every
     accuracy statement on this page is for `:reid`.
 

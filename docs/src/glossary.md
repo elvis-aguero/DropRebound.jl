@@ -62,10 +62,14 @@ rather than quietly tolerated: see [Collisions](@ref) at the end.
 | ``\sigma`` | scalar | complex decay rate, under ``e^{-\sigma t}`` |
 | ``q``, ``\alpha`` | scalars | ``q^2=\sigma R^2/\nu``, ``\alpha^2=\sigma_{l;0}R^2/\nu`` |
 | ``\mathcal A_l``, ``D_l`` | scalars | Molaček and Bush's inertia and dissipation coefficients |
-| ``\mathcal R_{lm}`` | block | interior operator; the ``(l,m)`` block of ``K_{ab}`` |
+| ``\mathcal R_{lm}`` | block | interior operator; the ``(l,m)`` block of ``K_{ab}/\mathrm{Oh}`` |
 | ``\eta_k`` | scalar | ``k``-th Legendre harmonic of the viscosity field. **Not** a viscosity plateau |
 | ``L_\eta`` | integer | angular bandwidth of the viscosity field |
-| ``G^k_{lm}``, ``H^k_{lm}`` | scalars | the two families of angular integrals in the coupled assembly |
+| ``G^k_{lm}``, ``H^k_{lm}`` | scalars | the two families of angular integrals in the traction-route assembly |
+| ``A^{(i)}_{lm}``, ``B^{(i)}_{lm}`` | scalars | the radial integrals pairing with ``G`` and ``H`` |
+| ``\mathcal D^{(2)}``, ``\mathcal D^{(1)}`` | ``(M-1)^2`` | damping and stiffness of the eliminated surface system; generalise ``2\bm\Lambda`` and ``\bm\Omega`` |
+| ``\bm\Lambda``, ``\bm\Omega`` | diagonal | ``\mathrm{diag}(\lambda_l)`` and ``\mathrm{diag}(\omega_l^2)`` of the Newtonian problem |
+| ``\mathcal T(L)`` | scalar | the truncation error metric of the bandwidth measurement |
 
 ## Contact
 
@@ -74,20 +78,22 @@ rather than quietly tolerated: see [Collisions](@ref) at the end.
 | ``p_c(\theta,t)`` | field | film pressure on the lower surface |
 | ``p_{c,l}`` | scalar | its Legendre coefficient |
 | ``\bm p`` | ``n`` | film pressure at the retained nodes; the LCP unknown |
-| ``\bm\lambda`` | ``n`` | nodal vertical loads; the unknown under `force_mode = :nodal` |
+| ``\bm\lambda`` | ``n`` | multipliers conjugate to the nodal clearances; the unknown under `force_mode = :nodal`. Load-like, but not the vertical force carried by the pressure |
 | ``h``, ``\bm h``, ``\bm g`` | ``n`` | clearance between surface and substrate |
 | ``n`` | integer | number of retained contact nodes, ``\lfloor M/2\rfloor+1`` |
 | ``\bm V`` | ``(M{+}1)^2`` | Legendre Vandermonde, ``V_{ij}=P_{j-1}(\mu_i)`` |
-| ``\bm H`` | ``(M{+}1)\times(M-1)K`` | clearance Jacobian, ``H_{i,(l,k)}=\cos\theta_iP_l(\mu_i)\phi_k(1)`` |
-| ``\bm b_0`` | ``M{+}1`` | undeformed clearance along each ray, ``\cos\theta_i`` |
+| ``\bm H`` | ``n\times(M-1)K`` | clearance Jacobian, ``H_{i,(l,k)}=\cos\theta_iP_l(\mu_i)\phi_k(1)``, restricted to the retained nodes |
+| ``\bm b_0`` | ``n`` | undeformed clearance along each ray, ``\cos\theta_i``, restricted |
 | ``\bm A`` | ``((M-1)K)^2`` | step operator ``\beta^2\bm M+\beta\bm C+\bm G`` |
-| ``\bm Q_n`` | ``(M-1)K\times n`` | nodal pressures to generalised forces, ``\bm Q_{\text{modal}}\bm V^{-1}`` |
+| ``\bm Q_n`` | ``(M-1)K\times n`` | nodal pressures to generalised forces, ``\bm Q_{\text{modal}}\bm V^{-1}\bm E`` |
 | ``\bm A_c`` | ``n^2`` | compliance, ``\partial\bm h/\partial\bm p`` at frozen history |
 | ``\bm W`` | ``n^2`` | its symmetric counterpart under nodal forcing |
 | ``\bm b`` | ``n`` | clearance the step would produce with no contact force |
 | ``\beta`` | scalar | ``c_0/\Delta t``; BDF2 has ``c_0=(1+2r)/(1+r)``, BDF1 has ``c_0=1`` |
 | ``\bm 1`` | ``n`` | column of ones, ``\partial\bm h/\partial z`` |
-| ``D_i`` | scalar | ``-2\pi w_i/\cos\theta_i``, the diagonal relating load to pressure |
+| ``D_i`` | scalar | ``-2\pi w_i/\cos\theta_i``, the diagonal relating multiplier to pressure |
+| ``\bm E`` | ``(M{+}1)\times n`` | selects the retained contact nodes |
+| ``w_i`` | scalar | quadrature weight at node ``i`` |
 
 ## Collisions
 
@@ -101,6 +107,9 @@ with the literature, so each is flagged where it occurs.
 | ``\eta_0`` | zero-shear plateau; ``k=0`` harmonic of the viscosity field | the harmonic is written ``\eta_k`` with a running index |
 | ``a`` | trial-function index; Carreau-Yasuda shape exponent | index in ``\bm u^{(a)}``, exponent in ``(\lambda_c\dot\gamma)^a`` |
 | ``\lambda`` | decay rate ``\lambda_l``; Carreau time ``\lambda_c``; multiplier ``\bm\lambda`` | subscript ``l``, subscript ``c``, or boldface |
+| ``\nu`` | kinematic viscosity; Bessel order in Appendix D.2 of *The Free Viscous Drop* | the Bessel order appears only inside that subsection |
+| ``\bm b`` | film-pressure forcing (shear-thinning pages); free-flight clearance (*Contact*) | context: a forcing term in an oscillator, or a clearance |
+| ``p`` | interior pressure; the exponent ``(n-1)/a`` on the closures page | the exponent is always written in an exponent position |
 | ``\sigma`` | decay rate | surface tension is ``\gamma`` everywhere in this corpus |
 | ``\gamma``, ``\dot\gamma`` | surface tension; shear rate | the dot |
 | ``A_l`` | modal amplitude (reduced model); Molaček-Bush inertia | the latter is script, ``\mathcal A_l`` |

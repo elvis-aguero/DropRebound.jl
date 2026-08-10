@@ -81,8 +81,9 @@ viscosity's own dependence on the rates. With ``\dot\gamma = \sqrt{2\,\bm e\!:\!
 ```
 
 which carries a spurious ``\dot\gamma\eta'`` and is **not** the force whose divergence is
-``\bm\tau = 2\eta(\dot\gamma)\bm e``. On a Carreau fluid the discrepancy is about thirty per
-cent, so it is not a technicality.
+``\bm\tau = 2\eta(\dot\gamma)\bm e``. Measured on a Carreau fluid with ``\lambda_c = 3``,
+``a = 0.75``, ``n = 0.25`` and ``r_\infty = 10^{-3}``, the discrepancy is about thirty per cent,
+so it is not a technicality.
 
 The potential that does work is built from the constitutive law itself,
 
@@ -228,7 +229,8 @@ Separate ``\Psi`` mode by mode,
 \Gamma_l(\theta) = -\frac{\sin\theta\,\partial_\theta P_l(\cos\theta)}{l(l+1)} ,
 ```
 
-where ``f`` is the radial profile and ``\Gamma_l`` is the Gegenbauer function, fixed by
+where ``f`` is the radial profile and ``\Gamma_l`` is the Gegenbauer function
+(*Identities and Standard Results*, A.4), fixed by
 demanding that the radial velocity come out proportional to ``P_l(\cos\theta)`` so that it
 matches the surface mode it drives. Taking the curl gives
 
@@ -275,6 +277,16 @@ From here the problem is nondimensional: lengths in units of ``R``, time in unit
 ``\tau_c``, and ``\eta`` the local viscosity divided by its zero-shear value, so ``\eta=1``
 for a Newtonian fluid. The Ohnesorge number is then the only material parameter left.
 
+!!! note "This section assumes a constant viscosity"
+
+    ``\mathcal R`` is a quadratic form in the rates only when ``\eta`` does not itself depend
+    on them. For a shear-thinning fluid it is not, and "a damped linear system" below is false:
+    ``\bm C`` becomes a function of the state and must be rebuilt as the solution evolves. The
+    general statement is the one derived above, ``\partial\mathcal R/\partial\dot\xi_a =
+    \int2\eta(\dot\gamma)\,\bm e\!:\!\bm e^{(a)}dV``; everything in this section is that
+    statement with ``\eta`` held fixed, which is exactly what the solver does inside each
+    Picard sweep. *Shear-Thinning Drops* carries the general case.
+
 Substituting the expansion into the three functionals makes each one an explicit quadratic form,
 
 ```math
@@ -283,7 +295,20 @@ T = \tfrac12\,\dot{\bm a}^{\mathsf T}\bm M\,\dot{\bm a} , \qquad
 V = \tfrac12\,\bm a^{\mathsf T}\bm G\,\bm a ,
 ```
 
-whose coefficients are read off directly:
+The trial functions themselves are
+
+```math
+\boxed{\;\phi_k(x) = x^{\,l+1}\,P_{k-1}\!\left(2x^2-1\right),\qquad k = 1,\dots,K\;}
+```
+
+shifted Legendre polynomials in ``x^2`` times the regular prefactor. Three properties matter.
+Each is regular at the origin, because ``x^{l+1}`` is the behaviour a stream function must have
+there for the velocity to be finite. Each equals one at the surface, ``\phi_k(1) = P_{k-1}(1) = 1``,
+so the trace vector is a vector of ones and ``\zeta_l = \sum_k a_{l,k}``. And the first,
+``\phi_1 = x^{l+1}``, is exactly the irrotational profile, so ``K = 1`` reproduces potential
+flow and every rotational correction comes from ``k \ge 2``.
+
+With that, the coefficients are read off directly:
 
 ```math
 M_{ab} = \int_\Omega \bm u^{(a)}\!\cdot\bm u^{(b)}\,dV , \qquad
@@ -301,7 +326,8 @@ Differentiating a quadratic form is immediate, so Lagrange's equations become
 \bm M\ddot{\bm a} + \bm C\dot{\bm a} + \bm G\bm a = \bm Q ,
 ```
 
-a damped linear system. Each matrix is the Hessian of a scalar functional, for instance
+a damped linear system **at fixed ``\eta``**. Each matrix is the Hessian of a scalar functional,
+for instance
 ``M_{ab} = \partial^2 T/\partial\dot a_a\partial\dot a_b``. A second derivative does not care
 about the order it is taken in, so all three are symmetric identically, rather than through a
 cancellation that could fail.
@@ -325,7 +351,7 @@ feeds only the two operators that carry interior structure.
 
 ## Where the modes couple
 
-For a Newtonian fluid ``\eta`` is constant, the angular integrals collapse by orthogonality of
+For a Newtonian fluid ``\eta`` is constant, the angular integrals collapse by orthogonality (*Identities and Standard Results*, A.2) of
 the Legendre polynomials, and the modes separate. Each ``l`` is an independent damped
 oscillator, which is why an exact solution exists at all, and why *The Free Viscous Drop* can
 proceed one mode at a time.
