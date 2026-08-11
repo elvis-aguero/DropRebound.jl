@@ -69,14 +69,39 @@ const BK_ALL = [Backend(contact = :lcp),
     end
 
     @testset "a solver that gives up reports it instead of throwing" begin
-        # A sweep has to be able to record which cases a backend cannot do. The nonvariational
-        # search fails at the canonical reference point We = 1, Oh = 0.3038 -- which is worth
-        # knowing on its own account, and is why the animations use a different case.
+        # A sweep has to be able to record which cases a backend cannot do, so a run that
+        # fails must come back as data rather than as an exception. That contract is what
+        # is tested here, in two halves: `check_converged` decides, and `run_impact`
+        # reports the decision without throwing.
+        #
+        # WHY THE VERDICT IS NOT PINNED TO A CASE. This test used to assert that the
+        # nonvariational search fails at We = 1, Oh = 0.3038, M = 30. It does, on some
+        # machines. On CI it failed on 10 August and completed a bounce on 11 August with
+        # byte-identical sources, the same Julia 1.12.6 and the same runner image; on macOS
+        # it returns NaN outright. The march there is unstable, so whether it survives turns
+        # on floating-point details that are not reproducible between runs, and a test that
+        # asserts the outcome of an unstable march tests the machine rather than the code.
+        #
+        # So the decision logic is tested directly, where it is deterministic.
+        @test DropSolver.check_converged(NaN, 1.0, 25.0, 0.5, "t") == false      # non-finite
+        @test DropSolver.check_converged(0.5, 24.0, 25.0, 0.5, "t") == false     # never released
+        @test DropSolver.check_converged(1e-18, 2.0, 25.0, 0.5, "t") == false    # no rebound
+        @test DropSolver.check_converged(1.5, 2.0, 25.0, 0.5, "t") == false      # cor > 1
+        @test DropSolver.check_converged(0.5, 2.0, 25.0, 0.0, "t") == false      # hit the wall
+        @test DropSolver.check_converged(0.5, 2.0, 25.0, 0.5, "t"; released = false) == false
+        @test DropSolver.check_converged(0.5, 2.0, 25.0, 0.5, "t"; dt_final = 1e-9,
+                                         dt_min = 1e-9) == false                 # step collapsed
+        @test DropSolver.check_converged(0.5, 2.0, 25.0, 0.5, "t") == true       # a real bounce
+
+        # And the reporting contract is tested on the marginal case, whichever way it goes:
+        # it must return, it must say which backend ran, and its metrics must agree with its
+        # own verdict -- usable when `ok`, NaN when not. Both branches are legitimate here.
         r = run_impact(Backend(formulation = :nonvariational, contact = :tangency);
                        We = 1.0, Bo = 0.0189, Oh = 0.3038, M = 30, K = 3, t_max = 25.0)
-        @test r.ok == false
-        @test isnan(r.cor)
         @test r.backend == "nonvar/tangency"
+        @test r.ok isa Bool
+        @test r.ok ? isfinite(r.cor) : isnan(r.cor)
+
         ## misuse still throws, because it is a mistake rather than a result
         @test_throws ErrorException run_impact(Backend(); We = 1.0, Bo = 0.02, Oh = 0.3,
                                                M = 12, K = 1, eta_nonvar = 1)
