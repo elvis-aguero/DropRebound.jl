@@ -103,8 +103,12 @@ plt = plot(pa, pb; layout = grid(2, 1, heights = [0.62, 0.38]),
            size = (1100, 780), dpi = 150,
            left_margin = 9Plots.mm, bottom_margin = 7Plots.mm, right_margin = 5Plots.mm)
 
-savefig(plt, joinpath(ASSET, "figure_vorticity.png"))
-println("wrote ", joinpath(ASSET, "figure_vorticity.png"))
+const FIGS = joinpath(@__DIR__, "..", "outputs", "figures")
+mkpath(FIGS)
+for d in (FIGS, ASSET)                       # the store, and where Documenter looks
+    savefig(plt, joinpath(d, "figure_vorticity.png"))
+    println("wrote ", joinpath(d, "figure_vorticity.png"))
+end
 
 ## The underlying series, so the figure is reproducible without rerunning the impact.
 open(joinpath(OUT, "vorticity_bounce.csv"), "w") do io
