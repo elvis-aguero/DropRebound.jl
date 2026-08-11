@@ -74,15 +74,11 @@ const BK_ALL = [Backend(contact = :lcp),
         # is tested here, in two halves: `check_converged` decides, and `run_impact`
         # reports the decision without throwing.
         #
-        # WHY THE VERDICT IS NOT PINNED TO A CASE. This test used to assert that the
-        # nonvariational search fails at We = 1, Oh = 0.3038, M = 30. It does, on some
-        # machines. On CI it failed on 10 August and completed a bounce on 11 August with
-        # byte-identical sources, the same Julia 1.12.6 and the same runner image; on macOS
-        # it returns NaN outright. The march there is unstable, so whether it survives turns
-        # on floating-point details that are not reproducible between runs, and a test that
-        # asserts the outcome of an unstable march tests the machine rather than the code.
-        #
-        # So the decision logic is tested directly, where it is deterministic.
+        # The verdict on any one case is deliberately not asserted. The nonvariational
+        # march at We = 1, Oh = 0.3038, M = 30 is unstable: whether it survives turns on
+        # floating-point detail that does not reproduce between machines or between runs
+        # on one machine, so asserting its outcome tests the machine. The decision logic
+        # is tested directly instead, where it is deterministic.
         @test DropSolver.check_converged(NaN, 1.0, 25.0, 0.5, "t") == false      # non-finite
         @test DropSolver.check_converged(0.5, 24.0, 25.0, 0.5, "t") == false     # never released
         @test DropSolver.check_converged(1e-18, 2.0, 25.0, 0.5, "t") == false    # no rebound

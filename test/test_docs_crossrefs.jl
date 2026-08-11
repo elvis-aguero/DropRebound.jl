@@ -83,11 +83,8 @@ end
 # or `outputs/figures` already holds it because a script too slow for CI drew it
 # and the result was committed.
 #
-# This test is the same question the build asks, asked without the build, so a
-# missing figure is caught by the fast job rather than forty minutes later by the
-# docs job -- or, before the build learned to check, not caught at all: three
-# images sat in the asset directory referenced by no page while the front page
-# referenced one that no script wrote, and both conditions were invisible.
+# This is the same question the build asks, asked without the build, so a missing
+# figure fails the fast job rather than the docs job forty minutes later.
 #
 # A failure means a reader would meet a broken image. Either the name is a typo,
 # or a script was renamed without regenerating what it writes into

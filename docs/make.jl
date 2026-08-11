@@ -91,20 +91,12 @@ for md in readdir(DERIVATIONS_OUT; join=true)
     end
 end
 
-# Documenter will only publish files that sit under `docs/src`, which is the one
-# reason an `assets` directory exists at all. It is not a second place to keep
-# figures: `outputs/figures` is the store, and this step stages into `assets`
-# whichever of them the pages actually ask for. So `assets` is build output, like
-# `docs/src/derivations` above it, and is not versioned.
-#
-# Figures come from two places and are treated the same way once here. The cheap
-# ones `figures.jl` drew a moment ago are already in place. The expensive ones --
-# anything that needs a sweep, and so cannot run inside a docs build -- are copied
-# from the store, where they are versioned precisely so that this build does not
-# have to reproduce them.
-#
-# An asset a page names and neither source supplies is a build error rather than a
-# broken image on the live site, which is the failure this step exists to prevent.
+# Stage the figures the pages reference into `docs/src/assets`, which Documenter
+# publishes from. `assets` is build output, like `docs/src/derivations` above it,
+# and is not versioned: `figures.jl` has just drawn the cheap plots into it, and
+# anything needing a sweep is copied from `outputs/figures`, which is versioned so
+# that a docs build never has to reproduce one. A referenced asset that neither
+# supplies fails the build.
 const ASSET_DIR = joinpath(@__DIR__, "src", "assets")
 const FIGURE_STORE = joinpath(@__DIR__, "..", "outputs", "figures")
 mkpath(ASSET_DIR)

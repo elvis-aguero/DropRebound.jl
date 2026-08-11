@@ -350,14 +350,11 @@ agrees throughout:
 Each row compares nine simulations at ``M = 90``, ``K = 3`` against the experiments nearest
 them in Weber number, within a factor of 1.3.
 
-Two features of the plot are worth naming, because both are physics rather than scatter. The
-five curves separate most at low Weber number and converge at high: a hard impact thins the
-concentrated fluids most, so it strips away the very viscosity that distinguished them, and the
-experiments do the same thing. And the agreement improves monotonically with concentration,
-from 8.6 per cent for water to 2.0 per cent at 3000 ppm. That ordering is the reassuring one.
-Shear thinning is the part of the model with the most freedom in it, so if it were absorbing
-error rather than describing the fluid, the fluids that thin most would be the ones that fit
-worst. They fit best.
+The five curves separate most at low Weber number and converge at high. A hard impact thins the
+concentrated fluids most, stripping away the viscosity that distinguished them at rest, and the
+experiments converge the same way. The residuals fall monotonically with concentration, so the
+fluids whose behaviour depends most on shear thinning are the ones the model reproduces
+closest.
 
 ## How to read this
 
