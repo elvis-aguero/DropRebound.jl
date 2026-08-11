@@ -73,12 +73,3 @@ fig = plot(p1, p2; layout = (1, 2), size = (980, 420), dpi = 200,
 out = joinpath(@__DIR__, "..", "outputs", "figures", "figure_shear_thinning")
 savefig(fig, out * ".png"); savefig(fig, out * ".svg")
 println("wrote $(out).png and .svg")
-
-# This is the figure the front page of the documentation and the README both
-# show, so it is also written where Documenter looks for its assets. Copying it
-# by hand once left the published image and the script that makes it free to
-# drift apart; writing both from here is what keeps them the same picture.
-const ASSET = joinpath(@__DIR__, "..", "docs", "src", "assets")
-mkpath(ASSET)
-savefig(fig, joinpath(ASSET, "figure_shear_thinning.png"))
-println("wrote ", joinpath(ASSET, "figure_shear_thinning.png"))

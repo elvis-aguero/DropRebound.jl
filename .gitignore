@@ -17,6 +17,7 @@ outputs/logs/*
 
 docs/build/
 docs/src/derivations/
+docs/src/assets/
 
 # Agent instructions live on the developer's machine, not in the published repo.
 CLAUDE.md

@@ -91,6 +91,49 @@ for md in readdir(DERIVATIONS_OUT; join=true)
     end
 end
 
+# Documenter will only publish files that sit under `docs/src`, which is the one
+# reason an `assets` directory exists at all. It is not a second place to keep
+# figures: `outputs/figures` is the store, and this step stages into `assets`
+# whichever of them the pages actually ask for. So `assets` is build output, like
+# `docs/src/derivations` above it, and is not versioned.
+#
+# Figures come from two places and are treated the same way once here. The cheap
+# ones `figures.jl` drew a moment ago are already in place. The expensive ones --
+# anything that needs a sweep, and so cannot run inside a docs build -- are copied
+# from the store, where they are versioned precisely so that this build does not
+# have to reproduce them.
+#
+# An asset a page names and neither source supplies is a build error rather than a
+# broken image on the live site, which is the failure this step exists to prevent.
+const ASSET_DIR = joinpath(@__DIR__, "src", "assets")
+const FIGURE_STORE = joinpath(@__DIR__, "..", "outputs", "figures")
+mkpath(ASSET_DIR)
+
+let pages = String[]
+    for (root, _, files) in walkdir(joinpath(@__DIR__, "src")),
+        f in files
+        endswith(f, ".md") && push!(pages, joinpath(root, f))
+    end
+    wanted = Set{String}()
+    for p in pages, m in eachmatch(r"assets/([A-Za-z0-9_.\-]+)", read(p, String))
+        push!(wanted, m.captures[1])
+    end
+    missing_assets = String[]
+    for name in sort(collect(wanted))
+        isfile(joinpath(ASSET_DIR, name)) && continue
+        src = joinpath(FIGURE_STORE, name)
+        isfile(src) || (push!(missing_assets, name); continue)
+        cp(src, joinpath(ASSET_DIR, name); force = true)
+        @info "staged figure from the store" name
+    end
+    isempty(missing_assets) || error("""
+        The pages reference $(length(missing_assets)) asset(s) that neither
+        docs/figures.jl draws nor outputs/figures holds:
+          $(join(missing_assets, "\n          "))
+        Either the name is a typo, or the script that draws it has not been run
+        and its output committed to outputs/figures/.""")
+end
+
 makedocs(
     sitename = "DropRebound.jl",
     modules = [DropSolver],

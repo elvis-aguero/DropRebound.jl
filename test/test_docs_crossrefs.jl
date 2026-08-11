@@ -74,3 +74,52 @@ end
     end
     @test isempty(offences)
 end
+
+# Every image a page asks for must be resolvable at build time.
+#
+# `docs/src/assets` is not a place figures are kept -- it is staging that
+# `docs/make.jl` fills, and it is not versioned. A figure therefore reaches the
+# site by exactly one of two routes: `docs/figures.jl` draws it during the build,
+# or `outputs/figures` already holds it because a script too slow for CI drew it
+# and the result was committed.
+#
+# This test is the same question the build asks, asked without the build, so a
+# missing figure is caught by the fast job rather than forty minutes later by the
+# docs job -- or, before the build learned to check, not caught at all: three
+# images sat in the asset directory referenced by no page while the front page
+# referenced one that no script wrote, and both conditions were invisible.
+#
+# A failure means a reader would meet a broken image. Either the name is a typo,
+# or a script was renamed without regenerating what it writes into
+# `outputs/figures`.
+@testset "every asset a page references can be resolved" begin
+    figstore = normpath(joinpath(@__DIR__, "..", "outputs", "figures"))
+    @test isdir(figstore)
+
+    # names docs/figures.jl draws straight into the staging directory
+    built = Set(m.captures[1] for m in
+                eachmatch(r"save\(\"([A-Za-z0-9_.\-]+)\"",
+                          read(joinpath(DOCS_ROOT, "figures.jl"), String)))
+    @test !isempty(built)
+
+    # pages: the hand-written chapters, and the derivation scripts Literate renders
+    pages = [joinpath(DOCS_ROOT, "src", f)
+             for f in readdir(joinpath(DOCS_ROOT, "src")) if endswith(f, ".md")]
+    append!(pages, [joinpath(DERIV_DIR, s) for s in published_scripts()])
+
+    unresolved = Tuple{String,String}[]
+    for path in pages
+        isfile(path) || continue
+        for m in eachmatch(r"assets/([A-Za-z0-9_.\-]+)", read(path, String))
+            name = m.captures[1]
+            name in built && continue
+            isfile(joinpath(figstore, name)) && continue
+            push!(unresolved, (basename(path), name))
+        end
+    end
+
+    for (f, n) in unresolved
+        @info "page references an asset nothing supplies" page = f asset = n
+    end
+    @test isempty(unresolved)
+end

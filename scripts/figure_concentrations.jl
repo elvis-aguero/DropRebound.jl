@@ -12,8 +12,6 @@ using Plots
 gr()
 
 const OUT   = joinpath(@__DIR__, "..", "outputs", "csv")
-const ASSET = joinpath(@__DIR__, "..", "docs", "src", "assets")
-mkpath(ASSET)
 
 rows = NamedTuple[]
 for f in readdir(OUT; join = true)
@@ -97,10 +95,8 @@ end
 ## outside a solver's validated range, next to data, would misrepresent it.
 const FIGS = joinpath(@__DIR__, "..", "outputs", "figures")
 mkpath(FIGS)
-for d in (FIGS, ASSET)                       # the store, and where Documenter looks
-    savefig(plt, joinpath(d, "figure_concentrations.png"))
-    @printf("wrote %s\n", joinpath(d, "figure_concentrations.png"))
-end
+savefig(plt, joinpath(FIGS, "figure_concentrations.png"))
+println("wrote ", joinpath(FIGS, "figure_concentrations.png"))
 
 ## and the residual: how far the model sits from the experiments nearest it in We
 @printf("\n%-8s %6s %10s %10s\n", "fluid", "n_sim", "med |dcor|", "Oh_0")

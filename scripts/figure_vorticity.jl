@@ -22,9 +22,8 @@ using DropSolver
 
 gr()
 
-const ASSET = joinpath(@__DIR__, "..", "docs", "src", "assets")
 const OUT   = joinpath(@__DIR__, "..", "outputs", "csv")
-mkpath(ASSET); mkpath(OUT)
+mkpath(OUT)
 
 ## The vorticity formula, its derivation, the K = 1 self-check and the palettes all
 ## live in the shared helper, so this figure and the animation cannot drift apart.
@@ -105,10 +104,8 @@ plt = plot(pa, pb; layout = grid(2, 1, heights = [0.62, 0.38]),
 
 const FIGS = joinpath(@__DIR__, "..", "outputs", "figures")
 mkpath(FIGS)
-for d in (FIGS, ASSET)                       # the store, and where Documenter looks
-    savefig(plt, joinpath(d, "figure_vorticity.png"))
-    println("wrote ", joinpath(d, "figure_vorticity.png"))
-end
+savefig(plt, joinpath(FIGS, "figure_vorticity.png"))
+println("wrote ", joinpath(FIGS, "figure_vorticity.png"))
 
 ## The underlying series, so the figure is reproducible without rerunning the impact.
 open(joinpath(OUT, "vorticity_bounce.csv"), "w") do io
