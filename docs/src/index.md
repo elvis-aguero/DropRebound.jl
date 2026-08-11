@@ -13,7 +13,7 @@ the linearised equations of motion in a spectral basis. Nothing is fitted to imp
 fluid is characterised by rheometry, the geometry by three dimensionless groups, and the
 outcome follows.
 
-![A 3000 ppm shear-thinning drop: ten simulations against 72 experiments](assets/shear_thinning_overlay.png)
+![A 3000 ppm shear-thinning drop: ten simulations against 72 experiments](assets/figure_shear_thinning.png)
 
 ## Governing equations
 

@@ -1,9 +1,9 @@
 # Audit: state of the Carreau-Yasuda extension, and what to adapt from Reid
 
 Date: 2026-08-01. Scope: every artifact that claims to extend Reid (1960)
-to shear-thinning fluids — `julia/src/st_extension.jl`,
-`julia/src/st_exact_extension.jl`, the four `julia/derivations/carreau*.jl`
-scripts, `julia/derivations/cross_fluid_derivation.jl`,
+to shear-thinning fluids — `src/st_extension.jl`,
+`src/st_exact_extension.jl`, the four `derivations/carreau*.jl`
+scripts, `derivations/cross_fluid_derivation.jl`,
 `docs/section_carreau.tex`, `docs/section_carreauYasuda_firstprinciples.tex`,
 the `docs/src/carreau_yasuda_fp/` chapters (since consolidated away), and the CY
 test files.
@@ -52,8 +52,8 @@ which records the correction.
 
 ### 1.1 Reid's Newtonian theory
 
-`julia/src/reid.jl` is the strongest part of the repo. It is the only
-component with genuine, independent validation, in `julia/test/test_reid.jl`:
+`src/reid.jl` is the strongest part of the repo. It is the only
+component with genuine, independent validation, in `test/test_reid.jl`:
 
 - `test_reid.jl:27-40` — convergence to Lamb's `λ_l = Oh(l-1)(2l+1)` as
   `Oh → 0`, with the error required to *decrease monotonically* across
@@ -71,7 +71,7 @@ simplify it.
 
 This is the part worth stating precisely, because the repo currently
 under-claims it. the Reid chapter (since consolidated into
-`julia/derivations/reid1960_full_derivation.jl`) said
+`derivations/reid1960_full_derivation.jl`) said
 that a shear-thinning model "changes the momentum equation AND both stress
 boundary conditions". That is too pessimistic. Working through it with
 `η = η(γ̇)` in place of constant `μ`:
@@ -86,7 +86,7 @@ boundary conditions". That is too pessimistic. Working through it with
   this gives `e_rθ = 0` **regardless of whether η is constant**. BC2 is
   rheology-agnostic for *any* generalized Newtonian fluid, and therefore the
   whole `τ_rθ = 0 → L₂[U] = 0` chain already derived in
-  `julia/derivations/reid1960_full_derivation.jl` (Assertions 12-15) carries
+  `derivations/reid1960_full_derivation.jl` (Assertions 12-15) carries
   over verbatim. This is a real saving and should be claimed.
 - **BC3 (normal stress).** `-p_rr = p + δp - 2μ ∂u_r/∂r`. Here η is genuinely
   multiplicative, so it becomes the *surface* value `η_s ≡ η(γ̇|_{r=R})`.
@@ -379,7 +379,7 @@ Across `test_carreau.jl`, `test_carreau_yasuda.jl`,
   function and a "dedicated dealiasing test below" that do not exist.
 
 `scripts/validate_shear_thinning.jl` — the only artifact touching the
-experimental data in `julia/derivations/data/metrics_3000ppm.csv` — contains
+experimental data in `derivations/data/metrics_3000ppm.csv` — contains
 zero assertions, is absent from `runtests.jl`, and is referenced by no CI
 job.
 
@@ -501,7 +501,7 @@ is by sharpness instead.
   a performance one, exactly as predicted.
 - **A hierarchy derivation** now states every rung from the exact problem down
   to Lamb, with the assumption, the discarded term, and the undo path at each
-  step: `julia/derivations/generalized_newtonian_hierarchy_derivation.jl`.
+  step: `derivations/generalized_newtonian_hierarchy_derivation.jl`.
 
 ### The real decision
 

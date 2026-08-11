@@ -191,3 +191,49 @@ Public  = true
 Private = false
 Order   = [:type, :function]
 ```
+
+## Logging
+
+The solver logs through Julia's standard `Logging`, so it is controlled the way
+any other Julia package is. At the default level a run announces its parameters
+and rheology, the dimensionless time of contact onset and of lift-off, and warns
+if the time step approaches its floor.
+
+Per-step diagnostics — accepted steps, step halvings, Jacobian cache hits and
+misses — are debug level:
+
+```julia
+ENV["JULIA_DEBUG"] = "DropSolver"
+```
+
+To silence a run entirely, wrap it:
+
+```julia
+using Logging
+with_logger(NullLogger()) do
+    simulate(p)
+end
+```
+
+## The bundled scripts
+
+`scripts/` holds everything that uses the solver rather than being part of it.
+All of them are run from the repository root with `--project=.`, except the ones
+that draw figures, which need the plotting stack in the documentation
+environment and so take `--project=docs`.
+
+| script | what it does |
+|---|---|
+| `run_newtonian.jl` | excites ``l=2`` on a free drop and extracts the decay rate and frequency, against Lamb (1932) at several Ohnesorge numbers |
+| `run_ob_case.jl` | the same decay measurement for Newtonian against Oldroyd-B at rising ``\mathrm{De}_1``, showing elasticity suppressing the damping |
+| `run_eigenvalue_sweep.jl` | sweeps ``(\mathrm{Oh},\mathrm{De}_1,\beta_s)`` and checks the measured rate and frequency against the exact root of the Oldroyd-B characteristic equation |
+| `run_impact.jl` | one Newtonian and one Oldroyd-B impact side by side, printing height, contact-node count and leading amplitude |
+| `run_sweep.jl` | a Cartesian product of parameters streamed to CSV, resuming from whatever rows the file already holds |
+| `run_animation.jl` | renders an impact to MP4, rasterising in pure Julia and piping raw RGB24 to `ffmpeg` |
+| `compare_solvers.jl` | regenerates the table on *Choosing a Solver* |
+| `validate_gabbard.jl`, `validate_shear_thinning.jl` | the two validation campaigns of *Home* |
+| `callmap.jl`, `callmap_draw.jl` | a static call graph of `src/`, and its rendering |
+
+Every script writes under `outputs/`: numbers to `outputs/csv/`, images to
+`outputs/figures/`. A figure carries the name of the script that drew it, so
+`figure_vorticity.jl` produces `figure_vorticity.png`.

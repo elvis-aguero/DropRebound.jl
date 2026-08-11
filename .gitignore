@@ -2,12 +2,19 @@
 .claude/
 *.jl.cov
 *.jl.mem
-julia/outputs/csv/*
-julia/outputs/jld/*
-julia/outputs/figures/*
-!julia/outputs/csv/.gitkeep
-!julia/outputs/jld/.gitkeep
-!julia/outputs/figures/.gitkeep
+
+# `outputs/` is the single place every script writes. Two of its four
+# subdirectories are versioned, because published numbers and published
+# images have to be reproducible from the repository alone:
+#   outputs/csv/     -- tracked; backs the tables in docs/ and README
+#   outputs/figures/ -- tracked; the images README.md and the docs render
+#   outputs/jld/     -- ignored; solver state dumps, large and regenerable
+#   outputs/logs/    -- ignored; stdout of long runs, useful only in the moment
+outputs/jld/*
+outputs/logs/*
+!outputs/jld/.gitkeep
+!outputs/logs/.gitkeep
+
 docs/build/
 docs/src/derivations/
 

@@ -308,7 +308,7 @@ version = "1.6.0"
 
 [[deps.DropSolver]]
 deps = ["LinearAlgebra", "Logging"]
-path = "../julia"
+path = ".."
 uuid = "c7e3b8a1-f2d4-4e9a-8b5c-1d6f3a2e7c04"
 version = "0.1.0"
 

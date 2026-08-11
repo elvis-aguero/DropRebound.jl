@@ -10,7 +10,7 @@ include(joinpath(@__DIR__, "prettylatex.jl"))
 include(joinpath(@__DIR__, "figures.jl"))
 build_all()
 
-const DERIVATIONS_SRC = joinpath(@__DIR__, "..", "julia", "derivations")
+const DERIVATIONS_SRC = joinpath(@__DIR__, "..", "derivations")
 const DERIVATIONS_OUT = joinpath(@__DIR__, "src", "derivations")
 
 isdir(DERIVATIONS_OUT) && rm(DERIVATIONS_OUT; recursive=true)
@@ -66,7 +66,7 @@ const UNPUBLISHED = [
 ]
 
 all_scripts = Set(filter(f -> endswith(f, ".jl"), readdir(DERIVATIONS_SRC)))
-@assert Set(vcat(PUBLISHED, UNPUBLISHED)) == all_scripts "docs/make.jl is out of sync with julia/derivations/*.jl -- add the new/renamed script to PUBLISHED or UNPUBLISHED"
+@assert Set(vcat(PUBLISHED, UNPUBLISHED)) == all_scripts "docs/make.jl is out of sync with derivations/*.jl -- add the new/renamed script to PUBLISHED or UNPUBLISHED"
 
 # script name -> path of its rendered page, for use in `pages`
 const PAGE = Dict{String,String}()

@@ -109,7 +109,7 @@ function viscosity_curve()
                title="Flow curve of the validation fluid", label="Cross model")
     hline!(plt, [1.0], c=:gray, ls=:dash, lw=1.2, label="rest viscosity η₀")
     hline!(plt, [ratio], c=:gray, ls=:dot, lw=1.2, label="infinite-shear floor η∞")
-    ## MEASURED, not assumed. `julia/scripts/study_recovery_identifiability.jl` evaluates
+    ## MEASURED, not assumed. `scripts/study_recovery_identifiability.jl` evaluates
     ## `shear_rate` through the interior over a bounce at M = 90: on this fluid, over
     ## We in [0.2, 3], the tenth to ninetieth percentile is 200 to 5300 per second. The
     ## band used to read 10 to 10^4, which was a guess and put the lower edge a decade
