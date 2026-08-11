@@ -324,6 +324,41 @@ to 8 per cent across seven Weber groups of at least five repetitions each. A New
 the same zero-shear viscosity does not rebound at all, so the measured rebound exists because
 the fluid thins. The Carreau–Yasuda parameters come from that fluid's own rheometry.
 
+### One model across four decades of viscosity
+
+The sharpest test is not any single fluid but the five together. Water and four polymer
+solutions of rising concentration are separate liquids only in their rheology: the same
+equations, the same discretisation and the same contact treatment run on all of them, and the
+only thing that changes from one curve to the next is the measured ``\eta(\dot\gamma)``.
+Nothing is fitted to any of the 389 impacts.
+
+![Restitution against Weber number for five fluids: experiment as points, model as lines](assets/figure_concentrations.png)
+
+Zero-shear Ohnesorge runs from 0.0068 for water to 57 for the 3000 ppm solution — a factor of
+``8\times10^{3}``, spanning the regime where a drop barely notices its own viscosity to the
+regime where a Newtonian drop of the same viscosity would not rebound at all. Restitution
+agrees throughout:
+
+| fluid | ``\mathrm{Oh}_0`` | experiments | median relative error in ``\varepsilon`` |
+|---|---|---|---|
+| water | 0.0068 | 53 | 8.6 % |
+| 300 ppm | 0.50 | 82 | 5.6 % |
+| 1000 ppm | 1.8 | 69 | 4.7 % |
+| 2000 ppm | 9.9 | 114 | 4.2 % |
+| 3000 ppm | 57 | 71 | 2.0 % |
+
+Each row compares nine simulations at ``M = 90``, ``K = 3`` against the experiments nearest
+them in Weber number, within a factor of 1.3.
+
+Two features of the plot are worth naming, because both are physics rather than scatter. The
+five curves separate most at low Weber number and converge at high: a hard impact thins the
+concentrated fluids most, so it strips away the very viscosity that distinguished them, and the
+experiments do the same thing. And the agreement improves monotonically with concentration,
+from 8.6 per cent for water to 2.0 per cent at 3000 ppm. That ordering is the reassuring one.
+Shear thinning is the part of the model with the most freedom in it, so if it were absorbing
+error rather than describing the fluid, the fluids that thin most would be the ones that fit
+worst. They fit best.
+
 ## How to read this
 
 The material is ordered so that each part supplies what the next one needs.
