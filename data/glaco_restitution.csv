@@ -1,9 +1,12 @@
-# Drop rebound on a Glaco superhydrophobic surface, water.
-# Converted from data/Glaco_summary.xlsx by scripts/import_glaco.jl.
+# Drop rebound on a Glaco coating, water.
+# Thenarianto et al. (2023).
+# Converted from data/Glaco_summary.xlsx by scripts/import_thenarianto.jl.
 #
 # The workbook carries impact speed and drop diameter; We, Oh and Bo are
 # computed here from sigma = 0.072 N/m, rho = 997.0 kg/m^3, mu = 0.001 Pa s,
-# the same water properties its own U_cap column assumes.
+# the same water properties its own U_cap column assumes. The radius is
+# taken from that U_cap column rather than from the "D (mm)" column, which
+# changes meaning partway through BSi_summary; see the script for why.
 We,cor,Oh,Bo,R_m,U_impact_m_s
 5.629886297e-05,0,0.01867707479,0.0002166411379,3.99350865e-05,0.01009
 0.0006286487248,0,0.01802911662,0.0002495046062,4.2857166e-05,0.032547

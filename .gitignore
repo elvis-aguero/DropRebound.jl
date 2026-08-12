@@ -24,3 +24,6 @@ CLAUDE.md
 # Transient scratch from analysis sessions.
 scratch_*
 *.ipynb_checkpoints/
+
+# Reference papers: local only, not redistributable.
+literature/
