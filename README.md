@@ -30,12 +30,12 @@ structure and couples the shape modes.
 Contact is a unilateral constraint — gap and film pressure cannot both be non-zero,
 neither may be negative, and the contact extent is an unknown rather than an input.
 
-**Validated** against Gabbard et al. (2025) — restitution to 8 % median, contact time
-to 13 %, over 935 experiments spanning $\mathrm{Oh} \in [0.014, 0.79]$ — and against a
-3000 ppm shear-thinning solution whose zero-shear Ohnesorge is 57, so a Newtonian drop
-that viscous would not rebound at all: the measured rebound exists *because* the fluid
-thins. Restitution agrees to 7 %, contact time to 10 %, with nothing fitted to the
-impact data.
+**Validated** against Gabbard et al. (2025), spanning $\mathrm{Oh} \in [0.014, 0.79]$,
+and against a 3000 ppm shear-thinning solution whose zero-shear Ohnesorge is 57 — so a
+Newtonian drop that viscous would not rebound at all, and the measured rebound exists
+*because* the fluid thins. Nothing is fitted to the impact data. Current residuals are
+in the figures and in `outputs/csv/`, not quoted here: they move with every re-sweep,
+and a number in prose does not.
 
 ![3000 ppm shear-thinning drop: ten simulations against 72 experiments](outputs/figures/figure_shear_thinning.png)
 
