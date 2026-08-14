@@ -26,7 +26,12 @@ const T_CAP  = sqrt(RHO * R_DROP^3 / SIGMA)
 
 """Cross fits. `n` here is the Cross exponent `m`, so the Carreau-Yasuda pair is
 `a = n`, `n_CY = 1 - n`."""
+## Water first. It is Newtonian, so it is the cheapest of the five and the one every
+## water comparison needs; the polymer fluids rebuild a coupled assembly every step and
+## take far longer. Running them ahead of it means waiting hours for the quick answer.
 const FLUIDS = [
+ (ppm =    0, file = "metrics_Water.csv",     eta_inf = 1.0e-3,
+  eta_0 = 1.0e-3,              k = 0.0,               n = 1.0),
  (ppm =  300, file = "metrics_300ppm.csv",   eta_inf = 0.002044613704709438,
   eta_0 = 0.07434592880102645, k = 0.861266870703513,  n = 0.6688965094281969),
  (ppm = 1000, file = "metrics_1000ppm.csv",  eta_inf = 0.002747884967209792,
@@ -38,8 +43,7 @@ const FLUIDS = [
  ## Water is the Newtonian end of the series: no thinning, so no Cross fit. At 20 C
  ## its dynamic viscosity is 1.0e-3 Pa s, which gives Oh = 6.8e-3 here. It is the
  ## control the shear-thinning fluids are read against.
- (ppm =    0, file = "metrics_Water.csv",     eta_inf = 1.0e-3,
-  eta_0 = 1.0e-3,              k = 0.0,               n = 1.0),
+
 ]
 
 """Read a locale export, locating `We`, `epsilon` and `tc` by HEADER."""
@@ -65,6 +69,9 @@ function read_metrics(path)
 end
 
 const M_RUN = parse(Int, get(ENV, "SWEEP_M", string(DropSolver.DEFAULT_M)))
+## Weber points per fluid. Nine was enough to draw a line through; the comparison against
+## experiment wants the shape resolved, not sketched.
+const NWE = parse(Int, get(ENV, "SWEEP_NWE", "18"))
 const K_RUN = DropSolver.DEFAULT_K
 
 ## MEMORY. The coupled geometry cache is ndof^2 * nq * 8 bytes and is built once per
@@ -100,7 +107,7 @@ open(joinpath(OUT, "sweep_concentrations.csv"), "w") do io
         end
         ## the simulation curve, spanning the measured Weber range
         Wes = exp10.(range(log10(minimum(r[1] for r in exp_rows)),
-                           log10(maximum(r[1] for r in exp_rows)); length = 9))
+                           log10(maximum(r[1] for r in exp_rows)); length = NWE))
         for We in Wes
             t0 = time()
             p = newtonian ?

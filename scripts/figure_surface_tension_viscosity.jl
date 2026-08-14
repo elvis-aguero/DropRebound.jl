@@ -88,8 +88,8 @@ groups(gamma, mu) = (Oh = mu / sqrt(RHO * gamma * R_DROP),
 """Restitution curve for a liquid, on the adaptive Weber grid of `_curve.jl`."""
 function curve(gamma, mu)
     g = groups(gamma, mu)
-    ev(We) = cor_or_settle(simulate(ImpactParams(We = We, Bo = g.Bo, Oh = g.Oh,
-                                                 M = M_RUN, K = K_RUN, t_max = T_MAX)), T_MAX)
+    p(We) = ImpactParams(We = We, Bo = g.Bo, Oh = g.Oh, M = M_RUN, K = K_RUN, t_max = T_MAX)
+    ev(We) = cor_or_settle(() -> simulate(p(We)), () -> simulate_lcp(p(We)), T_MAX)
     xs, ys = adaptive_curve(ev, WE_LO, WE_HI; th = TH, n0 = WE_N0,
                             maxpts = WE_MAX_PTS, xfloor = WE_FLOOR,
                             tag = @sprintf("γ=%.1f μ=%.1f", 1000gamma, 1000mu))

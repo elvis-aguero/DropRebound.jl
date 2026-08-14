@@ -15,10 +15,12 @@ const OUT   = joinpath(@__DIR__, "..", "outputs", "csv")
 
 rows = NamedTuple[]
 for f in readdir(OUT; join = true)
-    ## ONLY the sharded production run. An earlier version also globbed
-    ## `sweep_concentrations.csv`, a superseded M = 45 sweep, so the figure silently
-    ## mixed two resolutions with nothing on the plot to say so.
-    occursin("sweep_shard_", f) || continue
+    ## ONLY `sweep_concentrations.csv`, which `sweep_concentrations.jl` writes in one
+    ## piece at a stated resolution. The `sweep_shard_*` files it used to glob are an
+    ## older run scored with the superseded restitution -- a bare velocity ratio keyed on
+    ## the contact-node count, before the metric was unified on `proximity_metrics` -- so
+    ## mixing them in now would put two different definitions of the y axis on one plot.
+    endswith(f, "sweep_concentrations.csv") || continue
     for ln in eachline(f)
         p = split(strip(ln), ',')
         length(p) < 8 && continue
@@ -57,9 +59,7 @@ const COLS = Dict(0 => :steelblue, 300 => :seagreen, 1000 => :goldenrod,
 lab(ppm) = ppm == 0 ? "water" : "$(ppm) ppm"
 
 ## the resolution is stamped on the figure, so a plot cannot outlive the run that made it
-const MK = let fs = filter(f -> occursin("sweep_shard_", f), readdir(OUT))
-    isempty(fs) ? "no data" : "M = 90, K = 3"
-end
+const MK = isfile(joinpath(OUT, "sweep_concentrations.csv")) ? "M = 90, K = 3" : "no data"
 
 plt = plot(xscale = :log10,
            xlabel = "Weber number",
