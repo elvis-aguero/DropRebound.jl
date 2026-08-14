@@ -72,8 +72,8 @@ function figure(s)
     ## millimetre ones: same quantity, different experiment.
     scatter!(plt, d.We[sml], d.C[sml];
              mc = :white, msc = :steelblue, msw = 1.4, ms = 5.5,
-             label = @sprintf("R = %.0f–%.0f µm  (n = %d)",
-                              1e6minimum(d.R[sml]), 1e6maximum(d.R[sml]), sum(sml)))
+             label = @sprintf("R = %.3f–%.3f mm  (n = %d)",
+                              1000minimum(d.R[sml]), 1000maximum(d.R[sml]), sum(sml)))
     scatter!(plt, d.We[big], d.C[big];
              mc = :indianred, msc = :indianred, msw = 0, ms = 5.5, alpha = 0.85,
              label = @sprintf("R = %.2f–%.2f mm  (n = %d)",
