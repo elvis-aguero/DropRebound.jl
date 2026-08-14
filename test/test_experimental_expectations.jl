@@ -82,8 +82,20 @@ spread(v) = (maximum(v) - minimum(v)) / mean(v)
             m = proximity_metrics(p, simulate(p))
             push!(tb, m.tc); push!(cb, m.cor)
         end
-        @test spread(tb) < 0.05                           # measured 1.6 per cent
-        @test spread(cb) > 0.05                           # while restitution notices: 7 per cent
+        @test spread(tb) < 0.05                           # measured 1.5 per cent
+        # Restitution's sensitivity to weight used to read 7 per cent here. It is now
+        # 3.3, and the drop is the correction rather than a loss of sensitivity: the
+        # impact speed is taken at the 0.02R line, so the speed the drop picks up falling
+        # the last 0.02R under gravity, sqrt(2*Bo*h), is removed from it. That term grows
+        # with Bo, so it was contributing a Bond dependence to the MEASUREMENT on top of
+        # the one in the physics. What is left is the physical part.
+        #
+        # The contrast is asserted as a ratio rather than against a fixed number, because
+        # the ratio is the actual claim -- weight moves restitution and leaves contact
+        # time alone -- and it does not have to be re-tuned when either quantity is
+        # re-measured. Measured ratio is 2.1.
+        @test spread(cb) > 0.02                           # restitution still notices
+        @test spread(cb) > 1.5 * spread(tb)               # and notices more than tc does
 
         Ohs = (0.001, 0.01, 0.03, 0.1, 0.3)               # a factor of three hundred
         to = Float64[]; co = Float64[]
@@ -92,7 +104,7 @@ spread(v) = (maximum(v) - minimum(v)) / mean(v)
             m = proximity_metrics(p, simulate(p))
             push!(to, m.tc); push!(co, m.cor)
         end
-        @test spread(to) < 0.05                           # measured 2.4 per cent
+        @test spread(to) < 0.05                           # measured 3.1 per cent
         @test spread(co) > 0.50                           # while restitution halves: 0.95 -> 0.50
     end
 

@@ -462,7 +462,21 @@ end
             a = run_impact(Backend(contact = :active_set); kw...)
             l = run_impact(Backend(contact = :lcp); kw...)
             (a.ok && l.ok) || continue          # a case neither closure completes says nothing
-            @test a.tc == l.tc                  # exact: dt is fixed, tc is a difference of step times
+            # This was an exact `==`, and that was right while `tc` was a difference of
+            # two step times on a fixed grid: both closures landing on the same steps
+            # gave the same float. `tc` now carries a closed-form correction for the
+            # free flight between liftoff and the measurement line, which is a smooth
+            # function of the state at liftoff, so it inherits the roundoff-level
+            # difference between the two closures instead of quantising it away.
+            #
+            # The contact set is still identical, which is what this testset is for.
+            # Worst disagreement over these four cases is 7.6e-7 relative -- four parts
+            # in ten thousand of ONE timestep -- so the two closures cannot be leaving
+            # contact on different steps. `rtol` is set an order of magnitude above that
+            # worst case, and is deliberately far tighter than a timestep: if the
+            # closures ever did disagree about which step liftoff falls on, the error
+            # would jump to order dt/tc ~ 2e-3 and this would fail loudly.
+            @test isapprox(a.tc, l.tc; rtol = 1e-5)
             # The published bound, asserted rather than approximated. Measured worst
             # over these four cases is 2.7e-5, so there is about a factor of nine of
             # headroom; the bound is what the page owes a reader, not the margin.

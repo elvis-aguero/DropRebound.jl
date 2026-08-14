@@ -318,21 +318,43 @@ end
         @test abs(r.tc - 2.816) / 2.816 < TOL               # contact time is fine here
     end
 
-    @testset "known exceedance: contact time at high Ohnesorge" begin
-        # At high Ohnesorge the contact time is well outside fifteen per cent -- about
-        # twenty low at Oh = 0.685 -- while the restitution is inside it. That pattern
-        # is the signature of premature release: the measured contact time flattens to a
-        # floor near the l = 2 period, 2 pi/sqrt(8) = 2.22, and the model goes below it.
-        # Nothing in the solver holds the film in tension, so it lets go as soon as the
-        # edge pressure turns. This test asserts the failure at its measured size, so
-        # that FIXING it breaks the test and forces this comment to be revisited.
+    @testset "contact time at high Ohnesorge, formerly a known exceedance" begin
+        # THIS TEST WAS WRITTEN TO BREAK WHEN THE PROBLEM IT DESCRIBED WAS FIXED, AND IT
+        # HAS. What follows is the revised reading it asked a future author to supply.
+        #
+        # The old reading: contact time at Oh = 0.685 came out about twenty per cent low,
+        # below the l = 2 period 2*pi/sqrt(8) = 2.22, which is a floor a capillary
+        # rebound should not go under. That was diagnosed as premature release -- nothing
+        # in the solver holds the film in tension, so it lets go as soon as the edge
+        # pressure turns.
+        #
+        # That diagnosis was comparing two different quantities. The model was timing
+        # first touch to last release -- the steps on which a contact node is actually
+        # live -- while the experiment it was scored against times the drop between
+        # crossings of a line 0.02R above the substrate, because a camera cannot see
+        # touching. The drop is inside that line before it touches and after it leaves,
+        # so the experimental interval is the longer one by construction.
+        #
+        # Timing the model the way the experiment is timed gives 2.4201 instead of
+        # 2.1343, a difference of 0.2858 spent inside the line without touching. That is
+        # above the l = 2 floor and inside the fifteen per cent bound the rest of the
+        # fleet is held to, with no change to the solver at all.
+        #
+        # The lesson worth keeping is that a physical-sounding failure signature -- a
+        # contact time under the capillary floor, which really would mean the film let go
+        # early -- survived here for as long as it did because the model and the
+        # experiment disagreed about where contact ENDS, not about what the drop does.
+        #
+        # Contact time is still twelve per cent low, so this is a smaller discrepancy
+        # rather than none. It is asserted at that size for the same reason as before: if
+        # it moves in either direction, someone should have to come back and say why.
         r = simulate(ImpactParams(We = 1.383, Bo = 0.02714, Oh = 0.6849,
                                   M = 45, K = 2, t_max = 25.0))
-        @test abs(r.cor - 0.1878) / 0.1878 < TOL          # restitution is fine
+        @test abs(r.cor - 0.1878) / 0.1878 < TOL           # restitution is fine
         err_tc = abs(r.tc - 2.752) / 2.752
-        @test err_tc > TOL                                 # contact time is not
-        @test err_tc < 0.30                                 # and it is this bad, not worse
-        @test r.tc < 2.22                                   # below the l = 2 period floor
+        @test err_tc < TOL                                  # and contact time now is too
+        @test err_tc > 0.05                                 # but it is not yet agreement
+        @test r.tc > 2.22                                   # above the l = 2 period floor
     end
 end
 
