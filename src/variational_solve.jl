@@ -576,13 +576,12 @@ push!(as, copy(curr.a)); push!(adots, copy(curr.adot)); push!(pcs, copy(curr.pc)
             break
         end
     end
-    (t = ts, z = zs, v = vs, cp = cps, pc1 = pc1, a = as, adot = adots, pc = pcs,
-     rejects = nrej,
-     ## the Picard iteration's worst behaviour over the whole march, so a regime where
-     ## the map stops contracting announces itself instead of returning quietly
-     eta_sweeps_max = max_sweeps, eta_resid_max = max_resid,
-     cor = restitution(vs, cps, p.We), tc = contact_time(ts, cps),
-     gap_fraction = contact_gap_fraction(ts, cps))
+    traj = (t = ts, z = zs, v = vs, cp = cps, pc1 = pc1, a = as, adot = adots, pc = pcs,
+            rejects = nrej,
+            ## the Picard iteration's worst behaviour over the whole march, so a regime
+            ## where the map stops contracting announces itself instead of returning quietly
+            eta_sweeps_max = max_sweeps, eta_resid_max = max_resid)
+    merge(traj, _kpis(p, traj))
 end
 
 """
@@ -1157,12 +1156,11 @@ function simulate_lcp(p::ImpactParams)
             break
         end
     end
-    (t = ts, z = zs, v = vs, cp = cps, pc1 = pc1, a = as, adot = adots, pc = pcs,
-     rejects = nrej, lcp_resid_max = worst_resid, lcp_sweeps_max = max_sweeps,
-     eta_sweeps_max = eta_sw, eta_resid_max = eta_rs,
-     noncontiguous_steps = noncontig,
-     cor = restitution(vs, cps, p.We), tc = contact_time(ts, cps),
-     gap_fraction = contact_gap_fraction(ts, cps))
+    traj = (t = ts, z = zs, v = vs, cp = cps, pc1 = pc1, a = as, adot = adots, pc = pcs,
+            rejects = nrej, lcp_resid_max = worst_resid, lcp_sweeps_max = max_sweeps,
+            eta_sweeps_max = eta_sw, eta_resid_max = eta_rs,
+            noncontiguous_steps = noncontig)
+    merge(traj, _kpis(p, traj))
 end
 
 # ============================================================================
@@ -1182,42 +1180,257 @@ end
 # and the metric stops depending on the solver's internal notion of a contact set.
 
 """
-    proximity_metrics(p, r; h_thresh = 0.02, nang = 240) -> NamedTuple
+    _kpis(p, traj) -> (cor, tc, gap_fraction)
 
-Contact time and restitution measured by proximity, the way an experiment measures them.
+The KPIs of a finished march, from the one definition of contact this package has.
 
-Contact exists at a step when the minimum gap over the whole surface is below `h_thresh`
-(in units of the drop radius). `tc` is the interval between the first and last such step;
-`cor` is the ratio of centre-of-mass speeds at those two steps.
-
-The surface is sampled on `nang` angles rather than at the collocation nodes, because the
-criterion is about the surface and not about the discretisation -- "a single point below the
-line", not "a node below the line".
+`proximity_metrics` is that definition. It is called here rather than duplicated, so that
+`simulate`, `simulate_lcp` and every script reading `r.cor` report the same quantity as the
+figures and the validation. Two implementations existed before this and they disagreed: the
+solver returned a bare velocity ratio keyed on the contact-node count, while the metrics
+used an energy ratio keyed on a 0.02R proximity line. Numbers taken from one and compared
+against the other differed by ten per cent at Bond numbers where gravity matters, and by
+much more near the rebound threshold.
 """
-function proximity_metrics(p::ImpactParams, r; h_thresh::Real = 0.02, nang::Int = 240)
-    ls = p.ls
+function _kpis(p::ImpactParams, traj)
+    m = proximity_metrics(p, traj)
+    (cor = m.cor, tc = m.tc, gap_fraction = contact_gap_fraction(traj.t, traj.cp))
+end
+
+"""
+    min_gap_series(p, r; nang = 240) -> Vector
+
+Smallest gap between the drop surface and the substrate at each stored step.
+
+Separated out because it is the only part of `proximity_metrics` that touches the
+shape, it is by far the most expensive part, and **it does not depend on the
+threshold**. Caching it lets a run be re-scored at any `h_thresh`, and under any
+later change of restitution convention, without simulating anything again.
+"""
+function min_gap_series(p::ImpactParams, r; nang::Int = 240)
     ths = range(pi, pi/2; length = nang)          # the lower hemisphere, where contact is
     mus = cos.(ths)
     ## precompute the Legendre matrix once: the per-step cost is then one matrix-vector
     ## product rather than tens of thousands of polynomial evaluations
-    P = [legendre_angular(l, mu).P for mu in mus, l in ls]
-    detected = falses(length(r.t))
+    P = [legendre_angular(l, mu).P for mu in mus, l in p.ls]
     minh = fill(Inf, length(r.t))
     for i in eachindex(r.t)
         z = surface_amplitudes(p, r.a[i])
         rad = 1 .+ P * z                          # surface radius at each sampled angle
         h = r.z[i] .+ mus .* rad                  # height above the substrate
         minh[i] = minimum(h)
-        detected[i] = minh[i] < h_thresh
     end
-    i1 = findfirst(detected); i2 = findlast(detected)
-    if i1 === nothing
-        return (tc = 0.0, cor = NaN, i_first = 0, i_last = 0,
-                v_in = NaN, v_out = NaN, min_gap = minimum(minh), n_detected = 0,
-                h_thresh = h_thresh)
-    end
-    (tc = r.t[i2] - r.t[i1],
-     cor = abs(r.v[i2] / r.v[i1]),
-     i_first = i1, i_last = i2, v_in = r.v[i1], v_out = r.v[i2],
-     min_gap = minimum(minh), n_detected = count(detected), h_thresh = h_thresh)
+    minh
 end
+
+"""
+    proximity_metrics(p, r; h_thresh = 0.02, nang = 240) -> NamedTuple
+
+Contact time and restitution measured by proximity, the way an experiment measures them.
+
+Contact exists at a step when the minimum gap over the whole surface is below `h_thresh`
+(in units of the drop radius). `tc` is the interval between the first and last such step.
+
+RESTITUTION IS AN ENERGY RATIO, AND THE GRAVITY TERM IS NOT OPTIONAL.
+
+    cor  = sqrt(|E_out / E_in|),   E_in  = v_in^2 / 2,
+                                   E_out = v_out^2 / 2 + (z_out - z_in) * Bo
+
+`cor_vel = |v_out / v_in|` is also returned, and is what this function used to report.
+The two agree whenever the centre of mass leaves at the height it arrived at, and the
+second is wrong whenever it does not, because the work gravity does on the drop while it
+is squashed is then counted as restitution.
+
+How wrong is not academic. At `Bo = 0.29` -- a millimetre drop, the largest in the
+Thenarianto et al. (2023) set -- and `We = 3e-3`, the velocity ratio returns 3.9. A
+restitution above one is energy from nowhere: the drop is detected on the way in while it
+is barely moving, and gravity accelerates it over the remaining `h_thresh` of fall.
+
+The energy form is what the ancestor of this package publishes (Gabbard et al. 2025,
+`coef_restitution_exp`), and it is what the experiment measures: their protocol fits
+parabolas to the free-flight centre-of-mass track and evaluates the velocity at the
+contact instants, which is gravity-corrected by construction.
+
+WHERE CONTACT IS DECLARED IS A SEPARATE CHOICE, and the energy form does not rescue a bad
+one. At `Bo = 0.29` the speed picked up falling through `0.02R` is `sqrt(2 Bo h_thresh)`,
+twice the impact speed at that Weber number, and the energy ratio still returns 3.8. Pass
+`h_thresh = 0` to declare contact where the drop actually touches, which is what
+Thenarianto et al. measure and what stays finite there.
+
+The surface is sampled on `nang` angles rather than at the collocation nodes, because the
+criterion is about the surface and not about the discretisation -- "a single point below the
+line", not "a node below the line".
+"""
+function proximity_metrics(p::ImpactParams, r; h_thresh::Real = 0.02, nang::Int = 240,
+                           minh::Union{Nothing,AbstractVector} = nothing)
+    minh = minh === nothing ? min_gap_series(p, r; nang = nang) : minh
+    detected = minh .< h_thresh
+    i1 = findfirst(detected)
+    if i1 === nothing
+        return (tc = 0.0, cor = NaN, cor_vel = NaN, i_first = 0, i_last = 0,
+                v_in = NaN, v_out = NaN, min_gap = minimum(minh), n_detected = 0,
+                released = false, h_thresh = h_thresh)
+    end
+
+    ## LIFTOFF IS AN EVENT, NOT THE END OF THE MARCH.
+    ##
+    ## The outgoing state is read where the drop rises back above the line, which is
+    ## the last index at which it is still detected. A drop that never leaves has no
+    ## such index and no outgoing state: there is no restitution to report, and the
+    ## caller is told `released = false` rather than handed a number.
+    ##
+    ## Taking `findlast(detected)` instead evaluates the outgoing energy at whatever
+    ## step the march happened to stop on. For a settled drop that is `t_max`, by which
+    ## time the centre of mass has sunk well below where it touched, so the
+    ## gravitational term makes E_out NEGATIVE and `sqrt(abs(...))` turns a drop that
+    ## never bounced into a restitution of six. This is what the ancestor avoids by
+    ## computing `Eout` only inside the branch that detects liftoff.
+    ## Two ways the drop can stop being detected, and only one of them is a liftoff.
+    ## `stop_on_release` ends the march at release, so a bouncing drop has no
+    ## un-detected step at all -- the trajectory simply stops. A settled drop also has
+    ## none, because it is still down when the clock runs out. The two are told apart
+    ## by whether the clock ran out, not by the absence of a later step.
+    ## Liftoff ends the FIRST contact: the first stored step at which the surface is back
+    ## above the line. Not the last step in contact anywhere in the march -- a drop that
+    ## bounces, falls back under gravity and lands again would then have its outgoing
+    ## state read from the wrong impact, and a march long enough to catch the second
+    ## landing would report the first bounce as a drop that never left.
+    ##
+    ## The gap does oscillate while the drop is down, by about 1e-3 of a radius, so "first
+    ## step out of contact" would be unreliable against a threshold of zero. Against 0.02R
+    ## it is not: the whole oscillation sits far below the line, and the first crossing is
+    ## the departure. This is the same reason the threshold is 0.02R and not "the pressure
+    ## is nonzero".
+    ##
+    ## No crossing at all means the drop never got back above the line, which is a drop
+    ## that stayed down: no outgoing state, and no restitution to report.
+    ## Contact ends at the last step the drop is still down. After that it is in free
+    ## flight, and the energy referenced to the measurement line is conserved there, so it
+    ## does not matter whether the march was integrated all the way back up to the line or
+    ## stopped at release: `E_out` is the same either way. Whether the drop CLEARS the line
+    ## is then not a separate question -- it clears it exactly when that energy is
+    ## positive, since reaching the line is what `E_out = 0` means.
+    ##
+    ## This is the same back-extrapolation the ancestor applies on the way in, and it is
+    ## what lets a truncated trajectory be scored without integrating the flight.
+    ## Contact ends at the last step of the FIRST contact episode. Not the last contact in
+    ## the march: with a long enough clock the drop bounces, falls back and lands again,
+    ## and `findlast` would read the outgoing state off the wrong impact.
+    ##
+    ## Three ways the episode can end, and they must not be confused:
+    ##   a step out of contact exists   -> that is the liftoff
+    ##   none, and the clock ran out    -> the drop settled and never left
+    ##   none, and the clock did not    -> `stop_on_release` ended the march AT liftoff
+    j = findfirst(k -> !detected[k], (i1 + 1):length(detected))
+    i2 = if j !== nothing
+        i1 + j - 1
+    elseif r.t[end] >= 0.9 * p.t_max
+        0
+    else
+        length(detected)
+    end
+    if i2 == 0
+        return (tc = r.t[end] - r.t[i1], cor = NaN, cor_vel = NaN,
+                i_first = i1, i_last = 0, v_in = r.v[i1], v_out = NaN,
+                min_gap = minimum(minh), n_detected = count(detected),
+                released = false, h_thresh = h_thresh)
+    end
+
+    ## The drop leaves from a different height than it arrived at, and gravity did work
+    ## over that displacement. Counting it as restitution is what makes the velocity
+    ## ratio exceed one.
+    ## BOTH ENERGIES ARE REFERENCED TO THE MEASUREMENT LINE, NOT TO THE CONTACT INSTANT.
+    ##
+    ## The line sits `h_thresh` above the substrate. The drop crosses it on the way in,
+    ## keeps falling to the substrate, and crosses it again on the way out, so the natural
+    ## reference for an energy budget is the line itself -- and that is what the ancestor
+    ## uses (`Vin_exp = Vin + t0*g`, `CM_in_exp = (1+pixel_adim)*CM_in`).
+    ##
+    ##   v at the line   v_line^2 = v_contact^2 - 2 Bo h        (free fall over h)
+    ##   height          z_ref    = z_contact (1 + h)
+    ##
+    ## Referencing to the contact instant instead -- which this function did -- inflates
+    ## E_in and, far worse, removes a cancellation in E_out. Near the roll-off E_out is a
+    ## difference of two comparable terms, the outgoing kinetic energy against the
+    ## potential energy still owed on the climb back to the line, and it collapses toward
+    ## zero. That collapse IS the roll-off: it is what takes restitution from 0.53 to 0
+    ## over a factor of 1.5 in Weber number. Measured from z_contact the two terms never
+    ## cancel, restitution sits flat near 0.9, and the roll-off does not exist at all.
+    ##
+    ## Below `v_contact^2 = 2 Bo h` there is no crossing to reference to: the drop never
+    ## reached the line in free flight, `E_in` is negative, and the case is one the
+    ## ancestor skips outright. `is_measurable` reports that.
+    v_line_sq = r.v[i1]^2 - 2 * p.Bo * h_thresh
+    z_ref     = r.z[i1] * (1 + h_thresh)
+    E_in  = v_line_sq / 2
+    E_out = r.v[i2]^2 / 2 + (r.z[i2] - z_ref) * p.Bo
+    ## The drop reaches the line only if the energy referenced to it is positive.
+    released = E_out > 0
+
+    ## CONTACT TIME RUNS TO THE LINE, NOT TO WHEREVER THE MARCH STOPPED.
+    ##
+    ## Energy is conserved in free flight, so `cor` does not care whether the trajectory
+    ## was integrated back up to the line or cut off at release. Time is not conserved, and
+    ## `tc` does: a march ended by `stop_on_release` stops while the surface is still below
+    ## the line, and reports a contact time short by the climb. That made `tc` depend on a
+    ## solver option, which it must not.
+    ##
+    ## The remaining climb is free flight, so it is closed-form. Taking the drop as rigid
+    ## over it, the gap rises with the centre of mass, and the first crossing is
+    ##
+    ##     dz = h_thresh - gap(i2),   v t - Bo t^2 / 2 = dz
+    ##     t  = (v - sqrt(v^2 - 2 Bo dz)) / Bo        (the smaller root)
+    ##
+    ## Added only when the march was truncated; when the trajectory already contains the
+    ## crossing, `i2` is that step and there is nothing to add.
+    t_climb = 0.0
+    if i2 == length(detected) && released
+        dz = h_thresh - minh[i2]
+        v2 = r.v[i2]
+        if dz > 0 && v2 > 0
+            disc = v2^2 - 2 * p.Bo * dz
+            t_climb = disc > 0 ? (p.Bo > 0 ? (v2 - sqrt(disc)) / p.Bo : dz / v2) : 0.0
+        end
+    end
+
+    (tc = r.t[i2] - r.t[i1] + t_climb,
+     cor = (E_in > 0 && released) ? sqrt(E_out / E_in) : NaN,
+     e_in = E_in, e_out = E_out,
+     cor_vel = abs(r.v[i2] / r.v[i1]),
+     i_first = i1, i_last = i2, v_in = r.v[i1], v_out = r.v[i2],
+     min_gap = minimum(minh), n_detected = count(detected),
+     released = released, h_thresh = h_thresh,
+     measurable = is_measurable(p, h_thresh), we_measured = we_measured(p, h_thresh))
+end
+
+"""
+    is_measurable(p, h_thresh = 0.02) -> Bool
+
+Whether a drop launched at this Weber number could have reached the measurement line
+from free flight at all.
+
+The line sits `h_thresh` above the substrate, and a drop falling to it under gravity
+arrives with `v^2 = We + 2*Bo*h_thresh`. Run backwards, a drop that arrives at `sqrt(We)`
+was moving at `sqrt(We - 2*Bo*h_thresh)` when it crossed the line -- which is imaginary
+once `We < 2*Bo*h_thresh`. There is then no free-flight state at the line to reference the
+impact to, and the nominal Weber number has stopped describing the experiment: the drop is
+being delivered by gravity, not by its launch.
+
+The ancestor refuses these outright (`if Vn^2 < 2*g*pixel_adim*Ro ... continue`), and so
+should any comparison drawn against it. At `Bo = 0.03` the boundary is `We = 1.3e-3`, well
+inside the range the low-Weber experiments cover.
+"""
+is_measurable(p::ImpactParams, h_thresh::Real = 0.02) = p.We > 2 * p.Bo * h_thresh
+
+"""
+    we_measured(p, h_thresh = 0.02) -> Float64
+
+The Weber number referenced to the measurement line rather than to the launch.
+
+`We_measured = We - 2*Bo*h_thresh`, which is what the ancestor reports as
+`Westar*Vin_exp^2/Vn^2`. The two agree to a part in a thousand once `We` exceeds
+`2*Bo*h_thresh` by a decade, and diverge without bound below that -- so a figure plotted
+against the nominal Weber number puts its lowest points in the wrong place.
+"""
+we_measured(p::ImpactParams, h_thresh::Real = 0.02) =
+    max(p.We - 2 * p.Bo * h_thresh, 0.0)

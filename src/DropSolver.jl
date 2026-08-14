@@ -69,6 +69,7 @@ include("backends.jl")
 export Backend, run_impact, drop_outline, label
 export lcp_residual, lcp_active_set
 export ImpactParams, ImpactState, simulate, simulate_lcp, proximity_metrics, try_step_lcp, lcp_pgs, initial_state, surface_amplitudes
+export min_gap_series, is_measurable, we_measured
 # Export postprocessing
 export SweepKPIs, extract_kpis, compute_contact_radius, drop_profile
 

@@ -283,9 +283,20 @@ end
     @test all(==(0), long.cp[tail])
     @test long.z[end] > 1.0                   # airborne
 
-    ## the flag must not perturb the bounce itself
-    @test isapprox(short.cor, long.cor; rtol = 1e-10)
-    @test isapprox(short.tc,  long.tc;  rtol = 1e-10)
+    ## The flag must not perturb the bounce itself.
+    ##
+    ## Restitution is an energy referenced to the measurement line, and energy is conserved
+    ## in the free flight the flag truncates, so it is invariant to round-off.
+    ##
+    ## Contact time is not conserved: a truncated march stops before the surface climbs
+    ## back through the line, and the remainder is added in closed form assuming the drop
+    ## is rigid over that climb. It is still deforming, so the two agree to the quality of
+    ## that approximation -- a few parts in a thousand -- rather than to round-off. A
+    ## tighter tolerance here would be asserting the approximation is exact, which it is
+    ## not; a looser one would stop noticing if the climb correction were dropped entirely,
+    ## which was worth 1.4 per cent.
+    @test isapprox(short.cor, long.cor; rtol = 1e-8)
+    @test isapprox(short.tc,  long.tc;  rtol = 5e-3)
     n = length(short.t)
     @test isapprox(short.z[1:n], long.z[1:n]; rtol = 1e-10)
 end

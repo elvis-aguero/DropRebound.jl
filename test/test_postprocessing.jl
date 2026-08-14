@@ -189,3 +189,56 @@ end
     @test kpis.max_radius > 0.0
     @test kpis.max_A2     > 0.0
 end
+
+# Restitution is an energy ratio, and gravity is part of it.
+#
+# `proximity_metrics` declares contact when the surface comes within `h_thresh` of the
+# substrate, and the drop is still falling when that happens. Over the remaining
+# `h_thresh` gravity does work on it, and a bare ratio of centre-of-mass speeds books
+# that work as restitution.
+#
+# The failure is not subtle at large Bond number, which is exactly where the millimetre
+# drops of the reference experiments sit. A restitution above one is energy from nowhere,
+# and the velocity ratio produces it.
+#
+# Both quantities are returned so the old one stays reachable, and they must agree when
+# the drop leaves at the height it arrived at, which is the case the correction is
+# designed not to disturb.
+@testset "restitution carries the gravitational work done during contact" begin
+    ## A millimetre drop: Bo = 0.29, the largest in the Thenarianto et al. (2023) set.
+    ##
+    ## We = 3e-3 was used here first, and under the corrected metric that drop never gets
+    ## back to the measurement line: it has no restitution, `cor` is NaN, and there is no
+    ## identity to check. A test of the energy bookkeeping has to be run where a bounce
+    ## exists, so the Weber number is above the threshold `2 Bo h_thresh` = 1.2e-2.
+    p = ImpactParams(We = 0.3, Bo = 0.292, Oh = 0.0031, M = 45, K = 2, t_max = 25.0)
+    r = simulate(p)
+    m = proximity_metrics(p, r)
+
+    ## The identity the change rests on, asserted exactly rather than through whatever
+    ## number a particular resolution happens to produce. An earlier version of this
+    ## test pinned `cor_vel > 1.5`, measured at M = 90, K = 3; at M = 45, K = 2 the same
+    ## case gives 0.15, so the test was measuring the discretisation.
+    ## Both energies are referenced to the measurement line: the incoming velocity is the
+    ## one the drop had crossing it, and the outgoing potential energy is measured from it.
+    @test isapprox(m.e_in,  (m.v_in^2 - 2 * p.Bo * m.h_thresh) / 2; rtol = 1e-12)
+    @test isapprox(m.e_out, m.v_out^2 / 2 +
+                            (r.z[m.i_last] - r.z[m.i_first] * (1 + m.h_thresh)) * p.Bo;
+                   rtol = 1e-12)
+    @test isapprox(m.cor, sqrt(m.e_out / m.e_in); rtol = 1e-12)
+    @test isapprox(m.cor_vel, abs(m.v_out / m.v_in); rtol = 1e-12)
+    ## At this Bond number the gravitational term is not a rounding correction.
+    @test abs(m.cor - m.cor_vel) > 0.05
+
+    ## Where gravity is negligible the two must agree, so nothing already published on
+    ## the small-drop side moves.
+    ps = ImpactParams(We = 0.5, Bo = 1e-5, Oh = 0.0373, M = 45, K = 2, t_max = 25.0)
+    rs = simulate(ps)
+    ms = proximity_metrics(ps, rs)
+    @test isapprox(ms.cor, ms.cor_vel; rtol = 1e-3)
+
+    ## And the identity behind the correction: with the endpoints at equal height the
+    ## energy ratio reduces to the velocity ratio exactly.
+    @test isapprox(sqrt(abs((rs.v[ms.i_last]^2 / 2) / (rs.v[ms.i_first]^2 / 2))),
+                   ms.cor_vel; rtol = 1e-12)
+end

@@ -117,9 +117,16 @@ mean_(v) = sum(v) / length(v)
         m = proximity_metrics(p, r; h_thresh = 0.02)
         @test m.n_detected > 0
         @test m.i_first < m.i_last
-        ## the definition, recomputed from the trajectory
-        @test m.tc ≈ r.t[m.i_last] - r.t[m.i_first]
-        @test m.cor ≈ abs(r.v[m.i_last] / r.v[m.i_first])
+        ## the definition, recomputed from the trajectory.
+        ##
+        ## `cor` is the energy ratio referenced to the measurement line, so the velocity
+        ## ratio it used to be is now `cor_vel` and that is what this checks. `tc` may
+        ## exceed the span between the two stored steps: when the march was stopped at
+        ## release the climb back to the line is added in closed form, so the identity
+        ## holds as a lower bound rather than an equality.
+        @test m.tc >= r.t[m.i_last] - r.t[m.i_first] - 1e-12
+        @test m.cor_vel ≈ abs(r.v[m.i_last] / r.v[m.i_first])
+        @test m.cor ≈ sqrt(abs(m.e_out / m.e_in))
         ## approaching at the start, leaving at the end
         @test m.v_in < 0
         @test m.v_out > 0
