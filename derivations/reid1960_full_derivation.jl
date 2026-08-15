@@ -162,7 +162,7 @@ end                                                                             
 # energy to the kinetic energy. *Variational Mechanics* gives both, with
 # ``G\propto(l-1)(l+2)`` from the excess area and the remaining factor ``l``
 # from the inertia of the potential flow. Reid takes the formula as given, and
-# so does this page, but the corpus does not have to.
+# so does this page.
 #
 # Viscosity enters the final answer only through this one number,
 # ``\sigma_{l;0}``.
@@ -927,8 +927,7 @@ end                                                                             
 # ## What a change of rheology costs
 #
 # Every later part starts by modifying this one, so it is worth being precise
-# about which pieces are load-bearing for a Newtonian fluid specifically. The
-# temptation is to modify too little.
+# about which pieces are load-bearing for a Newtonian fluid specifically.
 #
 # **Rheology-agnostic** -- depends only on incompressibility and geometry,
 # carries over unchanged: the poloidal decomposition (the poloidal decomposition), the

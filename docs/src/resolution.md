@@ -131,7 +131,7 @@ Not every pair ``(M, K)`` runs. On the shear-thinning fluid, ``M = 45, K = 4`` a
 ``M = 60, K = 3`` both stop before completing, while ``M = 45, K = 3`` completes. In each case
 the contact solve is exact, with a complementarity residual near ``10^{-15}``, and it is the
 fixed-point iteration on the viscosity that fails to reach its tolerance. Reducing the time step
-does not help; it has been taken to ``10^{-10}`` without effect.
+does not help — the failure is independent of ``\Delta t`` down to ``10^{-10}``.
 
 ### The viscosity tolerance, and why it depends on the truncation
 

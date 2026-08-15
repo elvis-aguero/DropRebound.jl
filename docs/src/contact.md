@@ -453,32 +453,12 @@ pivots. Observed counts are a handful, and the complementarity residual is repor
 Both closures therefore read the contact set from the same two inequalities. They differ in that
 the active set walks to it one node at a time from the previous step's answer, while the
 complementarity solve treats every node's status as an independent unknown and may return a
-contact region that is not a single patch.
-
-The two agree, and where they do not is as informative as where they do. Over a grid of 25
-impacts spanning ``\mathrm{Oh}\in[0.02,\,0.7]`` and ``\mathrm{We}\in[0.1,\,3]`` at ``M = 45``,
-restitution agrees to ``2.9\times10^{-5}`` at worst, with the largest discrepancies along the
-low-viscosity edge ``\mathrm{Oh} = 0.02``. Contact time is identical in every one of them, to the
-last bit. That is not a general guarantee. It holds because no step was rejected anywhere on this
-grid, so both closures ran the same step sequence, and ``t_c`` is a difference of step times.
-Where steps are rejected the two histories diverge and the contact times separate a little. On
-the 3000 ppm shear-thinning fluid at the production truncation ``M = 90``, where the viscosity is
-rebuilt inside every sweep and steps are rejected, restitution agrees to ``7.1\times10^{-7}`` and
-contact time to ``2.9\times10^{-5}``.
-
-One of the 25 is missing from that comparison. At ``\mathrm{We} = 3`` and
-``\mathrm{Oh} = 0.02``, the fastest and least viscous corner, the active set never releases: it
-reaches the end of the march with the drop still on the substrate, while complementarity bounces.
-Reading the contact set node by node from the previous step's answer is the weaker of the two
-methods at the edge of the parameter range.
-
-Complementarity is also free to return an annular contact, with the pole released while a ring
-still presses, and it very nearly does not. Counting the accepted steps whose contact set is not
-a single run of adjacent nodes gives 0.7% at ``\mathrm{We} = 0.5`` and 6.4% at
-``\mathrm{We} = 2`` when ``M = 45``, falling to 0.4% and 1.7% at ``M = 90``. These are brief
-transients at the release edge, and they thin with resolution without reaching zero. A contact
-patch that stays a patch is therefore a result of the dynamics rather than an assumption imposed
-on them, but it is a result that holds to a few parts in a thousand and not exactly.
+contact region that is not a single patch. Reading the set node by node is the weaker of the two
+at the fast, low-viscosity edge of the parameter range, where the active set can fail to release
+at all; complementarity has no such restriction, though it too can return a region that is not a
+single patch, briefly, at the release edge. A contact patch that stays a patch is a result of the
+dynamics, not an assumption imposed on them — but not an exact one, since either closure can
+depart from it at the margins just described.
 
 ## Is the contact problem convex?
 

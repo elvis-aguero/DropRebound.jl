@@ -161,6 +161,9 @@ makedocs(
             "Resolution and Convergence"       => "resolution.md",
             "API Reference"                    => "api.md",
         ],
+        "VII. Validation" => [
+            "Validation"                       => "validation.md",
+        ],
         # Reference material the chapters lean on. Kept separate so no chapter has to
         # interrupt itself to prove a standard identity or define a symbol twice.
         "Reference" => [

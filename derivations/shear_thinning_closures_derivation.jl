@@ -125,12 +125,10 @@ println("="^78)  #src
 
 # ## From the interior to two numbers per mode
 #
-# This is the step the two pages used to leave implicit, and it belongs here
-# rather than on the model page: the coefficient matrices below exist *only*
-# once ``\psi_l`` has been eliminated, which is what the closure above does.
-# Stated on the model page they contradicted its own summary, which records that
-# the second-order oscillator form is a consequence of eliminating the interior
-# rather than a feature of the physics.
+# The coefficient matrices below exist *only* once ``\psi_l`` has been
+# eliminated, which is what the closure above does: the second-order oscillator
+# form is a consequence of eliminating the interior, not a feature of the
+# physics.
 #
 # ### Two routes, and they must agree
 #
@@ -326,21 +324,13 @@ end  #src
 
 @variables rr tt qq hh1 hh2  #src
 
-# ### The traction route needs the pressure back
-#
-# Taking the curl removed ``p`` from the interior problem, which is why it closed.
-# The traction route then has to reintroduce it, because the normal-stress balance
-# contains it explicitly. This is a cost of THIS route and not of the model: the
-# energy route obtains the same surface equation by varying the surface energy and
-# never needs a pressure at all, as the model page shows. What follows is
-# therefore archived here rather than deleted -- it is correct, and it is what the
-# traction assembly requires.
-#
 # ### The pressure has to be recovered, and it is no longer harmonic
 #
 # Taking the curl removed the pressure from the interior problem, which is why
-# that problem closed. But the normal-stress balance contains ``p`` explicitly,
-# so it has to be brought back before the surface equation can be written.
+# that problem closed. The traction route now has to reintroduce it, because the
+# normal-stress balance contains it explicitly -- a cost of this route and not of
+# the model: the energy route obtains the same surface equation by varying the
+# surface energy and never needs a pressure at all, as the model page shows.
 #
 # Taking the divergence of the momentum equation and using ``\nabla\cdot\bm u=0``
 # gives a Poisson equation for it:
@@ -1069,12 +1059,12 @@ end  #src
 # `simulate_lcp` carry the full coupled system at the top of the table, with
 # `eta` evaluated pointwise on the summed strain field.
 #
-# The gap between the two is not academic. On the 3000 ppm fluid this rung
-# gives a median restitution error of 19 per cent against experiment, and
-# reports contact times of 21 to 25 capillary times where the measurement is
-# 3.7 to 4.2, which is to say the drop never releases. The coupled system gives
-# 6 per cent. At that fluid's operating Ohnesorge number the effective-viscosity
-# closure is outside its range, and the rest of this page is the account of why.
+# The gap between the two is not academic. At the operating Ohnesorge number of
+# the most concentrated fluid this package is checked against, the
+# effective-viscosity closure reports a contact time far outside the measured
+# range -- long enough to say the drop never releases -- while the coupled
+# system does not. The closure is outside its range there, and the rest of
+# this page is the account of why.
 #
 # Its error is the one measured in the previous section: for a realistic
 # multi-mode state the

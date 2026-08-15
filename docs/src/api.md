@@ -231,7 +231,7 @@ environment and so take `--project=docs`.
 | `run_sweep.jl` | a Cartesian product of parameters streamed to CSV, resuming from whatever rows the file already holds |
 | `run_animation.jl` | renders an impact to MP4, rasterising in pure Julia and piping raw RGB24 to `ffmpeg` |
 | `compare_solvers.jl` | regenerates the table on *Choosing a Solver* |
-| `validate_gabbard.jl`, `validate_shear_thinning.jl` | the two validation campaigns of *Home* |
+| `validate_gabbard.jl`, `validate_shear_thinning.jl` | the two validation campaigns of *Validation* |
 | `callmap.jl`, `callmap_draw.jl` | a static call graph of `src/`, and its rendering |
 
 Every script writes under `outputs/`: numbers to `outputs/csv/`, images to

@@ -36,8 +36,8 @@
 #    period-averaged object. Section 2 does that average in closed form up to a
 #    single one-dimensional quadrature.
 # 3. **the decomposition itself,** including the choice of error norm, which
-#    turns out to change the answer by more than an order of magnitude and is
-#    the single most misleading step. Section 3.
+#    changes the answer by more than an order of magnitude and is the single
+#    most misleading step. Section 3.
 #
 # ## Notation
 #
@@ -1044,12 +1044,12 @@ end  #src
 # have a dense nodal set. Real solver states have exactly that structure, which
 # is why the two rows measured from live solves are the widest in the table.
 #
-# A sign-pattern variation was tried and is *not* an independent test, which is
-# worth recording so nobody repeats it: under ``\mu\to-\mu``,
-# ``P_l\to(-1)^lP_l``, so the field built from ``\dot A_l=(-1)^l l^{-p}`` is the
-# exact mirror image of the one built from ``l^{-p}``. Every ``|\eta_{l'}|`` is
-# bit-for-bit identical. Genuinely different *shapes* -- exponential decay, a
-# bump at ``l=10``, and the real solver vectors -- are used instead.
+# A sign flip alone is not a genuinely different test case: under
+# ``\mu\to-\mu``, ``P_l\to(-1)^lP_l``, so the field built from
+# ``\dot A_l=(-1)^l l^{-p}`` is the exact mirror image of the one built from
+# ``l^{-p}``, and every ``|\eta_{l'}|`` comes out bit-for-bit identical. The
+# rows above instead use genuinely different *shapes* -- exponential decay, a
+# bump at ``l=10``, and the real solver vectors.
 #
 # ### 5.3 What this costs the cheaper closure
 #
