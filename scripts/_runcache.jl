@@ -56,11 +56,28 @@ function cache_path(p::ImpactParams; solver::Symbol = :active_set)
 end
 
 function cache_store(path, t, z, v, minh)
-    open(path * ".tmp", "w") do io      # write-then-rename: a killed job leaves no half file
+    ## The scratch name must be unique per writer, not just per key. Two curves on one
+    ## figure can be the SAME liquid -- clean water is both the reference surface tension
+    ## and the reference viscosity -- so two threads reach an identical key at the same
+    ## moment. With a shared `path * ".tmp"` they interleave as: A writes tmp, B reopens
+    ## and truncates the same tmp, A renames it into place, B renames and finds nothing
+    ## there. That is an ENOENT that kills the run after an hour of correct work, and it
+    ## depends on thread timing, so it does not reproduce on demand.
+    ##
+    ## `tempname` in the cache's own directory keeps the rename on one filesystem, which
+    ## is what makes it atomic and what makes write-then-rename worth doing at all.
+    tmp = tempname(dirname(path); cleanup = false)
+    open(tmp, "w") do io                # write-then-rename: a killed job leaves no half file
         write(io, Int64(length(t)))
         for a in (t, z, v, minh); write(io, Float64.(a)); end
     end
-    mv(path * ".tmp", path; force = true)
+    try
+        mv(tmp, path; force = true)
+    catch
+        ## Another writer got there first with byte-identical content -- same key means
+        ## same run. Drop ours rather than fail the sweep.
+        rm(tmp; force = true)
+    end
 end
 
 function cache_load(path)
