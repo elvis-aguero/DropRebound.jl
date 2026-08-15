@@ -42,6 +42,7 @@ using DropSolver
 gr()
 BLAS.set_num_threads(1)   # one BLAS thread per worker thread; see parallel_curves
 include(joinpath(@__DIR__, "_curve.jl"))
+include(joinpath(@__DIR__, "_runcache.jl"))
 
 const ROOT = joinpath(@__DIR__, "..")
 const OUT  = joinpath(ROOT, "outputs", "csv")
@@ -59,14 +60,25 @@ const MU0    = 1.0e-3        # Pa s, clean water
 ## The Weber range of the experiments, not a round number: the interesting part of
 ## the curve is the roll-off as We -> 0, and a grid that starts at 0.05 cannot show
 ## whether the model reproduces it.
-const WE_LO, WE_HI = 0.004, 3.0
+## The low end has to sit BELOW the roll-off of every liquid on the figure, or the
+## panels cut off the one feature they are drawn to show. The drop stops reaching the
+## 0.02R line at We = 0.04 Bo, and here -- unlike the contamination figure, which plots
+## everything against the Weber number the EXPERIMENT reported -- each curve is at its
+## own We, so Bo differs from curve to curve and the roll-off moves with gamma: from
+## 4.8e-4 at 72.8 mN/m out to 1.3e-3 at 28. 2e-4 clears all of them.
+const WE_LO, WE_HI = 2.0e-4, 3.0
 ## One threshold sets both guarantees of `_curve.jl`: no consecutive pair of
 ## samples differs by more than TH in restitution, and the sweep is followed to
 ## smaller We until restitution itself drops below TH.
 const TH         = 0.03
 const WE_N0      = 6
 const WE_MAX_PTS = 55
-const WE_FLOOR   = 1.0e-8
+## Coarseness in x, in decades, and the width below which an interval is left alone.
+## These replace an earlier `xfloor`, which was an absolute smallest-We to follow down
+## to -- a different quantity, and one that stopped existing when the sampler learned to
+## refine in x as well as y.
+const WE_X_MAX   = 0.10
+const WE_X_TH    = 0.02
 
 """Our own water impacts: `We;tc;epsilon`, semicolon separated with comma decimals."""
 function read_water()
@@ -88,11 +100,21 @@ groups(gamma, mu) = (Oh = mu / sqrt(RHO * gamma * R_DROP),
 """Restitution curve for a liquid, on the adaptive Weber grid of `_curve.jl`."""
 function curve(gamma, mu)
     g = groups(gamma, mu)
-    p(We) = ImpactParams(We = We, Bo = g.Bo, Oh = g.Oh, M = M_RUN, K = K_RUN, t_max = T_MAX)
-    ev(We) = cor_or_settle(() -> simulate(p(We)), () -> simulate_lcp(p(We)), T_MAX)
+    par(We) = ImpactParams(We = We, Bo = g.Bo, Oh = g.Oh, M = M_RUN, K = K_RUN, t_max = T_MAX)
+    ## Scored through the cache, so re-running this figure after a change to the
+    ## postprocessing costs no simulations, and through `proximity_metrics` -- the same
+    ## single definition of restitution the rest of the repository uses. A drop that
+    ## never gets back above the 0.02R line has not rebounded, and is recorded as zero
+    ## rather than as a failed run.
+    function ev(We)
+        p = par(We)
+        is_measurable(p, 0.02) || return 0.0        # a definition, not a simulation
+        m = score(p, cached_series(p); h_thresh = 0.02)
+        (m.released && isfinite(m.cor)) ? m.cor : 0.0
+    end
     xs, ys = adaptive_curve(ev, WE_LO, WE_HI; th = TH, n0 = WE_N0,
-                            maxpts = WE_MAX_PTS, xfloor = WE_FLOOR,
-                            tag = @sprintf("γ=%.1f μ=%.1f", 1000gamma, 1000mu))
+                            maxpts = WE_MAX_PTS, x_max = WE_X_MAX, x_th = WE_X_TH,
+                            tag = @sprintf("g=%.1f m=%.1f", 1000gamma, 1000mu))
     xs, ys, g
 end
 
@@ -106,13 +128,15 @@ const CG     = [:black, :steelblue, :goldenrod, :indianred]
 function main()
     common = (xscale = :log10, xlabel = "Weber number  We", framestyle = :box,
               grid = true, gridalpha = 0.15, tickfontsize = 11, guidefontsize = 13,
-              legendfontsize = 10, titlefontsize = 12, ylims = (0.0, 1.0),
-              legend = :bottomleft)
+              legendfontsize = 10, ylims = (0.0, 1.0),
+              legend = :bottomright, legendtitlefontsize = 10)
 
-    pγ = plot(; ylabel = "restitution  ε",
-              title = "Surface tension   (μ = 1.0 mPa·s)", common...)
-    pμ = plot(; ylabel = "restitution  ε",
-              title = "Viscosity   (γ = 72.8 mN/m)", common...)
+    ## No panel titles. The property being VARIED is already in each legend entry; what
+    ## a title was carrying that nothing else does is the property held FIXED, so that
+    ## goes on the legend as its heading. Dropping it outright would leave two panels of
+    ## restitution curves with no way to tell which liquid property is constant.
+    pγ = plot(; ylabel = "restitution  ε", legendtitle = "μ = 1.0 mPa·s", common...)
+    pμ = plot(; ylabel = "restitution  ε", legendtitle = "γ = 72.8 mN/m", common...)
 
     ## Our own water impacts, on both panels: the question the figure exists to
     ## answer is whether either property, pushed to a value an impure liquid could
@@ -164,10 +188,10 @@ function main()
         flush(stdout)
     end
 
-    fig = plot(pγ, pμ; layout = (1, 2), size = (1150, 480), dpi = 200,
-               left_margin = 7Plots.mm, bottom_margin = 7Plots.mm, top_margin = 5Plots.mm,
-               plot_title = "Water drop, R = 0.3 mm, M = 90, K = 3: can either property move the model onto our water data?",
-               plot_titlefontsize = 12)
+    ## Radius and resolution are not on the figure any more; they are columns in the
+    ## CSV written beside it, which is where a reader who needs them should look.
+    fig = plot(pγ, pμ; layout = (1, 2), size = (1150, 470), dpi = 200,
+               left_margin = 7Plots.mm, bottom_margin = 7Plots.mm, top_margin = 4Plots.mm)
     out = joinpath(FIGS, "figure_surface_tension_viscosity.png")
     savefig(fig, out)
 
