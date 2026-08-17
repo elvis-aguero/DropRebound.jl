@@ -146,6 +146,30 @@ function jumps(xs, ys, th; x_th::Float64 = 0.02)
 end
 
 """
+    trim_ceiling_jump(xs, ys, ceiling, th; x_th = 0.02) -> (xs, ys)
+
+Drop the last sample if it sits at `ceiling` and is a genuine jump from its
+neighbour, by the same test `jumps` uses: narrower than `x_th` decades in `x`,
+larger than `th` in `y`.
+
+A caller passes `ceiling` because it does not trust the curve above that point --
+`adaptive_curve` is called with `hi = ceiling` for exactly that reason. But the
+last sample is still evaluated AT the ceiling, and if the underlying model is
+already breaking down there, that sample can land as a step rather than a bend:
+too narrow in `x` for the sampler to have refined further, too large in `y` to
+be a smooth continuation of the curve up to that point. Plotting it anyway would
+show a real discontinuity as though it were a resolved result, in a regime the
+caller has already disclaimed. Leaves `xs`, `ys` untouched if the last point is
+not at `ceiling`, or is a smooth continuation rather than a step.
+"""
+function trim_ceiling_jump(xs, ys, ceiling, th; x_th::Float64 = 0.02)
+    length(xs) >= 2 && isapprox(xs[end], ceiling; rtol = 1e-9) || return xs, ys
+    js = jumps(xs, ys, th; x_th = x_th)
+    (!isempty(js) && isapprox(js[end][2], xs[end]; rtol = 1e-9)) || return xs, ys
+    xs[1:end-1], ys[1:end-1]
+end
+
+"""
     parallel_curves(f, items) -> Vector
 
 Evaluate `f` on each item concurrently, returning results in the order given.

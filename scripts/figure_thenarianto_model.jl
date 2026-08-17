@@ -62,6 +62,34 @@ const RHO, SIGMA, MU, GRAV = 997.0, 0.072, 1.0e-3, 9.81
 oh_of(R) = MU / sqrt(RHO * SIGMA * R)
 bo_of(R) = RHO * GRAV * R^2 / SIGMA
 
+"""
+Per-point marker size and colour for one population's experimental scatter,
+encoding Bond and Ohnesorge directly rather than folding every drop in a
+population into one size and one colour.
+
+Size follows `sqrt(Bo)` -- proportional to `R` itself, since rho, g and sigma are
+fixed across one surface's water drops -- normalised within the population's OWN
+range. The two populations are not put on one shared scale: the header already
+notes the sprayed population's Bond spans a factor of four hundred and the
+dispensed one only 1.3, and a shared scale would flatten the interesting spread
+in the first population to show the (already known, already why there are two
+populations) gap between them instead. Colour follows Oh the same way, walked
+along a gradient anchored on one hue per population, so a data point can be read
+against the smallest/median/largest-R model curves it should sit nearest to.
+"""
+function bo_oh_style(R, grad; ms_lo = 3.5, ms_hi = 8.5)
+    Bo, Oh = bo_of.(R), oh_of.(R)
+    rt(x, lo, hi) = lo == hi ? 0.5 : clamp((x - lo) / (hi - lo), 0.0, 1.0)
+    slo, shi = extrema(sqrt.(Bo))
+    olo, ohi = extrema(Oh)
+    ms = [ms_lo + (ms_hi - ms_lo) * rt(sqrt(b), slo, shi) for b in Bo]
+    mc = [get(grad, rt(o, olo, ohi)) for o in Oh]
+    (; ms, mc)
+end
+
+const GRAD_SML = cgrad([:lightskyblue1, :steelblue, :midnightblue])
+const GRAD_BIG = cgrad([:navajowhite, :indianred, :darkred])
+
 const SURFACES = [
     (key = "glaco", csv = "glaco_restitution.csv", title = "Glaco coating", alpha = 2.9e-3),
     (key = "bsi",   csv = "bsi_restitution.csv",   title = "Black silicon", alpha = 1.1e-4),
@@ -118,6 +146,16 @@ function curve(R, lo, hi, tag)
 
     xs, ys = adaptive_curve(ev, lo, min(hi, WE_CEIL); th = TH, n0 = WE_N0,
                             maxpts = WE_MAX_PTS, x_th = WE_X_TH, x_max = WE_X_MAX, tag = tag)
+
+    ## WE_CEIL is a declared boundary of trust, not a measured one -- see the header.
+    ## When the data reach past it, the ceiling becomes the last sampled point, and if
+    ## the model is already breaking down there, that sample is the one place a real
+    ## discontinuity could be mistaken for a resolved result. Observed on the black
+    ## silicon large-drop curve: a smooth decline out to We = 4.88, then a step to
+    ## We = 5.0 nine times steeper than the trend it interrupts. Trust the disclaimer
+    ## over the sample.
+    hi > WE_CEIL && ((xs, ys) = trim_ceiling_jump(xs, ys, WE_CEIL, TH; x_th = WE_X_TH))
+
     got = [get(ours, x, (NaN, NaN)) for x in xs]
     (; R, Oh, Bo, xs, ys, ys2 = first.(got), xs2 = last.(got))
 end
@@ -170,7 +208,16 @@ function main()
     for s in SURFACES
         d = read_data(s.csv)
         big, sml = d.R .>= R_SPLIT, d.R .< R_SPLIT
-        lo, hi = minimum(d.We), maximum(d.We)
+
+        ## The plotted range has to hold the whole roll-off of the median-R curve, the
+        ## solid line the comparison is actually made against, not just the range the
+        ## experiment covers. That curve's own cutoff, `2*Bo*h`, can sit below the
+        ## smallest measured We -- the median BSI drop rolls off at We = 2.1e-5 against
+        ## a smallest measurement of 4.2e-5 -- and clipping the x-axis at the data
+        ## floor there cuts the roll-off itself out of the figure: the solid curve
+        ## would appear to start already at its plateau, with no rise to show for it.
+        we_roll_med = 2 * bo_of(median(d.R[sml])) * 0.02
+        lo, hi = min(minimum(d.We), 0.5 * we_roll_med), maximum(d.We)
         tks = [10.0^k for k in floor(Int, log10(lo)):ceil(Int, log10(hi))]
 
         plt = plot(xscale = :log10, xlabel = "Weber number  We", ylabel = "restitution  ε",
@@ -201,16 +248,23 @@ function main()
             ## with the physics held fixed.
         end
 
-        scatter!(plt, d.We[sml], d.C[sml]; mc = :white, msc = :steelblue, msw = 1.4, ms = 5.5,
+        sml_style = bo_oh_style(d.R[sml], GRAD_SML)
+        big_style = bo_oh_style(d.R[big], GRAD_BIG; ms_lo = 4.5, ms_hi = 7.5)
+
+        scatter!(plt, d.We[sml], d.C[sml]; mc = sml_style.mc, ms = sml_style.ms,
+                 msc = :gray30, msw = 0.5,
                  label = @sprintf("R = %.3f–%.3f mm  (n = %d)",
                                   1000minimum(d.R[sml]), 1000maximum(d.R[sml]), sum(sml)))
-        scatter!(plt, d.We[big], d.C[big]; mc = :indianred, msc = :indianred, msw = 0,
-                 ms = 5.5, alpha = 0.85,
+        scatter!(plt, d.We[big], d.C[big]; mc = big_style.mc, ms = big_style.ms,
+                 msc = :gray30, msw = 0.3, alpha = 0.85,
                  label = @sprintf("R = %.2f–%.2f mm  (n = %d)",
                                   1000minimum(d.R[big]), 1000maximum(d.R[big]), sum(big)))
         plot!(plt, Float64[], Float64[]; c = :gray30, lw = 3, label = "model, median R")
         plot!(plt, Float64[], Float64[]; c = :gray30, lw = 1.5, ls = :dot,
               label = "model, smallest / largest R")
+        annotate!(plt, 10.0^(log10(lo) + 0.3), 0.12,
+                  text("marker size ∝ √Bo (∝ R), shade ∝ Oh -- both within their own population",
+                       8, :left, :gray45))
 
         out = joinpath(FIGS, "figure_thenarianto_model_" * s.key *
                              (PREVIEW ? "_preview" : "") * ".png")

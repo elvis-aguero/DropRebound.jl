@@ -5,6 +5,7 @@ using DropSolver
     ## ---- the variational formulation, both contact closures --------------------------
     include("test_geometry_cache.jl")
     include("test_runcache.jl")      # the cached assembly, and the radial basis ceiling
+    include("test_curve.jl")         # the adaptive sampler, and trimming a ceiling artefact
     include("test_variational.jl")            # assembly structure, Reid/Lamb limits, Gaunt band
     include("test_variational_impact.jl")     # the searching closure against the ancestor
     include("test_conservation.jl")           # energy, impulse, volume on the trajectory
