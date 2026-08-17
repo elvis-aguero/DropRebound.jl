@@ -62,39 +62,38 @@ const RHO, SIGMA, MU, GRAV = 997.0, 0.072, 1.0e-3, 9.81
 oh_of(R) = MU / sqrt(RHO * SIGMA * R)
 bo_of(R) = RHO * GRAV * R^2 / SIGMA
 
-"""
-Per-point marker size and colour for one population's experimental scatter,
-encoding Bond and Ohnesorge directly rather than folding every drop in a
-population into one size and one colour.
+## One colour scale for Bond, shared by every experimental point and every model
+## curve on a figure -- log-spaced, because the two populations differ in it by
+## three to four orders of magnitude. Population identity is carried by marker
+## shape (circle for the sprayed submillimetre drops, square for the dispensed
+## millimetre ones) and by line style (solid/dot for the median/extremal-R band),
+## not by colour, so nothing has to choose between "which curve does this point
+## compare to" and "what is this point's Bond number" -- colour answers the second
+## question for everything on the page, and shape answers the first.
+const BO_CMAP = :viridis
 
-The hue is not a free choice: it is the SAME hue the population's model curves
-already use (`:steelblue` for the dispensed millimetre drops, `:indianred` for
-the sprayed submillimetre ones), so a scatter point reads against the line it
-is being compared to at a glance. A single shared colour scale across both
-populations (a literal colourbar for Bond, tried and rejected) throws that
-correspondence away to gain a numeric axis this figure does not need -- the
-comparison being drawn is "does the line track this cloud", not "read off this
-point's exact Bond number".
-
-Size follows `sqrt(Bo)` -- proportional to `R` itself, since rho, g and sigma are
-fixed across one surface's water drops -- normalised within the population's OWN
-range, so the four-hundred-fold spread the header describes for the sprayed
-population is what sets the scale, not the thousand-fold gap between the two
-populations. Shade follows Oh the same way, walked light-to-dark along the
-population's own hue.
 """
-function bo_oh_style(R, grad; ms_lo = 3.5, ms_hi = 8.5)
-    Bo, Oh = bo_of.(R), oh_of.(R)
-    rt(x, lo, hi) = lo == hi ? 0.5 : clamp((x - lo) / (hi - lo), 0.0, 1.0)
-    slo, shi = extrema(sqrt.(Bo))
-    olo, ohi = extrema(Oh)
-    ms = [ms_lo + (ms_hi - ms_lo) * rt(sqrt(b), slo, shi) for b in Bo]
-    mc = [get(grad, rt(o, olo, ohi)) for o in Oh]
-    (; ms, mc)
+Robust linear size scale for Ohnesorge: the 5th-95th percentile of every Oh value
+on the figure (both populations pooled) maps linearly to marker size 2-10, clamped
+beyond that range. A raw min/max would let one outlier drop set the whole scale;
+the 5-95 window keeps that from happening while still spanning the bulk of each
+population. 2-10 matches the marker sizes used throughout the rest of these
+figures -- Plots.jl's `ms` is roughly a point diameter, not matplotlib's `s`
+(point area), so literal values of 20-150 render as huge overlapping blocks.
+"""
+function oh_size(oh_all, oh; ms_lo = 2.0, ms_hi = 10.0)
+    lo, hi = quantile(oh_all, 0.05), quantile(oh_all, 0.95)
+    t = lo == hi ? 0.5 : clamp((oh - lo) / (hi - lo), 0.0, 1.0)
+    ms_lo + (ms_hi - ms_lo) * t
 end
 
-const GRAD_SML = cgrad([:lightskyblue1, :steelblue, :midnightblue])
-const GRAD_BIG = cgrad([:navajowhite, :indianred, :darkred])
+"""Indices that sort `oh` from largest to smallest, so a scatter plotted in that
+order draws its biggest markers first and its smallest last -- the small ones
+would otherwise be the likeliest to end up hidden under a larger neighbour."""
+biggest_first(oh) = sortperm(oh; rev = true)
+
+"""Colour for a Bond number, from the one scale every series on a figure shares."""
+bo_color(bo, lo, hi) = get(cgrad(BO_CMAP), clamp((log10(bo) - lo) / (hi - lo), 0.0, 1.0))
 
 const SURFACES = [
     (key = "glaco", csv = "glaco_restitution.csv", title = "Glaco coating", alpha = 2.9e-3),
@@ -236,20 +235,32 @@ function main()
                    legendfontsize = 9, guidefontsize = 13, tickfontsize = 12,
                    ylims = (0, 1), foreground_color_axis = :gray40,
                    foreground_color_border = :gray40, left_margin = 8Plots.mm,
-                   bottom_margin = 8Plots.mm, right_margin = 5Plots.mm, top_margin = 5Plots.mm)
+                   bottom_margin = 8Plots.mm, right_margin = 12Plots.mm, top_margin = 5Plots.mm)
+
+        ## One shared colour scale for Bond, and one shared size scale for Ohnesorge,
+        ## across BOTH populations and every model curve on this figure.
+        bo_lo, bo_hi = extrema(log10.(bo_of.(vcat(d.R[sml], d.R[big]))))
+        oh_all = vcat(oh_of.(d.R[sml]), oh_of.(d.R[big]))
 
         ## Measurements first, so the model sits on top of them rather than the other
         ## way around -- the comparison being drawn is "does the line track the
-        ## cloud", and that reads backwards if the cloud is what is on top.
-        sml_style = bo_oh_style(d.R[sml], GRAD_SML)
-        big_style = bo_oh_style(d.R[big], GRAD_BIG; ms_lo = 4.5, ms_hi = 7.5)
-
-        scatter!(plt, d.We[sml], d.C[sml]; mc = sml_style.mc, ms = sml_style.ms,
-                 msc = :gray30, msw = 0.5,
+        ## cloud", and that reads backwards if the cloud is what is on top. Within
+        ## each scatter, biggest markers first so the smaller ones are never the
+        ## ones buried underneath.
+        sml_oh, big_oh = oh_of.(d.R[sml]), oh_of.(d.R[big])
+        io = biggest_first(sml_oh); ib = biggest_first(big_oh)
+        scatter!(plt, d.We[sml][io], d.C[sml][io];
+                 marker_z = log10.(bo_of.(d.R[sml][io])), color = BO_CMAP,
+                 clims = (bo_lo, bo_hi), marker = :circle,
+                 ms = oh_size.(Ref(oh_all), sml_oh[io]), msc = :gray30, msw = 0.4,
+                 colorbar = false,
                  label = @sprintf("R = %.3f–%.3f mm  (n = %d)",
                                   1000minimum(d.R[sml]), 1000maximum(d.R[sml]), sum(sml)))
-        scatter!(plt, d.We[big], d.C[big]; mc = big_style.mc, ms = big_style.ms,
-                 msc = :gray30, msw = 0.3, alpha = 0.85,
+        scatter!(plt, d.We[big][ib], d.C[big][ib];
+                 marker_z = log10.(bo_of.(d.R[big][ib])), color = BO_CMAP,
+                 clims = (bo_lo, bo_hi), marker = :rect,
+                 ms = oh_size.(Ref(oh_all), big_oh[ib]), msc = :gray30, msw = 0.4,
+                 colorbar = true, colorbar_title = "\nlog₁₀ Bo", colorbar_titlefontsize = 11,
                  label = @sprintf("R = %.2f–%.2f mm  (n = %d)",
                                   1000minimum(d.R[big]), 1000maximum(d.R[big]), sum(big)))
 
@@ -257,15 +268,15 @@ function main()
             m.key == s.key || continue
             keep = isfinite.(c.ys)
             sum(keep) >= 2 || continue
-            col = m.big ? :indianred : :steelblue
+            col = bo_color(c.Bo, bo_lo, bo_hi)
             main = m.nr == 1 || m.idx == 2
-            ## Solid: their metric, which is the comparison being made.
+            ## Solid: their metric, which is the comparison being made. Population is
+            ## carried by marker shape above; here it is carried by line style --
+            ## a population with only one curve (the dispensed drops) is always solid,
+            ## the sprayed drops' band is solid at the median and dotted at the extremes.
             plot!(plt, c.xs[keep], c.ys[keep];
                   c = col, lw = main ? 3 : 1.5, ls = main ? :solid : :dot,
-                  label = "", alpha = main ? 1.0 : 0.7)
-            ## Dash-dot, median curve only: the SAME runs scored at 0.02R instead. The
-            ## gap between the two lines is what the contact convention alone is worth,
-            ## with the physics held fixed.
+                  label = "", alpha = main ? 1.0 : 0.85)
         end
         plot!(plt, Float64[], Float64[]; c = :gray30, lw = 3, label = "model, median R")
         plot!(plt, Float64[], Float64[]; c = :gray30, lw = 1.5, ls = :dot,

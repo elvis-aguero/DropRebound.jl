@@ -57,8 +57,31 @@ const BO_WATER = RHO * GRAV * R_DROP^2 / GAMMA
 ## The single self-consistent low-Oh cluster identified above -- see the header.
 const GAB_OH_MIN, GAB_OH_MAX = 0.021, 0.030
 
-const COL_WATER = :gray20
-const BO_CMAP   = :Purples
+## One colour scale for Bond, shared by both experimental datasets and both model
+## curves -- see figure_thenarianto_model.jl for why: population identity is
+## carried by marker shape (circle for ours, square for Gabbard) rather than by
+## colour, so a shared scale can answer "what is this point's Bond number" for
+## everything on the page instead of colour meaning two different things at once.
+const BO_CMAP = :viridis
+bo_color(bo, lo, hi) = get(cgrad(BO_CMAP), clamp((log10(bo) - lo) / (hi - lo), 0.0, 1.0))
+
+"""
+Robust linear size scale for Ohnesorge: the 5th-95th percentile of every Oh value
+on the figure (both datasets pooled) maps linearly to marker size 2-10, clamped
+beyond that range -- see figure_thenarianto_model.jl, which uses the same scale
+(and the same reason for 2-10 rather than a literal 20-150: Plots.jl's `ms` is
+roughly a point diameter, not matplotlib's `s`).
+"""
+function oh_size(oh_all, oh; ms_lo = 2.0, ms_hi = 10.0)
+    lo, hi = quantile(oh_all, 0.05), quantile(oh_all, 0.95)
+    t = lo == hi ? 0.5 : clamp((oh - lo) / (hi - lo), 0.0, 1.0)
+    ms_lo + (ms_hi - ms_lo) * t
+end
+
+"""Indices that sort `oh` from largest to smallest, so a scatter plotted in that
+order draws its biggest markers first and its smallest last -- see
+figure_thenarianto_model.jl for why."""
+biggest_first(oh) = sortperm(oh; rev = true)
 
 """Water restitution measured by our experiment: Weber and epsilon."""
 function read_water()
@@ -152,24 +175,45 @@ function main()
                foreground_color_border = :gray40, left_margin = 8Plots.mm,
                bottom_margin = 8Plots.mm, right_margin = 12Plots.mm, top_margin = 5Plots.mm)
 
+    ## One shared colour scale for Bond, and one shared size scale for Ohnesorge,
+    ## across both datasets and both model curves.
+    bo_lo, bo_hi = extrema(log10.(vcat(last.(gab), BO_WATER)))
+    oh_all = vcat(fill(OH_WATER, length(water)), (x -> x[3]).(gab))
+
     ## Measurements first, model on top -- the comparison is "does the line track
-    ## the cloud", which reads backwards if the cloud sits over the line.
-    scatter!(plt, we_gab, (x -> x[2]).(gab);
-             marker_z = last.(gab), color = BO_CMAP, marker = :rect,
-             ms = 5.5, msc = :gray30, msw = 0.4,
-             colorbar = true, colorbar_title = "\nBo", colorbar_titlefontsize = 11,
-             label = "Gabbard 2025")
-    scatter!(plt, we_water, last.(water); mc = COL_WATER, msc = :gray30, msw = 0.5,
-             ms = 5.5, label = "Ours")
+    ## the cloud", which reads backwards if the cloud sits over the line. Between
+    ## the two datasets, Gabbard is drawn first and ours last: ours sits at the
+    ## bottom of the pooled Oh range and is therefore the smallest marker on the
+    ## whole figure, and the smallest marker has to be in the LAST layer drawn or
+    ## it is just buried under whichever larger marker happens to land on it,
+    ## no matter what order it is in within its own series. The colorbar is
+    ## requested on this last call for the same reason it has to be: it is a
+    ## plot-level attribute, not a per-series one, so an earlier
+    ## `colorbar = true` would be silently overridden by a later `colorbar = false`.
+    gab_oh = (x -> x[3]).(gab)
+    ig = biggest_first(gab_oh)   # biggest markers first within this series too
+    scatter!(plt, we_gab[ig], (x -> x[2]).(gab)[ig];
+             marker_z = log10.(last.(gab)[ig]), color = BO_CMAP, clims = (bo_lo, bo_hi),
+             marker = :rect, ms = oh_size.(Ref(oh_all), gab_oh[ig]),
+             msc = :gray30, msw = 0.4, colorbar = false, label = "Gabbard 2025")
+    scatter!(plt, we_water, last.(water);
+             marker_z = fill(log10(BO_WATER), length(water)), color = BO_CMAP,
+             clims = (bo_lo, bo_hi), marker = :circle,
+             ms = oh_size.(Ref(oh_all), fill(OH_WATER, length(water))),
+             msc = :gray30, msw = 0.5,
+             colorbar = true, colorbar_title = "\nlog₁₀ Bo", colorbar_titlefontsize = 11,
+             label = "Ours")
 
     for (j, c) in zip(jobs, curves)
         keep = isfinite.(c.ys)
         sum(keep) >= 2 || continue
-        col = j.key == "water" ? COL_WATER : :indigo
+        col = bo_color(j.Bo, bo_lo, bo_hi)
         plot!(plt, c.xs[keep], c.ys[keep]; c = col, lw = 3, ls = :solid, label = "")
     end
-    plot!(plt, Float64[], Float64[]; c = COL_WATER, lw = 3, label = "model, our water")
-    plot!(plt, Float64[], Float64[]; c = :indigo, lw = 3, label = "model, Gabbard")
+    plot!(plt, Float64[], Float64[]; c = bo_color(BO_WATER, bo_lo, bo_hi), lw = 3,
+          label = "model, our water")
+    plot!(plt, Float64[], Float64[]; c = bo_color(gab_med[4], bo_lo, bo_hi), lw = 3,
+          label = "model, Gabbard")
 
     out = joinpath(FIGS, "figure_water_gabbard" * (PREVIEW ? "_preview" : "") * ".png")
     savefig(plt, out); println("\nwrote ", out)
