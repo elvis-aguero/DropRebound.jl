@@ -67,15 +67,21 @@ Per-point marker size and colour for one population's experimental scatter,
 encoding Bond and Ohnesorge directly rather than folding every drop in a
 population into one size and one colour.
 
+The hue is not a free choice: it is the SAME hue the population's model curves
+already use (`:steelblue` for the dispensed millimetre drops, `:indianred` for
+the sprayed submillimetre ones), so a scatter point reads against the line it
+is being compared to at a glance. A single shared colour scale across both
+populations (a literal colourbar for Bond, tried and rejected) throws that
+correspondence away to gain a numeric axis this figure does not need -- the
+comparison being drawn is "does the line track this cloud", not "read off this
+point's exact Bond number".
+
 Size follows `sqrt(Bo)` -- proportional to `R` itself, since rho, g and sigma are
 fixed across one surface's water drops -- normalised within the population's OWN
-range. The two populations are not put on one shared scale: the header already
-notes the sprayed population's Bond spans a factor of four hundred and the
-dispensed one only 1.3, and a shared scale would flatten the interesting spread
-in the first population to show the (already known, already why there are two
-populations) gap between them instead. Colour follows Oh the same way, walked
-along a gradient anchored on one hue per population, so a data point can be read
-against the smallest/median/largest-R model curves it should sit nearest to.
+range, so the four-hundred-fold spread the header describes for the sprayed
+population is what sets the scale, not the thousand-fold gap between the two
+populations. Shade follows Oh the same way, walked light-to-dark along the
+population's own hue.
 """
 function bo_oh_style(R, grad; ms_lo = 3.5, ms_hi = 8.5)
     Bo, Oh = bo_of.(R), oh_of.(R)
@@ -232,7 +238,21 @@ function main()
                    foreground_color_border = :gray40, left_margin = 8Plots.mm,
                    bottom_margin = 8Plots.mm, right_margin = 5Plots.mm, top_margin = 5Plots.mm)
 
-        ## Model first, so the measurements sit on top of it.
+        ## Measurements first, so the model sits on top of them rather than the other
+        ## way around -- the comparison being drawn is "does the line track the
+        ## cloud", and that reads backwards if the cloud is what is on top.
+        sml_style = bo_oh_style(d.R[sml], GRAD_SML)
+        big_style = bo_oh_style(d.R[big], GRAD_BIG; ms_lo = 4.5, ms_hi = 7.5)
+
+        scatter!(plt, d.We[sml], d.C[sml]; mc = sml_style.mc, ms = sml_style.ms,
+                 msc = :gray30, msw = 0.5,
+                 label = @sprintf("R = %.3f–%.3f mm  (n = %d)",
+                                  1000minimum(d.R[sml]), 1000maximum(d.R[sml]), sum(sml)))
+        scatter!(plt, d.We[big], d.C[big]; mc = big_style.mc, ms = big_style.ms,
+                 msc = :gray30, msw = 0.3, alpha = 0.85,
+                 label = @sprintf("R = %.2f–%.2f mm  (n = %d)",
+                                  1000minimum(d.R[big]), 1000maximum(d.R[big]), sum(big)))
+
         for (m, c) in zip(meta, curves)
             m.key == s.key || continue
             keep = isfinite.(c.ys)
@@ -247,24 +267,9 @@ function main()
             ## gap between the two lines is what the contact convention alone is worth,
             ## with the physics held fixed.
         end
-
-        sml_style = bo_oh_style(d.R[sml], GRAD_SML)
-        big_style = bo_oh_style(d.R[big], GRAD_BIG; ms_lo = 4.5, ms_hi = 7.5)
-
-        scatter!(plt, d.We[sml], d.C[sml]; mc = sml_style.mc, ms = sml_style.ms,
-                 msc = :gray30, msw = 0.5,
-                 label = @sprintf("R = %.3f–%.3f mm  (n = %d)",
-                                  1000minimum(d.R[sml]), 1000maximum(d.R[sml]), sum(sml)))
-        scatter!(plt, d.We[big], d.C[big]; mc = big_style.mc, ms = big_style.ms,
-                 msc = :gray30, msw = 0.3, alpha = 0.85,
-                 label = @sprintf("R = %.2f–%.2f mm  (n = %d)",
-                                  1000minimum(d.R[big]), 1000maximum(d.R[big]), sum(big)))
         plot!(plt, Float64[], Float64[]; c = :gray30, lw = 3, label = "model, median R")
         plot!(plt, Float64[], Float64[]; c = :gray30, lw = 1.5, ls = :dot,
               label = "model, smallest / largest R")
-        annotate!(plt, 10.0^(log10(lo) + 0.3), 0.12,
-                  text("marker size ∝ √Bo (∝ R), shade ∝ Oh -- both within their own population",
-                       8, :left, :gray45))
 
         out = joinpath(FIGS, "figure_thenarianto_model_" * s.key *
                              (PREVIEW ? "_preview" : "") * ".png")
