@@ -3,7 +3,7 @@
 # fluid, at a comparable but not identical Ohnesorge.
 #
 # WHY THIS IS A SECOND CHECK AND NOT A REPEAT OF THE WATER CURVE. Our water drops and
-# Gabbard et al.'s least-viscous oil sit at similar Oh (0.0068 against roughly 0.021 to
+# Gabbard et al.'s least-viscous oil sit at similar Oh (0.0068 against roughly 0.014 to
 # 0.030) but are otherwise nothing alike: different fluid, different drop generator,
 # different lab, different measurement of restitution. The model is handed the same
 # equations, the same discretisation and the same contact treatment for both, with
@@ -11,17 +11,24 @@
 # reverse, that would say the agreement was a property of one apparatus rather than of
 # the physics.
 #
-# WHICH ROWS ARE "1 cSt". Gabbard et al.'s own Table 1 reports only the range of
-# viscosities used, not a per-fluid label, so the least-viscous fluid has to be
-# identified from the data itself -- and a plain threshold on Oh is not enough. Sorting
-# all 935 rows by Oh shows a clean gap: 284 rows sit in [0.0214, 0.0300] with Bo varying
-# smoothly and continuously from 0.016 to 0.075 (one fluid run across several nozzle
-# sizes, the way the paper's own experiment varies R), then NOTHING until a separate
-# 40-row cluster at Oh in [0.0139, 0.0169] with Bo in [0.19, 0.42] -- a different,
-# unrelated population, not a continuation of the first. An Oh threshold alone (the
-# first draft of this script used Oh < 0.025) cuts through the first group and pulls in
-# the second, which is how two visually distinct clusters of colour ended up on one
-# scatter with one label. The 284-row group is used here; the other is excluded.
+# WHICH ROWS ARE THE LEAST-VISCOUS OIL. Gabbard et al.'s own Table 1 reports only the
+# range of viscosities used, not a per-fluid label, so the fluid has to be identified
+# from the data itself. A first pass sorted all 935 rows by Oh and found what looked
+# like two populations -- 284 rows in Oh in [0.0214, 0.0300], then a gap, then a
+# separate 40-row cluster at Oh in [0.0139, 0.0169] -- and treated the second as a
+# different, unrelated fluid. It is not. Inverting Oh and Bo for R and the implied
+# kinematic viscosity, using this lab's own reference values (rho = 0.96 g/cm^3,
+# sigma = 20.5 dyn/cm, from `sweeper_experiments.m` in the upstream repository,
+# harrislab-brown/LowWeberDropRebound), both clusters return the same viscosity to
+# four significant figures: nu = 1.99 cSt, i.e. the 2 cSt oil, just measured across two
+# non-overlapping drop-radius ranges (a small-nozzle batch and a larger-drop batch),
+# which is exactly what produces a gap in Oh without a gap in the underlying fluid.
+# Running the same inversion over the FULL 935-row dataset with those constants held
+# fixed resolves it into four clusters -- 452 rows at nu = 2.0 cSt, 156 at 5.0, 193 at
+# ~18 (nominally 20 -- that oil's own rho/sigma differ slightly from the 2 cSt
+# reference used here, which biases the estimate), 134 at ~49.5 (nominally 50) -- and
+# nothing anywhere near 1 cSt. All 324 rows of the 2 cSt oil (both former "clusters")
+# are used here.
 #
 #   julia --project=docs -t 6 scripts/figure_water_gabbard.jl
 #
@@ -54,8 +61,10 @@ const RHO, GRAV, R_DROP, GAMMA, MU = 997.0, 9.81, 3.0e-4, 0.0728, 1.0e-3
 const OH_WATER = MU / sqrt(RHO * GAMMA * R_DROP)
 const BO_WATER = RHO * GRAV * R_DROP^2 / GAMMA
 
-## The single self-consistent low-Oh cluster identified above -- see the header.
-const GAB_OH_MIN, GAB_OH_MAX = 0.021, 0.030
+## The 2 cSt oil identified above -- see the header. A plain Oh cut is enough once
+## both former "clusters" are known to be the same fluid; the only thing excluded
+## below this bound is the next-higher grade (~5 cSt, Oh starting around 0.032).
+const GAB_OH_MAX = 0.030
 
 ## One colour scale for Bond, shared by both experimental datasets and both model
 ## curves -- see figure_thenarianto_model.jl for why: population identity is
@@ -102,7 +111,7 @@ function read_water()
     sort!(out, by = first)
 end
 
-"""Gabbard et al. (2025) rows in the single low-Oh cluster: We, cor, Oh, Bo."""
+"""Gabbard et al. (2025) rows for the 2 cSt oil: We, cor, Oh, Bo."""
 function read_gabbard()
     out = NTuple{4,Float64}[]
     for ln in eachline(joinpath(DATA, "gabbard2025_restitution.csv"))
@@ -110,7 +119,7 @@ function read_gabbard()
         v = tryparse.(Float64, split(strip(ln), ','))
         any(isnothing, v) && continue
         we, cor, oh, bo = v[1], v[3], v[5], v[6]
-        GAB_OH_MIN <= oh <= GAB_OH_MAX || continue
+        oh <= GAB_OH_MAX || continue
         push!(out, (we, cor, oh, bo))
     end
     sort!(out, by = first)
