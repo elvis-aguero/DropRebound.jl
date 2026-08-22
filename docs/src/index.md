@@ -15,9 +15,9 @@ outcome follows.
 
 ## Governing equations
 
-Inside the drop the flow obeys the incompressible Navier-Stokes equations. Nothing is
-approximated here: the linearisation this package uses is a separate step, introduced below and
-kept separate deliberately, because the variational machinery does not need it.
+Inside the drop the flow obeys the incompressible Navier-Stokes equations, in their full
+nonlinear form; the linearisation this package uses is introduced separately below, since the
+variational statement that follows does not need it yet.
 
 ```math
 \rho\bigl(\partial_t \bm u + \bm u\cdot\nabla\bm u\bigr) \;=\; \nabla\cdot\bm\Sigma + \rho\bm g ,
@@ -29,21 +29,23 @@ kept separate deliberately, because the variational machinery does not need it.
 \nabla\cdot\bm u = 0 ,
 ```
 
-with ``\dot\gamma = \sqrt{2\,\bm e\!:\!\bm e}`` the shear rate.
+with ``\dot\gamma = \sqrt{2\,\bm e\!:\!\bm e}`` the shear rate, ``\bm\Sigma`` and ``\bm e`` the
+stress and strain-rate tensors, the latter symmetric and, for an incompressible flow, traceless.
 
-Two things about how this is written. The stress appears as ``\nabla\cdot\bm\Sigma`` rather than
-as ``-\nabla p + \eta\nabla^2\bm u``, because the two agree only for a **uniform** viscosity:
+The stress appears as ``\nabla\cdot\bm\Sigma`` rather than as ``-\nabla p + \eta\nabla^2\bm u``,
+because the two agree only for a **uniform** viscosity:
 ``\nabla\cdot(2\eta\bm e) = \eta\nabla^2\bm u + 2\,\bm e\cdot\nabla\eta``, and for the
 shear-thinning fluids this package treats, that second term is the physics. And ``\eta`` is
 written as a function of the shear rate from the outset, since a constant viscosity is the
 special case rather than the starting point.
 
 The flow and the interface are assumed **axisymmetric** throughout, so a single polar angle
-``\theta`` describes the surface. That assumption is not lifted anywhere in this package.
+``\theta`` describes the surface.
 
 Write ``\Omega`` for the region the liquid occupies and ``\partial\Omega`` for its free
-surface, at ``r = R + \zeta(\theta,t)``. Every integral below is over one of these two. The
-conditions on ``\partial\Omega`` carry the physics:
+surface, at ``r = R + \zeta(\theta,t)``, with outward normal ``\bm n`` and tangent ``\bm t``.
+Every integral below is over one of these two. The conditions on ``\partial\Omega``, evaluated
+**on the deformed surface**, carry the physics:
 
 ```math
 \underbrace{\partial_t\zeta = \bm u\cdot\bm n\,\sqrt{1+|\nabla_s\zeta|^2}}_{\text{kinematic}} ,
@@ -53,21 +55,11 @@ conditions on ``\partial\Omega`` carry the physics:
 \underbrace{\bm n\cdot\bm\Sigma\cdot\bm n = -(\gamma\,\kappa + p_c)}_{\text{normal traction}} ,
 ```
 
-all evaluated **on the deformed surface**, with ``\kappa = \nabla_s\!\cdot\bm n`` the sum of the
-principal curvatures, positive for a sphere. The signs are worth checking on the static case:
-with ``\bm n`` outward and no film, ``\bm n\cdot\bm\Sigma\cdot\bm n = -p``, so the condition
-reads ``p = \gamma\kappa = 2\gamma/R``, which is Young-Laplace. A film pressure ``p_c \ge 0``
-pushes inward, against ``\bm n``, and so enters with the same sign as ``\gamma\kappa``.
-
-with ``\bm n`` and ``\bm t`` the normal and tangent to the surface, and
-
-```math
-\bm\Sigma = -p\,\bm I + 2\eta\,\bm e , \qquad
-\bm e = \tfrac12\left(\nabla\bm u + \nabla\bm u^{\mathsf T}\right)
-```
-
-the stress tensor and the strain-rate tensor. Everything below is written in terms of ``\bm e``,
-so it is worth noting now that it is symmetric and, for an incompressible flow, traceless.
+with ``\kappa = \nabla_s\!\cdot\bm n`` the sum of the principal curvatures, positive for a
+sphere. In the static case, with no film, ``\bm n\cdot\bm\Sigma\cdot\bm n = -p``, so the third
+condition reads ``p = \gamma\kappa = 2\gamma/R``, which is Young-Laplace. A film pressure
+``p_c \ge 0`` pushes inward, against ``\bm n``, and so enters with the same sign as
+``\gamma\kappa``.
 
 The first condition is kinematic: the surface moves with the fluid. The second says a free
 surface cannot support shear. The third balances the normal traction against capillarity and
@@ -76,8 +68,8 @@ during an impact. That film is the only agent by which the wall acts on the drop
 never touches the solid. Away from the substrate ``p_c = 0`` and the third condition is the
 usual Young-Laplace balance.
 
-The tangential condition is the one that shapes everything downstream. A potential flow cannot
-satisfy it, so a viscous drop must carry vorticity near its surface, and any method that
+The tangential condition is the one that determines everything that follows. A potential flow
+cannot satisfy it, so a viscous drop must carry vorticity near its surface, and any method that
 forbids that vorticity will over-predict the damping.
 
 ## Dimensionless groups
@@ -98,13 +90,12 @@ A water-glycerol drop with ``\rho = 1200\,\mathrm{kg\,m^{-3}}``,
 ``\gamma = 65\,\mathrm{mN\,m^{-1}}`` and ``\eta = 48\,\mathrm{mPa\,s}``, of radius
 ``R = 0.32\,\mathrm{mm}`` falling at ``v_0 = 11.5\,\mathrm{cm\,s^{-1}}``, has
 ``\mathrm{Oh} \approx 0.30``, ``\mathrm{Bo} \approx 0.019`` and ``\mathrm{We} \approx 0.079``.
-The three material values are quoted so that all three groups can be checked.
 
 ## From the equations to a variational statement
 
 Solving the system above directly requires the stress divergence, the pressure field, and
-explicit imposition of two stress conditions on a moving boundary. There is a formulation that
-avoids all three.
+explicit imposition of two stress conditions on a moving boundary. A variational (weak)
+formulation avoids all three.
 
 Take a test velocity field ``\bm v`` that is incompressible and compatible with the kinematic
 condition. Contract the momentum equation with it and integrate over the drop:
@@ -137,11 +128,11 @@ of ``\bm v`` earns its keep and why the pressure never has to be solved for. The
 that ``\bm e`` is symmetric, so contracting it with ``\nabla\bm v`` picks out the symmetric part
 of ``\nabla\bm v``, which is ``\bm e(\bm v)``.
 
-**Nothing in that step assumed a uniform viscosity.** ``\eta`` sits inside the integrand and is
-carried along unchanged, whatever it depends on. A derivation routed through
-``\nabla^2\bm u = 2\nabla\cdot\bm e`` instead would have needed ``\eta`` constant, and would have
-excluded every fluid this package exists for. Working from ``\nabla\cdot\bm\Sigma`` is both more
-general and shorter.
+No assumption of uniform viscosity entered: ``\eta`` sits inside the integrand and is carried
+along unchanged, whatever it depends on. A derivation routed through
+``\nabla^2\bm u = 2\nabla\cdot\bm e`` instead would require ``\eta`` constant, excluding the
+shear-thinning fluids treated here; working from ``\nabla\cdot\bm\Sigma`` retains the general
+case.
 
 What remains is
 
@@ -174,11 +165,12 @@ the right-hand side becomes
 \;-\; \underbrace{\oint_{\partial\Omega} p_c\,(\bm v\cdot\bm n)\,dS}_{\text{film}} ,
 ```
 
-so that moving the capillary term to the left of the equation makes it ``+\delta_{\bm v}V``,
-which is where the sign in the collected weak form comes from.
+so moving the capillary term to the left of the equation makes it ``+\delta_{\bm v}V``.
 
-The capillary term is a derivative of an energy. Deforming the surface by a normal displacement
-``\delta\zeta`` changes its area by ``\oint_{\partial\Omega} \kappa\,\delta\zeta\,dS`` (*Identities and Standard Results*, B.2), so with
+The capillary term is a derivative of an energy. To first order, a normal displacement
+``\delta\zeta`` changes the local area element by ``\kappa\,\delta\zeta``, so it changes the
+total area by ``\oint_{\partial\Omega} \kappa\,\delta\zeta\,dS`` (the first variation of area;
+*Identities and Standard Results*, B.2), so with
 
 ```math
 V \;=\; \gamma\left(|\partial\Omega| - 4\pi R^2\right)
@@ -204,11 +196,11 @@ Collecting, the weak form reads
 ```
 
 for every admissible ``\bm v``: inertia, dissipation and capillarity on the left, and the wall
-on the right. **Nothing has been approximated to reach this point.** The domain is the deformed
-one, the advective term is present, the viscosity depends on the shear rate, and ``V`` is the
-exact area functional. The free-surface conditions have become **natural**. They were used once, to
-evaluate the boundary term, and they are never imposed on the solution; any field satisfying
-this statement for all ``\bm v`` satisfies them.
+on the right. No approximation has entered: the domain is the deformed one, the advective term
+is present, the viscosity depends on the shear rate, and ``V`` is the exact area functional. The
+free-surface conditions have become **natural**. They were used once, to evaluate the boundary
+term, and they are never imposed on the solution; any field satisfying this statement for all
+``\bm v`` satisfies them.
 
 Three things are gained. Only one derivative of the velocity appears, where the strong form
 needs two. The pressure never has to be solved for, because incompressibility was built into
@@ -245,20 +237,19 @@ the constitutive law. The weak form above is then equivalent to
 which is Lagrange's equations for a damped system, and is **exact**: it is the full nonlinear
 problem written in finitely many coordinates rather than a linearisation of it.
 
-It is worth naming where each nonlinearity now lives, because that is what would have to be
-kept to lift the approximation of the next section. The advective term ``\bm u\cdot\nabla\bm u``
-is carried by ``-\,\partial T/\partial\xi_a``, which is nonzero precisely because the domain and
-the basis fields move with the configuration. The exact curvature is carried by ``V``, which is
-the true area rather than a quadratic form. The shear-rate dependence of the viscosity is carried
-by ``\mathcal R``, which is the integral of the flow curve rather than a quadratic form. Only the
-last of these is retained by this package today.
-
-*Variational Mechanics* carries out this reduction.
+Each nonlinearity now lives in one of the three functionals, which matters because it is what
+would have to be kept to lift the approximation of the next section. The advective term
+``\bm u\cdot\nabla\bm u`` is carried by ``-\,\partial T/\partial\xi_a``, which is nonzero
+precisely because the domain and the basis fields move with the configuration. The exact
+curvature is carried by ``V``, which is the true area rather than a quadratic form. The
+shear-rate dependence of the viscosity is carried by ``\mathcal R``, which is the integral of
+the flow curve rather than a quadratic form. Only the last of these is retained by this package
+today; *Variational Mechanics* carries out this reduction.
 
 This is Onsager's variational principle [^onsager], whose modern statement and use as an
 approximation tool are set out by Wang, Qian and Xu [^wqx]. The principle is usually written
-for overdamped motion with the inertial term dropped, which is not our case: a bouncing drop is
-an oscillator, and the first term above matters as much as the second. The inertial
+for overdamped motion with the inertial term dropped, which does not hold here: a bouncing drop
+is an oscillator, and the first term above matters as much as the second. The inertial
 generalisation is discussed by Archer [^archer]. Solving such a principle with trial functions
 is the Ritz method, applied to variational problems in soft matter by Wang and co-workers
 [^ritz].
@@ -276,25 +267,27 @@ and it is the only physical approximation in the package. Concretely it does fou
 | ``V`` the exact area | quadratic in ``\bm\xi`` | a constant stiffness ``\bm G`` |
 | ``\kappa`` exact | linearised curvature | the restoring coefficient ``(l-1)(l+2)`` |
 
+The quadratic expansion of the area functional in spherical harmonics is diagonal,
+
+```math
+V \;\approx\; \tfrac12\,\gamma\sum_{l\ge2} (l-1)(l+2)\oint_{\partial\Omega} \zeta_l^2\,dS ,
+```
+
+which is where the restoring coefficient ``(l-1)(l+2)`` in the table comes from (derived in
+*Variational Mechanics*).
+
 What survives is
 ``\bm M\ddot{\bm\xi} + \bm C(\dot{\bm\xi})\,\dot{\bm\xi} + \bm G\bm\xi = \bm Q``, with the
 viscosity's state dependence kept inside ``\bm C``. Lifting the approximation means restoring the
 terms in the middle column, in that order of difficulty; the framework above does not change.
 
 The approximation is controlled by ``\mathrm{We}``, and the amplitude it produces can be checked
-after the fact: at ``\mathrm{We} = 1`` the largest surface mode reaches ``|\zeta_2| \approx 0.4R``.
-That is not small, and results at higher Weber number should be read with that in mind.
+after the fact: at ``\mathrm{We} = 1`` the largest surface mode reaches ``|\zeta_2| \approx
+0.4R``, which is not small; results at higher Weber number should therefore be interpreted with
+that in mind.
 
-No further approximation enters. Everything after this point is a discretisation whose error can
-be reduced by refinement, and *Resolution and Convergence* reports how far it has been reduced.
-
-!!! tip "Reference"
-
-    Two pages sit outside the main line of argument and are meant to be consulted rather than
-    read through. *Identities and Standard Results*, which proves every standard result the
-    chapters use, and *Glossary of Symbols*, which lists every symbol with its meaning, its
-    array size and where it is introduced, and records the places where one letter carries two
-    meanings.
+Everything after this point is a discretisation, whose error is reduced by refinement;
+*Resolution and Convergence* reports the resulting convergence.
 
 ## Getting started
 
@@ -305,37 +298,11 @@ p = ImpactParams(We = 1.0, Bo = 0.0189, Oh = 0.3038, M = 45, K = 3)
 r = simulate(p)
 
 r.cor          # coefficient of restitution
-r.tc           # contact time, in units of sqrt(rho R^3 / sigma)
+r.tc           # contact time, in units of sqrt(rho R^3 / gamma)
 ```
 
 ``M`` truncates the angular expansion and ``K`` the radial one. *Resolution and Convergence*
-gives the values at which each quantity stops moving.
-
-## How to read this
-
-The material is ordered so that each part supplies what the next one needs.
-
-**Variational mechanics** turns the statement above into matrices: how a trial space is chosen so
-that incompressibility costs nothing, and what the three operators inherit from the functionals
-they differentiate.
-
-**The free viscous drop** solves the linearised problem exactly, by separation of variables.
-It supplies the target the discretisation is checked against, and its radial structure supplies
-the trial functions.
-
-**Contact** treats the air film and the unilateral constraint between gap and pressure, and the
-two ways the contact region is located.
-
-**Shear-thinning fluids** carries the viscosity through two routes: evaluated pointwise on the
-full strain field, which keeps the interior in the state, and reduced to one number per mode,
-which does not.
-
-**Viscoelastic fluids** adds polymer stress as an extra state variable.
-
-**Using it** covers solver choice, resolution, and the interface.
-
-**Validation** compares the model against experiment, and states where it agrees and where it
-does not.
+gives the values at which each quantity converges.
 
 [^onsager]: L. Onsager, *Reciprocal relations in irreversible processes I*, Phys. Rev. **37**, 405 (1931).
 [^wqx]: H. Wang, T. Qian and X. Xu, *Onsager's variational principle in active soft matter*, [arXiv:2011.10821](https://arxiv.org/abs/2011.10821).
